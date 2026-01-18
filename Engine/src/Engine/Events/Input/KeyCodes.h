@@ -1,0 +1,52 @@
+#pragma once
+
+#include <cstdint>
+
+namespace Engine
+{
+    namespace Input
+    {
+        enum KeyCode : uint16_t
+        {
+            TR_KEY_UNKNOWN = 0,
+
+            TR_KEY_SPACE,
+            TR_KEY_APOSTROPHE, TR_KEY_COMMA, TR_KEY_MINUS, TR_KEY_PERIOD, TR_KEY_SLASH,
+
+            TR_KEY_0, TR_KEY_1, TR_KEY_2, TR_KEY_3, TR_KEY_4,
+            TR_KEY_5, TR_KEY_6, TR_KEY_7, TR_KEY_8, TR_KEY_9,
+
+            TR_KEY_SEMICOLON, TR_KEY_EQUAL,
+
+            TR_KEY_A, TR_KEY_B, TR_KEY_C, TR_KEY_D, TR_KEY_E, TR_KEY_F, TR_KEY_G,
+            TR_KEY_H, TR_KEY_I, TR_KEY_J, TR_KEY_K, TR_KEY_L, TR_KEY_M, TR_KEY_N,
+            TR_KEY_O, TR_KEY_P, TR_KEY_Q, TR_KEY_R, TR_KEY_S, TR_KEY_T, TR_KEY_U,
+            TR_KEY_V, TR_KEY_W, TR_KEY_X, TR_KEY_Y, TR_KEY_Z,
+
+            TR_KEY_LEFT_BRACKET, TR_KEY_BACKSLASH, TR_KEY_RIGHT_BRACKET, TR_KEY_GRAVE_ACCENT,
+
+            TR_KEY_ESCAPE, TR_KEY_ENTER, TR_KEY_TAB, TR_KEY_BACKSPACE,
+            TR_KEY_INSERT, TR_KEY_DELETE,
+
+            TR_KEY_RIGHT, TR_KEY_LEFT, TR_KEY_DOWN, TR_KEY_UP,
+            TR_KEY_PAGE_UP, TR_KEY_PAGE_DOWN, TR_KEY_HOME, TR_KEY_END,
+
+            TR_KEY_CAPS_LOCK, TR_KEY_SCROLL_LOCK, TR_KEY_NUM_LOCK,
+            TR_KEY_PRINT_SCREEN, TR_KEY_PAUSE,
+
+            TR_KEY_F1, TR_KEY_F2, TR_KEY_F3, TR_KEY_F4, TR_KEY_F5, TR_KEY_F6,
+            TR_KEY_F7, TR_KEY_F8, TR_KEY_F9, TR_KEY_F10, TR_KEY_F11, TR_KEY_F12,
+
+            TR_KEY_KP_0, TR_KEY_KP_1, TR_KEY_KP_2, TR_KEY_KP_3, TR_KEY_KP_4,
+            TR_KEY_KP_5, TR_KEY_KP_6, TR_KEY_KP_7, TR_KEY_KP_8, TR_KEY_KP_9,
+            TR_KEY_KP_DECIMAL, TR_KEY_KP_DIVIDE, TR_KEY_KP_MULTIPLY, TR_KEY_KP_SUBTRACT,
+            TR_KEY_KP_ADD, TR_KEY_KP_ENTER, TR_KEY_KP_EQUAL,
+
+            TR_KEY_LEFT_SHIFT, TR_KEY_LEFT_CONTROL, TR_KEY_LEFT_ALT, TR_KEY_LEFT_SUPER,
+            TR_KEY_RIGHT_SHIFT, TR_KEY_RIGHT_CONTROL, TR_KEY_RIGHT_ALT, TR_KEY_RIGHT_SUPER,
+            TR_KEY_MENU
+        };
+
+        KeyCode FromGLFWKey(int glfwKey);
+    }
+}

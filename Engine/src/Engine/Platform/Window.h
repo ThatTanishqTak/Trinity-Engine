@@ -12,8 +12,8 @@ namespace Engine
     struct WindowProperties
     {
         std::string Title = "PhysicsEngine";
-        uint32_t Width = 1280;
-        uint32_t Height = 720;
+        uint32_t Width = 1920;
+        uint32_t Height = 1080;
         bool VSync = true;
 
         WindowProperties() = default;

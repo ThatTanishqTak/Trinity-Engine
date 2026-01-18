@@ -4,10 +4,13 @@
 #include "Engine/Platform/Window.h"
 
 #include <memory>
-#include <chrono>
 
 namespace Engine
 {
+    class Event;
+    class WindowCloseEvent;
+    class WindowResizeEvent;
+
     class Application
     {
     public:
@@ -15,6 +18,9 @@ namespace Engine
         virtual ~Application();
 
         void Run();
+        void Close();
+
+        void OnEvent(Event& e);
 
         void PushLayer(Layer* layer);
         void PushOverlay(Layer* overlay);
@@ -22,12 +28,15 @@ namespace Engine
         static Application& Get() { return *s_Instance; }
 
     private:
+        bool OnWindowClose(WindowCloseEvent& e);
+        bool OnWindowResize(WindowResizeEvent& e);
+
+    private:
         bool m_Running = true;
+        bool m_Minimized = false;
+
         LayerStack m_LayerStack;
-
         std::unique_ptr<Window> m_Window;
-
-        std::chrono::steady_clock::time_point m_LastFrameTime;
 
         static Application* s_Instance;
     };

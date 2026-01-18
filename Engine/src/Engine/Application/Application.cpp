@@ -3,7 +3,10 @@
 
 #include "Engine/Core/Utilities.h"
 
-#include <thread>
+#include "Engine/Events/Input/Input.h"
+#include "Engine/Events/Event.h"
+#include "Engine/Events/EventDispatcher.h"
+#include "Engine/Events/WindowEvent.h"
 
 namespace Engine
 {
@@ -11,48 +14,101 @@ namespace Engine
 
     Application::Application()
     {
-        Utilities::Log::Initialize();
-
-        if (s_Instance)
-        {
-            TR_CORE_ERROR("Application already exists!");
-            return;
-        }
-
         s_Instance = this;
-        TR_CORE_TRACE("Engine Core Started");
 
-        m_LastFrameTime = std::chrono::steady_clock::now();
+        Utilities::Log::Initialize();
+        Utilities::Time::Initialize();
+        Input::Initialize();
 
         m_Window = Window::Create();
+        m_Window->SetEventCallback([this](Event& e)
+            {
+                this->OnEvent(e);
+            });
     }
 
     Application::~Application()
     {
-        TR_CORE_TRACE("Engine Core Shutdown");
+        Input::Shutdown();
         s_Instance = nullptr;
+    }
+
+    void Application::Close()
+    {
+        m_Running = false;
+    }
+
+    void Application::OnEvent(Event& e)
+    {
+        Input::OnEvent(e);
+
+        EventDispatcher dispatcher(e);
+
+        // Core engine events first
+        dispatcher.Dispatch<WindowCloseEvent>([this](WindowCloseEvent& ev) { return OnWindowClose(ev); });
+        dispatcher.Dispatch<WindowResizeEvent>([this](WindowResizeEvent& ev) { return OnWindowResize(ev); });
+
+        // Propagate to layers (top-most first)
+        for (auto it = m_LayerStack.rbegin(); it != m_LayerStack.rend(); ++it)
+        {
+            (*it)->OnEvent(e);
+            if (e.Handled)
+            {
+                break;
+            }
+        }
+    }
+
+    bool Application::OnWindowClose(WindowCloseEvent&)
+    {
+        m_Running = false;
+
+        return true;
+    }
+
+    bool Application::OnWindowResize(WindowResizeEvent& e)
+    {
+        if (e.GetWidth() == 0 || e.GetHeight() == 0)
+        {
+            m_Minimized = true;
+
+            return false;
+        }
+
+        m_Minimized = false;
+
+        // Vulkan hook later: mark swapchain recreation needed here.
+        return false;
     }
 
     void Application::Run()
     {
-        while (m_Running && !m_Window->ShouldClose())
+        while (m_Running)
         {
+            Utilities::Time::Update();
+
+            Input::BeginFrame();
             m_Window->OnUpdate();
 
-            auto a_Now = std::chrono::steady_clock::now();
-            float l_DeltaTime = std::chrono::duration<float>(a_Now - m_LastFrameTime).count();
-            m_LastFrameTime = a_Now;
-
-            for (Layer* layer : m_LayerStack)
+            if (m_Window->ShouldClose())
             {
-                layer->OnUpdate(l_DeltaTime);
-            }
-            for (auto a_Index = m_LayerStack.rbegin(); a_Index != m_LayerStack.rend(); ++a_Index)
-            {
-                (*a_Index)->OnRender();
+                m_Running = false;
             }
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(16));
+            if (m_Minimized)
+            {
+                continue;
+            }
+
+            for (Layer* it_Layer : m_LayerStack)
+            {
+                it_Layer->OnUpdate(Utilities::Time::DeltaTime());
+            }
+
+            for (Layer* it_Layer : m_LayerStack)
+            {
+                it_Layer->OnRender();
+            }
         }
     }
 

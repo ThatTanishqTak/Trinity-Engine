@@ -2,6 +2,11 @@
 
 #include "Engine/Layer/Layer.h"
 
+namespace Engine
+{
+    class Event;
+}
+
 class ClientLayer : public Engine::Layer
 {
 public:
@@ -13,4 +18,6 @@ public:
 
     void OnUpdate(float deltaTime) override;
     void OnRender() override;
+
+    void OnEvent(Engine::Event& e) override;
 };
