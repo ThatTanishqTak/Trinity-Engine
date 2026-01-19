@@ -2,6 +2,7 @@
 
 add_subdirectory(vendor/spdlog)
 add_subdirectory(vendor/glfw)
+find_package(Vulkan REQUIRED)
 
 set(SPDLOG_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(SPDLOG_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
@@ -29,4 +30,5 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 target_link_libraries(${PROJECT_NAME} PUBLIC
     spdlog::spdlog
     glfw
+    Vulkan::Vulkan
 )

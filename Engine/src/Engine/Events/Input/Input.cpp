@@ -23,9 +23,9 @@ namespace Engine
         static constexpr size_t s_GamepadButtonCount = static_cast<size_t>(TR_PAD_DPAD_LEFT) + 1;
         static constexpr size_t s_GamepadAxisCount = static_cast<size_t>(TR_PAD_RT) + 1;
 
-        static std::array<uint8_t, s_KeyCount>   s_KeyDown{};
-        static std::array<uint8_t, s_KeyCount>   s_KeyPressed{};
-        static std::array<uint8_t, s_KeyCount>   s_KeyReleased{};
+        static std::array<uint8_t, s_KeyCount> s_KeyDown{};
+        static std::array<uint8_t, s_KeyCount> s_KeyPressed{};
+        static std::array<uint8_t, s_KeyCount> s_KeyReleased{};
 
         static std::array<uint8_t, s_MouseCount> s_MouseDown{};
         static std::array<uint8_t, s_MouseCount> s_MousePressed{};
@@ -35,7 +35,7 @@ namespace Engine
         static double s_MouseY = 0.0;
         static double s_MouseDeltaX = 0.0;
         static double s_MouseDeltaY = 0.0;
-        static bool   s_MousePosValid = false;
+        static bool s_MousePosValid = false;
 
         static double s_ScrollX = 0.0;
         static double s_ScrollY = 0.0;
@@ -127,7 +127,10 @@ namespace Engine
 
         void BeginFrame()
         {
-            if (!s_Initialized) return;
+            if (!s_Initialized)
+            {
+                return;
+            }
 
             std::fill(s_KeyPressed.begin(), s_KeyPressed.end(), 0);
             std::fill(s_KeyReleased.begin(), s_KeyReleased.end(), 0);

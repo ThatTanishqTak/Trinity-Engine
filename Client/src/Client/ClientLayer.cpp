@@ -31,11 +31,6 @@ void ClientLayer::OnShutdown()
 void ClientLayer::OnUpdate(float deltaTime)
 {
     (void)deltaTime;
-
-    if (Engine::Input::KeyPressed(Engine::Input::TR_KEY_ESCAPE))
-    {
-        Engine::Application::Get().Close();
-    }
 }
 
 void ClientLayer::OnRender()
