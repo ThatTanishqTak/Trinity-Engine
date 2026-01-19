@@ -9,6 +9,8 @@
 #include "Engine/Events/KeyEvent.h"
 #include "Engine/Events/MouseEvent.h"
 
+#include <iostream>
+
 ClientLayer::ClientLayer() : Engine::Layer("ClientLayer")
 {
 

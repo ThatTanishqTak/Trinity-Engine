@@ -15,7 +15,7 @@ namespace Engine
         static bool s_Initialized = false;
         static bool s_Blocked = false;
 
-        // Sizes derived from the last enum value (+1). Assumes contiguous enums (yours are).
+        // Sizes derived from the last enum value (+1). Assumes contiguous enums
         static constexpr size_t s_KeyCount = static_cast<size_t>(TR_KEY_MENU) + 1;
         static constexpr size_t s_MouseCount = static_cast<size_t>(TR_MOUSE_8) + 1;
 
@@ -49,19 +49,37 @@ namespace Engine
         static std::array<std::array<uint8_t, s_GamepadButtonCount>, s_MaxGamepads> s_GamepadReleased{};
         static std::array<std::array<float, s_GamepadAxisCount>, s_MaxGamepads> s_GamepadAxes{};
 
-        static size_t ToIndex(KeyCode key) { return static_cast<size_t>(key); }
-        static size_t ToIndex(MouseButton button) { return static_cast<size_t>(button); }
-        static size_t ToIndex(GamepadButton button) { return static_cast<size_t>(button); }
-        static size_t ToIndex(GamepadAxis axis) { return static_cast<size_t>(axis); }
-
-        static bool ValidGamepad(int32_t id)
+        static size_t ToIndex(KeyCode key)
         {
-            return id >= 0 && id < s_MaxGamepads;
+            return static_cast<size_t>(key);
+        }
+        
+        static size_t ToIndex(MouseButton button)
+        {
+            return static_cast<size_t>(button);
+        }
+
+        static size_t ToIndex(GamepadButton button)
+        {
+            return static_cast<size_t>(button);
+        }
+
+        static size_t ToIndex(GamepadAxis axis)
+        {
+            return static_cast<size_t>(axis);
+        }
+
+        static bool ValidGamepad(int32_t ID)
+        {
+            return ID >= 0 && ID < s_MaxGamepads;
         }
 
         void Initialize()
         {
-            if (s_Initialized) return;
+            if (s_Initialized)
+            {
+                return;
+            }
 
             std::fill(s_KeyDown.begin(), s_KeyDown.end(), 0);
             std::fill(s_KeyPressed.begin(), s_KeyPressed.end(), 0);
@@ -72,10 +90,25 @@ namespace Engine
             std::fill(s_MouseReleased.begin(), s_MouseReleased.end(), 0);
 
             std::fill(s_GamepadConnected.begin(), s_GamepadConnected.end(), 0);
-            for (auto& pad : s_GamepadDown)     std::fill(pad.begin(), pad.end(), 0);
-            for (auto& pad : s_GamepadPressed)  std::fill(pad.begin(), pad.end(), 0);
-            for (auto& pad : s_GamepadReleased) std::fill(pad.begin(), pad.end(), 0);
-            for (auto& pad : s_GamepadAxes)     std::fill(pad.begin(), pad.end(), 0.0f);
+            for (auto& it_Gamepad : s_GamepadDown)
+            {
+                std::fill(it_Gamepad.begin(), it_Gamepad.end(), 0);
+            }
+
+            for (auto& it_Gamepad : s_GamepadPressed)
+            {
+                std::fill(it_Gamepad.begin(), it_Gamepad.end(), 0);
+            }
+
+            for (auto& it_Gamepad : s_GamepadReleased)
+            {
+                std::fill(it_Gamepad.begin(), it_Gamepad.end(), 0);
+            }
+
+            for (auto& it_Gamepad : s_GamepadAxes)
+            {
+                std::fill(it_Gamepad.begin(), it_Gamepad.end(), 0.0f);
+            }
 
             s_MousePosValid = false;
             s_MouseDeltaX = s_MouseDeltaY = 0.0;
@@ -96,15 +129,21 @@ namespace Engine
         {
             if (!s_Initialized) return;
 
-            // Resets per-frame edge flags and deltas.
             std::fill(s_KeyPressed.begin(), s_KeyPressed.end(), 0);
             std::fill(s_KeyReleased.begin(), s_KeyReleased.end(), 0);
 
             std::fill(s_MousePressed.begin(), s_MousePressed.end(), 0);
             std::fill(s_MouseReleased.begin(), s_MouseReleased.end(), 0);
 
-            for (auto& pad : s_GamepadPressed)  std::fill(pad.begin(), pad.end(), 0);
-            for (auto& pad : s_GamepadReleased) std::fill(pad.begin(), pad.end(), 0);
+            for (auto& it_Gamepad : s_GamepadPressed)
+            {
+                std::fill(it_Gamepad.begin(), it_Gamepad.end(), 0);
+            }
+
+            for (auto& it_Gamepad : s_GamepadReleased)
+            {
+                std::fill(it_Gamepad.begin(), it_Gamepad.end(), 0);
+            }
 
             s_MouseDeltaX = 0.0;
             s_MouseDeltaY = 0.0;
@@ -117,197 +156,234 @@ namespace Engine
         void SetBlocked(bool blocked)
         {
             s_Blocked = blocked;
-
-            // Prevents “stored” one-frame triggers when toggling block state.
-            if (blocked)
+            if (s_Blocked)
             {
                 std::fill(s_KeyPressed.begin(), s_KeyPressed.end(), 0);
                 std::fill(s_KeyReleased.begin(), s_KeyReleased.end(), 0);
                 std::fill(s_MousePressed.begin(), s_MousePressed.end(), 0);
                 std::fill(s_MouseReleased.begin(), s_MouseReleased.end(), 0);
+
                 s_TypedChars.clear();
                 s_ScrollX = s_ScrollY = 0.0;
                 s_MouseDeltaX = s_MouseDeltaY = 0.0;
             }
         }
 
-        bool IsBlocked() { return s_Blocked; }
+        bool IsBlocked()
+        {
+            return s_Blocked;
+        }
 
         void OnEvent(Engine::Event& e)
         {
-            if (!s_Initialized) return;
+            if (!s_Initialized)
+            {
+                return;
+            }
 
             switch (e.GetEventType())
             {
-                // Clear stuck input when window loses focus.
             case EventType::WindowLostFocus:
             {
                 std::fill(s_KeyDown.begin(), s_KeyDown.end(), 0);
                 std::fill(s_MouseDown.begin(), s_MouseDown.end(), 0);
-                for (auto& pad : s_GamepadDown) std::fill(pad.begin(), pad.end(), 0);
+
+                for (auto& it_Gamepad : s_GamepadDown)
+                {
+                    std::fill(it_Gamepad.begin(), it_Gamepad.end(), 0);
+                }
+
                 s_Mods = Mod_None;
+
                 return;
             }
 
             case EventType::KeyPressed:
             {
-                auto& ev = static_cast<Engine::KeyPressedEvent&>(e);
-                const size_t idx = ToIndex(ev.GetKeyCode());
+                auto& a_Event = static_cast<Engine::KeyPressedEvent&>(e);
+                const size_t l_Index = ToIndex(a_Event.GetKeyCode());
 
-                if (idx < s_KeyCount)
+                if (l_Index < s_KeyCount)
                 {
-                    s_KeyDown[idx] = 1;
+                    s_KeyDown[l_Index] = 1;
 
-                    // Unity behavior: repeat should not count as a “fresh press”.
-                    if (!ev.IsRepeat())
-                        s_KeyPressed[idx] = 1;
+                    if (!a_Event.IsRepeat())
+                    {
+                        s_KeyPressed[l_Index] = 1;
+                    }
                 }
 
-                s_Mods = ev.GetMods();
+                s_Mods = a_Event.GetMods();
+
                 return;
             }
 
             case EventType::KeyReleased:
             {
-                auto& ev = static_cast<Engine::KeyReleasedEvent&>(e);
-                const size_t idx = ToIndex(ev.GetKeyCode());
+                auto& a_Event = static_cast<Engine::KeyReleasedEvent&>(e);
+                const size_t l_Index = ToIndex(a_Event.GetKeyCode());
 
-                if (idx < s_KeyCount)
+                if (l_Index < s_KeyCount)
                 {
-                    s_KeyDown[idx] = 0;
-                    s_KeyReleased[idx] = 1;
+                    s_KeyDown[l_Index] = 0;
+                    s_KeyReleased[l_Index] = 1;
                 }
 
-                s_Mods = ev.GetMods();
+                s_Mods = a_Event.GetMods();
+
                 return;
             }
 
             case EventType::KeyTyped:
             {
-                auto& ev = static_cast<Engine::KeyTypedEvent&>(e);
-                s_TypedChars.emplace_back(ev.GetCodepoint());
+                auto& a_Event = static_cast<Engine::KeyTypedEvent&>(e);
+                s_TypedChars.emplace_back(a_Event.GetCodepoint());
+
                 return;
             }
 
             case EventType::MouseMoved:
             {
-                auto& ev = static_cast<Engine::MouseMovedEvent&>(e);
-                const double x = ev.GetX();
-                const double y = ev.GetY();
+                auto& a_Event = static_cast<Engine::MouseMovedEvent&>(e);
+                const double l_X = a_Event.GetX();
+                const double l_Y = a_Event.GetY();
 
                 if (s_MousePosValid)
                 {
-                    s_MouseDeltaX += (x - s_MouseX);
-                    s_MouseDeltaY += (y - s_MouseY);
+                    s_MouseDeltaX += (l_X - s_MouseX);
+                    s_MouseDeltaY += (l_Y - s_MouseY);
                 }
 
-                s_MouseX = x;
-                s_MouseY = y;
+                s_MouseX = l_X;
+                s_MouseY = l_Y;
                 s_MousePosValid = true;
+
                 return;
             }
 
             case EventType::MouseScrolled:
             {
-                auto& ev = static_cast<Engine::MouseScrolledEvent&>(e);
-                s_ScrollX += ev.GetXOffset();
-                s_ScrollY += ev.GetYOffset();
+                auto& a_Event = static_cast<Engine::MouseScrolledEvent&>(e);
+                s_ScrollX += a_Event.GetXOffset();
+                s_ScrollY += a_Event.GetYOffset();
+
                 return;
             }
 
             case EventType::MouseButtonPressed:
             {
-                auto& ev = static_cast<Engine::MouseButtonPressedEvent&>(e);
-                const size_t idx = ToIndex(ev.GetMouseButton());
+                auto& a_Event = static_cast<Engine::MouseButtonPressedEvent&>(e);
+                const size_t l_Index = ToIndex(a_Event.GetMouseButton());
 
-                if (idx < s_MouseCount)
+                if (l_Index < s_MouseCount)
                 {
-                    s_MouseDown[idx] = 1;
-                    s_MousePressed[idx] = 1;
+                    s_MouseDown[l_Index] = 1;
+                    s_MousePressed[l_Index] = 1;
                 }
 
-                s_Mods = ev.GetMods();
+                s_Mods = a_Event.GetMods();
+
                 return;
             }
 
             case EventType::MouseButtonReleased:
             {
-                auto& ev = static_cast<Engine::MouseButtonReleasedEvent&>(e);
-                const size_t idx = ToIndex(ev.GetMouseButton());
+                auto& a_Event = static_cast<Engine::MouseButtonReleasedEvent&>(e);
+                const size_t l_Index = ToIndex(a_Event.GetMouseButton());
 
-                if (idx < s_MouseCount)
+                if (l_Index < s_MouseCount)
                 {
-                    s_MouseDown[idx] = 0;
-                    s_MouseReleased[idx] = 1;
+                    s_MouseDown[l_Index] = 0;
+                    s_MouseReleased[l_Index] = 1;
                 }
 
-                s_Mods = ev.GetMods();
+                s_Mods = a_Event.GetMods();
+
                 return;
             }
 
-            // Gamepad events (state stays default until events are emitted by the platform layer)
             case EventType::GamepadConnected:
             {
-                auto& ev = static_cast<Engine::GamepadConnectedEvent&>(e);
-                if (ValidGamepad(ev.GetGamepadId()))
-                    s_GamepadConnected[ev.GetGamepadId()] = 1;
+                auto& a_Event = static_cast<Engine::GamepadConnectedEvent&>(e);
+                if (ValidGamepad(a_Event.GetGamepadId()))
+                {
+                    s_GamepadConnected[a_Event.GetGamepadId()] = 1;
+                }
+                
                 return;
             }
 
             case EventType::GamepadDisconnected:
             {
-                auto& ev = static_cast<Engine::GamepadDisconnectedEvent&>(e);
-                if (ValidGamepad(ev.GetGamepadId()))
+                auto& a_Event = static_cast<Engine::GamepadDisconnectedEvent&>(e);
+                if (ValidGamepad(a_Event.GetGamepadId()))
                 {
-                    const int32_t id = ev.GetGamepadId();
-                    s_GamepadConnected[id] = 0;
-                    std::fill(s_GamepadDown[id].begin(), s_GamepadDown[id].end(), 0);
-                    std::fill(s_GamepadPressed[id].begin(), s_GamepadPressed[id].end(), 0);
-                    std::fill(s_GamepadReleased[id].begin(), s_GamepadReleased[id].end(), 0);
-                    std::fill(s_GamepadAxes[id].begin(), s_GamepadAxes[id].end(), 0.0f);
+                    const int32_t l_ID = a_Event.GetGamepadId();
+                    s_GamepadConnected[l_ID] = 0;
+
+                    std::fill(s_GamepadDown[l_ID].begin(), s_GamepadDown[l_ID].end(), 0);
+                    std::fill(s_GamepadPressed[l_ID].begin(), s_GamepadPressed[l_ID].end(), 0);
+                    std::fill(s_GamepadReleased[l_ID].begin(), s_GamepadReleased[l_ID].end(), 0);
+                    std::fill(s_GamepadAxes[l_ID].begin(), s_GamepadAxes[l_ID].end(), 0.0f);
                 }
+
                 return;
             }
 
             case EventType::GamepadButtonPressed:
             {
-                auto& ev = static_cast<Engine::GamepadButtonPressedEvent&>(e);
-                if (!ValidGamepad(ev.GetGamepadId())) return;
-
-                const int32_t id = ev.GetGamepadId();
-                const size_t idx = ToIndex(ev.GetButton());
-                if (idx < s_GamepadButtonCount)
+                auto& a_Event = static_cast<Engine::GamepadButtonPressedEvent&>(e);
+                if (!ValidGamepad(a_Event.GetGamepadId()))
                 {
-                    s_GamepadDown[id][idx] = 1;
-                    s_GamepadPressed[id][idx] = 1;
+                    return;
                 }
+
+                const int32_t l_ID = a_Event.GetGamepadId();
+                const size_t l_Index = ToIndex(a_Event.GetButton());
+
+                if (l_Index < s_GamepadButtonCount)
+                {
+                    s_GamepadDown[l_ID][l_Index] = 1;
+                    s_GamepadPressed[l_ID][l_Index] = 1;
+                }
+
                 return;
             }
 
             case EventType::GamepadButtonReleased:
             {
-                auto& ev = static_cast<Engine::GamepadButtonReleasedEvent&>(e);
-                if (!ValidGamepad(ev.GetGamepadId())) return;
-
-                const int32_t id = ev.GetGamepadId();
-                const size_t idx = ToIndex(ev.GetButton());
-                if (idx < s_GamepadButtonCount)
+                auto& a_Event = static_cast<Engine::GamepadButtonReleasedEvent&>(e);
+                if (!ValidGamepad(a_Event.GetGamepadId()))
                 {
-                    s_GamepadDown[id][idx] = 0;
-                    s_GamepadReleased[id][idx] = 1;
+                    return;
                 }
+
+                const int32_t l_ID = a_Event.GetGamepadId();
+                const size_t l_Index = ToIndex(a_Event.GetButton());
+                if (l_Index < s_GamepadButtonCount)
+                {
+                    s_GamepadDown[l_ID][l_Index] = 0;
+                    s_GamepadReleased[l_ID][l_Index] = 1;
+                }
+
                 return;
             }
 
             case EventType::GamepadAxisMoved:
             {
-                auto& ev = static_cast<Engine::GamepadAxisMovedEvent&>(e);
-                if (!ValidGamepad(ev.GetGamepadId())) return;
+                auto& a_Event = static_cast<Engine::GamepadAxisMovedEvent&>(e);
+                if (!ValidGamepad(a_Event.GetGamepadId()))
+                {
+                    return;
+                }
 
-                const int32_t id = ev.GetGamepadId();
-                const size_t idx = ToIndex(ev.GetAxis());
-                if (idx < s_GamepadAxisCount)
-                    s_GamepadAxes[id][idx] = ev.GetValue();
+                const int32_t l_ID = a_Event.GetGamepadId();
+                const size_t l_Index = ToIndex(a_Event.GetAxis());
+                if (l_Index < s_GamepadAxisCount)
+                {
+                    s_GamepadAxes[l_ID][l_Index] = a_Event.GetValue();
+                }
+                
                 return;
             }
 
@@ -316,118 +392,176 @@ namespace Engine
             }
         }
 
-        // Queries (blocked means returning “no input” without destroying internal state)
         bool KeyDown(KeyCode key)
-        {
-            if (s_Blocked) return false;
-            const size_t idx = ToIndex(key);
-            return idx < s_KeyCount && s_KeyDown[idx] != 0;
-        }
-
-        bool KeyPressed(KeyCode key)
-        {
-            if (s_Blocked) return false;
-            const size_t idx = ToIndex(key);
-            return idx < s_KeyCount && s_KeyPressed[idx] != 0;
-        }
-
-        bool KeyReleased(KeyCode key)
-        {
-            if (s_Blocked) return false;
-            const size_t idx = ToIndex(key);
-            return idx < s_KeyCount && s_KeyReleased[idx] != 0;
-        }
-
-        bool MouseDown(MouseButton button)
-        {
-            if (s_Blocked) return false;
-            const size_t idx = ToIndex(button);
-            return idx < s_MouseCount && s_MouseDown[idx] != 0;
-        }
-
-        bool MousePressed(MouseButton button)
-        {
-            if (s_Blocked) return false;
-            const size_t idx = ToIndex(button);
-            return idx < s_MouseCount && s_MousePressed[idx] != 0;
-        }
-
-        bool MouseReleased(MouseButton button)
-        {
-            if (s_Blocked) return false;
-            const size_t idx = ToIndex(button);
-            return idx < s_MouseCount && s_MouseReleased[idx] != 0;
-        }
-
-        double MouseX() { return s_MouseX; }
-        double MouseY() { return s_MouseY; }
-        double MouseDeltaX() { return s_MouseDeltaX; }
-        double MouseDeltaY() { return s_MouseDeltaY; }
-        double ScrollX() { return s_ScrollX; }
-        double ScrollY() { return s_ScrollY; }
-
-        const std::vector<uint32_t>& TypedChars()
-        {
-            static const std::vector<uint32_t> empty;
-            return s_Blocked ? empty : s_TypedChars;
-        }
-
-        uint16_t Mods() { return s_Mods; }
-
-        bool GamepadConnected(int32_t gamepadId)
-        {
-            if (s_Blocked) return false;
-            return ValidGamepad(gamepadId) && s_GamepadConnected[gamepadId] != 0;
-        }
-
-        bool GamepadButtonDown(int32_t gamepadId, GamepadButton button)
-        {
-            if (s_Blocked) return false;
-            if (!ValidGamepad(gamepadId)) return false;
-            const size_t idx = ToIndex(button);
-            return idx < s_GamepadButtonCount && s_GamepadDown[gamepadId][idx] != 0;
-        }
-
-        bool GamepadButtonPressed(int32_t gamepadId, GamepadButton button)
-        {
-            if (s_Blocked) return false;
-            if (!ValidGamepad(gamepadId)) return false;
-            const size_t idx = ToIndex(button);
-            return idx < s_GamepadButtonCount && s_GamepadPressed[gamepadId][idx] != 0;
-        }
-
-        bool GamepadButtonReleased(int32_t gamepadId, GamepadButton button)
         {
             if (s_Blocked)
             {
                 return false;
             }
             
-            if (!ValidGamepad(gamepadId))
+            const size_t l_Index = ToIndex(key);
+            
+            return l_Index < s_KeyCount && s_KeyDown[l_Index] != 0;
+        }
+
+        bool KeyPressed(KeyCode key)
+        {
+            if (s_Blocked)
+            {
+                return false;
+            }
+            
+            const size_t l_Index = ToIndex(key);
+            
+            return l_Index < s_KeyCount && s_KeyPressed[l_Index] != 0;
+        }
+
+        bool KeyReleased(KeyCode key)
+        {
+            if (s_Blocked)
+            {
+                return false;
+            }
+            
+            const size_t l_Index = ToIndex(key);
+            
+            return l_Index < s_KeyCount && s_KeyReleased[l_Index] != 0;
+        }
+
+        bool MouseDown(MouseButton button)
+        {
+            if (s_Blocked)
+            {
+                return false;
+            }
+            
+            const size_t l_Index = ToIndex(button);
+            
+            return l_Index < s_MouseCount && s_MouseDown[l_Index] != 0;
+        }
+
+        bool MousePressed(MouseButton button)
+        {
+            if (s_Blocked)
+            {
+                return false;
+            }
+            
+            const size_t l_Index = ToIndex(button);
+            
+            return l_Index < s_MouseCount && s_MousePressed[l_Index] != 0;
+        }
+
+        bool MouseReleased(MouseButton button)
+        {
+            if (s_Blocked)
+            {
+                return false;
+            }
+            
+            const size_t l_Index = ToIndex(button);
+            
+            return l_Index < s_MouseCount && s_MouseReleased[l_Index] != 0;
+        }
+
+        double GetMouseX()
+        { 
+            return s_MouseX; 
+        }
+
+        double GetMouseY()
+        {
+            return s_MouseY;
+        }
+
+        double GetMouseDeltaX()
+        {
+            return s_MouseDeltaX; 
+        }
+
+        double GetMouseDeltaY()
+        {
+            return s_MouseDeltaY;
+        }
+
+        double GetScrollX()
+        {
+            return s_ScrollX;
+        }
+
+        double GetScrollY()
+        {
+            return s_ScrollY;
+        }
+
+        const std::vector<uint32_t>& TypedChars()
+        {
+            static const std::vector<uint32_t> l_Empty;
+
+            return s_Blocked ? l_Empty : s_TypedChars;
+        }
+
+        uint16_t Mods()
+        {
+            return s_Mods;
+        }
+
+        bool GamepadConnected(int32_t gamepadID)
+        {
+            if (s_Blocked)
+            {
+                return false;
+            }
+            
+            return ValidGamepad(gamepadID) && s_GamepadConnected[gamepadID] != 0;
+        }
+
+        bool GamepadButtonDown(int32_t gamepadID, GamepadButton button)
+        {
+            if (s_Blocked || !ValidGamepad(gamepadID))
             {
                 return false;
             }
 
-            const size_t idx = ToIndex(button);
+            const size_t l_Index = ToIndex(button);
 
-            return idx < s_GamepadButtonCount && s_GamepadReleased[gamepadId][idx] != 0;
+            return l_Index < s_GamepadButtonCount && s_GamepadDown[gamepadID][l_Index] != 0;
         }
 
-        float GetGamepadAxis(int32_t gamepadId, GamepadAxis axis)
+        bool GamepadButtonPressed(int32_t gamepadID, GamepadButton button)
         {
-            if (s_Blocked)
+            if (s_Blocked || !ValidGamepad(gamepadID))
+            {
+                return false;
+            }
+
+            const size_t l_Index = ToIndex(button);
+            
+            return l_Index < s_GamepadButtonCount && s_GamepadPressed[gamepadID][l_Index] != 0;
+        }
+
+        bool GamepadButtonReleased(int32_t gamepadID, GamepadButton button)
+        {
+            if (s_Blocked || !ValidGamepad(gamepadID))
+            {
+                return false;
+            }
+
+            const size_t l_Index = ToIndex(button);
+
+            return l_Index < s_GamepadButtonCount && s_GamepadReleased[gamepadID][l_Index] != 0;
+        }
+
+        float GetGamepadAxis(int32_t gamepadID, GamepadAxis axis)
+        {
+            if (s_Blocked || !ValidGamepad(gamepadID))
             {
                 return 0.0f;
             }
 
-            if (!ValidGamepad(gamepadId))
-            {
-                return 0.0f;
-            }
+            const size_t l_Index = ToIndex(axis);
 
-            const size_t idx = ToIndex(axis);
-
-            return idx < s_GamepadAxisCount ? s_GamepadAxes[gamepadId][idx] : 0.0f;
+            return l_Index < s_GamepadAxisCount ? s_GamepadAxes[gamepadID][l_Index] : 0.0f;
         }
     }
 }

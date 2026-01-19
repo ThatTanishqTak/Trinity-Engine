@@ -15,19 +15,19 @@ namespace Engine
         void Initialize();
         void Shutdown();
 
-        // Called once per frame (clears per-frame flags like KeyPressed/Released, mouse delta, scroll, typed chars).
+        // Called once per frame
         void BeginFrame();
 
-        // Called from Application::OnEvent (updates cached input state).
+        // Called from Application::OnEvent
         void OnEvent(Engine::Event& e);
 
-        // Optional: blocks query results (useful when UI wants to capture input).
+        // Blocks query results
         void SetBlocked(bool blocked);
         bool IsBlocked();
 
-        // Keyboard (Unity-ish)
+        // Keyboard
         bool KeyDown(KeyCode key);
-        bool KeyPressed(KeyCode key);    // true only on the first press, ignores repeats
+        bool KeyPressed(KeyCode key); 
         bool KeyReleased(KeyCode key);
 
         // Mouse buttons
@@ -36,24 +36,24 @@ namespace Engine
         bool MouseReleased(MouseButton button);
 
         // Mouse movement / scroll (per-frame deltas)
-        double MouseX();
-        double MouseY();
-        double MouseDeltaX();
-        double MouseDeltaY();
-        double ScrollX();
-        double ScrollY();
+        double GetMouseX();
+        double GetMouseY();
+        double GetMouseDeltaX();
+        double GetMouseDeltaY();
+        double GetScrollX();
+        double GetScrollY();
 
-        // Text input (UTF-32 codepoints typed this frame)
+        // Text input
         const std::vector<uint32_t>& TypedChars();
 
         // Last-known modifier state from input events
         uint16_t Mods();
 
-        // Gamepad (works once gamepad events exist; safe to call now)
-        bool GamepadConnected(int32_t gamepadId);
-        bool GamepadButtonDown(int32_t gamepadId, GamepadButton button);
-        bool GamepadButtonPressed(int32_t gamepadId, GamepadButton button);
-        bool GamepadButtonReleased(int32_t gamepadId, GamepadButton button);
-        float GetGamepadAxis(int32_t gamepadId, GamepadAxis axis);
+        // Gamepad
+        bool GamepadConnected(int32_t gamepadID);
+        bool GamepadButtonDown(int32_t gamepadID, GamepadButton button);
+        bool GamepadButtonPressed(int32_t gamepadID, GamepadButton button);
+        bool GamepadButtonReleased(int32_t gamepadID, GamepadButton button);
+        float GetGamepadAxis(int32_t gamepadID, GamepadAxis axis);
     }
 }
