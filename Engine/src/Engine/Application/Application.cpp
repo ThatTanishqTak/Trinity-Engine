@@ -25,11 +25,15 @@ namespace Engine
             {
                 this->OnEvent(e);
             });
+
+        Renderer::Initialize(*m_Window);
     }
 
     Application::~Application()
     {
+        Renderer::Shutdown();
         Input::Shutdown();
+
         s_Instance = nullptr;
     }
 
@@ -77,7 +81,8 @@ namespace Engine
 
         m_Minimized = false;
 
-        // Vulkan hook later: mark swapchain recreation needed here.
+        Renderer::OnResize((uint32_t)e.GetWidth(), (uint32_t)e.GetHeight());
+
         return false;
     }
 
@@ -105,10 +110,14 @@ namespace Engine
                 it_Layer->OnUpdate(Utilities::Time::DeltaTime());
             }
 
+            Renderer::BeginFrame();
+
             for (Layer* it_Layer : m_LayerStack)
             {
                 it_Layer->OnRender();
             }
+
+            Renderer::EndFrame();
         }
     }
 

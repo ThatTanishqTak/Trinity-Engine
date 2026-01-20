@@ -1,11 +1,14 @@
 cmake_minimum_required(VERSION 3.30)
 project(PhysicsEngine)
 
+if (MSVC)
+    add_compile_options(/MP)
+endif()
+
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(ARCH_NAME ${CMAKE_SYSTEM_PROCESSOR})
-
 if(ARCH_NAME MATCHES AMD64|x86_64)
     set(ARCH_NAME x86_64)
 elseif(ARCH_NAME MATCHES i386|i686)

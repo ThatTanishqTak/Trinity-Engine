@@ -2,6 +2,7 @@
 
 #include "Engine/Layer/LayerStack.h"
 #include "Engine/Platform/Window.h"
+#include "Engine/Renderer/Renderer.h"
 
 #include <memory>
 

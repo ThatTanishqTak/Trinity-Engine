@@ -17,3 +17,6 @@
 [submodule "Engine/vendor/yaml-cpp"]
 	path = Engine/vendor/yaml-cpp
 	url = https://github.com/ThatTanishqTak/yaml-cpp.git
+[submodule "Engine/vendor/stb"]
+	path = Engine/vendor/stb
+	url = https://github.com/ThatTanishqTak/stb.git
