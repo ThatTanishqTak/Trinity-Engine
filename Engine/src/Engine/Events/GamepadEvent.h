@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Engine/Events/Event.h"
+#include "Engine/Input/InputCodes.h"
 
 #include <cstdint>
 #include <sstream>
@@ -9,9 +10,6 @@
 
 namespace Engine
 {
-    // GLFW standardized gamepad indices are used:
-    // Buttons: 0..14, Axes: 0..5
-    // (A/B/X/Y etc, plus sticks/triggers)
     class GamepadEvent : public Event
     {
     public:
@@ -76,23 +74,23 @@ namespace Engine
     class GamepadButtonEvent : public GamepadEvent
     {
     public:
-        int GetButton() const { return m_Button; }
+        GamepadCode GetButton() const { return m_Button; }
 
         TR_EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryGamepad)
 
     protected:
-        GamepadButtonEvent(int gamepadID, int button) : GamepadEvent(gamepadID), m_Button(button)
+        GamepadButtonEvent(int gamepadID, GamepadCode button) : GamepadEvent(gamepadID), m_Button(button)
         {
 
         }
 
-        int m_Button = -1;
+        GamepadCode m_Button = GamepadCode::ButtonA;
     };
 
     class GamepadButtonPressedEvent : public GamepadButtonEvent
     {
     public:
-        GamepadButtonPressedEvent(int gamepadID, int button) : GamepadButtonEvent(gamepadID, button)
+        GamepadButtonPressedEvent(int gamepadID, GamepadCode button) : GamepadButtonEvent(gamepadID, button)
         {
 
         }
@@ -100,8 +98,9 @@ namespace Engine
         std::string ToString() const override
         {
             std::stringstream ss;
-            ss << GetName() << ": id=" << m_GamepadID << ", button=" << m_Button;
-            
+            const int l_ButtonValue = static_cast<int>(m_Button);
+            ss << GetName() << ": id=" << m_GamepadID << ", button=" << l_ButtonValue;
+
             return ss.str();
         }
 
@@ -111,7 +110,7 @@ namespace Engine
     class GamepadButtonReleasedEvent : public GamepadButtonEvent
     {
     public:
-        GamepadButtonReleasedEvent(int gamepadID, int button) : GamepadButtonEvent(gamepadID, button)
+        GamepadButtonReleasedEvent(int gamepadID, GamepadCode button) : GamepadButtonEvent(gamepadID, button)
         {
 
         }
@@ -119,8 +118,9 @@ namespace Engine
         std::string ToString() const override
         {
             std::stringstream ss;
-            ss << GetName() << ": id=" << m_GamepadID << ", button=" << m_Button;
-            
+            const int l_ButtonValue = static_cast<int>(m_Button);
+            ss << GetName() << ": id=" << m_GamepadID << ", button=" << l_ButtonValue;
+
             return ss.str();
         }
 
@@ -130,18 +130,19 @@ namespace Engine
     class GamepadAxisMovedEvent : public GamepadEvent
     {
     public:
-        GamepadAxisMovedEvent(int gamepadID, int axis, float value) : GamepadEvent(gamepadID), m_Axis(axis), m_Value(value)
+        GamepadAxisMovedEvent(int gamepadID, GamepadCode axis, float value) : GamepadEvent(gamepadID), m_Axis(axis), m_Value(value)
         {
 
         }
 
-        int GetAxis() const { return m_Axis; }
+        GamepadCode GetAxis() const { return m_Axis; }
         float GetValue() const { return m_Value; }
 
         std::string ToString() const override
         {
             std::stringstream ss;
-            ss << GetName() << ": id=" << m_GamepadID << ", axis=" << m_Axis << ", value=" << m_Value;
+            const int l_AxisValue = static_cast<int>(m_Axis);
+            ss << GetName() << ": id=" << m_GamepadID << ", axis=" << l_AxisValue << ", value=" << m_Value;
 
             return ss.str();
         }
@@ -150,7 +151,7 @@ namespace Engine
             TR_EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryGamepad)
 
     private:
-        int m_Axis = -1;
+        GamepadCode m_Axis = GamepadCode::AxisLeftX;
         float m_Value = 0.0f;
     };
 }

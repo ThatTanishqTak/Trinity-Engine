@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Engine/Events/Event.h"
+#include "Engine/Input/InputCodes.h"
 
 #include <sstream>
 
@@ -9,23 +10,23 @@ namespace Engine
     class KeyEvent : public Event
     {
     public:
-        int GetKeyCode() const { return m_KeyCode; }
+        KeyCode GetKeyCode() const { return m_KeyCode; }
 
         TR_EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryKeyboard)
 
     protected:
-        explicit KeyEvent(int keycode) : m_KeyCode(keycode)
+        explicit KeyEvent(KeyCode keycode) : m_KeyCode(keycode)
         {
 
         }
 
-        int m_KeyCode = 0;
+        KeyCode m_KeyCode = KeyCode::Unknown;
     };
 
     class KeyPressedEvent : public KeyEvent
     {
     public:
-        KeyPressedEvent(int keycode, int repeatCount) : KeyEvent(keycode), m_RepeatCount(repeatCount)
+        KeyPressedEvent(KeyCode keycode, int repeatCount) : KeyEvent(keycode), m_RepeatCount(repeatCount)
         {
 
         }
@@ -35,8 +36,9 @@ namespace Engine
         std::string ToString() const override
         {
             std::stringstream ss;
-            ss << GetName() << ": " << m_KeyCode << " (repeats: " << m_RepeatCount << ")";
-            
+            const int l_KeyValue = static_cast<int>(m_KeyCode);
+            ss << GetName() << ": " << l_KeyValue << " (repeats: " << m_RepeatCount << ")";
+
             return ss.str();
         }
 
@@ -49,7 +51,7 @@ namespace Engine
     class KeyReleasedEvent : public KeyEvent
     {
     public:
-        explicit KeyReleasedEvent(int keycode) : KeyEvent(keycode)
+        explicit KeyReleasedEvent(KeyCode keycode) : KeyEvent(keycode)
         {
 
         }
@@ -57,8 +59,9 @@ namespace Engine
         std::string ToString() const override
         {
             std::stringstream ss;
-            ss << GetName() << ": " << m_KeyCode;
-            
+            const int l_KeyValue = static_cast<int>(m_KeyCode);
+            ss << GetName() << ": " << l_KeyValue;
+
             return ss.str();
         }
 
@@ -68,7 +71,7 @@ namespace Engine
     class KeyTypedEvent : public KeyEvent
     {
     public:
-        explicit KeyTypedEvent(int codepoint) : KeyEvent(codepoint)
+        explicit KeyTypedEvent(KeyCode codepoint) : KeyEvent(codepoint)
         {
 
         }
@@ -76,8 +79,9 @@ namespace Engine
         std::string ToString() const override
         {
             std::stringstream ss;
-            ss << GetName() << ": " << m_KeyCode;
- 
+            const int l_KeyValue = static_cast<int>(m_KeyCode);
+            ss << GetName() << ": " << l_KeyValue;
+
             return ss.str();
         }
 

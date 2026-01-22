@@ -29,9 +29,10 @@ namespace Engine
         l_Dispatcher.Dispatch<GamepadAxisMovedEvent>([](GamepadAxisMovedEvent& event) { return Input::OnGamepadAxisMovedEvent(event); });
     }
 
-    bool Input::KeyPressed(int keyCode)
+    bool Input::KeyPressed(KeyCode keyCode)
     {
-        auto a_StateIter = s_KeyStates.find(keyCode);
+        const int l_KeyValue = static_cast<int>(keyCode);
+        auto a_StateIter = s_KeyStates.find(l_KeyValue);
         if (a_StateIter == s_KeyStates.end())
         {
             return false;
@@ -41,9 +42,10 @@ namespace Engine
         return ConsumePressed(a_StateIter->second);
     }
 
-    bool Input::KeyReleased(int keyCode)
+    bool Input::KeyReleased(KeyCode keyCode)
     {
-        auto a_StateIter = s_KeyStates.find(keyCode);
+        const int l_KeyValue = static_cast<int>(keyCode);
+        auto a_StateIter = s_KeyStates.find(l_KeyValue);
         if (a_StateIter == s_KeyStates.end())
         {
             return false;
@@ -53,9 +55,10 @@ namespace Engine
         return ConsumeReleased(a_StateIter->second);
     }
 
-    bool Input::MouseButtonPressed(int button)
+    bool Input::MouseButtonPressed(MouseCode button)
     {
-        auto a_StateIter = s_MouseButtonStates.find(button);
+        const int l_ButtonValue = static_cast<int>(button);
+        auto a_StateIter = s_MouseButtonStates.find(l_ButtonValue);
         if (a_StateIter == s_MouseButtonStates.end())
         {
             return false;
@@ -65,9 +68,10 @@ namespace Engine
         return ConsumePressed(a_StateIter->second);
     }
 
-    bool Input::MouseButtonReleased(int button)
+    bool Input::MouseButtonReleased(MouseCode button)
     {
-        auto a_StateIter = s_MouseButtonStates.find(button);
+        const int l_ButtonValue = static_cast<int>(button);
+        auto a_StateIter = s_MouseButtonStates.find(l_ButtonValue);
         if (a_StateIter == s_MouseButtonStates.end())
         {
             return false;
@@ -91,8 +95,9 @@ namespace Engine
         return l_Delta;
     }
 
-    bool Input::GamepadButtonPressed(int gamepadId, int button)
+    bool Input::GamepadButtonPressed(int gamepadId, GamepadCode button)
     {
+        const int l_ButtonValue = static_cast<int>(button);
         auto a_GamepadIter = s_GamepadStates.find(gamepadId);
         if (a_GamepadIter == s_GamepadStates.end() || !a_GamepadIter->second.Connected)
         {
@@ -100,7 +105,7 @@ namespace Engine
         }
 
         auto& a_ButtonStates = a_GamepadIter->second.ButtonStates;
-        auto a_ButtonIter = a_ButtonStates.find(button);
+        auto a_ButtonIter = a_ButtonStates.find(l_ButtonValue);
         if (a_ButtonIter == a_ButtonStates.end())
         {
             return false;
@@ -110,8 +115,9 @@ namespace Engine
         return ConsumePressed(a_ButtonIter->second);
     }
 
-    bool Input::GamepadButtonReleased(int gamepadId, int button)
+    bool Input::GamepadButtonReleased(int gamepadId, GamepadCode button)
     {
+        const int l_ButtonValue = static_cast<int>(button);
         auto a_GamepadIter = s_GamepadStates.find(gamepadId);
         if (a_GamepadIter == s_GamepadStates.end() || !a_GamepadIter->second.Connected)
         {
@@ -119,7 +125,7 @@ namespace Engine
         }
 
         auto& a_ButtonStates = a_GamepadIter->second.ButtonStates;
-        auto a_ButtonIter = a_ButtonStates.find(button);
+        auto a_ButtonIter = a_ButtonStates.find(l_ButtonValue);
         if (a_ButtonIter == a_ButtonStates.end())
         {
             return false;
@@ -129,8 +135,9 @@ namespace Engine
         return ConsumeReleased(a_ButtonIter->second);
     }
 
-    float Input::GamepadAxis(int gamepadId, int axis)
+    float Input::GamepadAxis(int gamepadId, GamepadCode axis)
     {
+        const int l_AxisValue = static_cast<int>(axis);
         auto a_GamepadIter = s_GamepadStates.find(gamepadId);
         if (a_GamepadIter == s_GamepadStates.end() || !a_GamepadIter->second.Connected)
         {
@@ -138,7 +145,7 @@ namespace Engine
         }
 
         auto& a_AxisValues = a_GamepadIter->second.AxisValues;
-        auto a_AxisIter = a_AxisValues.find(axis);
+        auto a_AxisIter = a_AxisValues.find(l_AxisValue);
         if (a_AxisIter == a_AxisValues.end())
         {
             return 0.0f;
@@ -147,15 +154,17 @@ namespace Engine
         return a_AxisIter->second;
     }
 
-    Input::ButtonState& Input::AccessKeyState(int keyCode)
+    Input::ButtonState& Input::AccessKeyState(KeyCode keyCode)
     {
-        auto& a_State = s_KeyStates[keyCode];
+        const int l_KeyValue = static_cast<int>(keyCode);
+        auto& a_State = s_KeyStates[l_KeyValue];
         return a_State;
     }
 
-    Input::ButtonState& Input::AccessMouseButtonState(int button)
+    Input::ButtonState& Input::AccessMouseButtonState(MouseCode button)
     {
-        auto& a_State = s_MouseButtonStates[button];
+        const int l_ButtonValue = static_cast<int>(button);
+        auto& a_State = s_MouseButtonStates[l_ButtonValue];
         return a_State;
     }
 
@@ -165,15 +174,17 @@ namespace Engine
         return a_State;
     }
 
-    Input::ButtonState& Input::AccessGamepadButtonState(int gamepadId, int button)
+    Input::ButtonState& Input::AccessGamepadButtonState(int gamepadId, GamepadCode button)
     {
-        auto& a_State = s_GamepadStates[gamepadId].ButtonStates[button];
+        const int l_ButtonValue = static_cast<int>(button);
+        auto& a_State = s_GamepadStates[gamepadId].ButtonStates[l_ButtonValue];
         return a_State;
     }
 
-    float& Input::AccessGamepadAxisState(int gamepadId, int axis)
+    float& Input::AccessGamepadAxisState(int gamepadId, GamepadCode axis)
     {
-        auto& a_Value = s_GamepadStates[gamepadId].AxisValues[axis];
+        const int l_AxisValue = static_cast<int>(axis);
+        auto& a_Value = s_GamepadStates[gamepadId].AxisValues[l_AxisValue];
         return a_Value;
     }
 

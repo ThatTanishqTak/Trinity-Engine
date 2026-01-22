@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Engine/Input/InputCodes.h"
+
 #include <unordered_map>
 
 namespace Engine
@@ -28,17 +30,17 @@ namespace Engine
 
         static void OnEvent(Event& e);
 
-        static bool KeyPressed(int keyCode);
-        static bool KeyReleased(int keyCode);
+        static bool KeyPressed(KeyCode keyCode);
+        static bool KeyReleased(KeyCode keyCode);
 
-        static bool MouseButtonPressed(int button);
-        static bool MouseButtonReleased(int button);
+        static bool MouseButtonPressed(MouseCode button);
+        static bool MouseButtonReleased(MouseCode button);
         static Vector2 MousePosition();
         static Vector2 MouseScrolled();
 
-        static bool GamepadButtonPressed(int gamepadID, int button);
-        static bool GamepadButtonReleased(int gamepadID, int button);
-        static float GamepadAxis(int gamepadID, int axis);
+        static bool GamepadButtonPressed(int gamepadID, GamepadCode button);
+        static bool GamepadButtonReleased(int gamepadID, GamepadCode button);
+        static float GamepadAxis(int gamepadID, GamepadCode axis);
 
     private:
         struct ButtonState
@@ -55,11 +57,11 @@ namespace Engine
             std::unordered_map<int, float> AxisValues;
         };
 
-        static ButtonState& AccessKeyState(int keyCode);
-        static ButtonState& AccessMouseButtonState(int button);
+        static ButtonState& AccessKeyState(KeyCode keyCode);
+        static ButtonState& AccessMouseButtonState(MouseCode button);
         static GamepadState& AccessGamepadState(int gamepadID);
-        static ButtonState& AccessGamepadButtonState(int gamepadID, int button);
-        static float& AccessGamepadAxisState(int gamepadID, int axis);
+        static ButtonState& AccessGamepadButtonState(int gamepadID, GamepadCode button);
+        static float& AccessGamepadAxisState(int gamepadID, GamepadCode axis);
 
         static bool ConsumePressed(ButtonState& state);
         static bool ConsumeReleased(ButtonState& state);

@@ -5,6 +5,7 @@
 #include "Engine/Events/KeyEvent.h"
 #include "Engine/Events/MouseEvent.h"
 #include "Engine/Events/GamepadEvent.h"
+#include "Engine/Input/InputCodes.h"
 
 #include <GLFW/glfw3.h>
 
@@ -147,21 +148,24 @@ namespace Engine
             {
                 case GLFW_PRESS:
                 {
-                    KeyPressedEvent l_Event(key, 0);
+                    const KeyCode l_KeyCode = static_cast<KeyCode>(key);
+                    KeyPressedEvent l_Event(l_KeyCode, 0);
                     a_Data.EventCallback(l_Event);
-                    
+
                     break;
                 }
                 case GLFW_RELEASE:
                 {
-                    KeyReleasedEvent l_Event(key);
+                    const KeyCode l_KeyCode = static_cast<KeyCode>(key);
+                    KeyReleasedEvent l_Event(l_KeyCode);
                     a_Data.EventCallback(l_Event);
-                    
+
                     break;
                 }
                 case GLFW_REPEAT:
                 {
-                    KeyPressedEvent l_Event(key, 1);
+                    const KeyCode l_KeyCode = static_cast<KeyCode>(key);
+                    KeyPressedEvent l_Event(l_KeyCode, 1);
                     a_Data.EventCallback(l_Event);
 
                     break;
@@ -180,7 +184,8 @@ namespace Engine
                 return;
             }
 
-            KeyTypedEvent l_Event((int)codepoint);
+            const KeyCode l_KeyCode = static_cast<KeyCode>(codepoint);
+            KeyTypedEvent l_Event(l_KeyCode);
             a_Data.EventCallback(l_Event);
         });
 
@@ -199,14 +204,16 @@ namespace Engine
             {
                 case GLFW_PRESS:
                 {
-                    MouseButtonPressedEvent l_Event(it_Button);
+                    const MouseCode l_ButtonCode = static_cast<MouseCode>(it_Button);
+                    MouseButtonPressedEvent l_Event(l_ButtonCode);
                     a_Data.EventCallback(l_Event);
 
                     break;
                 }
                 case GLFW_RELEASE:
                 {
-                    MouseButtonReleasedEvent l_Event(it_Button);
+                    const MouseCode l_ButtonCode = static_cast<MouseCode>(it_Button);
+                    MouseButtonReleasedEvent l_Event(l_ButtonCode);
                     a_Data.EventCallback(l_Event);
 
                     break;
@@ -347,12 +354,14 @@ namespace Engine
                 {
                     if (l_NewValue == GLFW_PRESS)
                     {
-                        GamepadButtonPressedEvent l_Event(it_GamepadID, it_Button);
+                        const GamepadCode l_ButtonCode = static_cast<GamepadCode>(it_Button);
+                        GamepadButtonPressedEvent l_Event(it_GamepadID, l_ButtonCode);
                         m_Data.EventCallback(l_Event);
                     }
                     else
                     {
-                        GamepadButtonReleasedEvent l_Event(it_GamepadID, it_Button);
+                        const GamepadCode l_ButtonCode = static_cast<GamepadCode>(it_Button);
+                        GamepadButtonReleasedEvent l_Event(it_GamepadID, l_ButtonCode);
                         m_Data.EventCallback(l_Event);
                     }
                 }
@@ -375,7 +384,8 @@ namespace Engine
 
                 if (l_GamepadData.HasState && std::fabs(l_Value - l_OldValue) > l_Epsilon)
                 {
-                    GamepadAxisMovedEvent l_Event(it_GamepadID, it_Axis, l_Value);
+                    const GamepadCode l_AxisCode = static_cast<GamepadCode>(it_Axis);
+                    GamepadAxisMovedEvent l_Event(it_GamepadID, l_AxisCode, l_Value);
                     m_Data.EventCallback(l_Event);
                 }
 

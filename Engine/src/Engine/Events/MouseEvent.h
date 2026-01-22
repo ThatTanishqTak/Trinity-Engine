@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Engine/Events/Event.h"
+#include "Engine/Input/InputCodes.h"
 
 #include <sstream>
 
@@ -63,23 +64,23 @@ namespace Engine
     class MouseButtonEvent : public Event
     {
     public:
-        int GetMouseButton() const { return m_Button; }
+        MouseCode GetMouseButton() const { return m_Button; }
 
         TR_EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryMouse | EventCategoryMouseButton)
 
     protected:
-        explicit MouseButtonEvent(int button) : m_Button(button)
+        explicit MouseButtonEvent(MouseCode button) : m_Button(button)
         {
 
         }
 
-        int m_Button = 0;
+        MouseCode m_Button = MouseCode::Button0;
     };
 
     class MouseButtonPressedEvent : public MouseButtonEvent
     {
     public:
-        explicit MouseButtonPressedEvent(int button) : MouseButtonEvent(button)
+        explicit MouseButtonPressedEvent(MouseCode button) : MouseButtonEvent(button)
         {
 
         }
@@ -87,8 +88,9 @@ namespace Engine
         std::string ToString() const override
         {
             std::stringstream ss;
-            ss << GetName() << ": " << m_Button;
-            
+            const int l_ButtonValue = static_cast<int>(m_Button);
+            ss << GetName() << ": " << l_ButtonValue;
+
             return ss.str();
         }
 
@@ -98,7 +100,7 @@ namespace Engine
     class MouseButtonReleasedEvent : public MouseButtonEvent
     {
     public:
-        explicit MouseButtonReleasedEvent(int button) : MouseButtonEvent(button)
+        explicit MouseButtonReleasedEvent(MouseCode button) : MouseButtonEvent(button)
         {
 
         }
@@ -106,8 +108,9 @@ namespace Engine
         std::string ToString() const override
         {
             std::stringstream ss;
-            ss << GetName() << ": " << m_Button;
- 
+            const int l_ButtonValue = static_cast<int>(m_Button);
+            ss << GetName() << ": " << l_ButtonValue;
+
             return ss.str();
         }
 
