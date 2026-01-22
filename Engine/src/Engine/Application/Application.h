@@ -2,12 +2,13 @@
 
 #include "Engine/Layer/LayerStack.h"
 #include "Engine/Platform/Window.h"
-#include "Engine/Renderer/Renderer.h"
 
 #include <memory>
 
 namespace Engine
 {
+    class Renderer;
+
     class Event;
     class WindowCloseEvent;
     class WindowResizeEvent;
@@ -21,14 +22,14 @@ namespace Engine
         void Run();
         void Close();
 
-        void OnEvent(Event& e);
-
         void PushLayer(Layer* layer);
         void PushOverlay(Layer* overlay);
 
         static Application& Get() { return *s_Instance; }
 
     private:
+        void OnEvent(Event& e);
+
         bool OnWindowClose(WindowCloseEvent& e);
         bool OnWindowResize(WindowResizeEvent& e);
 
@@ -37,7 +38,9 @@ namespace Engine
         bool m_Minimized = false;
 
         LayerStack m_LayerStack;
+
         std::unique_ptr<Window> m_Window;
+        std::unique_ptr<Renderer> m_Renderer;
 
         static Application* s_Instance;
     };

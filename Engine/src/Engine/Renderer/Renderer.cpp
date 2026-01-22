@@ -1,66 +1,43 @@
 #include "Engine/Renderer/Renderer.h"
-#include "Engine/Platform/Window.h"
-#include "Engine/Core/Utilities.h"
 
+#include "Engine/Utilities/Utilities.h"
+#include "Engine/Platform/Window.h"
 #include "Engine/Renderer/Vulkan/VulkanRenderer.h"
 
 namespace Engine
 {
-    namespace
+    Renderer::Renderer()
     {
-        VulkanRenderer* s_Vulkan = nullptr;
+
     }
 
-    namespace Renderer
+    Renderer::~Renderer() = default;
+
+    void Renderer::Initialize(Window& window)
     {
-        void Initialize(Window& window)
-        {
-            TR_CORE_INFO("Renderer: Initializing Vulkan backend...");
+        TR_CORE_INFO("Renderer: Creating Vulkan backend...");
 
-            if (s_Vulkan)
-            {
-                return;
-            }
+        m_Vulkan = std::make_unique<VulkanRenderer>();
+        m_Vulkan->Initialize(window);
+    }
 
-            s_Vulkan = new VulkanRenderer();
-            s_Vulkan->Initialize(window);
-        }
+    void Renderer::Shutdown()
+    {
 
-        void Shutdown()
-        {
-            if (!s_Vulkan)
-            {
-                return;
-            }
+    }
 
-            TR_CORE_INFO("Renderer: Shutting down Vulkan backend...");
-            s_Vulkan->Shutdown();
-            delete s_Vulkan;
-            s_Vulkan = nullptr;
-        }
+    void Renderer::BeginFrame()
+    {
+        if (m_Vulkan) m_Vulkan->BeginFrame();
+    }
 
-        void BeginFrame()
-        {
-            if (s_Vulkan)
-            {
-                s_Vulkan->BeginFrame();
-            }
-        }
+    void Renderer::EndFrame()
+    {
+        if (m_Vulkan) m_Vulkan->EndFrame();
+    }
 
-        void EndFrame()
-        {
-            if (s_Vulkan)
-            {
-                s_Vulkan->EndFrame();
-            }
-        }
-
-        void OnResize(uint32_t width, uint32_t height)
-        {
-            if (s_Vulkan)
-            {
-                s_Vulkan->OnResize(width, height);
-            }
-        }
+    void Renderer::OnResize(uint32_t width, uint32_t height)
+    {
+        if (m_Vulkan) m_Vulkan->OnResize(width, height);
     }
 }

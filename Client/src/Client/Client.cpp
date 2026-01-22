@@ -14,8 +14,12 @@ public:
 
 namespace Engine
 {
-    Application* CreateApplication()
+    Application* CreateApplication(/*ApplicationProperties properties*/)
     {
-        return new ClientApp();
+        //properties.Title = "Physics Engine";
+        //properties.Width = 1920;
+        //properties.Height = 1080;
+
+        return new ClientApp(/*properties*/);
     }
 }

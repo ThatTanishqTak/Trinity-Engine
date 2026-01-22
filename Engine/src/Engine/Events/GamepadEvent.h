@@ -1,87 +1,156 @@
 #pragma once
 
 #include "Engine/Events/Event.h"
-#include "Engine/Events/Input/GamepadCodes.h"
+
+#include <cstdint>
+#include <sstream>
+#include <string>
+#include <utility>
 
 namespace Engine
 {
-    using GamepadButton = Input::GamepadButton;
-    using GamepadAxis = Input::GamepadAxis;
-
+    // GLFW standardized gamepad indices are used:
+    // Buttons: 0..14, Axes: 0..5
+    // (A/B/X/Y etc, plus sticks/triggers)
     class GamepadEvent : public Event
     {
     public:
-        int32_t GetGamepadId() const { return m_GamepadID; }
+        int GetGamepadID() const { return m_GamepadID; }
+
         TR_EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryGamepad)
 
     protected:
-        explicit GamepadEvent(int32_t gamepadID) : m_GamepadID(gamepadID) {}
-        int32_t m_GamepadID = 0;
+        explicit GamepadEvent(int gamepadID) : m_GamepadID(gamepadID)
+        {
+
+        }
+
+        int m_GamepadID = -1;
     };
 
     class GamepadConnectedEvent : public GamepadEvent
     {
     public:
-        explicit GamepadConnectedEvent(int32_t gamepadID) : GamepadEvent(gamepadID) {}
+        GamepadConnectedEvent(int gamepadID, std::string name, bool isGamepadMapping) : GamepadEvent(gamepadID), m_Name(std::move(name)), m_IsGamepadMapping(isGamepadMapping)
+        {
+
+        }
+
+        const std::string& GetNameString() const { return m_Name; }
+        bool HasStandardMapping() const { return m_IsGamepadMapping; }
+
+        std::string ToString() const override
+        {
+            std::stringstream ss;
+            ss << GetName() << ": id = " << m_GamepadID << ", name = \"" << m_Name << "\"" << ", mapped = " << (m_IsGamepadMapping ? "True" : "False");
+            
+            return ss.str();
+        }
+
         TR_EVENT_CLASS_TYPE(GamepadConnected)
+
+    private:
+        std::string m_Name;
+        bool m_IsGamepadMapping = false;
     };
 
     class GamepadDisconnectedEvent : public GamepadEvent
     {
     public:
-        explicit GamepadDisconnectedEvent(int32_t gamepadID) : GamepadEvent(gamepadID) {}
+        explicit GamepadDisconnectedEvent(int gamepadID) : GamepadEvent(gamepadID)
+        {
+
+        }
+
+        std::string ToString() const override
+        {
+            std::stringstream ss;
+            ss << GetName() << ": id=" << m_GamepadID;
+            
+            return ss.str();
+        }
+
         TR_EVENT_CLASS_TYPE(GamepadDisconnected)
     };
 
-    class GamepadButtonPressedEvent : public GamepadEvent
+    class GamepadButtonEvent : public GamepadEvent
     {
     public:
-        GamepadButtonPressedEvent(int32_t gamepadID, GamepadButton button, float value) : GamepadEvent(gamepadID), m_Button(button), m_Value(value)
+        int GetButton() const { return m_Button; }
+
+        TR_EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryGamepad)
+
+    protected:
+        GamepadButtonEvent(int gamepadID, int button) : GamepadEvent(gamepadID), m_Button(button)
         {
 
         }
 
-        GamepadButton GetButton() const { return m_Button; }
-        float GetValue() const { return m_Value; }
-
-        TR_EVENT_CLASS_TYPE(GamepadButtonPressed)
-
-    private:
-        GamepadButton m_Button = Input::TR_PAD_BTN_UNKNOWN;
-        float m_Value = 0.0f;
+        int m_Button = -1;
     };
 
-    class GamepadButtonReleasedEvent : public GamepadEvent
+    class GamepadButtonPressedEvent : public GamepadButtonEvent
     {
     public:
-        GamepadButtonReleasedEvent(int32_t gamepadID, GamepadButton button) : GamepadEvent(gamepadID), m_Button(button)
+        GamepadButtonPressedEvent(int gamepadID, int button) : GamepadButtonEvent(gamepadID, button)
         {
 
         }
 
-        GamepadButton GetButton() const { return m_Button; }
+        std::string ToString() const override
+        {
+            std::stringstream ss;
+            ss << GetName() << ": id=" << m_GamepadID << ", button=" << m_Button;
+            
+            return ss.str();
+        }
+
+        TR_EVENT_CLASS_TYPE(GamepadButtonPressed)
+    };
+
+    class GamepadButtonReleasedEvent : public GamepadButtonEvent
+    {
+    public:
+        GamepadButtonReleasedEvent(int gamepadID, int button) : GamepadButtonEvent(gamepadID, button)
+        {
+
+        }
+
+        std::string ToString() const override
+        {
+            std::stringstream ss;
+            ss << GetName() << ": id=" << m_GamepadID << ", button=" << m_Button;
+            
+            return ss.str();
+        }
 
         TR_EVENT_CLASS_TYPE(GamepadButtonReleased)
-
-    private:
-        GamepadButton m_Button = Input::TR_PAD_BTN_UNKNOWN;
     };
 
     class GamepadAxisMovedEvent : public GamepadEvent
     {
     public:
-        GamepadAxisMovedEvent(int32_t gamepadID, GamepadAxis axis, float value) : GamepadEvent(gamepadID), m_Axis(axis), m_Value(value)
+        GamepadAxisMovedEvent(int gamepadID, int axis, float value) : GamepadEvent(gamepadID), m_Axis(axis), m_Value(value)
         {
 
         }
 
-        GamepadAxis GetAxis() const { return m_Axis; }
+        int GetAxis() const { return m_Axis; }
         float GetValue() const { return m_Value; }
 
+        std::string ToString() const override
+        {
+            std::stringstream ss;
+            ss << GetName() << ": id=" << m_GamepadID << ", axis=" << m_Axis << ", value=" << m_Value;
+
+            return ss.str();
+        }
+
         TR_EVENT_CLASS_TYPE(GamepadAxisMoved)
+            TR_EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryGamepad)
 
     private:
-        GamepadAxis m_Axis = Input::TR_PAD_AXIS_UNKNOWN;
+        int m_Axis = -1;
         float m_Value = 0.0f;
     };
 }

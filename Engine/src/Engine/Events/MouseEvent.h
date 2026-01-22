@@ -1,24 +1,21 @@
 #pragma once
 
 #include "Engine/Events/Event.h"
-#include "Engine/Events/Input/MouseCodes.h"
 
 #include <sstream>
 
 namespace Engine
 {
-    using MouseButton = Input::MouseButton;
-
     class MouseMovedEvent : public Event
     {
     public:
-        MouseMovedEvent(double x, double y) : m_MouseX(x), m_MouseY(y)
+        MouseMovedEvent(float x, float y) : m_MouseX(x), m_MouseY(y)
         {
 
         }
 
-        double GetX() const { return m_MouseX; }
-        double GetY() const { return m_MouseY; }
+        float GetX() const { return m_MouseX; }
+        float GetY() const { return m_MouseY; }
 
         std::string ToString() const override
         {
@@ -32,25 +29,26 @@ namespace Engine
             TR_EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryMouse)
 
     private:
-        double m_MouseX = 0.0, m_MouseY = 0.0;
+        float m_MouseX = 0.0f;
+        float m_MouseY = 0.0f;
     };
 
     class MouseScrolledEvent : public Event
     {
     public:
-        MouseScrolledEvent(double xOffset, double yOffset) : m_XOffset(xOffset), m_YOffset(yOffset)
+        MouseScrolledEvent(float xOffset, float yOffset) : m_XOffset(xOffset), m_YOffset(yOffset)
         {
 
         }
 
-        double GetXOffset() const { return m_XOffset; }
-        double GetYOffset() const { return m_YOffset; }
+        float GetXOffset() const { return m_XOffset; }
+        float GetYOffset() const { return m_YOffset; }
 
         std::string ToString() const override
         {
             std::stringstream ss;
             ss << GetName() << ": " << m_XOffset << ", " << m_YOffset;
-
+            
             return ss.str();
         }
 
@@ -58,31 +56,30 @@ namespace Engine
             TR_EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryMouse)
 
     private:
-        double m_XOffset = 0.0, m_YOffset = 0.0;
+        float m_XOffset = 0.0f;
+        float m_YOffset = 0.0f;
     };
 
     class MouseButtonEvent : public Event
     {
     public:
-        MouseButton GetMouseButton() const { return m_Button; }
-        uint16_t GetMods() const { return m_Mods; }
+        int GetMouseButton() const { return m_Button; }
 
         TR_EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryMouse | EventCategoryMouseButton)
 
     protected:
-        MouseButtonEvent(MouseButton button, uint16_t mods) : m_Button(button), m_Mods(mods)
+        explicit MouseButtonEvent(int button) : m_Button(button)
         {
 
         }
 
-        MouseButton m_Button;
-        uint16_t m_Mods = Mod_None;
+        int m_Button = 0;
     };
 
     class MouseButtonPressedEvent : public MouseButtonEvent
     {
     public:
-        MouseButtonPressedEvent(MouseButton button, uint16_t mods) : MouseButtonEvent(button, mods)
+        explicit MouseButtonPressedEvent(int button) : MouseButtonEvent(button)
         {
 
         }
@@ -101,7 +98,7 @@ namespace Engine
     class MouseButtonReleasedEvent : public MouseButtonEvent
     {
     public:
-        MouseButtonReleasedEvent(MouseButton button, uint16_t mods) : MouseButtonEvent(button, mods)
+        explicit MouseButtonReleasedEvent(int button) : MouseButtonEvent(button)
         {
 
         }
@@ -110,7 +107,7 @@ namespace Engine
         {
             std::stringstream ss;
             ss << GetName() << ": " << m_Button;
-
+ 
             return ss.str();
         }
 

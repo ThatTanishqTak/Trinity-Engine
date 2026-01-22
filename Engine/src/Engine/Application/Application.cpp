@@ -1,12 +1,14 @@
 #include "Engine/Application/Application.h"
 #include "Engine/Layer/Layer.h"
 
-#include "Engine/Core/Utilities.h"
+#include "Engine/Utilities/Utilities.h"
+#include "Engine/Renderer/Renderer.h"
 
-#include "Engine/Events/Input/Input.h"
 #include "Engine/Events/Event.h"
-#include "Engine/Events/EventDispatcher.h"
-#include "Engine/Events/WindowEvent.h"
+#include "Engine/Events/ApplicationEvent.h"
+#include "Engine/Events/KeyEvent.h"
+#include "Engine/Events/MouseEvent.h"
+#include "Engine/Events/GamepadEvent.h"
 
 namespace Engine
 {
@@ -18,22 +20,22 @@ namespace Engine
 
         Utilities::Log::Initialize();
         Utilities::Time::Initialize();
-        Input::Initialize();
 
         m_Window = Window::Create();
         m_Window->SetEventCallback([this](Event& e)
-            {
-                this->OnEvent(e);
-            });
+        {
+            OnEvent(e);
+        });
 
-        Renderer::Initialize(*m_Window);
+        // Renderer lives as long as the window lives
+        m_Renderer = std::make_unique<Renderer>();
+        m_Renderer->Initialize(*m_Window);
     }
 
     Application::~Application()
     {
-        Renderer::Shutdown();
-        Input::Shutdown();
-
+        // Make destruction order explicit
+        m_Renderer.reset();
         s_Instance = nullptr;
     }
 
@@ -44,44 +46,48 @@ namespace Engine
 
     void Application::OnEvent(Event& e)
     {
-        Input::OnEvent(e);
-
         EventDispatcher dispatcher(e);
-
-        // Core engine events first
         dispatcher.Dispatch<WindowCloseEvent>([this](WindowCloseEvent& ev) { return OnWindowClose(ev); });
         dispatcher.Dispatch<WindowResizeEvent>([this](WindowResizeEvent& ev) { return OnWindowResize(ev); });
 
-        // Propagate to layers (top-most first)
-        for (auto it = m_LayerStack.rbegin(); it != m_LayerStack.rend(); ++it)
+        // Layers get events from top to bottom (overlays first).
+        for (auto it = m_LayerStack.end(); it != m_LayerStack.begin(); )
         {
-            (*it)->OnEvent(e);
+            (*--it)->OnEvent(e);
             if (e.Handled)
             {
+                TR_CORE_TRACE(e.ToString());
                 break;
             }
         }
     }
 
-    bool Application::OnWindowClose(WindowCloseEvent&)
+    bool Application::OnWindowClose(WindowCloseEvent& e)
     {
+        (void)e;
         m_Running = false;
-
+        
         return true;
     }
 
     bool Application::OnWindowResize(WindowResizeEvent& e)
     {
-        if (e.GetWidth() == 0 || e.GetHeight() == 0)
+        const uint32_t l_Width = e.GetWidth();
+        const uint32_t l_Height = e.GetHeight();
+
+        if (l_Width == 0 || l_Height == 0)
         {
             m_Minimized = true;
-
+            
             return false;
         }
 
         m_Minimized = false;
 
-        Renderer::OnResize((uint32_t)e.GetWidth(), (uint32_t)e.GetHeight());
+        if (m_Renderer)
+        {
+            m_Renderer->OnResize(l_Width, l_Height);
+        }
 
         return false;
     }
@@ -92,12 +98,19 @@ namespace Engine
         {
             Utilities::Time::Update();
 
-            Input::BeginFrame();
+            // Poll events
             m_Window->OnUpdate();
+
+            if (!m_Running)
+            {
+                break;
+            }
 
             if (m_Window->ShouldClose())
             {
                 m_Running = false;
+ 
+                break;
             }
 
             if (m_Minimized)
@@ -110,14 +123,14 @@ namespace Engine
                 it_Layer->OnUpdate(Utilities::Time::DeltaTime());
             }
 
-            Renderer::BeginFrame();
+            m_Renderer->BeginFrame();
 
             for (Layer* it_Layer : m_LayerStack)
             {
                 it_Layer->OnRender();
             }
 
-            Renderer::EndFrame();
+            m_Renderer->EndFrame();
         }
     }
 

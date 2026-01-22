@@ -35,6 +35,9 @@ namespace Engine
         virtual uint32_t GetWidth() const = 0;
         virtual uint32_t GetHeight() const = 0;
 
+        virtual void SetWidth(uint32_t width) = 0;
+        virtual void SetHeight(uint32_t height) = 0;
+
         virtual void SetEventCallback(const EventCallbackFn& callback) = 0;
 
         virtual void SetVSync(bool enabled) = 0;

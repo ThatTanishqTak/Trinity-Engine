@@ -2,6 +2,8 @@
 
 #include "Engine/Application/Application.h"
 
+#include <memory>
+
 namespace Engine
 {
     Application* CreateApplication();
@@ -9,11 +11,9 @@ namespace Engine
 
 int main()
 {
-    auto* a_Application = Engine::CreateApplication();
-
-    a_Application->Run();
+    std::unique_ptr<Engine::Application> l_Application(Engine::CreateApplication());
     
-    delete a_Application;
-
+    l_Application->Run();
+ 
     return 0;
 }

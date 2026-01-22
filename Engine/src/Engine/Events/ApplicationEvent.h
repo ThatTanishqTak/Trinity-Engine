@@ -2,32 +2,89 @@
 
 #include "Engine/Events/Event.h"
 
+#include <cstdint>
+#include <sstream>
+
 namespace Engine
 {
-    class AppTickEvent : public Event
+    class WindowResizeEvent : public Event
     {
     public:
-        AppTickEvent() = default;
+        WindowResizeEvent(uint32_t width, uint32_t height) : m_Width(width), m_Height(height)
+        {
 
-        TR_EVENT_CLASS_TYPE(AppTick)
-            TR_EVENT_CLASS_CATEGORY(EventCategoryApplication)
+        }
+
+        uint32_t GetWidth() const { return m_Width; }
+        uint32_t GetHeight() const { return m_Height; }
+
+        std::string ToString() const override
+        {
+            std::stringstream ss;
+            ss << GetName() << ": " << m_Width << ", " << m_Height;
+            
+            return ss.str();
+        }
+
+        TR_EVENT_CLASS_TYPE(WindowResize)
+            TR_EVENT_CLASS_CATEGORY(EventCategoryApplication | EventCategoryWindow)
+
+    private:
+        uint32_t m_Width = 0;
+        uint32_t m_Height = 0;
     };
 
-    class AppUpdateEvent : public Event
+    class WindowCloseEvent : public Event
     {
     public:
-        AppUpdateEvent() = default;
+        WindowCloseEvent() = default;
 
-        TR_EVENT_CLASS_TYPE(AppUpdate)
-            TR_EVENT_CLASS_CATEGORY(EventCategoryApplication)
+        TR_EVENT_CLASS_TYPE(WindowClose)
+            TR_EVENT_CLASS_CATEGORY(EventCategoryApplication | EventCategoryWindow)
     };
 
-    class AppRenderEvent : public Event
+    class WindowFocusEvent : public Event
     {
     public:
-        AppRenderEvent() = default;
+        WindowFocusEvent() = default;
 
-        TR_EVENT_CLASS_TYPE(AppRender)
-            TR_EVENT_CLASS_CATEGORY(EventCategoryApplication)
+        TR_EVENT_CLASS_TYPE(WindowFocus)
+            TR_EVENT_CLASS_CATEGORY(EventCategoryApplication | EventCategoryWindow)
+    };
+
+    class WindowLostFocusEvent : public Event
+    {
+    public:
+        WindowLostFocusEvent() = default;
+
+        TR_EVENT_CLASS_TYPE(WindowLostFocus)
+            TR_EVENT_CLASS_CATEGORY(EventCategoryApplication | EventCategoryWindow)
+    };
+
+    class WindowMovedEvent : public Event
+    {
+    public:
+        WindowMovedEvent(int x, int y) : m_X(x), m_Y(y)
+        {
+
+        }
+
+        int GetX() const { return m_X; }
+        int GetY() const { return m_Y; }
+
+        std::string ToString() const override
+        {
+            std::stringstream ss;
+            ss << GetName() << ": " << m_X << ", " << m_Y;
+
+            return ss.str();
+        }
+
+        TR_EVENT_CLASS_TYPE(WindowMoved)
+            TR_EVENT_CLASS_CATEGORY(EventCategoryApplication | EventCategoryWindow)
+
+    private:
+        int m_X = 0;
+        int m_Y = 0;
     };
 }

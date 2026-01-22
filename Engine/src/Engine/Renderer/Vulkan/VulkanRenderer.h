@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Engine/Core/Utilities.h"
+#include "Engine/Utilities/Utilities.h"
 
 #include <vulkan/vulkan.h>
 
@@ -17,6 +17,14 @@ namespace Engine
     class VulkanRenderer
     {
     public:
+        VulkanRenderer() = default;
+        ~VulkanRenderer();
+
+        VulkanRenderer(const VulkanRenderer&) = delete;
+        VulkanRenderer& operator=(const VulkanRenderer&) = delete;
+        VulkanRenderer(VulkanRenderer&&) = delete;
+        VulkanRenderer& operator=(VulkanRenderer&&) = delete;
+
         void Initialize(Window& window);
         void Shutdown();
 
@@ -71,13 +79,25 @@ namespace Engine
 
         void RecordCommandBuffer(VkCommandBuffer cmd, uint32_t imageIndex);
 
-        static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback( VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, 
-            const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
+        static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
+            VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+            VkDebugUtilsMessageTypeFlagsEXT messageType,
+            const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+            void* pUserData
+        );
 
-        VkResult CreateDebugUtilsMessengerEXT( VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, 
-            VkDebugUtilsMessengerEXT* pMessenger);
+        VkResult CreateDebugUtilsMessengerEXT(
+            VkInstance instance,
+            const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+            const VkAllocationCallbacks* pAllocator,
+            VkDebugUtilsMessengerEXT* pMessenger
+        );
 
-        void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT messenger, const VkAllocationCallbacks* pAllocator);
+        void DestroyDebugUtilsMessengerEXT(
+            VkInstance instance,
+            VkDebugUtilsMessengerEXT messenger,
+            const VkAllocationCallbacks* pAllocator
+        );
 
     private:
         Window* m_Window = nullptr;
@@ -115,6 +135,9 @@ namespace Engine
 
         bool m_FramebufferResized = false;
         uint32_t m_ImageIndex = 0;
+
+        bool m_FrameInProgress = false;
+        bool m_Initialized = false;
 
     private:
 #ifdef TR_ENABLE_VK_VALIDATION

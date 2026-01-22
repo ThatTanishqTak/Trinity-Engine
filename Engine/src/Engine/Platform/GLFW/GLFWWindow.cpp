@@ -1,52 +1,14 @@
 #include "Engine/Platform/GLFW/GLFWWindow.h"
-#include "Engine/Core/Utilities.h"
+#include "Engine/Utilities/Utilities.h"
 
-#include "Engine/Events/WindowEvent.h"
+#include "Engine/Events/ApplicationEvent.h"
 #include "Engine/Events/KeyEvent.h"
 #include "Engine/Events/MouseEvent.h"
 #include "Engine/Events/GamepadEvent.h"
 
-#include "Engine/Events/Input/KeyCodes.h"
-#include "Engine/Events/Input/MouseCodes.h"
-#include "Engine/Events/Input/GamepadCodes.h"
-
 #include <GLFW/glfw3.h>
 
-static uint16_t ConvertGLFWMods(int mods)
-{
-    uint16_t l_Mod = Engine::Mod_None;
-    if (mods & GLFW_MOD_SHIFT)
-    {
-        l_Mod |= Engine::Mod_Shift;
-    }
-
-    if (mods & GLFW_MOD_CONTROL)
-    {
-        l_Mod |= Engine::Mod_Control;
-    }
-    
-    if (mods & GLFW_MOD_ALT)
-    {
-        l_Mod |= Engine::Mod_Alt;
-    }
-    
-    if (mods & GLFW_MOD_SUPER)
-    {
-        l_Mod |= Engine::Mod_Super;
-    }
-
-    if (mods & GLFW_MOD_CAPS_LOCK)
-    {
-        l_Mod |= Engine::Mod_CapsLock;
-    }
-
-    if (mods & GLFW_MOD_NUM_LOCK)
-    {
-        l_Mod |= Engine::Mod_NumLock;
-    }
-
-    return l_Mod;
-}
+#include <cmath>
 
 namespace Engine
 {
@@ -82,6 +44,7 @@ namespace Engine
             if (glfwInit() != GLFW_TRUE)
             {
                 TR_CORE_ERROR("Failed to initialize GLFW.");
+
                 return;
             }
 
@@ -96,6 +59,7 @@ namespace Engine
         if (!m_Window)
         {
             TR_CORE_ERROR("Failed to create GLFW window.");
+
             return;
         }
 
@@ -103,150 +67,180 @@ namespace Engine
 
         glfwSetWindowUserPointer(m_Window, &m_Data);
 
-        glfwSetFramebufferSizeCallback(m_Window, [](GLFWwindow* window, int width, int height)
-            {
-                auto& a_Data = *(WindowData*)glfwGetWindowUserPointer(window);
-                a_Data.Width = (uint32_t)width;
-                a_Data.Height = (uint32_t)height;
-                a_Data.FramebufferResized = true;
-
-                if (a_Data.EventCallback)
-                {
-                    Engine::WindowResizeEvent e((uint32_t)width, (uint32_t)height);
-                    a_Data.EventCallback(e);
-                }
-            });
-
         glfwSetWindowCloseCallback(m_Window, [](GLFWwindow* window)
+        {
+            auto& a_Data = *static_cast<GLFWWindow::WindowData*>(glfwGetWindowUserPointer(window));
+
+            if (!a_Data.EventCallback)
             {
-                auto& a_Data = *(WindowData*)glfwGetWindowUserPointer(window);
-                if (a_Data.EventCallback)
-                {
-                    Engine::WindowCloseEvent e;
-                    a_Data.EventCallback(e);
-                }
-            });
+                return;
+            }
 
-        glfwSetCursorPosCallback(m_Window, [](GLFWwindow* window, double x, double y)
+            WindowCloseEvent l_Event;
+            a_Data.EventCallback(l_Event);
+        });
+
+        glfwSetFramebufferSizeCallback(m_Window, [](GLFWwindow* window, int width, int height)
+        {
+            auto& a_Data = *static_cast<GLFWWindow::WindowData*>(glfwGetWindowUserPointer(window));
+
+            a_Data.Width = (uint32_t)width;
+            a_Data.Height = (uint32_t)height;
+            a_Data.FramebufferResized = true;
+
+            if (!a_Data.EventCallback)
             {
-                auto& a_Data = *(WindowData*)glfwGetWindowUserPointer(window);
-                if (a_Data.EventCallback)
-                {
-                    Engine::MouseMovedEvent e(x, y);
-                    a_Data.EventCallback(e);
-                }
-            });
+                return;
+            }
 
-        glfwSetScrollCallback(m_Window, [](GLFWwindow* window, double xOff, double yOff)
-            {
-                auto& a_Data = *(WindowData*)glfwGetWindowUserPointer(window);
-                if (a_Data.EventCallback)
-                {
-                    Engine::MouseScrolledEvent e(xOff, yOff);
-                    a_Data.EventCallback(e);
-                }
-            });
-
-        glfwSetMouseButtonCallback(m_Window, [](GLFWwindow* window, int button, int action, int mods)
-            {
-                auto& a_Data = *(WindowData*)glfwGetWindowUserPointer(window);
-                if (!a_Data.EventCallback)
-                {
-                    return;
-                }
-
-                const uint16_t l_Mod = ConvertGLFWMods(mods);
-                const auto l_TRButton = Engine::Input::FromGLFWMouseButton(button);
-
-                if (action == GLFW_PRESS)
-                {
-                    Engine::MouseButtonPressedEvent e(l_TRButton, l_Mod);
-                    a_Data.EventCallback(e);
-                }
-                else if (action == GLFW_RELEASE)
-                {
-                    Engine::MouseButtonReleasedEvent e(l_TRButton, l_Mod);
-                    a_Data.EventCallback(e);
-                }
-            });
-
-        glfwSetKeyCallback(m_Window, [](GLFWwindow* window, int key, int scancode, int action, int mods)
-            {
-                auto& a_Data = *(WindowData*)glfwGetWindowUserPointer(window);
-                (void)scancode;
-                if (!a_Data.EventCallback)
-                {
-                    return;
-                }
-
-                const uint16_t l_Mod = ConvertGLFWMods(mods);
-                const auto l_TRKey = Engine::Input::FromGLFWKey(key);
-
-                if (action == GLFW_PRESS)
-                {
-                    Engine::KeyPressedEvent e(l_TRKey, l_Mod, 0);
-                    a_Data.EventCallback(e);
-                }
-                else if (action == GLFW_RELEASE)
-                {
-                    Engine::KeyReleasedEvent e(l_TRKey, l_Mod);
-                    a_Data.EventCallback(e);
-                }
-                else if (action == GLFW_REPEAT)
-                {
-                    Engine::KeyPressedEvent e(l_TRKey, l_Mod, 1);
-                    a_Data.EventCallback(e);
-                }
-            });
-
-        glfwSetCharCallback(m_Window, [](GLFWwindow* window, unsigned int codepoint)
-            {
-                auto& a_Data = *(WindowData*)glfwGetWindowUserPointer(window);
-                if (a_Data.EventCallback)
-                {
-                    Engine::KeyTypedEvent e((uint32_t)codepoint);
-                    a_Data.EventCallback(e);
-                }
-            });
+            WindowResizeEvent l_Event((uint32_t)width, (uint32_t)height);
+            a_Data.EventCallback(l_Event);
+        });
 
         glfwSetWindowFocusCallback(m_Window, [](GLFWwindow* window, int focused)
+        {
+            auto& a_Data = *static_cast<GLFWWindow::WindowData*>(glfwGetWindowUserPointer(window));
+
+            if (!a_Data.EventCallback)
             {
-                auto& a_Data = *(WindowData*)glfwGetWindowUserPointer(window);
-                if (!a_Data.EventCallback)
-                {
-                    return;
-                }
+                return;
+            }
 
-                if (focused)
-                {
-                    Engine::WindowFocusEvent e;
-                    a_Data.EventCallback(e);
-                }
-                else
-                {
-                    Engine::WindowLostFocusEvent e;
-                    a_Data.EventCallback(e);
-                }
-            });
-
-        glfwSetDropCallback(m_Window, [](GLFWwindow* window, int count, const char** paths)
+            if (focused)
             {
-                auto& a_Data = *(WindowData*)glfwGetWindowUserPointer(window);
-                if (!a_Data.EventCallback)
-                {
-                    return;
-                }
+                WindowFocusEvent l_Event;
+                a_Data.EventCallback(l_Event);
+            }
+            else
+            {
+                WindowLostFocusEvent l_Event;
+                a_Data.EventCallback(l_Event);
+            }
+        });
 
-                std::vector<std::string> files;
-                files.reserve((size_t)count);
-                for (int i = 0; i < count; i++)
-                {
-                    files.emplace_back(paths[i]);
-                }
+        glfwSetWindowPosCallback(m_Window, [](GLFWwindow* window, int x, int y)
+        {
+            auto& a_Data = *static_cast<GLFWWindow::WindowData*>(glfwGetWindowUserPointer(window));
 
-                Engine::WindowDropEvent e(std::move(files));
-                a_Data.EventCallback(e);
-            });
+            if (!a_Data.EventCallback)
+            {
+                return;
+            }
+
+            WindowMovedEvent l_Event(x, y);
+            a_Data.EventCallback(l_Event);
+        });
+
+        glfwSetKeyCallback(m_Window, [](GLFWwindow* window, int key, int scancode, int action, int mods)
+        {
+            (void)scancode;
+            (void)mods;
+
+            auto& a_Data = *static_cast<GLFWWindow::WindowData*>(glfwGetWindowUserPointer(window));
+
+            if (!a_Data.EventCallback)
+            {
+                return;
+            }
+
+            switch (action)
+            {
+                case GLFW_PRESS:
+                {
+                    KeyPressedEvent l_Event(key, 0);
+                    a_Data.EventCallback(l_Event);
+                    
+                    break;
+                }
+                case GLFW_RELEASE:
+                {
+                    KeyReleasedEvent l_Event(key);
+                    a_Data.EventCallback(l_Event);
+                    
+                    break;
+                }
+                case GLFW_REPEAT:
+                {
+                    KeyPressedEvent l_Event(key, 1);
+                    a_Data.EventCallback(l_Event);
+
+                    break;
+                }
+                default:
+                    break;
+            }
+        });
+
+        glfwSetCharCallback(m_Window, [](GLFWwindow* window, unsigned int codepoint)
+        {
+            auto& a_Data = *static_cast<GLFWWindow::WindowData*>(glfwGetWindowUserPointer(window));
+
+            if (!a_Data.EventCallback)
+            {
+                return;
+            }
+
+            KeyTypedEvent l_Event((int)codepoint);
+            a_Data.EventCallback(l_Event);
+        });
+
+        glfwSetMouseButtonCallback(m_Window, [](GLFWwindow* window, int it_Button, int action, int mods)
+        {
+            (void)mods;
+
+            auto& a_Data = *static_cast<GLFWWindow::WindowData*>(glfwGetWindowUserPointer(window));
+
+            if (!a_Data.EventCallback)
+            {
+                return;
+            }
+
+            switch (action)
+            {
+                case GLFW_PRESS:
+                {
+                    MouseButtonPressedEvent l_Event(it_Button);
+                    a_Data.EventCallback(l_Event);
+
+                    break;
+                }
+                case GLFW_RELEASE:
+                {
+                    MouseButtonReleasedEvent l_Event(it_Button);
+                    a_Data.EventCallback(l_Event);
+
+                    break;
+                }
+                default:
+                    break;
+            }
+        });
+
+        glfwSetScrollCallback(m_Window, [](GLFWwindow* window, double xOffset, double yOffset)
+        {
+            auto& a_Data = *static_cast<GLFWWindow::WindowData*>(glfwGetWindowUserPointer(window));
+
+            if (!a_Data.EventCallback)
+            {
+                return;
+            }
+
+            MouseScrolledEvent l_Event((float)xOffset, (float)yOffset);
+            a_Data.EventCallback(l_Event);
+        });
+
+        glfwSetCursorPosCallback(m_Window, [](GLFWwindow* window, double x, double y)
+        {
+            auto& a_Data = *static_cast<GLFWWindow::WindowData*>(glfwGetWindowUserPointer(window));
+
+            if (!a_Data.EventCallback)
+            {
+                return;
+            }
+
+            MouseMovedEvent l_Event((float)x, (float)y);
+            a_Data.EventCallback(l_Event);
+        });
 
         TR_CORE_INFO("Window created: \"{0}\" ({1}x{2})", m_Data.Title, m_Data.Width, m_Data.Height);
     }
@@ -270,6 +264,8 @@ namespace Engine
     void GLFWWindow::OnUpdate()
     {
         glfwPollEvents();
+
+        UpdateGamepads();
     }
 
     void GLFWWindow::SetVSync(bool enabled)
@@ -285,5 +281,108 @@ namespace Engine
         }
 
         return glfwWindowShouldClose(m_Window) == GLFW_TRUE;
+    }
+
+    void GLFWWindow::UpdateGamepads()
+    {
+        if (!m_Data.EventCallback)
+        {
+            return;
+        }
+
+        constexpr float l_Deadzone = 0.08f;
+        constexpr float l_Epsilon = 0.01f;
+
+        for (int it_GamepadID = 0; it_GamepadID < s_MaxGamepads; ++it_GamepadID)
+        {
+            const bool l_Present = (glfwJoystickPresent(it_GamepadID) == GLFW_TRUE);
+            GamepadData& l_GamepadData = m_Gamepads[(size_t)it_GamepadID];
+
+            // Connect / disconnect
+            if (l_Present != l_GamepadData.Present)
+            {
+                l_GamepadData.Present = l_Present;
+                l_GamepadData.HasState = false;
+
+                if (l_Present)
+                {
+                    const char* l_Name = glfwGetJoystickName(it_GamepadID);
+                    const bool l_Mapped = (glfwJoystickIsGamepad(it_GamepadID) == GLFW_TRUE);
+
+                    GamepadConnectedEvent l_Event(it_GamepadID, l_Name ? l_Name : "", l_Mapped);
+                    m_Data.EventCallback(l_Event);
+                }
+                else
+                {
+                    GamepadDisconnectedEvent l_Event(it_GamepadID);
+                    m_Data.EventCallback(l_Event);
+                }
+
+                continue;
+            }
+
+            if (!l_Present)
+            {
+                continue;
+            }
+
+            if (glfwJoystickIsGamepad(it_GamepadID) != GLFW_TRUE)
+            {
+                continue;
+            }
+
+            GLFWgamepadstate l_State{};
+            if (glfwGetGamepadState(it_GamepadID, &l_State) != GLFW_TRUE)
+            {
+                continue;
+            }
+
+            // Buttons
+            for (int it_Button = 0; it_Button < s_MaxButtons; ++it_Button)
+            {
+                const unsigned char l_NewValue = l_State.buttons[it_Button];
+                const unsigned char l_OldValue = l_GamepadData.HasState ? l_GamepadData.Buttons[(size_t)it_Button] : l_NewValue;
+
+                if (l_GamepadData.HasState && l_NewValue != l_OldValue)
+                {
+                    if (l_NewValue == GLFW_PRESS)
+                    {
+                        GamepadButtonPressedEvent l_Event(it_GamepadID, it_Button);
+                        m_Data.EventCallback(l_Event);
+                    }
+                    else
+                    {
+                        GamepadButtonReleasedEvent l_Event(it_GamepadID, it_Button);
+                        m_Data.EventCallback(l_Event);
+                    }
+                }
+
+                l_GamepadData.Buttons[(size_t)it_Button] = l_NewValue;
+            }
+
+            // Axes
+            for (int it_Axis = 0; it_Axis < s_MaxAxes; ++it_Axis)
+            {
+                float l_Value = l_State.axes[it_Axis];
+
+                // Deadzone only for sticks (0..3). Triggers (4..5) usually don't need it.
+                if (it_Axis <= 3 && std::fabs(l_Value) < l_Deadzone)
+                {
+                    l_Value = 0.0f;
+                }
+
+                const float l_OldValue = l_GamepadData.HasState ? l_GamepadData.Axes[(size_t)it_Axis] : l_Value;
+
+                if (l_GamepadData.HasState && std::fabs(l_Value - l_OldValue) > l_Epsilon)
+                {
+                    GamepadAxisMovedEvent l_Event(it_GamepadID, it_Axis, l_Value);
+                    m_Data.EventCallback(l_Event);
+                }
+
+                l_GamepadData.Axes[(size_t)it_Axis] = l_Value;
+            }
+
+            l_GamepadData.HasState = true;
+        }
     }
 }

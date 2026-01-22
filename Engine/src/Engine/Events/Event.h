@@ -1,57 +1,51 @@
 #pragma once
 
-#include <cstdint>
+#include <functional>
+#include <ostream>
 #include <string>
 
 namespace Engine
 {
-    enum class EventType : uint16_t
+    enum class EventType
     {
         None = 0,
 
         // Window
-        WindowClose, WindowResize, WindowMove, WindowFocus, WindowLostFocus,
-        WindowMinimize, WindowMaximize, WindowDrop,
-
-        // App
-        AppTick, AppUpdate, AppRender,
+        WindowClose, 
+        WindowResize, 
+        WindowFocus, WindowLostFocus, 
+        WindowMoved,
 
         // Keyboard
         KeyPressed, KeyReleased, KeyTyped,
 
         // Mouse
-        MouseButtonPressed, MouseButtonReleased, MouseMoved, MouseScrolled,
+        MouseButtonPressed, MouseButtonReleased, 
+        MouseMoved, 
+        MouseScrolled,
 
         // Gamepad
         GamepadConnected, GamepadDisconnected,
-        GamepadButtonPressed, GamepadButtonReleased, GamepadAxisMoved
+        GamepadButtonPressed, GamepadButtonReleased,
+        GamepadAxisMoved
     };
 
-    enum EventCategory : uint32_t
+    enum EventCategory : int
     {
-        EventCategoryNone = 0,
-        EventCategoryApplication = 1u << 0,
-        EventCategoryWindow = 1u << 1,
-        EventCategoryInput = 1u << 2,
-        EventCategoryKeyboard = 1u << 3,
-        EventCategoryMouse = 1u << 4,
-        EventCategoryMouseButton = 1u << 5,
-        EventCategoryGamepad = 1u << 6
-    };
-
-    enum Modifiers : uint16_t
-    {
-        Mod_None = 0,
-        Mod_Shift = 1u << 0,
-        Mod_Control = 1u << 1,
-        Mod_Alt = 1u << 2,
-        Mod_Super = 1u << 3,
-        Mod_CapsLock = 1u << 4,
-        Mod_NumLock = 1u << 5
+        None = 0,
+        EventCategoryApplication = 1 << 0,
+        EventCategoryInput = 1 << 1,
+        EventCategoryKeyboard = 1 << 2,
+        EventCategoryMouse = 1 << 3,
+        EventCategoryMouseButton = 1 << 4,
+        EventCategoryWindow = 1 << 5,
+        EventCategoryGamepad = 1 << 6
     };
 
     class Event
     {
+        friend class EventDispatcher;
+
     public:
         virtual ~Event() = default;
 
@@ -59,7 +53,7 @@ namespace Engine
 
         virtual EventType GetEventType() const = 0;
         virtual const char* GetName() const = 0;
-        virtual uint32_t GetCategoryFlags() const = 0;
+        virtual int GetCategoryFlags() const = 0;
 
         virtual std::string ToString() const { return GetName(); }
 
@@ -69,11 +63,45 @@ namespace Engine
         }
     };
 
+    class EventDispatcher
+    {
+    public:
+        explicit EventDispatcher(Event& event) : m_Event(event)
+        {
+
+        }
+
+        template<typename T, typename F>
+        bool Dispatch(const F& func)
+        {
+            if (m_Event.GetEventType() == T::GetStaticType())
+            {
+                m_Event.Handled |= func(static_cast<T&>(m_Event));
+
+                return true;
+            }
+
+            return false;
+        }
+
+    private:
+        Event& m_Event;
+    };
+
+    inline std::ostream& operator<<(std::ostream& os, const Event& e)
+    {
+        return os << e.ToString();
+    }
+}
+
+// Event class helper macros
 #define TR_EVENT_CLASS_TYPE(type) \
-    static EventType GetStaticType() { return EventType::type; } \
-    EventType GetEventType() const override { return GetStaticType(); } \
+    static ::Engine::EventType GetStaticType() { return ::Engine::EventType::type; } \
+    ::Engine::EventType GetEventType() const override { return GetStaticType(); } \
     const char* GetName() const override { return #type; }
 
-#define TR_EVENT_CLASS_CATEGORY(categoryFlags) \
-    uint32_t GetCategoryFlags() const override { return (categoryFlags); }
-}
+#define TR_EVENT_CLASS_CATEGORY(category) \
+    int GetCategoryFlags() const override { return category; }
+
+// Handy binder
+#define TR_BIND_EVENT_FN(fn) [this](auto& e) -> bool { return this->fn(e); }
