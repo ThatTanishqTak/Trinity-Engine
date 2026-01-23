@@ -8,6 +8,11 @@
 namespace Engine
 {
     class Event;
+    class WindowCloseEvent;
+    class WindowResizeEvent;
+    class WindowFocusEvent;
+    class WindowLostFocusEvent;
+    class WindowMovedEvent;
 
     struct WindowProperties
     {
@@ -30,6 +35,8 @@ namespace Engine
 
         virtual ~Window() = default;
 
+        void OnEvent(Event& e);
+
         virtual void OnUpdate() = 0;
 
         virtual uint32_t GetWidth() const = 0;
@@ -44,9 +51,20 @@ namespace Engine
         virtual bool IsVSync() const = 0;
 
         virtual bool ShouldClose() const = 0;
+        bool IsMinimized() const { return m_Minimized; }
 
         virtual void* GetNativeWindow() const = 0;
 
         static std::unique_ptr<Window> Create(const WindowProperties& properties = WindowProperties());
+
+    protected:
+        virtual bool OnWindowClose(WindowCloseEvent& e);
+        virtual bool OnWindowResize(WindowResizeEvent& e);
+        virtual bool OnWindowFocus(WindowFocusEvent& e);
+        virtual bool OnWindowLostFocus(WindowLostFocusEvent& e);
+        virtual bool OnWindowMoved(WindowMovedEvent& e);
+
+        bool m_ShouldClose = false;
+        bool m_Minimized = false;
     };
 }

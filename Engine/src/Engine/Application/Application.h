@@ -10,8 +10,6 @@ namespace Engine
     class Renderer;
 
     class Event;
-    class WindowCloseEvent;
-    class WindowResizeEvent;
 
     class Application
     {
@@ -30,13 +28,8 @@ namespace Engine
     private:
         void OnEvent(Event& e);
 
-        bool OnWindowClose(WindowCloseEvent& e);
-        bool OnWindowResize(WindowResizeEvent& e);
-
     private:
         bool m_Running = true;
-        bool m_Minimized = false;
-
         LayerStack m_LayerStack;
 
         std::unique_ptr<Window> m_Window;

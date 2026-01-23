@@ -2,9 +2,68 @@
 
 #include "Engine/Platform/Window.h"
 #include "Engine/Platform/GLFW/GLFWWindow.h"
+#include "Engine/Events/ApplicationEvent.h"
+#include "Engine/Events/Event.h"
 
 namespace Engine
 {
+    void Window::OnEvent(Event& e)
+    {
+        // Window dispatch keeps close and minimize state in the window itself.
+        EventDispatcher l_Dispatcher(e);
+        l_Dispatcher.Dispatch<WindowCloseEvent>([this](WindowCloseEvent& e) { return OnWindowClose(e); });
+        l_Dispatcher.Dispatch<WindowResizeEvent>([this](WindowResizeEvent& e) { return OnWindowResize(e); });
+        l_Dispatcher.Dispatch<WindowFocusEvent>([this](WindowFocusEvent& e) { return OnWindowFocus(e); });
+        l_Dispatcher.Dispatch<WindowLostFocusEvent>([this](WindowLostFocusEvent& e) { return OnWindowLostFocus(e); });
+        l_Dispatcher.Dispatch<WindowMovedEvent>([this](WindowMovedEvent& e) { return OnWindowMoved(e); });
+    }
+
+    bool Window::OnWindowClose(WindowCloseEvent& e)
+    {
+        (void)e;
+        m_ShouldClose = true;
+
+        return true;
+    }
+
+    bool Window::OnWindowResize(WindowResizeEvent& e)
+    {
+        const uint32_t l_Width = e.GetWidth();
+        const uint32_t l_Height = e.GetHeight();
+
+        if (l_Width == 0 || l_Height == 0)
+        {
+            m_Minimized = true;
+
+            return false;
+        }
+
+        m_Minimized = false;
+
+        return false;
+    }
+
+    bool Window::OnWindowFocus(WindowFocusEvent& e)
+    {
+        (void)e;
+
+        return false;
+    }
+
+    bool Window::OnWindowLostFocus(WindowLostFocusEvent& e)
+    {
+        (void)e;
+
+        return false;
+    }
+
+    bool Window::OnWindowMoved(WindowMovedEvent& e)
+    {
+        (void)e;
+
+        return false;
+    }
+
     std::unique_ptr<Window> Window::Create(const WindowProperties& properties)
     {
         return std::make_unique<GLFWWindow>(properties);

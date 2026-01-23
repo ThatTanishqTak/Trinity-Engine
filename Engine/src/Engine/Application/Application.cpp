@@ -48,13 +48,21 @@ namespace Engine
 
     void Application::OnEvent(Event& e)
     {
-        EventDispatcher dispatcher(e);
-        dispatcher.Dispatch<WindowCloseEvent>([this](WindowCloseEvent& ev) { return OnWindowClose(ev); });
-        dispatcher.Dispatch<WindowResizeEvent>([this](WindowResizeEvent& ev) { return OnWindowResize(ev); });
-
         Input::OnEvent(e);
 
-        // Layers get events from top to bottom (overlays first).
+        m_Window->OnEvent(e);
+
+        if (e.GetEventType() == EventType::WindowResize)
+        {
+            const auto& l_ResizeEvent = static_cast<const WindowResizeEvent&>(e);
+
+            if (!m_Window->IsMinimized() && m_Renderer)
+            {
+                m_Renderer->OnResize(l_ResizeEvent.GetWidth(), l_ResizeEvent.GetHeight());
+            }
+        }
+
+        // Layers get events from top to bottom
         for (auto it = m_LayerStack.end(); it != m_LayerStack.begin(); )
         {
             (*--it)->OnEvent(e);
@@ -65,36 +73,6 @@ namespace Engine
                 break;
             }
         }
-    }
-
-    bool Application::OnWindowClose(WindowCloseEvent& e)
-    {
-        (void)e;
-        m_Running = false;
-
-        return true;
-    }
-
-    bool Application::OnWindowResize(WindowResizeEvent& e)
-    {
-        const uint32_t l_Width = e.GetWidth();
-        const uint32_t l_Height = e.GetHeight();
-
-        if (l_Width == 0 || l_Height == 0)
-        {
-            m_Minimized = true;
-
-            return false;
-        }
-
-        m_Minimized = false;
-
-        if (m_Renderer)
-        {
-            m_Renderer->OnResize(l_Width, l_Height);
-        }
-
-        return false;
     }
 
     void Application::Run()
@@ -118,7 +96,7 @@ namespace Engine
                 break;
             }
 
-            if (m_Minimized)
+            if (m_Window->IsMinimized())
             {
                 continue;
             }

@@ -302,7 +302,7 @@ namespace Engine
             return true;
         }
 
-        return glfwWindowShouldClose(m_Window) == GLFW_TRUE;
+        return m_ShouldClose || glfwWindowShouldClose(m_Window) == GLFW_TRUE;
     }
 
     void GLFWWindow::UpdateGamepads()
