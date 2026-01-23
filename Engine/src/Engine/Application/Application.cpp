@@ -10,6 +10,8 @@
 #include "Engine/Events/MouseEvent.h"
 #include "Engine/Events/GamepadEvent.h"
 
+#include "Engine/Input/Input.h"
+
 namespace Engine
 {
     Application* Application::s_Instance = nullptr;
@@ -49,6 +51,8 @@ namespace Engine
         EventDispatcher dispatcher(e);
         dispatcher.Dispatch<WindowCloseEvent>([this](WindowCloseEvent& ev) { return OnWindowClose(ev); });
         dispatcher.Dispatch<WindowResizeEvent>([this](WindowResizeEvent& ev) { return OnWindowResize(ev); });
+
+        Input::OnEvent(e);
 
         // Layers get events from top to bottom (overlays first).
         for (auto it = m_LayerStack.end(); it != m_LayerStack.begin(); )
