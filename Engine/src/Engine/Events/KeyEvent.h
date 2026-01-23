@@ -10,23 +10,23 @@ namespace Engine
     class KeyEvent : public Event
     {
     public:
-        KeyCode GetKeyCode() const { return m_KeyCode; }
+        Code::KeyCode GetKeyCode() const { return m_KeyCode; }
 
         TR_EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryKeyboard)
 
     protected:
-        explicit KeyEvent(KeyCode keycode) : m_KeyCode(keycode)
+        explicit KeyEvent(Code::KeyCode keycode) : m_KeyCode(keycode)
         {
 
         }
 
-        KeyCode m_KeyCode = KeyCode::UNKNOWN;
+        Code::KeyCode m_KeyCode = Code::KeyCode::UNKNOWN;
     };
 
     class KeyPressedEvent : public KeyEvent
     {
     public:
-        KeyPressedEvent(KeyCode keycode, int repeatCount) : KeyEvent(keycode), m_RepeatCount(repeatCount)
+        KeyPressedEvent(Code::KeyCode keycode, int repeatCount) : KeyEvent(keycode), m_RepeatCount(repeatCount)
         {
 
         }
@@ -51,7 +51,7 @@ namespace Engine
     class KeyReleasedEvent : public KeyEvent
     {
     public:
-        explicit KeyReleasedEvent(KeyCode keycode) : KeyEvent(keycode)
+        explicit KeyReleasedEvent(Code::KeyCode keycode) : KeyEvent(keycode)
         {
 
         }
@@ -71,7 +71,7 @@ namespace Engine
     class KeyTypedEvent : public KeyEvent
     {
     public:
-        explicit KeyTypedEvent(KeyCode codepoint) : KeyEvent(codepoint)
+        explicit KeyTypedEvent(Code::KeyCode codepoint) : KeyEvent(codepoint)
         {
 
         }

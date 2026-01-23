@@ -5,12 +5,14 @@
 #include "Engine/Events/KeyEvent.h"
 #include "Engine/Events/MouseEvent.h"
 
+#include "Engine/Utilities/Utilities.h"
+
 namespace Engine
 {
     std::unordered_map<int, Input::ButtonState> Input::s_KeyStates;
     std::unordered_map<int, Input::ButtonState> Input::s_MouseButtonStates;
-    Input::Vector2 Input::s_MousePosition;
-    Input::Vector2 Input::s_MouseScrollDelta;
+    Input::Vector2 Input::s_MousePosition = Input::Vector2(0.0f);
+    Input::Vector2 Input::s_MouseScrollDelta = Input::Vector2(0.0f);
     std::unordered_map<int, Input::GamepadState> Input::s_GamepadStates;
 
     void Input::OnEvent(Event& e)
@@ -27,9 +29,16 @@ namespace Engine
         l_Dispatcher.Dispatch<GamepadButtonPressedEvent>([](GamepadButtonPressedEvent& event) { return Input::OnGamepadButtonPressedEvent(event); });
         l_Dispatcher.Dispatch<GamepadButtonReleasedEvent>([](GamepadButtonReleasedEvent& event) { return Input::OnGamepadButtonReleasedEvent(event); });
         l_Dispatcher.Dispatch<GamepadAxisMovedEvent>([](GamepadAxisMovedEvent& event) { return Input::OnGamepadAxisMovedEvent(event); });
+
+        if (e.Handled)
+        {
+            TR_CORE_TRACE(e.ToString());
+
+            return;
+        }
     }
 
-    bool Input::KeyPressed(KeyCode keyCode)
+    bool Input::KeyPressed(Code::KeyCode keyCode)
     {
         const int l_KeyValue = static_cast<int>(keyCode);
         auto a_StateIter = s_KeyStates.find(l_KeyValue);
@@ -42,7 +51,7 @@ namespace Engine
         return ConsumePressed(a_StateIter->second);
     }
 
-    bool Input::KeyReleased(KeyCode keyCode)
+    bool Input::KeyReleased(Code::KeyCode keyCode)
     {
         const int l_KeyValue = static_cast<int>(keyCode);
         auto a_StateIter = s_KeyStates.find(l_KeyValue);
@@ -55,7 +64,7 @@ namespace Engine
         return ConsumeReleased(a_StateIter->second);
     }
 
-    bool Input::MouseButtonPressed(MouseCode button)
+    bool Input::MouseButtonPressed(Code::MouseCode button)
     {
         const int l_ButtonValue = static_cast<int>(button);
         auto a_StateIter = s_MouseButtonStates.find(l_ButtonValue);
@@ -68,7 +77,7 @@ namespace Engine
         return ConsumePressed(a_StateIter->second);
     }
 
-    bool Input::MouseButtonReleased(MouseCode button)
+    bool Input::MouseButtonReleased(Code::MouseCode button)
     {
         const int l_ButtonValue = static_cast<int>(button);
         auto a_StateIter = s_MouseButtonStates.find(l_ButtonValue);
@@ -92,10 +101,11 @@ namespace Engine
 
         // Scroll is stored as a delta. Clear after read so it is one-shot.
         s_MouseScrollDelta = Vector2{};
+
         return l_Delta;
     }
 
-    bool Input::GamepadButtonPressed(int gamepadId, GamepadCode button)
+    bool Input::GamepadButtonPressed(int gamepadId, Code::GamepadCode button)
     {
         const int l_ButtonValue = static_cast<int>(button);
         auto a_GamepadIter = s_GamepadStates.find(gamepadId);
@@ -115,7 +125,7 @@ namespace Engine
         return ConsumePressed(a_ButtonIter->second);
     }
 
-    bool Input::GamepadButtonReleased(int gamepadId, GamepadCode button)
+    bool Input::GamepadButtonReleased(int gamepadId, Code::GamepadCode button)
     {
         const int l_ButtonValue = static_cast<int>(button);
         auto a_GamepadIter = s_GamepadStates.find(gamepadId);
@@ -135,7 +145,7 @@ namespace Engine
         return ConsumeReleased(a_ButtonIter->second);
     }
 
-    float Input::GamepadAxis(int gamepadId, GamepadCode axis)
+    float Input::GamepadAxis(int gamepadId, Code::GamepadCode axis)
     {
         const int l_AxisValue = static_cast<int>(axis);
         auto a_GamepadIter = s_GamepadStates.find(gamepadId);
@@ -154,37 +164,42 @@ namespace Engine
         return a_AxisIter->second;
     }
 
-    Input::ButtonState& Input::AccessKeyState(KeyCode keyCode)
+    Input::ButtonState& Input::AccessKeyState(Code::KeyCode keyCode)
     {
         const int l_KeyValue = static_cast<int>(keyCode);
         auto& a_State = s_KeyStates[l_KeyValue];
+
         return a_State;
     }
 
-    Input::ButtonState& Input::AccessMouseButtonState(MouseCode button)
+    Input::ButtonState& Input::AccessMouseButtonState(Code::MouseCode button)
     {
         const int l_ButtonValue = static_cast<int>(button);
         auto& a_State = s_MouseButtonStates[l_ButtonValue];
+
         return a_State;
     }
 
     Input::GamepadState& Input::AccessGamepadState(int gamepadId)
     {
         auto& a_State = s_GamepadStates[gamepadId];
+
         return a_State;
     }
 
-    Input::ButtonState& Input::AccessGamepadButtonState(int gamepadId, GamepadCode button)
+    Input::ButtonState& Input::AccessGamepadButtonState(int gamepadId, Code::GamepadCode button)
     {
         const int l_ButtonValue = static_cast<int>(button);
         auto& a_State = s_GamepadStates[gamepadId].ButtonStates[l_ButtonValue];
+
         return a_State;
     }
 
-    float& Input::AccessGamepadAxisState(int gamepadId, GamepadCode axis)
+    float& Input::AccessGamepadAxisState(int gamepadId, Code::GamepadCode axis)
     {
         const int l_AxisValue = static_cast<int>(axis);
         auto& a_Value = s_GamepadStates[gamepadId].AxisValues[l_AxisValue];
+
         return a_Value;
     }
 
@@ -192,6 +207,7 @@ namespace Engine
     {
         const bool l_Pressed = state.Pressed;
         state.Pressed = false;
+
         return l_Pressed;
     }
 
@@ -199,6 +215,7 @@ namespace Engine
     {
         const bool l_Released = state.Released;
         state.Released = false;
+
         return l_Released;
     }
 
@@ -255,8 +272,8 @@ namespace Engine
 
     bool Input::OnMouseMovedEvent(MouseMovedEvent& e)
     {
-        s_MousePosition.m_X = e.GetX();
-        s_MousePosition.m_Y = e.GetY();
+        s_MousePosition.x = e.GetX();
+        s_MousePosition.y = e.GetY();
 
         return false;
     }
@@ -264,8 +281,8 @@ namespace Engine
     bool Input::OnMouseScrolledEvent(MouseScrolledEvent& e)
     {
         // Store scroll delta, accumulate in case multiple events arrive per frame.
-        s_MouseScrollDelta.m_X += e.GetXOffset();
-        s_MouseScrollDelta.m_Y += e.GetYOffset();
+        s_MouseScrollDelta.x += e.GetXOffset();
+        s_MouseScrollDelta.y += e.GetYOffset();
 
         return false;
     }

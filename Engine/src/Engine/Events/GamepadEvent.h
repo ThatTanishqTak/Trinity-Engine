@@ -74,23 +74,23 @@ namespace Engine
     class GamepadButtonEvent : public GamepadEvent
     {
     public:
-        GamepadCode GetButton() const { return m_Button; }
+        Code::GamepadCode GetButton() const { return m_Button; }
 
         TR_EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryGamepad)
 
     protected:
-        GamepadButtonEvent(int gamepadID, GamepadCode button) : GamepadEvent(gamepadID), m_Button(button)
+        GamepadButtonEvent(int gamepadID, Code::GamepadCode button) : GamepadEvent(gamepadID), m_Button(button)
         {
 
         }
 
-        GamepadCode m_Button = GamepadCode::TR_BUTTONA;
+        Code::GamepadCode m_Button = Code::GamepadCode::TR_BUTTON_A;
     };
 
     class GamepadButtonPressedEvent : public GamepadButtonEvent
     {
     public:
-        GamepadButtonPressedEvent(int gamepadID, GamepadCode button) : GamepadButtonEvent(gamepadID, button)
+        GamepadButtonPressedEvent(int gamepadID, Code::GamepadCode button) : GamepadButtonEvent(gamepadID, button)
         {
 
         }
@@ -110,7 +110,7 @@ namespace Engine
     class GamepadButtonReleasedEvent : public GamepadButtonEvent
     {
     public:
-        GamepadButtonReleasedEvent(int gamepadID, GamepadCode button) : GamepadButtonEvent(gamepadID, button)
+        GamepadButtonReleasedEvent(int gamepadID, Code::GamepadCode button) : GamepadButtonEvent(gamepadID, button)
         {
 
         }
@@ -130,12 +130,12 @@ namespace Engine
     class GamepadAxisMovedEvent : public GamepadEvent
     {
     public:
-        GamepadAxisMovedEvent(int gamepadID, GamepadCode axis, float value) : GamepadEvent(gamepadID), m_Axis(axis), m_Value(value)
+        GamepadAxisMovedEvent(int gamepadID, Code::GamepadCode axis, float value) : GamepadEvent(gamepadID), m_Axis(axis), m_Value(value)
         {
 
         }
 
-        GamepadCode GetAxis() const { return m_Axis; }
+        Code::GamepadCode GetAxis() const { return m_Axis; }
         float GetValue() const { return m_Value; }
 
         std::string ToString() const override
@@ -151,7 +151,7 @@ namespace Engine
             TR_EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryGamepad)
 
     private:
-        GamepadCode m_Axis = GamepadCode::TR_AXISLEFTX;
+        Code::GamepadCode m_Axis = Code::GamepadCode::TR_AXIS_LEFTX;
         float m_Value = 0.0f;
     };
 }

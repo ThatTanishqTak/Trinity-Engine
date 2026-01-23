@@ -2,6 +2,8 @@
 
 #include "Engine/Input/InputCodes.h"
 
+#include <glm/vec2.hpp>
+
 #include <unordered_map>
 
 namespace Engine
@@ -22,25 +24,21 @@ namespace Engine
     class Input
     {
     public:
-        struct Vector2
-        {
-            float m_X = 0.0f;
-            float m_Y = 0.0f;
-        };
+        using Vector2 = glm::vec2;
 
         static void OnEvent(Event& e);
 
-        static bool KeyPressed(KeyCode keyCode);
-        static bool KeyReleased(KeyCode keyCode);
+        static bool KeyPressed(Code::KeyCode keyCode);
+        static bool KeyReleased(Code::KeyCode keyCode);
 
-        static bool MouseButtonPressed(MouseCode button);
-        static bool MouseButtonReleased(MouseCode button);
+        static bool MouseButtonPressed(Code::MouseCode button);
+        static bool MouseButtonReleased(Code::MouseCode button);
         static Vector2 MousePosition();
         static Vector2 MouseScrolled();
 
-        static bool GamepadButtonPressed(int gamepadID, GamepadCode button);
-        static bool GamepadButtonReleased(int gamepadID, GamepadCode button);
-        static float GamepadAxis(int gamepadID, GamepadCode axis);
+        static bool GamepadButtonPressed(int gamepadID, Code::GamepadCode button);
+        static bool GamepadButtonReleased(int gamepadID, Code::GamepadCode button);
+        static float GamepadAxis(int gamepadID, Code::GamepadCode axis);
 
     private:
         struct ButtonState
@@ -57,11 +55,11 @@ namespace Engine
             std::unordered_map<int, float> AxisValues;
         };
 
-        static ButtonState& AccessKeyState(KeyCode keyCode);
-        static ButtonState& AccessMouseButtonState(MouseCode button);
+        static ButtonState& AccessKeyState(Code::KeyCode keyCode);
+        static ButtonState& AccessMouseButtonState(Code::MouseCode button);
         static GamepadState& AccessGamepadState(int gamepadID);
-        static ButtonState& AccessGamepadButtonState(int gamepadID, GamepadCode button);
-        static float& AccessGamepadAxisState(int gamepadID, GamepadCode axis);
+        static ButtonState& AccessGamepadButtonState(int gamepadID, Code::GamepadCode button);
+        static float& AccessGamepadAxisState(int gamepadID, Code::GamepadCode axis);
 
         static bool ConsumePressed(ButtonState& state);
         static bool ConsumeReleased(ButtonState& state);

@@ -64,23 +64,23 @@ namespace Engine
     class MouseButtonEvent : public Event
     {
     public:
-        MouseCode GetMouseButton() const { return m_Button; }
+        Code::MouseCode GetMouseButton() const { return m_Button; }
 
         TR_EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryMouse | EventCategoryMouseButton)
 
     protected:
-        explicit MouseButtonEvent(MouseCode button) : m_Button(button)
+        explicit MouseButtonEvent(Code::MouseCode button) : m_Button(button)
         {
 
         }
 
-        MouseCode m_Button = MouseCode::TR_BUTTON0;
+        Code::MouseCode m_Button = Code::MouseCode::TR_BUTTON_0;
     };
 
     class MouseButtonPressedEvent : public MouseButtonEvent
     {
     public:
-        explicit MouseButtonPressedEvent(MouseCode button) : MouseButtonEvent(button)
+        explicit MouseButtonPressedEvent(Code::MouseCode button) : MouseButtonEvent(button)
         {
 
         }
@@ -100,7 +100,7 @@ namespace Engine
     class MouseButtonReleasedEvent : public MouseButtonEvent
     {
     public:
-        explicit MouseButtonReleasedEvent(MouseCode button) : MouseButtonEvent(button)
+        explicit MouseButtonReleasedEvent(Code::MouseCode button) : MouseButtonEvent(button)
         {
 
         }

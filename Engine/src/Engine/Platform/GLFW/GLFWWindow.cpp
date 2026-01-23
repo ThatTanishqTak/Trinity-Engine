@@ -16,19 +16,19 @@ namespace Engine
     static bool s_GLFWInitialized = false;
     static uint32_t s_GLFWWindowCount = 0;
 
-    static KeyCode ToKeyCode(int key)
+    static Code::KeyCode ToKeyCode(int key)
     {
-        return static_cast<KeyCode>(key);
+        return static_cast<Code::KeyCode>(key);
     }
 
-    static MouseCode ToMouseCode(int button)
+    static Code::MouseCode ToMouseCode(int button)
     {
-        return static_cast<MouseCode>(button);
+        return static_cast<Code::MouseCode>(button);
     }
 
-    static GamepadCode ToGamepadCode(int control)
+    static Code::GamepadCode ToGamepadCode(int control)
     {
-        return static_cast<GamepadCode>(control);
+        return static_cast<Code::GamepadCode>(control);
     }
 
     static void GLFWErrorCallback(int error, const char* description)
@@ -165,7 +165,7 @@ namespace Engine
             {
                 case GLFW_PRESS:
                 {
-                    const KeyCode l_KeyCode = ToKeyCode(key);
+                    const Code::KeyCode l_KeyCode = ToKeyCode(key);
                     KeyPressedEvent l_Event(l_KeyCode, 0);
                     a_Data.EventCallback(l_Event);
 
@@ -173,7 +173,7 @@ namespace Engine
                 }
                 case GLFW_RELEASE:
                 {
-                    const KeyCode l_KeyCode = ToKeyCode(key);
+                    const Code::KeyCode l_KeyCode = ToKeyCode(key);
                     KeyReleasedEvent l_Event(l_KeyCode);
                     a_Data.EventCallback(l_Event);
 
@@ -181,7 +181,7 @@ namespace Engine
                 }
                 case GLFW_REPEAT:
                 {
-                    const KeyCode l_KeyCode = ToKeyCode(key);
+                    const Code::KeyCode l_KeyCode = ToKeyCode(key);
                     KeyPressedEvent l_Event(l_KeyCode, 1);
                     a_Data.EventCallback(l_Event);
 
@@ -201,7 +201,7 @@ namespace Engine
                 return;
             }
 
-            const KeyCode l_KeyCode = ToKeyCode((int)codepoint);
+            const Code::KeyCode l_KeyCode = ToKeyCode((int)codepoint);
             KeyTypedEvent l_Event(l_KeyCode);
             a_Data.EventCallback(l_Event);
         });
@@ -221,7 +221,7 @@ namespace Engine
             {
                 case GLFW_PRESS:
                 {
-                    const MouseCode l_ButtonCode = ToMouseCode(button);
+                    const Code::MouseCode l_ButtonCode = ToMouseCode(button);
                     MouseButtonPressedEvent l_Event(l_ButtonCode);
                     a_Data.EventCallback(l_Event);
 
@@ -229,7 +229,7 @@ namespace Engine
                 }
                 case GLFW_RELEASE:
                 {
-                    const MouseCode l_ButtonCode = ToMouseCode(button);
+                    const Code::MouseCode l_ButtonCode = ToMouseCode(button);
                     MouseButtonReleasedEvent l_Event(l_ButtonCode);
                     a_Data.EventCallback(l_Event);
 
@@ -369,13 +369,13 @@ namespace Engine
                 {
                     if (l_NewValue == GLFW_PRESS)
                     {
-                        const GamepadCode l_ButtonCode = ToGamepadCode(it_Button);
+                        const Code::GamepadCode l_ButtonCode = ToGamepadCode(it_Button);
                         GamepadButtonPressedEvent l_Event(it_GamepadID, l_ButtonCode);
                         m_Data.EventCallback(l_Event);
                     }
                     else
                     {
-                        const GamepadCode l_ButtonCode = ToGamepadCode(it_Button);
+                        const Code::GamepadCode l_ButtonCode = ToGamepadCode(it_Button);
                         GamepadButtonReleasedEvent l_Event(it_GamepadID, l_ButtonCode);
                         m_Data.EventCallback(l_Event);
                     }
@@ -399,7 +399,7 @@ namespace Engine
 
                 if (l_GamepadData.HasState && std::fabs(l_Value - l_OldValue) > l_Epsilon)
                 {
-                    const GamepadCode l_AxisCode = ToGamepadCode(it_Axis);
+                    const Code::GamepadCode l_AxisCode = ToGamepadCode(it_Axis);
                     GamepadAxisMovedEvent l_Event(it_GamepadID, l_AxisCode, l_Value);
                     m_Data.EventCallback(l_Event);
                 }

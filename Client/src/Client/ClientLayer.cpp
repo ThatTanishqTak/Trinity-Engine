@@ -3,6 +3,8 @@
 #include "Engine/Utilities/Utilities.h"
 #include "Engine/Application/Application.h"
 
+#include "Engine/Input/Input.h"
+
 ClientLayer::ClientLayer() : Engine::Layer("ClientLayer")
 {
 
@@ -23,6 +25,11 @@ void ClientLayer::OnShutdown()
 void ClientLayer::OnUpdate(float deltaTime)
 {
     (void)deltaTime;
+
+    if (Engine::Input::KeyPressed(Engine::Code::KeyCode::TR_KEY_W))
+    {
+        TR_TRACE("W was pressed");
+    }
 }
 
 void ClientLayer::OnRender()

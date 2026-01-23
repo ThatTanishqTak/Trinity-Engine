@@ -21,7 +21,6 @@ namespace Engine
         s_Instance = this;
 
         m_Window = Window::Create();
-        m_Window->Initialize();
         m_Window->SetEventCallback([this](Event& e)
         {
             OnEvent(e);
@@ -50,13 +49,6 @@ namespace Engine
         EventDispatcher dispatcher(e);
         dispatcher.Dispatch<WindowCloseEvent>([this](WindowCloseEvent& ev) { return OnWindowClose(ev); });
         dispatcher.Dispatch<WindowResizeEvent>([this](WindowResizeEvent& ev) { return OnWindowResize(ev); });
-        dispatcher.Dispatch<KeyPressedEvent>([this](KeyPressedEvent& ev) {return OnKeyPressed(ev); });
-        dispatcher.Dispatch<KeyReleasedEvent>([this](KeyReleasedEvent& ev) {return OnKeyReleased(ev); });
-        dispatcher.Dispatch<KeyTypedEvent>([this](KeyTypedEvent& ev) {return OnKeyTyped(ev); });
-        dispatcher.Dispatch<MouseMovedEvent>([this](MouseMovedEvent& ev) {return OnMouseMoved(ev); });
-        dispatcher.Dispatch<MouseScrolledEvent>([this](MouseScrolledEvent& ev) {return OnMouseScrolled(ev); });
-        dispatcher.Dispatch<MouseButtonPressedEvent>([this](MouseButtonPressedEvent& ev) {return OnMouseButtonPressed(ev); });
-        dispatcher.Dispatch<MouseButtonReleasedEvent>([this](MouseButtonReleasedEvent& ev) {return OnMouseButtonReleased(ev); });
 
         // Layers get events from top to bottom (overlays first).
         for (auto it = m_LayerStack.end(); it != m_LayerStack.begin(); )
@@ -97,55 +89,6 @@ namespace Engine
         {
             m_Renderer->OnResize(l_Width, l_Height);
         }
-
-        return false;
-    }
-
-    bool Application::OnKeyPressed(KeyPressedEvent& e)
-    {
-        TR_CORE_TRACE("{}", e.ToString());
-
-        return false;
-    }
-
-    bool Application::OnKeyReleased(KeyReleasedEvent& e)
-    {
-        TR_CORE_TRACE("{}", e.ToString());
-
-        return false;
-    }
-
-    bool Application::OnKeyTyped(KeyTypedEvent& e)
-    {
-        TR_CORE_TRACE("{}", e.ToString());
-
-        return false;
-    }
-
-    bool Application::OnMouseMoved(MouseMovedEvent& e)
-    {
-        TR_CORE_TRACE("{}", e.ToString());
-
-        return false;
-    }
-
-    bool Application::OnMouseScrolled(MouseScrolledEvent& e)
-    {
-        TR_CORE_TRACE("{}", e.ToString());
-
-        return false;
-    }
-
-    bool Application::OnMouseButtonPressed(MouseButtonPressedEvent& e)
-    {
-        TR_CORE_TRACE("{}", e.ToString());
-
-        return false;
-    }
-
-    bool Application::OnMouseButtonReleased(MouseButtonReleasedEvent& e)
-    {
-        TR_CORE_TRACE("{}", e.ToString());
 
         return false;
     }
