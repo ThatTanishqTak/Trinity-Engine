@@ -20,7 +20,7 @@ namespace Engine
 
         }
 
-        KeyCode m_KeyCode = KeyCode::Unknown;
+        KeyCode m_KeyCode = KeyCode::UNKNOWN;
     };
 
     class KeyPressedEvent : public KeyEvent

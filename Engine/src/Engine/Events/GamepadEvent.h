@@ -84,7 +84,7 @@ namespace Engine
 
         }
 
-        GamepadCode m_Button = GamepadCode::ButtonA;
+        GamepadCode m_Button = GamepadCode::TR_BUTTONA;
     };
 
     class GamepadButtonPressedEvent : public GamepadButtonEvent
@@ -151,7 +151,7 @@ namespace Engine
             TR_EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryGamepad)
 
     private:
-        GamepadCode m_Axis = GamepadCode::AxisLeftX;
+        GamepadCode m_Axis = GamepadCode::TR_AXISLEFTX;
         float m_Value = 0.0f;
     };
 }

@@ -74,7 +74,7 @@ namespace Engine
 
         }
 
-        MouseCode m_Button = MouseCode::Button0;
+        MouseCode m_Button = MouseCode::TR_BUTTON0;
     };
 
     class MouseButtonPressedEvent : public MouseButtonEvent

@@ -36,7 +36,7 @@ namespace Engine
         TR_CORE_ERROR("GLFW Error ({0}): {1}", error, description ? description : "Unknown");
     }
 
-    //-------------------------------------------------------------------------------------------------------
+    //-------------------------------------------------------------------------------------------------------//
 
     GLFWWindow::GLFWWindow(const WindowProperties& properties)
     {

@@ -12,6 +12,14 @@ namespace Engine
     class Event;
     class WindowCloseEvent;
     class WindowResizeEvent;
+    class KeyEvent;
+    class KeyPressedEvent;
+    class KeyReleasedEvent;
+    class KeyTypedEvent;
+    class MouseMovedEvent;
+    class MouseScrolledEvent;
+    class MouseButtonPressedEvent;
+    class MouseButtonReleasedEvent;
 
     class Application
     {
@@ -32,6 +40,13 @@ namespace Engine
 
         bool OnWindowClose(WindowCloseEvent& e);
         bool OnWindowResize(WindowResizeEvent& e);
+        bool OnKeyPressed(KeyPressedEvent& e);
+        bool OnKeyReleased(KeyReleasedEvent& e);
+        bool OnKeyTyped(KeyTypedEvent& e);
+        bool OnMouseMoved(MouseMovedEvent& e);
+        bool OnMouseScrolled(MouseScrolledEvent& e);
+        bool OnMouseButtonPressed(MouseButtonPressedEvent& e);
+        bool OnMouseButtonReleased(MouseButtonReleasedEvent& e);
 
     private:
         bool m_Running = true;
