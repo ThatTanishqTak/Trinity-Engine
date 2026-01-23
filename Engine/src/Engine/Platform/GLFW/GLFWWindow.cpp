@@ -206,8 +206,7 @@ namespace Engine
                 return;
             }
 
-            const Code::KeyCode l_KeyCode = ToKeyCode((int)codepoint);
-            KeyTypedEvent l_Event(l_KeyCode);
+            KeyTypedEvent l_Event(static_cast<uint32_t>(codepoint));
             a_Data.EventCallback(l_Event);
         });
 

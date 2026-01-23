@@ -128,6 +128,8 @@ namespace Engine
         bool m_FrameInProgress = false;
         bool m_Initialized = false;
 
+        bool m_LastVSync = true;
+
     private:
 #ifdef TR_ENABLE_VK_VALIDATION
         const bool m_EnableValidationLayers = true;

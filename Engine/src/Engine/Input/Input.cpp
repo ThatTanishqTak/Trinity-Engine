@@ -5,8 +5,6 @@
 #include "Engine/Events/KeyEvent.h"
 #include "Engine/Events/MouseEvent.h"
 
-#include "Engine/Utilities/Utilities.h"
-
 namespace Engine
 {
     std::unordered_map<int, Input::ButtonState> Input::s_KeyStates;
@@ -14,6 +12,34 @@ namespace Engine
     Input::Vector2 Input::s_MousePosition = Input::Vector2(0.0f);
     Input::Vector2 Input::s_MouseScrollDelta = Input::Vector2(0.0f);
     std::unordered_map<int, Input::GamepadState> Input::s_GamepadStates;
+
+    void Input::BeginFrame()
+    {
+        // Clear one-frame edges
+        for (auto& [it_Key, it_State] : s_KeyStates)
+        {
+            it_State.Pressed = false;
+            it_State.Released = false;
+        }
+
+        for (auto& [it_Key, it_State] : s_MouseButtonStates)
+        {
+            it_State.Pressed = false;
+            it_State.Released = false;
+        }
+
+        for (auto& [it_Button, it_Gamepad] : s_GamepadStates)
+        {
+            for (auto& [it_Button, it_State] : it_Gamepad.ButtonStates)
+            {
+                it_State.Pressed = false;
+                it_State.Released = false;
+            }
+        }
+
+        // This frame's scroll starts at 0
+        s_MouseScrollDelta = Vector2(0.0f);
+    }
 
     void Input::OnEvent(Event& e)
     {
@@ -24,66 +50,63 @@ namespace Engine
         l_Dispatcher.Dispatch<MouseButtonReleasedEvent>([](MouseButtonReleasedEvent& event) { return Input::OnMouseButtonReleasedEvent(event); });
         l_Dispatcher.Dispatch<MouseMovedEvent>([](MouseMovedEvent& event) { return Input::OnMouseMovedEvent(event); });
         l_Dispatcher.Dispatch<MouseScrolledEvent>([](MouseScrolledEvent& event) { return Input::OnMouseScrolledEvent(event); });
+
         l_Dispatcher.Dispatch<GamepadConnectedEvent>([](GamepadConnectedEvent& event) { return Input::OnGamepadConnectedEvent(event); });
         l_Dispatcher.Dispatch<GamepadDisconnectedEvent>([](GamepadDisconnectedEvent& event) { return Input::OnGamepadDisconnectedEvent(event); });
         l_Dispatcher.Dispatch<GamepadButtonPressedEvent>([](GamepadButtonPressedEvent& event) { return Input::OnGamepadButtonPressedEvent(event); });
         l_Dispatcher.Dispatch<GamepadButtonReleasedEvent>([](GamepadButtonReleasedEvent& event) { return Input::OnGamepadButtonReleasedEvent(event); });
         l_Dispatcher.Dispatch<GamepadAxisMovedEvent>([](GamepadAxisMovedEvent& event) { return Input::OnGamepadAxisMovedEvent(event); });
+    }
 
-        if (e.Handled)
-        {
-            TR_CORE_TRACE(e.ToString());
+    // ---------------- Keyboard ----------------
 
-            return;
-        }
+    bool Input::KeyDown(Code::KeyCode keyCode)
+    {
+        const int l_KeyValue = static_cast<int>(keyCode);
+        auto a_Index = s_KeyStates.find(l_KeyValue);
+
+        return (a_Index != s_KeyStates.end()) ? a_Index->second.IsDown : false;
     }
 
     bool Input::KeyPressed(Code::KeyCode keyCode)
     {
         const int l_KeyValue = static_cast<int>(keyCode);
-        auto a_StateInterator = s_KeyStates.find(l_KeyValue);
-        if (a_StateInterator == s_KeyStates.end())
-        {
-            return false;
-        }
+        auto a_Index = s_KeyStates.find(l_KeyValue);
 
-        return ConsumePressed(a_StateInterator->second);
+        return (a_Index != s_KeyStates.end()) ? a_Index->second.Pressed : false;
     }
 
     bool Input::KeyReleased(Code::KeyCode keyCode)
     {
         const int l_KeyValue = static_cast<int>(keyCode);
-        auto a_StateInterator = s_KeyStates.find(l_KeyValue);
-        if (a_StateInterator == s_KeyStates.end())
-        {
-            return false;
-        }
+        auto a_Index = s_KeyStates.find(l_KeyValue);
 
-        return ConsumeReleased(a_StateInterator->second);
+        return (a_Index != s_KeyStates.end()) ? a_Index->second.Released : false;
+    }
+
+    // ---------------- Mouse ----------------
+
+    bool Input::MouseButtonDown(Code::MouseCode button)
+    {
+        const int l_ButtonValue = static_cast<int>(button);
+        auto a_Index = s_MouseButtonStates.find(l_ButtonValue);
+
+        return (a_Index != s_MouseButtonStates.end()) ? a_Index->second.IsDown : false;
     }
 
     bool Input::MouseButtonPressed(Code::MouseCode button)
     {
         const int l_ButtonValue = static_cast<int>(button);
-        auto a_StateInterator = s_MouseButtonStates.find(l_ButtonValue);
-        if (a_StateInterator == s_MouseButtonStates.end())
-        {
-            return false;
-        }
-
-        return ConsumePressed(a_StateInterator->second);
+        auto a_Index = s_MouseButtonStates.find(l_ButtonValue);
+        return (a_Index != s_MouseButtonStates.end()) ? a_Index->second.Pressed : false;
     }
 
     bool Input::MouseButtonReleased(Code::MouseCode button)
     {
         const int l_ButtonValue = static_cast<int>(button);
-        auto a_StateInterator = s_MouseButtonStates.find(l_ButtonValue);
-        if (a_StateInterator == s_MouseButtonStates.end())
-        {
-            return false;
-        }
+        auto a_Index = s_MouseButtonStates.find(l_ButtonValue);
 
-        return ConsumeReleased(a_StateInterator->second);
+        return (a_Index != s_MouseButtonStates.end()) ? a_Index->second.Released : false;
     }
 
     Input::Vector2 Input::MousePosition()
@@ -93,135 +116,120 @@ namespace Engine
 
     Input::Vector2 Input::MouseScrolled()
     {
-        const Vector2 l_Delta = s_MouseScrollDelta;
-        s_MouseScrollDelta = Vector2{};
-
-        return l_Delta;
+        return s_MouseScrollDelta;
     }
 
-    bool Input::GamepadButtonPressed(int gamepadId, Code::GamepadButton button)
+    // ---------------- Gamepad ----------------
+
+    bool Input::GamepadButtonDown(int gamepadID, Code::GamepadButton button)
     {
+        auto a_GamepadIndex = s_GamepadStates.find(gamepadID);
+        if (a_GamepadIndex == s_GamepadStates.end() || !a_GamepadIndex->second.Connected)
+        {
+            return false;
+        }
+
         const int l_ButtonValue = static_cast<int>(button);
-        auto a_GamepadInterator = s_GamepadStates.find(gamepadId);
-        if (a_GamepadInterator == s_GamepadStates.end() || !a_GamepadInterator->second.Connected)
-        {
-            return false;
-        }
+        auto& a_ButtonMap = a_GamepadIndex->second.ButtonStates;
+        auto a_ButtonIndex = a_ButtonMap.find(l_ButtonValue);
 
-        auto& a_ButtonStates = a_GamepadInterator->second.ButtonStates;
-        auto a_ButtonInterator = a_ButtonStates.find(l_ButtonValue);
-        if (a_ButtonInterator == a_ButtonStates.end())
-        {
-            return false;
-        }
-
-        return ConsumePressed(a_ButtonInterator->second);
+        return (a_ButtonIndex != a_ButtonMap.end()) ? a_ButtonIndex->second.IsDown : false;
     }
 
-    bool Input::GamepadButtonReleased(int gamepadId, Code::GamepadButton button)
+    bool Input::GamepadButtonPressed(int gamepadID, Code::GamepadButton button)
     {
+        auto a_GamepadIndex = s_GamepadStates.find(gamepadID);
+        if (a_GamepadIndex == s_GamepadStates.end() || !a_GamepadIndex->second.Connected)
+        {
+            return false;
+        }
+
         const int l_ButtonValue = static_cast<int>(button);
-        auto a_GamepadInterator = s_GamepadStates.find(gamepadId);
-        if (a_GamepadInterator == s_GamepadStates.end() || !a_GamepadInterator->second.Connected)
-        {
-            return false;
-        }
+        auto& a_ButtonMap = a_GamepadIndex->second.ButtonStates;
+        auto a_ButtonIndex = a_ButtonMap.find(l_ButtonValue);
 
-        auto& a_ButtonStates = a_GamepadInterator->second.ButtonStates;
-        auto a_ButtonInterator = a_ButtonStates.find(l_ButtonValue);
-        if (a_ButtonInterator == a_ButtonStates.end())
-        {
-            return false;
-        }
-
-        return ConsumeReleased(a_ButtonInterator->second);
+        return (a_ButtonIndex != a_ButtonMap.end()) ? a_ButtonIndex->second.Pressed : false;
     }
 
-    float Input::GamepadAxis(int gamepadId, Code::GamepadAxis axis)
+    bool Input::GamepadButtonReleased(int gamepadID, Code::GamepadButton button)
     {
+        auto a_GamepadIndex = s_GamepadStates.find(gamepadID);
+        if (a_GamepadIndex == s_GamepadStates.end() || !a_GamepadIndex->second.Connected)
+        {
+            return false;
+        }
+
+        const int l_ButtonValue = static_cast<int>(button);
+        auto& a_ButtonMap = a_GamepadIndex->second.ButtonStates;
+        auto a_ButtonIndex = a_ButtonMap.find(l_ButtonValue);
+
+        return (a_ButtonIndex != a_ButtonMap.end()) ? a_ButtonIndex->second.Released : false;
+    }
+
+    float Input::GamepadAxis(int gamepadID, Code::GamepadAxis axis)
+    {
+        auto a_GamepadIndex = s_GamepadStates.find(gamepadID);
+        if (a_GamepadIndex == s_GamepadStates.end() || !a_GamepadIndex->second.Connected)
+        {
+            return 0.0f;
+        }
+
         const int l_AxisValue = static_cast<int>(axis);
-        auto a_GamepadInterator = s_GamepadStates.find(gamepadId);
-        if (a_GamepadInterator == s_GamepadStates.end() || !a_GamepadInterator->second.Connected)
-        {
-            return 0.0f;
-        }
+        auto& axisMap = a_GamepadIndex->second.AxisValues;
+        auto axisIt = axisMap.find(l_AxisValue);
 
-        auto& a_AxisValues = a_GamepadInterator->second.AxisValues;
-        auto a_AxisInterator = a_AxisValues.find(l_AxisValue);
-        if (a_AxisInterator == a_AxisValues.end())
-        {
-            return 0.0f;
-        }
-
-        return a_AxisInterator->second;
+        return (axisIt != axisMap.end()) ? axisIt->second : 0.0f;
     }
+
+    // ---------------- Internal access ----------------
 
     Input::ButtonState& Input::AccessKeyState(Code::KeyCode keyCode)
     {
         const int l_KeyValue = static_cast<int>(keyCode);
-        auto& a_State = s_KeyStates[l_KeyValue];
-
-        return a_State;
+        
+        return s_KeyStates[l_KeyValue];
     }
 
     Input::ButtonState& Input::AccessMouseButtonState(Code::MouseCode button)
     {
         const int l_ButtonValue = static_cast<int>(button);
-        auto& a_State = s_MouseButtonStates[l_ButtonValue];
 
-        return a_State;
+        return s_MouseButtonStates[l_ButtonValue];
     }
 
-    Input::GamepadState& Input::AccessGamepadState(int gamepadId)
+    Input::GamepadState& Input::AccessGamepadState(int gamepadID)
     {
-        auto& a_State = s_GamepadStates[gamepadId];
-
-        return a_State;
+        return s_GamepadStates[gamepadID];
     }
 
-    Input::ButtonState& Input::AccessGamepadButtonState(int gamepadId, Code::GamepadButton button)
+    Input::ButtonState& Input::AccessGamepadButtonState(int gamepadID, Code::GamepadButton button)
     {
         const int l_ButtonValue = static_cast<int>(button);
-        auto& a_State = s_GamepadStates[gamepadId].ButtonStates[l_ButtonValue];
-
-        return a_State;
+        
+        return s_GamepadStates[gamepadID].ButtonStates[l_ButtonValue];
     }
 
-    float& Input::AccessGamepadAxisState(int gamepadId, Code::GamepadAxis axis)
+    float& Input::AccessGamepadAxisState(int gamepadID, Code::GamepadAxis axis)
     {
         const int l_AxisValue = static_cast<int>(axis);
-        auto& a_Value = s_GamepadStates[gamepadId].AxisValues[l_AxisValue];
 
-        return a_Value;
+        return s_GamepadStates[gamepadID].AxisValues[l_AxisValue];
     }
 
-    bool Input::ConsumePressed(ButtonState& state)
-    {
-        const bool l_Pressed = state.Pressed;
-        state.Pressed = false;
-
-        return l_Pressed;
-    }
-
-    bool Input::ConsumeReleased(ButtonState& state)
-    {
-        const bool l_Released = state.Released;
-        state.Released = false;
-
-        return l_Released;
-    }
+    // ---------------- Event handlers ----------------
 
     bool Input::OnKeyPressedEvent(KeyPressedEvent& e)
     {
         ButtonState& l_State = AccessKeyState(e.GetKeyCode());
 
-        l_State.IsDown = true;
-        if (e.GetRepeatCount() == 0)
+        // Only mark Pressed on the initial press (not repeats)
+        if (e.GetRepeatCount() == 0 && !l_State.IsDown)
         {
             l_State.Pressed = true;
-            l_State.Released = false;
         }
 
+        l_State.IsDown = true;
+        
         return false;
     }
 
@@ -231,8 +239,7 @@ namespace Engine
 
         l_State.IsDown = false;
         l_State.Released = true;
-        l_State.Pressed = false;
-
+        
         return false;
     }
 
@@ -240,9 +247,12 @@ namespace Engine
     {
         ButtonState& l_State = AccessMouseButtonState(e.GetMouseButton());
 
+        if (!l_State.IsDown)
+        {
+            l_State.Pressed = true;
+        }
+
         l_State.IsDown = true;
-        l_State.Pressed = true;
-        l_State.Released = false;
 
         return false;
     }
@@ -253,8 +263,7 @@ namespace Engine
 
         l_State.IsDown = false;
         l_State.Released = true;
-        l_State.Pressed = false;
-
+        
         return false;
     }
 
@@ -270,7 +279,7 @@ namespace Engine
     {
         s_MouseScrollDelta.x += e.GetXOffset();
         s_MouseScrollDelta.y += e.GetYOffset();
-
+        
         return false;
     }
 
@@ -284,14 +293,14 @@ namespace Engine
 
     bool Input::OnGamepadDisconnectedEvent(GamepadDisconnectedEvent& e)
     {
-        auto a_GamepadInterator = s_GamepadStates.find(e.GetGamepadID());
-        if (a_GamepadInterator != s_GamepadStates.end())
+        auto a_Index = s_GamepadStates.find(e.GetGamepadID());
+        if (a_Index != s_GamepadStates.end())
         {
-            a_GamepadInterator->second.Connected = false;
-            a_GamepadInterator->second.ButtonStates.clear();
-            a_GamepadInterator->second.AxisValues.clear();
+            a_Index->second.Connected = false;
+            a_Index->second.ButtonStates.clear();
+            a_Index->second.AxisValues.clear();
         }
-
+        
         return false;
     }
 
@@ -299,10 +308,12 @@ namespace Engine
     {
         ButtonState& l_State = AccessGamepadButtonState(e.GetGamepadID(), e.GetButton());
 
+        if (!l_State.IsDown)
+        {
+            l_State.Pressed = true;
+        }
         l_State.IsDown = true;
-        l_State.Pressed = true;
-        l_State.Released = false;
-
+        
         return false;
     }
 
@@ -312,8 +323,7 @@ namespace Engine
 
         l_State.IsDown = false;
         l_State.Released = true;
-        l_State.Pressed = false;
-
+        
         return false;
     }
 
@@ -321,7 +331,7 @@ namespace Engine
     {
         float& l_Value = AccessGamepadAxisState(e.GetGamepadID(), e.GetAxis());
         l_Value = e.GetValue();
-
+ 
         return false;
     }
 }

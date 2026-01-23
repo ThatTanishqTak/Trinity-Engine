@@ -30,6 +30,7 @@ namespace Engine
 
         m_Window = &window;
         m_GLFWWindow = (GLFWwindow*)window.GetNativeWindow();
+        m_LastVSync = window.IsVSync();
 
         try
         {
@@ -158,8 +159,20 @@ namespace Engine
 
     void VulkanRenderer::BeginFrame()
     {
-        if (!m_Initialized)
+        const bool l_CurrentVSync = (m_Window ? m_Window->IsVSync() : true);
+        if (l_CurrentVSync != m_LastVSync)
         {
+            int l_Width = 0;
+            int l_Height = 0;
+            glfwGetFramebufferSize(m_GLFWWindow, &l_Width, &l_Height);
+
+            if (l_Width > 0 && l_Height > 0)
+            {
+                RecreateSwapchain();
+            }
+
+            m_FrameInProgress = false;
+
             return;
         }
 
@@ -171,18 +184,11 @@ namespace Engine
         if (l_Acquire == VK_ERROR_OUT_OF_DATE_KHR)
         {
             RecreateSwapchain();
-     
+
             return;
         }
 
-        if (l_Acquire == VK_SUBOPTIMAL_KHR)
-        {
-            m_FramebufferResized = true;
-        }
-        else
-        {
-            VKCheck(l_Acquire, "vkAcquireNextImageKHR");
-        }
+        VKCheck(l_Acquire, "vkAcquireNextImageKHR");
 
         m_FrameInProgress = true;
 
@@ -499,15 +505,48 @@ namespace Engine
 
     VkPresentModeKHR VulkanRenderer::ChoosePresentMode(const std::vector<VkPresentModeKHR>& modes) const
     {
-        for (auto it_Mode : modes)
+        const bool l_VSync = (m_Window ? m_Window->IsVSync() : true);
+
+        auto Has = [&](VkPresentModeKHR mode)
         {
-            if (it_Mode == VK_PRESENT_MODE_MAILBOX_KHR)
+            return std::find(modes.begin(), modes.end(), mode) != modes.end();
+        };
+
+        // VSync OFF: prefer immediate (tearing allowed), fall back sensibly.
+        if (!l_VSync)
+        {
+            if (Has(VK_PRESENT_MODE_IMMEDIATE_KHR))
             {
-                return it_Mode;
+                return VK_PRESENT_MODE_IMMEDIATE_KHR;
             }
+
+            // MAILBOX is still vsynced-ish (no tearing), but better than FIFO for latency if immediate isn't available.
+            if (Has(VK_PRESENT_MODE_MAILBOX_KHR))
+            {
+                return VK_PRESENT_MODE_MAILBOX_KHR;
+            }
+
+            return VK_PRESENT_MODE_FIFO_KHR; // guaranteed supported
         }
 
-        return VK_PRESENT_MODE_FIFO_KHR;
+        // VSync ON: FIFO is guaranteed supported and matches typical "vsync" semantics.
+        if (Has(VK_PRESENT_MODE_FIFO_KHR))
+        {
+            return VK_PRESENT_MODE_FIFO_KHR;
+        }
+
+        // Just in case a driver does something weird:
+        if (Has(VK_PRESENT_MODE_FIFO_RELAXED_KHR))
+        {
+            return VK_PRESENT_MODE_FIFO_RELAXED_KHR;
+        }
+
+        if (Has(VK_PRESENT_MODE_MAILBOX_KHR))
+        {
+            return VK_PRESENT_MODE_MAILBOX_KHR;
+        }
+
+        return modes.empty() ? VK_PRESENT_MODE_FIFO_KHR : modes[0];
     }
 
     VkExtent2D VulkanRenderer::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) const
@@ -790,6 +829,9 @@ namespace Engine
         CreateImageViews();
         CreateRenderPass();
         CreateFramebuffers();
+
+        // Cache current vsync state after successful rebuild
+        m_LastVSync = (m_Window ? m_Window->IsVSync() : true);
 
         TR_CORE_INFO("Swapchain recreated ({}x{})", m_SwapchainExtent.width, m_SwapchainExtent.height);
     }

@@ -88,6 +88,8 @@ namespace Engine
         {
             Utilities::Time::Update();
 
+            Input::BeginFrame();
+
             // Poll events
             m_Window->OnUpdate();
 

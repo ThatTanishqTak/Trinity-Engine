@@ -3,7 +3,6 @@
 #include "Engine/Input/InputCodes.h"
 
 #include <glm/vec2.hpp>
-
 #include <unordered_map>
 
 namespace Engine
@@ -26,16 +25,25 @@ namespace Engine
     public:
         using Vector2 = glm::vec2;
 
+        // Call once per frame BEFORE polling events.
+        static void BeginFrame();
+
         static void OnEvent(Event& e);
 
+        // Keyboard
+        static bool KeyDown(Code::KeyCode keyCode);
         static bool KeyPressed(Code::KeyCode keyCode);
         static bool KeyReleased(Code::KeyCode keyCode);
 
+        // Mouse
+        static bool MouseButtonDown(Code::MouseCode button);
         static bool MouseButtonPressed(Code::MouseCode button);
         static bool MouseButtonReleased(Code::MouseCode button);
         static Vector2 MousePosition();
-        static Vector2 MouseScrolled();
+        static Vector2 MouseScrolled(); // this frame's scroll delta (not consuming)
 
+        // Gamepad
+        static bool GamepadButtonDown(int gamepadID, Code::GamepadButton button);
         static bool GamepadButtonPressed(int gamepadID, Code::GamepadButton button);
         static bool GamepadButtonReleased(int gamepadID, Code::GamepadButton button);
         static float GamepadAxis(int gamepadID, Code::GamepadAxis axis);
@@ -44,8 +52,8 @@ namespace Engine
         struct ButtonState
         {
             bool IsDown = false;
-            bool Pressed = false;
-            bool Released = false;
+            bool Pressed = false;   // one-frame edge
+            bool Released = false;  // one-frame edge
         };
 
         struct GamepadState
@@ -60,9 +68,6 @@ namespace Engine
         static GamepadState& AccessGamepadState(int gamepadID);
         static ButtonState& AccessGamepadButtonState(int gamepadID, Code::GamepadButton button);
         static float& AccessGamepadAxisState(int gamepadID, Code::GamepadAxis axis);
-
-        static bool ConsumePressed(ButtonState& state);
-        static bool ConsumeReleased(ButtonState& state);
 
         static bool OnKeyPressedEvent(KeyPressedEvent& e);
         static bool OnKeyReleasedEvent(KeyReleasedEvent& e);
