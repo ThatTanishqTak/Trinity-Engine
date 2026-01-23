@@ -26,9 +26,14 @@ namespace Engine
         return static_cast<Code::MouseCode>(button);
     }
 
-    static Code::GamepadCode ToGamepadCode(int control)
+    static Code::GamepadButton ToGamepadButton(int button)
     {
-        return static_cast<Code::GamepadCode>(control);
+        return static_cast<Code::GamepadButton>(button);
+    }
+
+    static Code::GamepadAxis ToGamepadAxis(int axis)
+    {
+        return static_cast<Code::GamepadAxis>(axis);
     }
 
     static void GLFWErrorCallback(int error, const char* description)
@@ -367,15 +372,15 @@ namespace Engine
 
                 if (l_GamepadData.HasState && l_NewValue != l_OldValue)
                 {
+                    const Code::GamepadButton l_ButtonCode = ToGamepadButton(it_Button);
+
                     if (l_NewValue == GLFW_PRESS)
                     {
-                        const Code::GamepadCode l_ButtonCode = ToGamepadCode(it_Button);
                         GamepadButtonPressedEvent l_Event(it_GamepadID, l_ButtonCode);
                         m_Data.EventCallback(l_Event);
                     }
                     else
                     {
-                        const Code::GamepadCode l_ButtonCode = ToGamepadCode(it_Button);
                         GamepadButtonReleasedEvent l_Event(it_GamepadID, l_ButtonCode);
                         m_Data.EventCallback(l_Event);
                     }
@@ -389,7 +394,6 @@ namespace Engine
             {
                 float l_Value = l_State.axes[it_Axis];
 
-                // Deadzone only for sticks (0..3). Triggers (4..5) usually don't need it.
                 if (it_Axis <= 3 && std::fabs(l_Value) < l_Deadzone)
                 {
                     l_Value = 0.0f;
@@ -399,7 +403,7 @@ namespace Engine
 
                 if (l_GamepadData.HasState && std::fabs(l_Value - l_OldValue) > l_Epsilon)
                 {
-                    const Code::GamepadCode l_AxisCode = ToGamepadCode(it_Axis);
+                    const Code::GamepadAxis l_AxisCode = ToGamepadAxis(it_Axis);
                     GamepadAxisMovedEvent l_Event(it_GamepadID, l_AxisCode, l_Value);
                     m_Data.EventCallback(l_Event);
                 }

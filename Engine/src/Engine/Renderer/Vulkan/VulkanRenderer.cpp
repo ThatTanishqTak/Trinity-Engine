@@ -7,37 +7,56 @@
 #include <stdexcept>
 #include <cstring>
 #include <algorithm>
+#include <string>
 
 namespace Engine
 {
     static void VKCheck(VkResult result, const char* what)
     {
-        if (result != VK_SUCCESS)
+        if (result == VK_SUCCESS)
         {
-            TR_CORE_CRITICAL("Vulkan failure: {} (VkResult={})", what, (int)result);
+            return;
         }
+
+        std::string l_Message = std::string(what) + " failed (VkResult=" + std::to_string((int)result) + ")";
+        TR_CORE_CRITICAL("Vulkan failure: {}", l_Message);
+        
+        throw;
     }
 
     void VulkanRenderer::Initialize(Window& window)
     {
+        Shutdown();
+
         m_Window = &window;
         m_GLFWWindow = (GLFWwindow*)window.GetNativeWindow();
 
-        CreateInstance();
-        SetupDebugMessenger();
-        CreateSurface();
-        PickPhysicalDevice();
-        CreateLogicalDevice();
+        try
+        {
+            CreateInstance();
+            SetupDebugMessenger();
+            CreateSurface();
+            PickPhysicalDevice();
+            CreateLogicalDevice();
 
-        CreateSwapchain();
-        CreateImageViews();
-        CreateRenderPass();
-        CreateFramebuffers();
-        CreateCommandPool();
-        CreateCommandBuffers();
-        CreateSyncObjects();
+            CreateSwapchain();
+            CreateImageViews();
+            CreateRenderPass();
+            CreateFramebuffers();
+            CreateCommandPool();
+            CreateCommandBuffers();
+            CreateSyncObjects();
 
-        TR_CORE_INFO("Vulkan initialized successfully.");
+            m_Initialized = true;
+            TR_CORE_INFO("Vulkan initialized successfully");
+        }
+        catch (const std::exception& e)
+        {
+            TR_CORE_CRITICAL("Vulkan initialization failed: {}", e.what());
+            Shutdown();
+            
+            throw;
+        }
     }
 
     VulkanRenderer::~VulkanRenderer()
@@ -139,6 +158,11 @@ namespace Engine
 
     void VulkanRenderer::BeginFrame()
     {
+        if (!m_Initialized)
+        {
+            return;
+        }
+
         m_FrameInProgress = false;
 
         VKCheck(vkWaitForFences(m_Device, 1, &m_InFlightFences[m_CurrentFrame], VK_TRUE, UINT64_MAX), "vkWaitForFences");
@@ -147,10 +171,18 @@ namespace Engine
         if (l_Acquire == VK_ERROR_OUT_OF_DATE_KHR)
         {
             RecreateSwapchain();
+     
             return;
         }
 
-        VKCheck(l_Acquire, "vkAcquireNextImageKHR");
+        if (l_Acquire == VK_SUBOPTIMAL_KHR)
+        {
+            m_FramebufferResized = true;
+        }
+        else
+        {
+            VKCheck(l_Acquire, "vkAcquireNextImageKHR");
+        }
 
         m_FrameInProgress = true;
 
@@ -178,6 +210,11 @@ namespace Engine
 
     void VulkanRenderer::EndFrame()
     {
+        if (!m_Initialized)
+        {
+            return;
+        }
+
         if (!m_FrameInProgress)
         {
             return;

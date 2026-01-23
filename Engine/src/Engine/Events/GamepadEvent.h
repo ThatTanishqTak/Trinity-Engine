@@ -29,7 +29,8 @@ namespace Engine
     class GamepadConnectedEvent : public GamepadEvent
     {
     public:
-        GamepadConnectedEvent(int gamepadID, std::string name, bool isGamepadMapping) : GamepadEvent(gamepadID), m_Name(std::move(name)), m_IsGamepadMapping(isGamepadMapping)
+        GamepadConnectedEvent(int gamepadID, std::string name, bool isGamepadMapping)
+            : GamepadEvent(gamepadID), m_Name(std::move(name)), m_IsGamepadMapping(isGamepadMapping)
         {
 
         }
@@ -40,8 +41,8 @@ namespace Engine
         std::string ToString() const override
         {
             std::stringstream ss;
-            ss << GetName() << ": id = " << m_GamepadID << ", name = \"" << m_Name << "\"" << ", mapped = " << (m_IsGamepadMapping ? "True" : "False");
-            
+            ss << GetName() << ": ID = " << m_GamepadID << ", name = \"" << m_Name << "\"" << ", mapped = " << (m_IsGamepadMapping ? "True" : "False");
+
             return ss.str();
         }
 
@@ -63,8 +64,8 @@ namespace Engine
         std::string ToString() const override
         {
             std::stringstream ss;
-            ss << GetName() << ": id=" << m_GamepadID;
-            
+            ss << GetName() << ": ID = " << m_GamepadID;
+
             return ss.str();
         }
 
@@ -74,23 +75,23 @@ namespace Engine
     class GamepadButtonEvent : public GamepadEvent
     {
     public:
-        Code::GamepadCode GetButton() const { return m_Button; }
+        Code::GamepadButton GetButton() const { return m_Button; }
 
         TR_EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryGamepad)
 
     protected:
-        GamepadButtonEvent(int gamepadID, Code::GamepadCode button) : GamepadEvent(gamepadID), m_Button(button)
+        GamepadButtonEvent(int gamepadID, Code::GamepadButton button) : GamepadEvent(gamepadID), m_Button(button)
         {
 
         }
 
-        Code::GamepadCode m_Button = Code::GamepadCode::TR_BUTTON_A;
+        Code::GamepadButton m_Button = Code::GamepadButton::TR_BUTTON_A;
     };
 
     class GamepadButtonPressedEvent : public GamepadButtonEvent
     {
     public:
-        GamepadButtonPressedEvent(int gamepadID, Code::GamepadCode button) : GamepadButtonEvent(gamepadID, button)
+        GamepadButtonPressedEvent(int gamepadID, Code::GamepadButton button) : GamepadButtonEvent(gamepadID, button)
         {
 
         }
@@ -99,7 +100,7 @@ namespace Engine
         {
             std::stringstream ss;
             const int l_ButtonValue = static_cast<int>(m_Button);
-            ss << GetName() << ": id=" << m_GamepadID << ", button=" << l_ButtonValue;
+            ss << GetName() << ": ID = " << m_GamepadID << ", Button = " << l_ButtonValue;
 
             return ss.str();
         }
@@ -110,7 +111,7 @@ namespace Engine
     class GamepadButtonReleasedEvent : public GamepadButtonEvent
     {
     public:
-        GamepadButtonReleasedEvent(int gamepadID, Code::GamepadCode button) : GamepadButtonEvent(gamepadID, button)
+        GamepadButtonReleasedEvent(int gamepadID, Code::GamepadButton button) : GamepadButtonEvent(gamepadID, button)
         {
 
         }
@@ -119,7 +120,7 @@ namespace Engine
         {
             std::stringstream ss;
             const int l_ButtonValue = static_cast<int>(m_Button);
-            ss << GetName() << ": id=" << m_GamepadID << ", button=" << l_ButtonValue;
+            ss << GetName() << ": ID = " << m_GamepadID << ", Button = " << l_ButtonValue;
 
             return ss.str();
         }
@@ -130,19 +131,19 @@ namespace Engine
     class GamepadAxisMovedEvent : public GamepadEvent
     {
     public:
-        GamepadAxisMovedEvent(int gamepadID, Code::GamepadCode axis, float value) : GamepadEvent(gamepadID), m_Axis(axis), m_Value(value)
+        GamepadAxisMovedEvent(int gamepadID, Code::GamepadAxis axis, float value) : GamepadEvent(gamepadID), m_Axis(axis), m_Value(value)
         {
 
         }
 
-        Code::GamepadCode GetAxis() const { return m_Axis; }
+        Code::GamepadAxis GetAxis() const { return m_Axis; }
         float GetValue() const { return m_Value; }
 
         std::string ToString() const override
         {
             std::stringstream ss;
             const int l_AxisValue = static_cast<int>(m_Axis);
-            ss << GetName() << ": id=" << m_GamepadID << ", axis=" << l_AxisValue << ", value=" << m_Value;
+            ss << GetName() << ": ID = " << m_GamepadID << ", axis = " << l_AxisValue << ", value = " << m_Value;
 
             return ss.str();
         }
@@ -151,7 +152,7 @@ namespace Engine
             TR_EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryGamepad)
 
     private:
-        Code::GamepadCode m_Axis = Code::GamepadCode::TR_AXIS_LEFTX;
+        Code::GamepadAxis m_Axis = Code::GamepadAxis::TR_AXIS_LEFTX;
         float m_Value = 0.0f;
     };
 }

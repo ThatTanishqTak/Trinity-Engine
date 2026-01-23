@@ -36,9 +36,9 @@ namespace Engine
         static Vector2 MousePosition();
         static Vector2 MouseScrolled();
 
-        static bool GamepadButtonPressed(int gamepadID, Code::GamepadCode button);
-        static bool GamepadButtonReleased(int gamepadID, Code::GamepadCode button);
-        static float GamepadAxis(int gamepadID, Code::GamepadCode axis);
+        static bool GamepadButtonPressed(int gamepadID, Code::GamepadButton button);
+        static bool GamepadButtonReleased(int gamepadID, Code::GamepadButton button);
+        static float GamepadAxis(int gamepadID, Code::GamepadAxis axis);
 
     private:
         struct ButtonState
@@ -58,8 +58,8 @@ namespace Engine
         static ButtonState& AccessKeyState(Code::KeyCode keyCode);
         static ButtonState& AccessMouseButtonState(Code::MouseCode button);
         static GamepadState& AccessGamepadState(int gamepadID);
-        static ButtonState& AccessGamepadButtonState(int gamepadID, Code::GamepadCode button);
-        static float& AccessGamepadAxisState(int gamepadID, Code::GamepadCode axis);
+        static ButtonState& AccessGamepadButtonState(int gamepadID, Code::GamepadButton button);
+        static float& AccessGamepadAxisState(int gamepadID, Code::GamepadAxis axis);
 
         static bool ConsumePressed(ButtonState& state);
         static bool ConsumeReleased(ButtonState& state);

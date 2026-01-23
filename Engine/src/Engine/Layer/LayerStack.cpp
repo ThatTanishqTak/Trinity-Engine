@@ -7,11 +7,19 @@ namespace Engine
 
     LayerStack::~LayerStack()
     {
+        Shutdown();
+    }
+
+    void LayerStack::Shutdown()
+    {
         for (Layer* it_Layer : m_Layers)
         {
             it_Layer->OnShutdown();
             delete it_Layer;
         }
+
+        m_Layers.clear();
+        m_LayerInsertIndex = 0;
     }
 
     void LayerStack::PushLayer(Layer* layer)
@@ -35,6 +43,8 @@ namespace Engine
             layer->OnShutdown();
             m_Layers.erase(a_Index);
             --m_LayerInsertIndex;
+
+            delete layer;
         }
     }
 
@@ -45,6 +55,8 @@ namespace Engine
         {
             overlay->OnShutdown();
             m_Layers.erase(a_Index);
+
+            delete overlay;
         }
     }
 }

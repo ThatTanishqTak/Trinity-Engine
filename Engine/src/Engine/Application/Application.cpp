@@ -36,9 +36,16 @@ namespace Engine
 
     Application::~Application()
     {
-        // Make destruction order explicit
+        TR_CORE_INFO("SHUTTING DOWN APPLICATION");
+
+        m_LayerStack.Shutdown();
+
         m_Renderer.reset();
+        m_Window.reset();
+
         s_Instance = nullptr;
+
+        TR_CORE_INFO("APPLICATION SHUTDOWN COMPLETE");
     }
 
     void Application::Close()
@@ -107,7 +114,7 @@ namespace Engine
             }
 
             m_Renderer->BeginFrame();
-
+            
             for (Layer* it_Layer : m_LayerStack)
             {
                 it_Layer->OnRender();

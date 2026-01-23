@@ -146,7 +146,8 @@ namespace Engine
             TR_BUTTONMIDDLE = TR_BUTTON_2
         };
 
-        enum class GamepadCode : int
+        // Gamepad buttons (GLFW gamepad mapping compatible)
+        enum class GamepadButton : int
         {
             TR_BUTTON_A = 0,
             TR_BUTTON_B = 1,
@@ -163,7 +164,12 @@ namespace Engine
             TR_BUTTON_DPADRIGHT = 12,
             TR_BUTTON_DPADDOWN = 13,
             TR_BUTTON_DPADLEFT = 14,
-            TR_BUTTON_LAST = TR_BUTTON_DPADLEFT,
+            TR_BUTTON_LAST = TR_BUTTON_DPADLEFT
+        };
+
+        // Gamepad axes (GLFW gamepad mapping compatible)
+        enum class GamepadAxis : int
+        {
             TR_AXIS_LEFTX = 0,
             TR_AXIS_LEFTY = 1,
             TR_AXIS_RIGHTX = 2,
