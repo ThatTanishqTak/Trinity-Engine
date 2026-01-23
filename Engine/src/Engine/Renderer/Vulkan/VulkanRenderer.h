@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Engine/Renderer/Renderer.h"
 #include "Engine/Utilities/Utilities.h"
 
 #include <vulkan/vulkan.h>
@@ -14,24 +15,24 @@ namespace Engine
 {
     class Window;
 
-    class VulkanRenderer
+    class VulkanRenderer final : public Renderer
     {
     public:
         VulkanRenderer() = default;
-        ~VulkanRenderer();
+        ~VulkanRenderer() override;
 
         VulkanRenderer(const VulkanRenderer&) = delete;
         VulkanRenderer& operator=(const VulkanRenderer&) = delete;
         VulkanRenderer(VulkanRenderer&&) = delete;
         VulkanRenderer& operator=(VulkanRenderer&&) = delete;
 
-        void Initialize(Window& window);
-        void Shutdown();
+        void Initialize(Window& window) override;
+        void Shutdown() override;
 
-        void BeginFrame();
-        void EndFrame();
+        void BeginFrame() override;
+        void EndFrame() override;
 
-        void OnResize(uint32_t width, uint32_t height);
+        void OnResize(uint32_t width, uint32_t height) override;
 
     private:
         void CreateInstance();
@@ -79,25 +80,13 @@ namespace Engine
 
         void RecordCommandBuffer(VkCommandBuffer cmd, uint32_t imageIndex);
 
-        static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
-            VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-            VkDebugUtilsMessageTypeFlagsEXT messageType,
-            const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-            void* pUserData
-        );
+        static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, 
+            const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
 
-        VkResult CreateDebugUtilsMessengerEXT(
-            VkInstance instance,
-            const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
-            const VkAllocationCallbacks* pAllocator,
-            VkDebugUtilsMessengerEXT* pMessenger
-        );
+        VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, 
+            VkDebugUtilsMessengerEXT* pMessenger);
 
-        void DestroyDebugUtilsMessengerEXT(
-            VkInstance instance,
-            VkDebugUtilsMessengerEXT messenger,
-            const VkAllocationCallbacks* pAllocator
-        );
+        void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT messenger, const VkAllocationCallbacks* pAllocator);
 
     private:
         Window* m_Window = nullptr;

@@ -16,20 +16,21 @@ namespace Engine
 
     Application::Application()
     {
+        TR_CORE_INFO("INITIALIZING APPLICATION");
+
         s_Instance = this;
 
-        Utilities::Log::Initialize();
-        Utilities::Time::Initialize();
-
         m_Window = Window::Create();
+        m_Window->Initialize();
         m_Window->SetEventCallback([this](Event& e)
         {
             OnEvent(e);
         });
 
-        // Renderer lives as long as the window lives
-        m_Renderer = std::make_unique<Renderer>();
+        m_Renderer = Renderer::Create();
         m_Renderer->Initialize(*m_Window);
+
+        TR_CORE_INFO("APPLICATION INITIALIZED");
     }
 
     Application::~Application()
@@ -74,7 +75,7 @@ namespace Engine
     {
         (void)e;
         m_Running = false;
-        
+
         return true;
     }
 
@@ -86,7 +87,7 @@ namespace Engine
         if (l_Width == 0 || l_Height == 0)
         {
             m_Minimized = true;
-            
+
             return false;
         }
 
@@ -166,7 +167,7 @@ namespace Engine
             if (m_Window->ShouldClose())
             {
                 m_Running = false;
- 
+
                 break;
             }
 

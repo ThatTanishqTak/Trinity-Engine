@@ -53,10 +53,9 @@ namespace Engine
 
         WindowData m_Data;
 
-        // GLFW_JOYSTICK_LAST is typically 15 (so 16 total)
         static constexpr int s_MaxGamepads = 16;
-        static constexpr int s_MaxAxes = 6;     // GLFW_GAMEPAD_AXIS_LAST + 1
-        static constexpr int s_MaxButtons = 15; // GLFW_GAMEPAD_BUTTON_LAST + 1
+        static constexpr int s_MaxAxes = 6;
+        static constexpr int s_MaxButtons = 15;
 
         struct GamepadData
         {

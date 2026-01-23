@@ -265,8 +265,6 @@ namespace Engine
             MouseMovedEvent l_Event((float)x, (float)y);
             a_Data.EventCallback(l_Event);
         });
-
-        TR_CORE_INFO("Window created: \"{0}\" ({1}x{2})", m_Data.Title, m_Data.Width, m_Data.Height);
     }
 
     void GLFWWindow::Shutdown()

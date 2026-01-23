@@ -6,27 +6,20 @@
 namespace Engine
 {
     class Window;
-    class VulkanRenderer;
 
     class Renderer
     {
     public:
-        explicit Renderer();
-        ~Renderer();
+        virtual ~Renderer() = default;
 
-        Renderer(const Renderer&) = delete;
-        Renderer& operator=(const Renderer&) = delete;
-        Renderer(Renderer&&) noexcept = default;
-        Renderer& operator=(Renderer&&) noexcept = default;
+        virtual void Initialize(Window& window) = 0;
+        virtual void Shutdown() = 0;
 
-        void Initialize(Window& window);
-        void Shutdown();
+        virtual void BeginFrame() = 0;
+        virtual void EndFrame() = 0;
 
-        void BeginFrame();
-        void EndFrame();
-        void OnResize(uint32_t width, uint32_t height);
+        virtual void OnResize(uint32_t width, uint32_t height) = 0;
 
-    private:
-        std::unique_ptr<VulkanRenderer> m_Vulkan;
+        static std::unique_ptr<Renderer> Create();
     };
 }
