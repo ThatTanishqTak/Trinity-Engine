@@ -3,6 +3,7 @@
 #include "Engine/Platform/Window.h"
 #include "Engine/Renderer/Vulkan/VulkanContext.h"
 #include "Engine/Renderer/Vulkan/VulkanDevice.h"
+#include "Engine/Renderer/Vulkan/VulkanResources.h"
 #include "Engine/Utilities/Utilities.h"
 
 #include <GLFW/glfw3.h>
@@ -75,7 +76,7 @@ namespace Engine
         {
             if (it_ImageView)
             {
-                vkDestroyImageView(m_Device->GetDevice(), it_ImageView, nullptr);
+                VulkanResources::DestroyImageView(*m_Device, it_ImageView);
             }
         }
 
@@ -164,18 +165,8 @@ namespace Engine
         m_ImageViews.resize(m_Images.size());
         for (size_t i = 0; i < m_Images.size(); ++i)
         {
-            VkImageViewCreateInfo l_ImageViewCreateInfo{};
-            l_ImageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-            l_ImageViewCreateInfo.image = m_Images[i];
-            l_ImageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-            l_ImageViewCreateInfo.format = m_ImageFormat;
-            l_ImageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            l_ImageViewCreateInfo.subresourceRange.baseMipLevel = 0;
-            l_ImageViewCreateInfo.subresourceRange.levelCount = 1;
-            l_ImageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-            l_ImageViewCreateInfo.subresourceRange.layerCount = 1;
-
-            Utilities::VulkanUtilities::VKCheckStrict(vkCreateImageView(m_Device->GetDevice(), &l_ImageViewCreateInfo, nullptr, &m_ImageViews[i]), "vkCreateImageView");
+            // Swapchain image views must exist so the render pass can attach them.
+            m_ImageViews[i] = VulkanResources::CreateImageView(*m_Device, m_Images[i], m_ImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
         }
     }
 
