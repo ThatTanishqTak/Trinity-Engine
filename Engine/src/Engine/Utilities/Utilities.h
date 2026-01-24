@@ -18,6 +18,8 @@
 #pragma warning(pop)
 #endif
 
+#include <vulkan/vulkan.h>
+
 #include <memory>
 #include <string>
 
@@ -55,7 +57,7 @@ namespace Engine
 {
     namespace Utilities
     {
-        //---------------------------------------------------------------------------------------------------------//
+        // -------------------- Log --------------------
 
         class Log
         {
@@ -70,7 +72,7 @@ namespace Engine
             static std::shared_ptr<spdlog::logger> s_ClientLogger;
         };
 
-        //---------------------------------------------------------------------------------------------------------//
+        // -------------------- Time --------------------
 
         class Time
         {
@@ -87,7 +89,21 @@ namespace Engine
             static float s_DeltaTime;
         };
 
-        //---------------------------------------------------------------------------------------------------------//
+        // -------------------- Vulkan --------------------
+
+        class VulkanUtilities
+        {
+        public:
+            static void VKCheckStrict(VkResult result, const char* what);
+        };
+
+        // -------------------- File Management --------------------
+
+        class FileManagement
+        {
+        public:
+            static std::vector<char> LoadFromFile(const std::string& path);
+        };
     }
 }
 

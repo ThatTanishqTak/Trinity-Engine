@@ -90,5 +90,39 @@ namespace Engine
         {
             return s_DeltaTime;
         }
+
+        // -------------------- Vulkan --------------------
+
+        void VulkanUtilities::VKCheckStrict(VkResult result, const char* what)
+        {
+            if (result != VK_SUCCESS)
+            {
+                TR_CORE_CRITICAL("Vulkan failure: {} (VkResult = {})", what, (int)result);
+
+                throw std::runtime_error(std::string(what) + " failed");
+            }
+        }
+
+        // -------------------- File Management --------------------
+        
+        std::vector<char> FileManagement::LoadFromFile(const std::string& path)
+        {
+            std::ifstream l_File(path, std::ios::ate | std::ios::binary);
+            if (!l_File.is_open())
+            {
+                TR_CORE_CRITICAL("Failed to open file: {}", path.c_str());
+
+                throw std::runtime_error("Failed to open file: " + path);
+            }
+
+            const size_t l_FileSize = (size_t)l_File.tellg();
+            std::vector<char> l_Buffer(l_FileSize);
+
+            l_File.seekg(0);
+            l_File.read(l_Buffer.data(), (std::streamsize)l_FileSize);
+            l_File.close();
+
+            return l_Buffer;
+        }
     }
 }
