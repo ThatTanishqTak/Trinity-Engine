@@ -9,7 +9,7 @@
 
 namespace Engine
 {
-    void VulkanPipeline::Initialize(VulkanDevice& device, VkRenderPass renderPass, const GraphicsPipelineDescription& description)
+    void VulkanPipeline::Initialize(VulkanDevice& device, VkRenderPass renderPass, const GraphicsPipelineDescription& description, std::span<const VkDescriptorSetLayout> descriptorSetLayouts)
     {
         Shutdown(device);
 
@@ -18,6 +18,7 @@ namespace Engine
         m_VertexShaderPath = description.VertexShaderPath;
         m_FragmentShaderPath = description.FragmentShaderPath;
         m_PipelineCachePath = description.PipelineCachePath;
+        m_DescriptorSetLayouts.assign(descriptorSetLayouts.begin(), descriptorSetLayouts.end());
 
         CreatePipelineCache(device, m_PipelineCachePath);
 
@@ -101,6 +102,8 @@ namespace Engine
 
         VkPipelineLayoutCreateInfo l_LayoutInfo{};
         l_LayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        l_LayoutInfo.setLayoutCount = static_cast<uint32_t>(m_DescriptorSetLayouts.size());
+        l_LayoutInfo.pSetLayouts = m_DescriptorSetLayouts.empty() ? nullptr : m_DescriptorSetLayouts.data();
 
         Utilities::VulkanUtilities::VKCheckStrict(vkCreatePipelineLayout(device.GetDevice(), &l_LayoutInfo, nullptr, &m_PipelineLayout), "vkCreatePipelineLayout");
 
@@ -169,6 +172,7 @@ namespace Engine
 
         m_RenderPass = VK_NULL_HANDLE;
         m_Extent = {};
+        m_DescriptorSetLayouts.clear();
         m_VertexShaderPath.clear();
         m_FragmentShaderPath.clear();
         m_PipelineCachePath.clear();
@@ -176,9 +180,9 @@ namespace Engine
         m_Initialized = false;
     }
 
-    void VulkanPipeline::Recreate(VulkanDevice& device, VkRenderPass renderPass, const GraphicsPipelineDescription& description)
+    void VulkanPipeline::Recreate(VulkanDevice& device, VkRenderPass renderPass, const GraphicsPipelineDescription& description, std::span<const VkDescriptorSetLayout> descriptorSetLayouts)
     {
-        Initialize(device, renderPass, description);
+        Initialize(device, renderPass, description, descriptorSetLayouts);
     }
 
     VkShaderModule VulkanPipeline::CreateShaderModule(VulkanDevice& device, const std::string& path)

@@ -5,6 +5,8 @@
 
 #include <GLFW/glfw3.h>
 
+#include <array>
+#include <span>
 #include <stdexcept>
 #include <string>
 
@@ -29,6 +31,7 @@ namespace Engine
 
         m_Context.Initialize(window);
         m_Device.Initialize(m_Context);
+        m_Descriptors.Initialize(m_Device, (uint32_t)s_MaxFramesInFlight);
         m_Swapchain.Initialize(m_Context, m_Device, window);
 
         CreateRenderPass();
@@ -60,6 +63,7 @@ namespace Engine
 
             // Pipeline depends on render pass and swapchain extent, kill it before swapchain-related cleanup.
             m_Pipeline.Shutdown(m_Device);
+            m_Descriptors.Shutdown(m_Device);
 
             CleanupSwapchainDependents();
             m_Swapchain.Shutdown();
@@ -279,7 +283,10 @@ namespace Engine
         l_GraphicsPipelineDescription.PipelineCachePath = "pipeline_cache.bin";
 
         // If you want to make this configurable later, go wild.
-        m_Pipeline.Initialize(m_Device, m_RenderPass, l_GraphicsPipelineDescription);
+        std::array<VkDescriptorSetLayout, 1> l_DescriptorLayouts = { m_Descriptors.GetLayout() };
+        std::span<const VkDescriptorSetLayout> l_LayoutSpan = m_Descriptors.IsValid() ? std::span<const VkDescriptorSetLayout>(l_DescriptorLayouts) : std::span<const VkDescriptorSetLayout>();
+
+        m_Pipeline.Initialize(m_Device, m_RenderPass, l_GraphicsPipelineDescription, l_LayoutSpan);
     }
 
     void VulkanRenderer::RecordCommandBuffer(VkCommandBuffer command, uint32_t imageIndex)
@@ -323,6 +330,16 @@ namespace Engine
             vkCmdSetScissor(command, 0, 1, &l_Scissor);
 
             vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline.GetPipeline());
+
+            if (m_Descriptors.IsValid())
+            {
+                VkDescriptorSet l_DescriptorSet = m_Descriptors.GetDescriptorSet((uint32_t)m_CurrentFrame);
+                if (l_DescriptorSet != VK_NULL_HANDLE)
+                {
+                    // Bind per-frame descriptor set at set 0 to match the pipeline layout.
+                    vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline.GetPipelineLayout(), 0, 1, &l_DescriptorSet, 0, nullptr);
+                }
+            }
 
             // The shaders must be written to use gl_VertexIndex (no vertex buffers).
             vkCmdDraw(command, 3, 1, 0, 0);

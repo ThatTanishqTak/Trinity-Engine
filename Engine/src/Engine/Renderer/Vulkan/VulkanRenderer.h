@@ -5,6 +5,7 @@
 #include "Engine/Renderer/Vulkan/VulkanDevice.h"
 #include "Engine/Renderer/Vulkan/VulkanSwapchain.h"
 #include "Engine/Renderer/Vulkan/VulkanCommand.h"
+#include "Engine/Renderer/Vulkan/VulkanDescriptors.h"
 #include "Engine/Renderer/Vulkan/VulkanSync.h"
 #include "Engine/Renderer/Vulkan/VulkanPipeline.h"
 
@@ -57,6 +58,7 @@ namespace Engine
         VulkanSwapchain m_Swapchain;
         VulkanCommand m_Command;
         VulkanSync m_Sync;
+        VulkanDescriptors m_Descriptors;
         VulkanPipeline m_Pipeline;
 
         VkRenderPass m_RenderPass = VK_NULL_HANDLE;

@@ -2,7 +2,9 @@
 
 #include <vulkan/vulkan.h>
 
+#include <span>
 #include <string>
+#include <vector>
 
 namespace Engine
 {
@@ -36,10 +38,10 @@ namespace Engine
         VulkanPipeline(VulkanPipeline&&) = delete;
         VulkanPipeline& operator=(VulkanPipeline&&) = delete;
 
-        void Initialize(VulkanDevice& device, VkRenderPass renderPass, const GraphicsPipelineDescription& description);
+        void Initialize(VulkanDevice& device, VkRenderPass renderPass, const GraphicsPipelineDescription& description, std::span<const VkDescriptorSetLayout> descriptorSetLayouts);
         void Shutdown(VulkanDevice& device);
 
-        void Recreate(VulkanDevice& device, VkRenderPass renderPass, const GraphicsPipelineDescription& description);
+        void Recreate(VulkanDevice& device, VkRenderPass renderPass, const GraphicsPipelineDescription& description, std::span<const VkDescriptorSetLayout> descriptorSetLayouts);
 
         bool IsValid() const { return m_Pipeline != VK_NULL_HANDLE && m_PipelineLayout != VK_NULL_HANDLE; }
 
@@ -60,6 +62,8 @@ namespace Engine
 
         VkRenderPass m_RenderPass = VK_NULL_HANDLE;
         VkExtent2D m_Extent{};
+
+        std::vector<VkDescriptorSetLayout> m_DescriptorSetLayouts;
 
         std::string m_VertexShaderPath;
         std::string m_FragmentShaderPath;
