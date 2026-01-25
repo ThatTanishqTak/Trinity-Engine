@@ -62,7 +62,7 @@ namespace Engine
         l_ApplicationInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
         l_ApplicationInfo.pEngineName = "Engine";
         l_ApplicationInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-        l_ApplicationInfo.apiVersion = VK_API_VERSION_1_4;
+        l_ApplicationInfo.apiVersion = VK_API_VERSION_1_2;
 
         auto a_Extensions = GetRequiredExtensions();
 

@@ -1,12 +1,14 @@
 #include "Client/ClientLayer.h"
 #include "Engine/Core/EntryPoint.h"
 
+#include <memory>
+
 class ClientApp : public Engine::Application
 {
 public:
     ClientApp()
     {
-        PushLayer(new ClientLayer());
+        PushLayer(std::make_unique<ClientLayer>());
     }
 
     ~ClientApp() override = default;

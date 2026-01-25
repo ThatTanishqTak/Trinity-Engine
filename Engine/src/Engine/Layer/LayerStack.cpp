@@ -1,5 +1,7 @@
 #include "Engine/Layer/LayerStack.h"
+
 #include <algorithm>
+#include <utility>
 
 namespace Engine
 {
@@ -12,51 +14,48 @@ namespace Engine
 
     void LayerStack::Shutdown()
     {
-        for (Layer* it_Layer : m_Layers)
+        for (const std::unique_ptr<Layer>& it_Layer : m_Layers)
         {
             it_Layer->OnShutdown();
-            delete it_Layer;
         }
 
         m_Layers.clear();
         m_LayerInsertIndex = 0;
     }
 
-    void LayerStack::PushLayer(Layer* layer)
+    void LayerStack::PushLayer(std::unique_ptr<Layer> layer)
     {
-        m_Layers.emplace(m_Layers.begin() + m_LayerInsertIndex, layer);
+        Layer* l_Layer = layer.get();
+        m_Layers.emplace(m_Layers.begin() + m_LayerInsertIndex, std::move(layer));
         ++m_LayerInsertIndex;
-        layer->OnInitialize();
+        l_Layer->OnInitialize();
     }
 
-    void LayerStack::PushOverlay(Layer* overlay)
+    void LayerStack::PushOverlay(std::unique_ptr<Layer> overlay)
     {
-        m_Layers.push_back(overlay);
-        overlay->OnInitialize();
+        Layer* l_Overlay = overlay.get();
+        m_Layers.push_back(std::move(overlay));
+        l_Overlay->OnInitialize();
     }
 
     void LayerStack::PopLayer(Layer* layer)
     {
-        auto a_Index = std::find(m_Layers.begin(), m_Layers.end(), layer);
+        auto a_Index = std::find_if(m_Layers.begin(), m_Layers.end(), [layer](const std::unique_ptr<Layer>& it_Layer) { return it_Layer.get() == layer; });
         if (a_Index != m_Layers.end())
         {
-            layer->OnShutdown();
+            (*a_Index)->OnShutdown();
             m_Layers.erase(a_Index);
             --m_LayerInsertIndex;
-
-            delete layer;
         }
     }
 
     void LayerStack::PopOverlay(Layer* overlay)
     {
-        auto a_Index = std::find(m_Layers.begin(), m_Layers.end(), overlay);
+        auto a_Index = std::find_if(m_Layers.begin(), m_Layers.end(), [overlay](const std::unique_ptr<Layer>& it_Layer) { return it_Layer.get() == overlay; });
         if (a_Index != m_Layers.end())
         {
-            overlay->OnShutdown();
+            (*a_Index)->OnShutdown();
             m_Layers.erase(a_Index);
-
-            delete overlay;
         }
     }
 }

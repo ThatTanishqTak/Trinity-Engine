@@ -12,6 +12,8 @@
 
 #include "Engine/Input/Input.h"
 
+#include <utility>
+
 namespace Engine
 {
     Application* Application::s_Instance = nullptr;
@@ -110,14 +112,14 @@ namespace Engine
                 continue;
             }
 
-            for (Layer* it_Layer : m_LayerStack)
+            for (const std::unique_ptr<Layer>& it_Layer : m_LayerStack)
             {
                 it_Layer->OnUpdate(Utilities::Time::DeltaTime());
             }
 
             m_Renderer->BeginFrame();
-            
-            for (Layer* it_Layer : m_LayerStack)
+
+            for (const std::unique_ptr<Layer>& it_Layer : m_LayerStack)
             {
                 it_Layer->OnRender();
             }
@@ -126,13 +128,13 @@ namespace Engine
         }
     }
 
-    void Application::PushLayer(Layer* layer)
+    void Application::PushLayer(std::unique_ptr<Layer> layer)
     {
-        m_LayerStack.PushLayer(layer);
+        m_LayerStack.PushLayer(std::move(layer));
     }
 
-    void Application::PushOverlay(Layer* overlay)
+    void Application::PushOverlay(std::unique_ptr<Layer> overlay)
     {
-        m_LayerStack.PushOverlay(overlay);
+        m_LayerStack.PushOverlay(std::move(overlay));
     }
 }
