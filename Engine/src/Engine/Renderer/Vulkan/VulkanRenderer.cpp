@@ -67,6 +67,7 @@ namespace Engine
     {
         if (!m_Initialized)
         {
+            m_DeletionQueue.Reset();
             m_Context.Shutdown();
             return;
         }
@@ -74,6 +75,12 @@ namespace Engine
         if (m_Device.GetDevice())
         {
             vkDeviceWaitIdle(m_Device.GetDevice());
+
+            const uint32_t l_FramesInFlight = m_FrameResources.GetFramesInFlight();
+            for (uint32_t l_FrameIndex = 0; l_FrameIndex < l_FramesInFlight; ++l_FrameIndex)
+            {
+                m_DeletionQueue.Flush(l_FrameIndex);
+            }
 
             TR_CORE_INFO("Destroying render passes");
             m_PassManager.OnDestroyAll(m_Device);
