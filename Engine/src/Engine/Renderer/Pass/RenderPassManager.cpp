@@ -1,6 +1,5 @@
 #include "Engine/Renderer/Pass/RenderPassManager.h"
 
-#include "Engine/Renderer/Pass/IRenderPass.h"
 #include "Engine/Utilities/Utilities.h"
 
 #include <cstring>
@@ -31,6 +30,7 @@ namespace Engine
             if (std::strcmp((*it_Pass)->GetName(), passName) == 0)
             {
                 m_Passes.erase(it_Pass);
+
                 return true;
             }
         }
@@ -38,7 +38,7 @@ namespace Engine
         return false;
     }
 
-    void RenderPassManager::OnCreateAll(VulkanRenderer& renderer)
+    void RenderPassManager::OnCreateAll(VulkanDevice& device, VulkanSwapchain& swapchain, VulkanFrameResources& frameResources)
     {
         // Order of operations: create all pass resources before any recording.
         if (m_IsCreated)
@@ -46,16 +46,18 @@ namespace Engine
             return;
         }
 
+        size_t l_PassIndex = 0;
         for (const auto& it_Pass : m_Passes)
         {
-            TR_CORE_INFO("Creating render pass: {}", it_Pass->GetName());
-            it_Pass->OnCreate(renderer);
+            TR_CORE_INFO("Creating render pass {}", l_PassIndex);
+            it_Pass->Initialize(device, swapchain, frameResources);
+            ++l_PassIndex;
         }
 
         m_IsCreated = true;
     }
 
-    void RenderPassManager::OnDestroyAll(VulkanRenderer& renderer)
+    void RenderPassManager::OnDestroyAll(VulkanDevice& device)
     {
         // Order of operations: destroy all pass resources before renderer shutdown.
         if (!m_IsCreated)
@@ -63,16 +65,18 @@ namespace Engine
             return;
         }
 
+        size_t l_PassIndex = 0;
         for (const auto& it_Pass : m_Passes)
         {
-            TR_CORE_INFO("Destroying render pass: {}", it_Pass->GetName());
-            it_Pass->OnDestroy(renderer);
+            TR_CORE_INFO("Destroying render pass {}", l_PassIndex);
+            it_Pass->OnDestroy(device);
+            ++l_PassIndex;
         }
 
         m_IsCreated = false;
     }
 
-    void RenderPassManager::OnResizeAll(VulkanRenderer& renderer)
+    void RenderPassManager::OnResizeAll(VulkanDevice& device, VulkanSwapchain& swapchain, VulkanFrameResources& frameResources)
     {
         // Order of operations: resize pass resources after swapchain changes.
         if (!m_IsCreated)
@@ -82,11 +86,11 @@ namespace Engine
 
         for (const auto& it_Pass : m_Passes)
         {
-            it_Pass->OnResize(renderer);
+            it_Pass->OnResize(device, swapchain, frameResources);
         }
     }
 
-    void RenderPassManager::RecordAll(VulkanRenderer& renderer, VkCommandBuffer command, uint32_t imageIndex, VulkanFrameResources::PerFrame& frame)
+    void RenderPassManager::RecordAll(VkCommandBuffer command, uint32_t imageIndex, uint32_t currentFrame, const glm::vec4& clearColor, std::span<const RenderCube> pendingCubes)
     {
         // Order of operations: record pass commands inside a begun command buffer.
         if (!m_IsCreated)
@@ -96,7 +100,7 @@ namespace Engine
 
         for (const auto& it_Pass : m_Passes)
         {
-            it_Pass->Record(renderer, command, imageIndex, frame);
+            it_Pass->RecordCommandBuffer(command, imageIndex, currentFrame, clearColor, pendingCubes);
         }
     }
 }

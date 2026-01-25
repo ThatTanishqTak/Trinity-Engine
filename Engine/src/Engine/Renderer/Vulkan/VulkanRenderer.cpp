@@ -1,9 +1,12 @@
 #include "Engine/Renderer/Vulkan/VulkanRenderer.h"
 
 #include "Engine/Platform/Window.h"
+#include "Engine/Renderer/Pass/MainPass.h"
 #include "Engine/Utilities/Utilities.h"
 
 #include <GLFW/glfw3.h>
+
+#include <memory>
 
 namespace Engine
 {
@@ -47,7 +50,8 @@ namespace Engine
         m_FrameResources.Initialize(m_Device, (uint32_t)s_MaxFramesInFlight);
         m_Swapchain.Initialize(m_Context, m_Device, window);
         m_FrameResources.OnSwapchainRecreated(m_Swapchain.GetImages().size());
-        m_MainPass.Initialize(m_Device, m_Swapchain, m_FrameResources);
+        m_PassManager.AddPass(std::make_unique<MainPass>());
+        m_PassManager.OnCreateAll(m_Device, m_Swapchain, m_FrameResources);
 
         m_CurrentFrame = 0;
         m_ImageIndex = 0;
@@ -69,7 +73,8 @@ namespace Engine
         {
             vkDeviceWaitIdle(m_Device.GetDevice());
 
-            m_MainPass.OnDestroy(m_Device);
+            TR_CORE_INFO("Destroying render passes");
+            m_PassManager.OnDestroyAll(m_Device);
             m_Swapchain.Shutdown();
             m_FrameResources.Shutdown(m_Device);
             m_Device.Shutdown();
@@ -86,6 +91,8 @@ namespace Engine
 
         m_CurrentFrame = 0;
         m_ImageIndex = 0;
+
+        m_PassManager = RenderPassManager();
     }
 
     void VulkanRenderer::OnResize(uint32_t width, uint32_t height)
@@ -142,7 +149,7 @@ namespace Engine
         m_FrameResources.ResetForFrame(m_Device, (uint32_t)m_CurrentFrame);
 
         VkCommandBuffer l_CommandBuffer = m_FrameResources.GetCommandBuffer((uint32_t)m_CurrentFrame);
-        m_MainPass.RecordCommandBuffer(l_CommandBuffer, m_ImageIndex, (uint32_t)m_CurrentFrame, m_ClearColor, m_PendingCubes);
+        m_PassManager.RecordAll(l_CommandBuffer, m_ImageIndex, (uint32_t)m_CurrentFrame, m_ClearColor, m_PendingCubes);
         m_PendingCubes.clear();
         m_ClearRequested = false;
 
@@ -210,8 +217,11 @@ namespace Engine
 
         vkDeviceWaitIdle(m_Device.GetDevice());
 
-        m_MainPass.OnResize(m_Device, m_Swapchain, m_FrameResources);
-
+        TR_CORE_INFO("Recreating swapchain for resize");
+        m_Swapchain.Recreate();
         m_FrameResources.OnSwapchainRecreated(m_Swapchain.GetImages().size());
+
+        TR_CORE_INFO("Resizing render passes");
+        m_PassManager.OnResizeAll(m_Device, m_Swapchain, m_FrameResources);
     }
 }

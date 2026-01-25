@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Engine/Renderer/Renderer.h"
-#include "Engine/Renderer/Pass/MainPass.h"
+#include "Engine/Renderer/Pass/RenderPassManager.h"
 #include "Engine/Renderer/Vulkan/VulkanContext.h"
 #include "Engine/Renderer/Vulkan/VulkanDevice.h"
 #include "Engine/Renderer/Vulkan/VulkanSwapchain.h"
@@ -54,7 +54,7 @@ namespace Engine
         VulkanDevice m_Device;
         VulkanSwapchain m_Swapchain;
         VulkanFrameResources m_FrameResources;
-        MainPass m_MainPass;
+        RenderPassManager m_PassManager;
 
         static constexpr int s_MaxFramesInFlight = 2;
         int m_CurrentFrame = 0;

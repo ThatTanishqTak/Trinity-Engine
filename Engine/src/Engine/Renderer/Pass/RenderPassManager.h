@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Engine/Renderer/Pass/IRenderPass.h"
+
 #include <cstdint>
 #include <memory>
 #include <vector>
@@ -8,13 +10,9 @@
 
 namespace Engine
 {
-    class IRenderPass;
-    class VulkanRenderer;
-
-    struct VulkanFrameResources
-    {
-        struct PerFrame;
-    };
+    class VulkanDevice;
+    class VulkanFrameResources;
+    class VulkanSwapchain;
 
     class RenderPassManager
     {
@@ -22,10 +20,10 @@ namespace Engine
         void AddPass(std::unique_ptr<IRenderPass> pass);
         bool RemovePass(const char* passName);
 
-        void OnCreateAll(VulkanRenderer& renderer);
-        void OnDestroyAll(VulkanRenderer& renderer);
-        void OnResizeAll(VulkanRenderer& renderer);
-        void RecordAll(VulkanRenderer& renderer, VkCommandBuffer cmd, uint32_t imageIndex, VulkanFrameResources::PerFrame& frame);
+        void OnCreateAll(VulkanDevice& device, VulkanSwapchain& swapchain, VulkanFrameResources& frameResources);
+        void OnDestroyAll(VulkanDevice& device);
+        void OnResizeAll(VulkanDevice& device, VulkanSwapchain& swapchain, VulkanFrameResources& frameResources);
+        void RecordAll(VkCommandBuffer command, uint32_t imageIndex, uint32_t currentFrame, const glm::vec4& clearColor, std::span<const RenderCube> pendingCubes);
 
     private:
         std::vector<std::unique_ptr<IRenderPass>> m_Passes;

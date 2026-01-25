@@ -47,12 +47,7 @@ namespace Engine
         CreatePipeline(device, swapchain, frameResources);
     }
 
-    void MainPass::RecordCommandBuffer(
-        VkCommandBuffer command,
-        uint32_t imageIndex,
-        uint32_t currentFrame,
-        const glm::vec4& clearColor,
-        std::span<const RenderCube> pendingCubes)
+    void MainPass::RecordCommandBuffer(VkCommandBuffer command, uint32_t imageIndex, uint32_t currentFrame, const glm::vec4& clearColor, std::span<const RenderCube> pendingCubes)
     {
         VkCommandBufferBeginInfo l_CommandBufferBeginInfo{};
         l_CommandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
