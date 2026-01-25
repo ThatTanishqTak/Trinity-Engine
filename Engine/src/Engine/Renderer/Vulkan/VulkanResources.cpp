@@ -223,6 +223,8 @@ namespace Engine
 
         // If no compatible memory type is found, Vulkan resource creation must fail.
         std::abort();
+
+        return 0u;
     }
 
     VkImageAspectFlags VulkanResources::GetAspectFlags(VkFormat format)

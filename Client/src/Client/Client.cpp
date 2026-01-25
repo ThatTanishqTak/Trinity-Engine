@@ -18,9 +18,13 @@ namespace Engine
 {
     Application* CreateApplication(/*ApplicationProperties properties*/)
     {
+        TR_INFO("------- CREATING APPLICATION -------");
+
         //properties.Title = "Physics Engine";
         //properties.Width = 1920;
         //properties.Height = 1080;
+
+        TR_INFO("------- APPLICATION CREATED -------");
 
         return new ClientApp(/*properties*/);
     }

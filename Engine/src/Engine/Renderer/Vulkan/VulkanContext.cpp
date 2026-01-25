@@ -14,6 +14,8 @@ namespace Engine
 {
     void VulkanContext::Initialize(Window& window)
     {
+        TR_CORE_TRACE("initializing vulkan context");
+
         m_Window = &window;
         m_GLFWWindow = (GLFWwindow*)window.GetNativeWindow();
 
@@ -21,7 +23,7 @@ namespace Engine
         SetupDebugMessenger();
         CreateWindowSurface();
 
-        TR_CORE_INFO("VulkanContext initialized");
+        TR_CORE_TRACE("vulkan context initialized");
     }
 
     void VulkanContext::Shutdown()

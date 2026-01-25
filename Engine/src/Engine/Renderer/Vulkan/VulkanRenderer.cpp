@@ -23,6 +23,8 @@ namespace Engine
 
     void VulkanRenderer::Initialize(Window& window)
     {
+        TR_CORE_INFO("------ INITIALIZING RENDERER -------");
+
         Shutdown();
 
         m_Window = &window;
@@ -44,7 +46,7 @@ namespace Engine
 
         m_Initialized = true;
 
-        TR_CORE_INFO("VulkanRenderer initialized");
+        TR_CORE_INFO("------ RENDERER INITIALIZED -------");
     }
 
     void VulkanRenderer::Shutdown()
@@ -105,6 +107,7 @@ namespace Engine
         {
             m_LastVSync = l_CurrentVSync;
             RecreateSwapchain();
+
             return;
         }
 
@@ -273,6 +276,8 @@ namespace Engine
         l_GraphicsPipelineDescription.VertexShaderPath = s_DefaultVertShader;
         l_GraphicsPipelineDescription.FragmentShaderPath = s_DefaultFragShader;
         l_GraphicsPipelineDescription.Extent = m_Swapchain.GetExtent();
+        l_GraphicsPipelineDescription.CullMode = VK_CULL_MODE_NONE;
+        l_GraphicsPipelineDescription.FrontFace = VK_FRONT_FACE_CLOCKWISE;
         l_GraphicsPipelineDescription.PipelineCachePath = "pipeline_cache.bin";
 
         // If you want to make this configurable later, go wild.
@@ -291,7 +296,7 @@ namespace Engine
         VkClearValue l_ClearColor{};
         l_ClearColor.color.float32[0] = 0.05f;
         l_ClearColor.color.float32[1] = 0.05f;
-        l_ClearColor.color.float32[2] = 0.08f;
+        l_ClearColor.color.float32[2] = 0.05f;
         l_ClearColor.color.float32[3] = 1.0f;
 
         VkRenderPassBeginInfo l_RenderPassBeginInfo{};

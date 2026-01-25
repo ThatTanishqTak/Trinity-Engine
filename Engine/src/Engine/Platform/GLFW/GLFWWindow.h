@@ -2,6 +2,8 @@
 
 #include "Engine/Platform/Window.h"
 
+#include "Engine/Utilities/Utilities.h"
+
 #include <array>
 
 struct GLFWwindow;
@@ -22,7 +24,14 @@ namespace Engine
         void SetWidth(uint32_t width) override { m_Data.Width = width; }
         void SetHeight(uint32_t height) override { m_Data.Height = height; }
 
-        void SetEventCallback(const EventCallbackFn& callback) override { m_Data.EventCallback = callback; }
+        void SetEventCallback(const EventCallbackFn& callback) override
+        {
+            TR_CORE_TRACE("Setting up window events");
+
+            m_Data.EventCallback = callback;
+
+            TR_CORE_TRACE("Window events setup complete");
+        }
 
         void SetVSync(bool enabled) override;
         bool IsVSync() const override { return m_Data.VSync; }

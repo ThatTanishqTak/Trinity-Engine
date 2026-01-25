@@ -21,7 +21,7 @@ namespace Engine
 
     Application::Application()
     {
-        TR_CORE_INFO("INITIALIZING APPLICATION");
+        TR_CORE_INFO("------- INITIALIZING APPLICATION -------");
 
         if (s_Instance != nullptr)
         {
@@ -41,12 +41,12 @@ namespace Engine
         m_Renderer = Renderer::Create();
         m_Renderer->Initialize(*m_Window);
 
-        TR_CORE_INFO("APPLICATION INITIALIZED");
+        TR_CORE_INFO("------- APPLICATION INITIALIZED -------");
     }
 
     Application::~Application()
     {
-        TR_CORE_INFO("SHUTTING DOWN APPLICATION");
+        TR_CORE_INFO("------- SHUTTING DOWN APPLICATION -------");
 
         m_LayerStack.Shutdown();
 
@@ -55,7 +55,7 @@ namespace Engine
 
         s_Instance = nullptr;
 
-        TR_CORE_INFO("APPLICATION SHUTDOWN COMPLETE");
+        TR_CORE_INFO("------- APPLICATION SHUTDOWN COMPLETE -------");
     }
 
     Application& Application::Get()

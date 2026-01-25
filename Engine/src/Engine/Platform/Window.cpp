@@ -46,6 +46,7 @@ namespace Engine
     bool Window::OnWindowFocus(WindowFocusEvent& e)
     {
         (void)e;
+        //TR_CORE_TRACE("{}", e.ToString());
 
         return false;
     }
@@ -53,6 +54,7 @@ namespace Engine
     bool Window::OnWindowLostFocus(WindowLostFocusEvent& e)
     {
         (void)e;
+        //TR_CORE_TRACE("{}", e.ToString());
 
         return false;
     }
@@ -60,12 +62,22 @@ namespace Engine
     bool Window::OnWindowMoved(WindowMovedEvent& e)
     {
         (void)e;
+        //TR_CORE_TRACE("{}", e.ToString());
 
         return false;
     }
 
     std::unique_ptr<Window> Window::Create(const WindowProperties& properties)
     {
+        TR_CORE_TRACE("Creating window");
+
+        TR_CORE_TRACE("Title: {}", properties.Title);
+        TR_CORE_TRACE("Width: {}", properties.Width);
+        TR_CORE_TRACE("Height: {}", properties.Height);
+        TR_CORE_TRACE("VSync: {}", properties.VSync);
+        
+        TR_CORE_TRACE("Window created");
+
         return std::make_unique<GLFWWindow>(properties);
     }
 }

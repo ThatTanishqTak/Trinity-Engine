@@ -98,12 +98,12 @@ foreach(SHADER_FILE IN LISTS SHADER_SOURCES)
     list(APPEND ALL_SPV_OUTPUTS "${SPV_OUTPUT}")
 endforeach()
 
-add_custom_target(EngineShaders ALL
+add_custom_target(ENGINE_SHADERS ALL
     DEPENDS ${ALL_SPV_OUTPUTS}
     SOURCES ${SHADER_SOURCES}
 )
 
-add_dependencies(${PROJECT_NAME} EngineShaders)
+add_dependencies(${PROJECT_NAME} ENGINE_SHADERS)
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${PROJECT_NAME}>/Assets/Shaders
