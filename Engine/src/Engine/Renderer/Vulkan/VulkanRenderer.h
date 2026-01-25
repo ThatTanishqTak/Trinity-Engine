@@ -12,6 +12,8 @@
 #include <cstdint>
 #include <vector>
 
+#include <glm/glm.hpp>
+
 struct GLFWwindow;
 
 namespace Engine
@@ -35,9 +37,20 @@ namespace Engine
         void BeginFrame() override;
         void EndFrame() override;
 
+        void SetClearColor(const glm::vec4& a_Color) override;
+        void Clear() override;
+        void DrawCube(const glm::vec3& a_Size, const glm::vec3& a_Position, const glm::vec4& a_Tint) override;
+
         void OnResize(uint32_t width, uint32_t height) override;
 
     private:
+        struct PendingCube
+        {
+            glm::vec3 Size{ 1.0f };
+            glm::vec3 Position{ 0.0f };
+            glm::vec4 Tint{ 1.0f };
+        };
+
         void CreateRenderPass();
         void CreateFramebuffers();
 
@@ -70,5 +83,9 @@ namespace Engine
         bool m_Initialized = false;
 
         bool m_LastVSync = true;
+
+        glm::vec4 m_ClearColor = glm::vec4(0.05f, 0.05f, 0.05f, 1.0f);
+        bool m_ClearRequested = true;
+        std::vector<PendingCube> m_PendingCubes;
     };
 }

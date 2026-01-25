@@ -144,6 +144,11 @@ namespace Engine
                 it_Layer->OnRender();
             }
 
+            for (const std::unique_ptr<Layer>& it_Layer : m_LayerStack)
+            {
+                it_Layer->OnImGuiRender();
+            }
+
             m_Renderer->EndFrame();
         }
     }

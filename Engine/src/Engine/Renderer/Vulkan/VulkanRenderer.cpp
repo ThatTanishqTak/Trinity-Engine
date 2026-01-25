@@ -21,6 +21,26 @@ namespace Engine
         Shutdown();
     }
 
+    void VulkanRenderer::SetClearColor(const glm::vec4& a_Color)
+    {
+        // Stored and applied during command buffer recording.
+        m_ClearColor = a_Color;
+    }
+
+    void VulkanRenderer::Clear()
+    {
+        // Vulkan clear happens via render pass loadOp (we use CLEAR) and the clear value.
+        // This function exists for API symmetry; RecordCommandBuffer uses m_ClearColor.
+        m_ClearRequested = true;
+    }
+
+    void VulkanRenderer::DrawCube(const glm::vec3& a_Size, const glm::vec3& a_Position, const glm::vec4& a_Tint)
+    {
+        // For now, queue requests and let RecordCommandBuffer emit the draw calls.
+        // Real cube rendering will be wired once the pipeline/shaders support it.
+        m_PendingCubes.push_back({ a_Size, a_Position, a_Tint });
+    }
+
     void VulkanRenderer::Initialize(Window& window)
     {
         TR_CORE_INFO("------ INITIALIZING RENDERER -------");
@@ -282,7 +302,8 @@ namespace Engine
 
         // If you want to make this configurable later, go wild.
         std::array<VkDescriptorSetLayout, 1> l_DescriptorLayouts = { m_FrameResources.GetDescriptorSetLayout() };
-        std::span<const VkDescriptorSetLayout> l_LayoutSpan = m_FrameResources.HasDescriptors() ? std::span<const VkDescriptorSetLayout>(l_DescriptorLayouts) : std::span<const VkDescriptorSetLayout>();
+        std::span<const VkDescriptorSetLayout> l_LayoutSpan = m_FrameResources.HasDescriptors() 
+            ? std::span<const VkDescriptorSetLayout>(l_DescriptorLayouts) : std::span<const VkDescriptorSetLayout>();
 
         m_Pipeline.Initialize(m_Device, m_RenderPass, l_GraphicsPipelineDescription, l_LayoutSpan);
     }
@@ -294,10 +315,10 @@ namespace Engine
         Utilities::VulkanUtilities::VKCheckStrict(vkBeginCommandBuffer(command, &l_CommandBufferBeginInfo), "vkBeginCommandBuffer");
 
         VkClearValue l_ClearColor{};
-        l_ClearColor.color.float32[0] = 0.05f;
-        l_ClearColor.color.float32[1] = 0.05f;
-        l_ClearColor.color.float32[2] = 0.05f;
-        l_ClearColor.color.float32[3] = 1.0f;
+        l_ClearColor.color.float32[0] = m_ClearColor.r;
+        l_ClearColor.color.float32[1] = m_ClearColor.g;
+        l_ClearColor.color.float32[2] = m_ClearColor.b;
+        l_ClearColor.color.float32[3] = m_ClearColor.a;
 
         VkRenderPassBeginInfo l_RenderPassBeginInfo{};
         l_RenderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -340,12 +361,30 @@ namespace Engine
             }
 
             // The shaders must be written to use gl_VertexIndex (no vertex buffers).
-            vkCmdDraw(command, 3, 1, 0, 0);
+            // If no draw calls were queued, keep the default triangle so you see *something*.
+            if (m_PendingCubes.empty())
+            {
+                vkCmdDraw(command, 3, 1, 0, 0);
+            }
+            else
+            {
+                // NOTE: This is a placeholder draw loop.
+                // Proper cube rendering requires matching shaders (and ideally vertex/index buffers).
+                // We still emit a draw call per requested cube so the front-end API is wired up.
+                for (const auto& it_Cube : m_PendingCubes)
+                {
+                    (void)it_Cube;
+                    vkCmdDraw(command, 36, 1, 0, 0);
+                }
+            }
         }
 
         vkCmdEndRenderPass(command);
 
         Utilities::VulkanUtilities::VKCheckStrict(vkEndCommandBuffer(command), "vkEndCommandBuffer");
+
+        m_PendingCubes.clear();
+        m_ClearRequested = false;
     }
 
     void VulkanRenderer::CleanupSwapchainDependents()
