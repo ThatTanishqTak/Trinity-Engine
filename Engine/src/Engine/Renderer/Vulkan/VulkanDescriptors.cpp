@@ -56,28 +56,62 @@ namespace Engine
 
     void VulkanDescriptors::Shutdown(VulkanDevice& device)
     {
-        if (device.GetDevice())
-        {
-            if (m_Pool != VK_NULL_HANDLE)
-            {
-                vkDestroyDescriptorPool(device.GetDevice(), m_Pool, nullptr);
-                m_Pool = VK_NULL_HANDLE;
-            }
+        Shutdown(device, {});
+    }
 
-            if (m_Layout != VK_NULL_HANDLE)
-            {
-                vkDestroyDescriptorSetLayout(device.GetDevice(), m_Layout, nullptr);
-                m_Layout = VK_NULL_HANDLE;
-            }
-        }
-        else
+    void VulkanDescriptors::Shutdown(VulkanDevice& device, const std::function<void(std::function<void()>&&)>& submitResourceFree)
+    {
+        if (!device.GetDevice())
         {
             m_Pool = VK_NULL_HANDLE;
             m_Layout = VK_NULL_HANDLE;
+            m_DescriptorSets.clear();
+            m_Device = nullptr;
+
+            return;
         }
 
+        VkDescriptorPool l_Pool = m_Pool;
+        VkDescriptorSetLayout l_Layout = m_Layout;
+        VulkanDevice* l_Device = &device;
+
+        m_Pool = VK_NULL_HANDLE;
+        m_Layout = VK_NULL_HANDLE;
         m_DescriptorSets.clear();
         m_Device = nullptr;
+
+        if (submitResourceFree)
+        {
+            submitResourceFree([l_Device, l_Pool, l_Layout]() mutable
+            {
+                if (!l_Device || !l_Device->GetDevice())
+                {
+                    return;
+                }
+
+                if (l_Pool != VK_NULL_HANDLE)
+                {
+                    vkDestroyDescriptorPool(l_Device->GetDevice(), l_Pool, nullptr);
+                }
+
+                if (l_Layout != VK_NULL_HANDLE)
+                {
+                    vkDestroyDescriptorSetLayout(l_Device->GetDevice(), l_Layout, nullptr);
+                }
+            });
+
+            return;
+        }
+
+        if (l_Pool != VK_NULL_HANDLE)
+        {
+            vkDestroyDescriptorPool(device.GetDevice(), l_Pool, nullptr);
+        }
+
+        if (l_Layout != VK_NULL_HANDLE)
+        {
+            vkDestroyDescriptorSetLayout(device.GetDevice(), l_Layout, nullptr);
+        }
     }
 
     VkDescriptorSet VulkanDescriptors::GetDescriptorSet(uint32_t frameIndex) const

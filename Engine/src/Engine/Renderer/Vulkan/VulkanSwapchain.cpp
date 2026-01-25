@@ -183,10 +183,44 @@ namespace Engine
         }
     }
 
-    void VulkanSwapchain::DestroySwapchainResources()
+    void VulkanSwapchain::DestroySwapchainResources(const std::function<void(std::function<void()>&&)>& submitResourceFree)
     {
         if (!m_Device || !m_Device->GetDevice())
         {
+            return;
+        }
+
+        if (submitResourceFree)
+        {
+            std::vector<VkImageView> l_ImageViews = std::move(m_ImageViews);
+            VkSwapchainKHR l_Swapchain = m_Swapchain;
+            VulkanDevice* l_Device = m_Device;
+
+            m_ImageViews.clear();
+            m_Swapchain = VK_NULL_HANDLE;
+            m_Images.clear();
+
+            submitResourceFree([l_Device, l_ImageViews = std::move(l_ImageViews), l_Swapchain]() mutable
+            {
+                if (!l_Device || !l_Device->GetDevice())
+                {
+                    return;
+                }
+
+                for (auto it_ImageView : l_ImageViews)
+                {
+                    if (it_ImageView)
+                    {
+                        vkDestroyImageView(l_Device->GetDevice(), it_ImageView, nullptr);
+                    }
+                }
+
+                if (l_Swapchain)
+                {
+                    vkDestroySwapchainKHR(l_Device->GetDevice(), l_Swapchain, nullptr);
+                }
+            });
+
             return;
         }
 

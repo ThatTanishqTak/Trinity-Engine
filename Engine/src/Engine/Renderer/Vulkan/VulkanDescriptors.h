@@ -3,6 +3,7 @@
 #include <vulkan/vulkan.h>
 
 #include <cstdint>
+#include <functional>
 #include <vector>
 
 namespace Engine
@@ -24,6 +25,7 @@ namespace Engine
         // can survive swapchain recreation, but must be recreated if the device or layout changes.
         void Initialize(VulkanDevice& device, uint32_t framesInFlight);
         void Shutdown(VulkanDevice& device);
+        void Shutdown(VulkanDevice& device, const std::function<void(std::function<void()>&&)>& submitResourceFree);
 
         bool IsValid() const { return m_Layout != VK_NULL_HANDLE && m_Pool != VK_NULL_HANDLE && !m_DescriptorSets.empty(); }
 

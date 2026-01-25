@@ -2,6 +2,7 @@
 
 #include <vulkan/vulkan.h>
 
+#include <functional>
 #include <span>
 #include <string>
 #include <vector>
@@ -40,6 +41,7 @@ namespace Engine
 
         void Initialize(VulkanDevice& device, VkRenderPass renderPass, const GraphicsPipelineDescription& description, std::span<const VkDescriptorSetLayout> descriptorSetLayouts);
         void Shutdown(VulkanDevice& device);
+        void Shutdown(VulkanDevice& device, const std::function<void(std::function<void()>&&)>& submitResourceFree);
 
         void Recreate(VulkanDevice& device, VkRenderPass renderPass, const GraphicsPipelineDescription& description, std::span<const VkDescriptorSetLayout> descriptorSetLayouts);
 

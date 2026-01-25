@@ -2,6 +2,7 @@
 
 #include <vulkan/vulkan.h>
 
+#include <functional>
 #include <vector>
 
 struct GLFWwindow;
@@ -43,7 +44,7 @@ namespace Engine
 
     private:
         void Create(VkSwapchainKHR swapchain);
-        void DestroySwapchainResources();
+        void DestroySwapchainResources(const std::function<void(std::function<void()>&&)>& submitResourceFree = {});
 
         VkSurfaceFormatKHR ChooseSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats) const;
         VkPresentModeKHR ChoosePresentMode(const std::vector<VkPresentModeKHR>& modes) const;

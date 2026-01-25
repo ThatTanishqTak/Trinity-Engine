@@ -57,6 +57,41 @@ namespace Engine
         buffer.Size = 0;
     }
 
+    void VulkanResources::DestroyBufferDeferred(VulkanDevice& device, BufferResource& buffer, const SubmitResourceFreeCallback& submitResourceFree)
+    {
+        if (!device.GetDevice() || !submitResourceFree)
+        {
+            DestroyBuffer(device, buffer);
+
+            return;
+        }
+
+        BufferResource l_Buffer = buffer;
+        buffer.Buffer = VK_NULL_HANDLE;
+        buffer.Memory = VK_NULL_HANDLE;
+        buffer.Size = 0;
+
+        VulkanDevice* l_Device = &device;
+        submitResourceFree([l_Device, l_Buffer]() mutable
+        {
+            if (!l_Device || !l_Device->GetDevice())
+            {
+                return;
+            }
+
+            if (l_Buffer.Buffer)
+            {
+                vkDestroyBuffer(l_Device->GetDevice(), l_Buffer.Buffer, nullptr);
+            }
+
+            if (l_Buffer.Memory)
+            {
+                vkFreeMemory(l_Device->GetDevice(), l_Buffer.Memory, nullptr);
+            }
+        });
+    }
+
+
     VulkanResources::ImageResource VulkanResources::CreateImage(VulkanDevice& device, uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, 
         VkMemoryPropertyFlags properties, VkImageLayout initialLayout, uint32_t mipLevels, uint32_t arrayLayers, VkSampleCountFlagBits samples)
     {
@@ -110,6 +145,39 @@ namespace Engine
         }
     }
 
+    void VulkanResources::DestroyImageDeferred(VulkanDevice& device, ImageResource& image, const SubmitResourceFreeCallback& submitResourceFree)
+    {
+        if (!device.GetDevice() || !submitResourceFree)
+        {
+            DestroyImage(device, image);
+
+            return;
+        }
+
+        ImageResource l_Image = image;
+        image.Image = VK_NULL_HANDLE;
+        image.Memory = VK_NULL_HANDLE;
+
+        VulkanDevice* l_Device = &device;
+        submitResourceFree([l_Device, l_Image]() mutable
+        {
+            if (!l_Device || !l_Device->GetDevice())
+            {
+                return;
+            }
+
+            if (l_Image.Image)
+            {
+                vkDestroyImage(l_Device->GetDevice(), l_Image.Image, nullptr);
+            }
+
+            if (l_Image.Memory)
+            {
+                vkFreeMemory(l_Device->GetDevice(), l_Image.Memory, nullptr);
+            }
+        });
+    }
+
     VkImageView VulkanResources::CreateImageView(VulkanDevice& device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, VkImageViewType viewType, uint32_t mipLevels, 
         uint32_t baseMipLevel, uint32_t baseArrayLayer, uint32_t layerCount)
     {
@@ -140,6 +208,33 @@ namespace Engine
         }
     }
 
+    void VulkanResources::DestroyImageViewDeferred(VulkanDevice& device, VkImageView& imageView, const SubmitResourceFreeCallback& submitResourceFree)
+    {
+        if (!device.GetDevice() || !submitResourceFree)
+        {
+            DestroyImageView(device, imageView);
+
+            return;
+        }
+
+        VkImageView l_ImageView = imageView;
+        imageView = VK_NULL_HANDLE;
+
+        VulkanDevice* l_Device = &device;
+        submitResourceFree([l_Device, l_ImageView]() mutable
+        {
+            if (!l_Device || !l_Device->GetDevice())
+            {
+                return;
+            }
+
+            if (l_ImageView)
+            {
+                vkDestroyImageView(l_Device->GetDevice(), l_ImageView, nullptr);
+            }
+        });
+    }
+
     VkSampler VulkanResources::CreateSampler(VulkanDevice& device, const VkSamplerCreateInfo& createInfo)
     {
         // Samplers are lightweight but still need explicit creation and destruction.
@@ -156,6 +251,33 @@ namespace Engine
             vkDestroySampler(device.GetDevice(), sampler, nullptr);
             sampler = VK_NULL_HANDLE;
         }
+    }
+
+    void VulkanResources::DestroySamplerDeferred(VulkanDevice& device, VkSampler& sampler, const SubmitResourceFreeCallback& submitResourceFree)
+    {
+        if (!device.GetDevice() || !submitResourceFree)
+        {
+            DestroySampler(device, sampler);
+
+            return;
+        }
+
+        VkSampler l_Sampler = sampler;
+        sampler = VK_NULL_HANDLE;
+
+        VulkanDevice* l_Device = &device;
+        submitResourceFree([l_Device, l_Sampler]() mutable
+        {
+            if (!l_Device || !l_Device->GetDevice())
+            {
+                return;
+            }
+
+            if (l_Sampler)
+            {
+                vkDestroySampler(l_Device->GetDevice(), l_Sampler, nullptr);
+            }
+        });
     }
 
     VulkanResources::BufferResource VulkanResources::CreateStagingBuffer(VulkanDevice& device, VkDeviceSize size)

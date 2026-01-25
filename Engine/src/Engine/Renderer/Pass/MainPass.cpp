@@ -7,6 +7,7 @@
 #include "Engine/Utilities/Utilities.h"
 
 #include <array>
+#include <functional>
 #include <span>
 
 namespace Engine
@@ -32,7 +33,12 @@ namespace Engine
         TR_CORE_INFO("MainPass resize");
 
         // Pipeline depends on the render pass, so shut it down before destroying swapchain resources.
-        m_Pipeline.Shutdown(device);
+        const auto l_SubmitResourceFree = [&renderer](std::function<void()>&& function)
+        {
+            renderer.SubmitResourceFree(std::move(function));
+        };
+
+        m_Pipeline.Shutdown(device, l_SubmitResourceFree);
 
         // Swapchain-dependent resources must be destroyed before rebuilding them for the new extent.
         DestroySwapchainResources(device, renderer);
@@ -208,6 +214,35 @@ namespace Engine
         }
 
         TR_CORE_INFO("MainPass create framebuffers");
+    }
+
+    void MainPass::DestroySwapchainResources(VulkanDevice& device)
+    {
+        TR_CORE_INFO("MainPass destroy swapchain resources");
+
+        if (!device.GetDevice())
+        {
+            m_Framebuffers.clear();
+            m_RenderPass = VK_NULL_HANDLE;
+
+            return;
+        }
+
+        for (auto it_Framebuffer : m_Framebuffers)
+        {
+            if (it_Framebuffer)
+            {
+                vkDestroyFramebuffer(device.GetDevice(), it_Framebuffer, nullptr);
+            }
+        }
+
+        m_Framebuffers.clear();
+
+        if (m_RenderPass)
+        {
+            vkDestroyRenderPass(device.GetDevice(), m_RenderPass, nullptr);
+            m_RenderPass = VK_NULL_HANDLE;
+        }
     }
 
     void MainPass::CreatePipeline(VulkanDevice& device, VulkanSwapchain& swapchain, VulkanFrameResources& frameResources)

@@ -6,12 +6,15 @@
 #include <vulkan/vulkan.h>
 
 #include <cstdint>
+#include <functional>
 
 namespace Engine
 {
     class VulkanResources final
     {
     public:
+        using SubmitResourceFreeCallback = std::function<void(std::function<void()>&&)>;
+
         struct BufferResource
         {
             VkBuffer Buffer = VK_NULL_HANDLE;
@@ -27,17 +30,21 @@ namespace Engine
 
         static BufferResource CreateBuffer(VulkanDevice& device, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
         static void DestroyBuffer(VulkanDevice& device, BufferResource& buffer);
+        static void DestroyBufferDeferred(VulkanDevice& device, BufferResource& buffer, const SubmitResourceFreeCallback& submitResourceFree);
 
         static ImageResource CreateImage(VulkanDevice& device, uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, 
             VkImageLayout initialLayout = VK_IMAGE_LAYOUT_UNDEFINED, uint32_t mipLevels = 1, uint32_t arrayLayers = 1, VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT);
         static void DestroyImage(VulkanDevice& device, ImageResource& image);
+        static void DestroyImageDeferred(VulkanDevice& device, ImageResource& image, const SubmitResourceFreeCallback& submitResourceFree);
 
         static VkImageView CreateImageView(VulkanDevice& device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_2D, 
             uint32_t mipLevels = 1, uint32_t baseMipLevel = 0, uint32_t baseArrayLayer = 0, uint32_t layerCount = 1);
         static void DestroyImageView(VulkanDevice& device, VkImageView& imageView);
+        static void DestroyImageViewDeferred(VulkanDevice& device, VkImageView& imageView, const SubmitResourceFreeCallback& submitResourceFree);
 
         static VkSampler CreateSampler(VulkanDevice& device, const VkSamplerCreateInfo& createInfo);
         static void DestroySampler(VulkanDevice& device, VkSampler& sampler);
+        static void DestroySamplerDeferred(VulkanDevice& device, VkSampler& sampler, const SubmitResourceFreeCallback& submitResourceFree);
 
         static BufferResource CreateStagingBuffer(VulkanDevice& device, VkDeviceSize size);
         static void UploadToBuffer(VulkanDevice& device, VulkanCommand& command, VkBuffer destination, const void* data, VkDeviceSize size);

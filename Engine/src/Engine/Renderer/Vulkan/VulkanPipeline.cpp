@@ -133,6 +133,11 @@ namespace Engine
 
     void VulkanPipeline::Shutdown(VulkanDevice& device)
     {
+        Shutdown(device, {});
+    }
+
+    void VulkanPipeline::Shutdown(VulkanDevice & device, const std::function<void(std::function<void()>&&)>&submitResourceFree)
+    {
         if (!device.GetDevice())
         {
             m_Initialized = false;
@@ -144,8 +149,8 @@ namespace Engine
         if (m_PipelineCache != VK_NULL_HANDLE && !m_PipelineCachePath.empty())
         {
             try
-            { 
-                SavePipelineCache(device, m_PipelineCachePath); 
+            {
+                SavePipelineCache(device, m_PipelineCachePath);
             }
             catch (...)
             {
@@ -153,23 +158,14 @@ namespace Engine
             }
         }
 
-        if (m_Pipeline != VK_NULL_HANDLE)
-        {
-            vkDestroyPipeline(device.GetDevice(), m_Pipeline, nullptr);
-            m_Pipeline = VK_NULL_HANDLE;
-        }
+        VkPipeline l_Pipeline = m_Pipeline;
+        VkPipelineLayout l_PipelineLayout = m_PipelineLayout;
+        VkPipelineCache l_PipelineCache = m_PipelineCache;
+        VulkanDevice* l_Device = &device;
 
-        if (m_PipelineLayout != VK_NULL_HANDLE)
-        {
-            vkDestroyPipelineLayout(device.GetDevice(), m_PipelineLayout, nullptr);
-            m_PipelineLayout = VK_NULL_HANDLE;
-        }
-
-        if (m_PipelineCache != VK_NULL_HANDLE)
-        {
-            vkDestroyPipelineCache(device.GetDevice(), m_PipelineCache, nullptr);
-            m_PipelineCache = VK_NULL_HANDLE;
-        }
+        m_Pipeline = VK_NULL_HANDLE;
+        m_PipelineLayout = VK_NULL_HANDLE;
+        m_PipelineCache = VK_NULL_HANDLE;
 
         m_RenderPass = VK_NULL_HANDLE;
         m_Extent = {};
@@ -179,6 +175,48 @@ namespace Engine
         m_PipelineCachePath.clear();
 
         m_Initialized = false;
+        if (submitResourceFree)
+        {
+            submitResourceFree([l_Device, l_Pipeline, l_PipelineLayout, l_PipelineCache]() mutable
+            {
+                if (!l_Device || !l_Device->GetDevice())
+                {
+                    return;
+                }
+
+                if (l_Pipeline)
+                {
+                    vkDestroyPipeline(l_Device->GetDevice(), l_Pipeline, nullptr);
+                }
+
+                if (l_PipelineLayout)
+                {
+                    vkDestroyPipelineLayout(l_Device->GetDevice(), l_PipelineLayout, nullptr);
+                }
+
+                if (l_PipelineCache)
+                {
+                    vkDestroyPipelineCache(l_Device->GetDevice(), l_PipelineCache, nullptr);
+                }
+            });
+
+            return;
+        }
+
+        if (l_Pipeline)
+        {
+            vkDestroyPipeline(device.GetDevice(), l_Pipeline, nullptr);
+        }
+
+        if (l_PipelineLayout)
+        {
+            vkDestroyPipelineLayout(device.GetDevice(), l_PipelineLayout, nullptr);
+        }
+
+        if (l_PipelineCache)
+        {
+            vkDestroyPipelineCache(device.GetDevice(), l_PipelineCache, nullptr);
+        }
     }
 
     void VulkanPipeline::Recreate(VulkanDevice& device, VkRenderPass renderPass, const GraphicsPipelineDescription& description, std::span<const VkDescriptorSetLayout> descriptorSetLayouts)

@@ -28,6 +28,7 @@ namespace Engine
         void CreateRenderPass(VulkanDevice& device, VulkanSwapchain& swapchain);
         void CreateFramebuffers(VulkanDevice& device, VulkanSwapchain& swapchain);
         void CreatePipeline(VulkanDevice& device, VulkanSwapchain& swapchain, VulkanFrameResources& frameResources);
+        void DestroySwapchainResources(VulkanDevice& device);
         void DestroySwapchainResources(VulkanDevice& device, VulkanRenderer& renderer);
 
     private:
