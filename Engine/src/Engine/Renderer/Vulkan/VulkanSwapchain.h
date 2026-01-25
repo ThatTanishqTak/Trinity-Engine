@@ -11,6 +11,7 @@ namespace Engine
     class Window;
     class VulkanContext;
     class VulkanDevice;
+    class VulkanRenderer;
 
     class VulkanSwapchain
     {
@@ -26,7 +27,7 @@ namespace Engine
         void Initialize(VulkanContext& context, VulkanDevice& device, Window& window);
         void Shutdown();
 
-        void Recreate();
+        void Recreate(VulkanRenderer& renderer);
         bool IsValid() const { return m_Swapchain != VK_NULL_HANDLE; }
         explicit operator bool() const { return IsValid(); }
 

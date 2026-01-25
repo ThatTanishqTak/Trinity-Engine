@@ -3,6 +3,7 @@
 #include "Engine/Platform/Window.h"
 #include "Engine/Renderer/Vulkan/VulkanContext.h"
 #include "Engine/Renderer/Vulkan/VulkanDevice.h"
+#include "Engine/Renderer/Vulkan/VulkanRenderer.h"
 #include "Engine/Renderer/Vulkan/VulkanResources.h"
 #include "Engine/Utilities/Utilities.h"
 
@@ -43,7 +44,7 @@ namespace Engine
         m_Extent = {};
     }
 
-    void VulkanSwapchain::Recreate()
+    void VulkanSwapchain::Recreate(VulkanRenderer& renderer)
     {
         if (!m_Device || !m_Device->GetDevice() || !m_Context || !m_Context->GetSurface())
         {
@@ -72,18 +73,29 @@ namespace Engine
 
         Create(l_OldSwapchain);
 
-        // Destroy old views and old swapchain (new one is now active)
-        for (auto it_ImageView : l_OldImageViews)
+        VulkanDevice* l_Device = m_Device;
+        if (!l_OldImageViews.empty() || l_OldSwapchain)
         {
-            if (it_ImageView)
+            renderer.SubmitResourceFree([l_Device, l_OldImageViews = std::move(l_OldImageViews), l_OldSwapchain]() mutable
             {
-                VulkanResources::DestroyImageView(*m_Device, it_ImageView);
-            }
-        }
+                if (!l_Device || !l_Device->GetDevice())
+                {
+                    return;
+                }
 
-        if (l_OldSwapchain)
-        {
-            vkDestroySwapchainKHR(m_Device->GetDevice(), l_OldSwapchain, nullptr);
+                for (auto it_ImageView : l_OldImageViews)
+                {
+                    if (it_ImageView)
+                    {
+                        VulkanResources::DestroyImageView(*l_Device, it_ImageView);
+                    }
+                }
+
+                if (l_OldSwapchain)
+                {
+                    vkDestroySwapchainKHR(l_Device->GetDevice(), l_OldSwapchain, nullptr);
+                }
+            });
         }
 
         TR_CORE_INFO("VulkanSwapchain recreated ({} images, {}x{})", (uint32_t)m_Images.size(), m_Extent.width, m_Extent.height);

@@ -2,6 +2,7 @@
 
 #include "Engine/Renderer/Vulkan/VulkanDevice.h"
 #include "Engine/Renderer/Vulkan/VulkanFrameResources.h"
+#include "Engine/Renderer/Vulkan/VulkanRenderer.h"
 #include "Engine/Renderer/Vulkan/VulkanSwapchain.h"
 #include "Engine/Utilities/Utilities.h"
 
@@ -26,18 +27,15 @@ namespace Engine
         CreatePipeline(device, swapchain, frameResources);
     }
 
-    void MainPass::OnResize(VulkanDevice& device, VulkanSwapchain& swapchain, VulkanFrameResources& frameResources)
+    void MainPass::OnResize(VulkanDevice& device, VulkanSwapchain& swapchain, VulkanFrameResources& frameResources, VulkanRenderer& renderer)
     {
         TR_CORE_INFO("MainPass resize");
 
         // Pipeline depends on the render pass, so shut it down before destroying swapchain resources.
         m_Pipeline.Shutdown(device);
 
-        // Swapchain-dependent resources must be destroyed before the swapchain recreates.
-        DestroySwapchainResources(device);
-
-        // Recreate the swapchain so the pass can rebuild resources with the new extent.
-        swapchain.Recreate();
+        // Swapchain-dependent resources must be destroyed before rebuilding them for the new extent.
+        DestroySwapchainResources(device, renderer);
 
         m_FrameResources = &frameResources;
         m_Extent = swapchain.GetExtent();
@@ -225,8 +223,7 @@ namespace Engine
         // Use the shared per-frame descriptor set layout when available.
         std::array<VkDescriptorSetLayout, 1> l_DescriptorLayouts = { frameResources.GetDescriptorSetLayout() };
         std::span<const VkDescriptorSetLayout> l_LayoutSpan = frameResources.HasDescriptors()
-            ? std::span<const VkDescriptorSetLayout>(l_DescriptorLayouts)
-            : std::span<const VkDescriptorSetLayout>();
+            ? std::span<const VkDescriptorSetLayout>(l_DescriptorLayouts) : std::span<const VkDescriptorSetLayout>();
 
         TR_CORE_INFO("MainPass create pipeline");
         m_Pipeline.Initialize(device, m_RenderPass, l_GraphicsPipelineDescription, l_LayoutSpan);
@@ -234,23 +231,36 @@ namespace Engine
         m_Extent = l_GraphicsPipelineDescription.Extent;
     }
 
-    void MainPass::DestroySwapchainResources(VulkanDevice& device)
+    void MainPass::DestroySwapchainResources(VulkanDevice& device, VulkanRenderer& renderer)
     {
         TR_CORE_INFO("MainPass destroy swapchain resources");
 
-        for (auto it_Framebuffer : m_Framebuffers)
-        {
-            if (it_Framebuffer)
-            {
-                vkDestroyFramebuffer(device.GetDevice(), it_Framebuffer, nullptr);
-            }
-        }
-        m_Framebuffers.clear();
+        std::vector<VkFramebuffer> l_Framebuffers = std::move(m_Framebuffers);
+        VkRenderPass l_RenderPass = m_RenderPass;
+        VulkanDevice* l_Device = &device;
 
-        if (m_RenderPass)
+        m_Framebuffers.clear();
+        m_RenderPass = VK_NULL_HANDLE;
+
+        renderer.SubmitResourceFree([l_Device, l_Framebuffers = std::move(l_Framebuffers), l_RenderPass]() mutable
         {
-            vkDestroyRenderPass(device.GetDevice(), m_RenderPass, nullptr);
-            m_RenderPass = VK_NULL_HANDLE;
-        }
+            if (!l_Device || !l_Device->GetDevice())
+            {
+                return;
+            }
+
+            for (auto it_Framebuffer : l_Framebuffers)
+            {
+                if (it_Framebuffer)
+                {
+                    vkDestroyFramebuffer(l_Device->GetDevice(), it_Framebuffer, nullptr);
+                }
+            }
+
+            if (l_RenderPass)
+            {
+                vkDestroyRenderPass(l_Device->GetDevice(), l_RenderPass, nullptr);
+            }
+        });
     }
 }

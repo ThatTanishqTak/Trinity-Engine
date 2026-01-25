@@ -20,7 +20,7 @@ namespace Engine
 
         const char* GetName() const override { return "MainPass"; }
         void Initialize(VulkanDevice& device, VulkanSwapchain& swapchain, VulkanFrameResources& frameResources) override;
-        void OnResize(VulkanDevice& device, VulkanSwapchain& swapchain, VulkanFrameResources& frameResources) override;
+        void OnResize(VulkanDevice& device, VulkanSwapchain& swapchain, VulkanFrameResources& frameResources, VulkanRenderer& renderer) override;
         void RecordCommandBuffer(VkCommandBuffer command, uint32_t imageIndex, uint32_t currentFrame, const glm::vec4& clearColor, std::span<const RenderCube> pendingCubes) override;
         void OnDestroy(VulkanDevice& device) override;
 
@@ -28,7 +28,7 @@ namespace Engine
         void CreateRenderPass(VulkanDevice& device, VulkanSwapchain& swapchain);
         void CreateFramebuffers(VulkanDevice& device, VulkanSwapchain& swapchain);
         void CreatePipeline(VulkanDevice& device, VulkanSwapchain& swapchain, VulkanFrameResources& frameResources);
-        void DestroySwapchainResources(VulkanDevice& device);
+        void DestroySwapchainResources(VulkanDevice& device, VulkanRenderer& renderer);
 
     private:
         // Swapchain-dependent resources.

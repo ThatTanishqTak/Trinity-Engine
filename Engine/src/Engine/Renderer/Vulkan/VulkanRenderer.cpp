@@ -232,13 +232,15 @@ namespace Engine
             return;
         }
 
-        vkDeviceWaitIdle(m_Device.GetDevice());
+        const uint32_t l_FrameIndex = static_cast<uint32_t>(m_CurrentFrame);
+        m_FrameResources.WaitForFrameFence(m_Device, l_FrameIndex, UINT64_MAX);
+        m_DeletionQueue.Flush(l_FrameIndex);
 
         TR_CORE_INFO("Recreating swapchain for resize");
-        m_Swapchain.Recreate();
+        m_Swapchain.Recreate(*this);
         m_FrameResources.OnSwapchainRecreated(m_Swapchain.GetImages().size());
 
         TR_CORE_INFO("Resizing render passes");
-        m_PassManager.OnResizeAll(m_Device, m_Swapchain, m_FrameResources);
+        m_PassManager.OnResizeAll(m_Device, m_Swapchain, m_FrameResources, *this);
     }
 }
