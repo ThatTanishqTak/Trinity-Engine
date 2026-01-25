@@ -31,15 +31,13 @@ namespace Engine
 
         m_Context.Initialize(window);
         m_Device.Initialize(m_Context);
-        m_Descriptors.Initialize(m_Device, (uint32_t)s_MaxFramesInFlight);
+        m_FrameResources.Initialize(m_Device, (uint32_t)s_MaxFramesInFlight);
         m_Swapchain.Initialize(m_Context, m_Device, window);
+        m_FrameResources.OnSwapchainRecreated(m_Swapchain.GetImages().size());
 
         CreateRenderPass();
         CreateFramebuffers();
         CreatePipeline();
-
-        m_Command.Initialize(m_Device, (uint32_t)s_MaxFramesInFlight);
-        m_Sync.Initialize(m_Device, (uint32_t)s_MaxFramesInFlight, m_Swapchain.GetImages().size());
 
         m_CurrentFrame = 0;
         m_ImageIndex = 0;
@@ -63,12 +61,9 @@ namespace Engine
 
             // Pipeline depends on render pass and swapchain extent, kill it before swapchain-related cleanup.
             m_Pipeline.Shutdown(m_Device);
-            m_Descriptors.Shutdown(m_Device);
-
             CleanupSwapchainDependents();
             m_Swapchain.Shutdown();
-            m_Sync.Shutdown(m_Device);
-            m_Command.Shutdown();
+            m_FrameResources.Shutdown(m_Device);
             m_Device.Shutdown();
         }
 
@@ -98,7 +93,7 @@ namespace Engine
 
     void VulkanRenderer::BeginFrame()
     {
-        if (!m_Initialized || !m_Device.GetDevice() || !m_Swapchain.IsValid() || !m_Sync.IsValid())
+        if (!m_Initialized || !m_Device.GetDevice() || !m_Swapchain.IsValid() || !m_FrameResources.IsValid())
         {
             return;
         }
@@ -113,9 +108,9 @@ namespace Engine
             return;
         }
 
-        m_Sync.WaitForFrameFence(m_Device, (uint32_t)m_CurrentFrame, UINT64_MAX);
+        m_FrameResources.WaitForFrameFence(m_Device, (uint32_t)m_CurrentFrame, UINT64_MAX);
 
-        VkSemaphore l_ImageAvailable = m_Sync.GetImageAvailableSemaphore((uint32_t)m_CurrentFrame);
+        VkSemaphore l_ImageAvailable = m_FrameResources.GetImageAvailableSemaphore((uint32_t)m_CurrentFrame);
 
         VkResult l_AcquireResult = m_Swapchain.AcquireNextImage(UINT64_MAX, l_ImageAvailable, VK_NULL_HANDLE, m_ImageIndex);
 
@@ -131,21 +126,19 @@ namespace Engine
             Utilities::VulkanUtilities::VKCheckStrict(l_AcquireResult, "vkAcquireNextImageKHR");
         }
 
-        m_Sync.WaitForImageFenceIfNeeded(m_Device, m_ImageIndex, UINT64_MAX);
+        m_FrameResources.WaitForImageFenceIfNeeded(m_Device, m_ImageIndex, UINT64_MAX);
 
-        VkFence l_FrameFence = m_Sync.GetInFlightFence((uint32_t)m_CurrentFrame);
-        m_Sync.MarkImageInFlight(m_ImageIndex, l_FrameFence);
-        m_Sync.ResetFrameFence(m_Device, (uint32_t)m_CurrentFrame);
+        VkFence l_FrameFence = m_FrameResources.GetInFlightFence((uint32_t)m_CurrentFrame);
+        m_FrameResources.MarkImageInFlight(m_ImageIndex, l_FrameFence);
+        m_FrameResources.ResetForFrame(m_Device, (uint32_t)m_CurrentFrame);
 
-        m_Command.ResetCommandBuffer((uint32_t)m_CurrentFrame);
-
-        VkCommandBuffer l_CommandBuffer = m_Command.GetCommandBuffer((uint32_t)m_CurrentFrame);
+        VkCommandBuffer l_CommandBuffer = m_FrameResources.GetCommandBuffer((uint32_t)m_CurrentFrame);
         RecordCommandBuffer(l_CommandBuffer, m_ImageIndex);
 
         VkSemaphore l_WaitSemaphores[] = { l_ImageAvailable };
         VkPipelineStageFlags l_WaitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
-        VkSemaphore l_RenderFinished = m_Sync.GetRenderFinishedSemaphore((uint32_t)m_CurrentFrame);
+        VkSemaphore l_RenderFinished = m_FrameResources.GetRenderFinishedSemaphore((uint32_t)m_CurrentFrame);
         VkSemaphore l_SignalSemaphores[] = { l_RenderFinished };
 
         VkSubmitInfo l_SubmitInfo{};
@@ -165,12 +158,12 @@ namespace Engine
 
     void VulkanRenderer::EndFrame()
     {
-        if (!m_FrameInProgress || !m_Swapchain.IsValid() || !m_Sync.IsValid())
+        if (!m_FrameInProgress || !m_Swapchain.IsValid() || !m_FrameResources.IsValid())
         {
             return;
         }
 
-        VkSemaphore l_WaitSemaphores[] = { m_Sync.GetRenderFinishedSemaphore((uint32_t)m_CurrentFrame) };
+        VkSemaphore l_WaitSemaphores[] = { m_FrameResources.GetRenderFinishedSemaphore((uint32_t)m_CurrentFrame) };
         VkSwapchainKHR l_SwapchainHandle = m_Swapchain.GetSwapchain();
 
         VkPresentInfoKHR l_PresentInfo{};
@@ -283,8 +276,8 @@ namespace Engine
         l_GraphicsPipelineDescription.PipelineCachePath = "pipeline_cache.bin";
 
         // If you want to make this configurable later, go wild.
-        std::array<VkDescriptorSetLayout, 1> l_DescriptorLayouts = { m_Descriptors.GetLayout() };
-        std::span<const VkDescriptorSetLayout> l_LayoutSpan = m_Descriptors.IsValid() ? std::span<const VkDescriptorSetLayout>(l_DescriptorLayouts) : std::span<const VkDescriptorSetLayout>();
+        std::array<VkDescriptorSetLayout, 1> l_DescriptorLayouts = { m_FrameResources.GetDescriptorSetLayout() };
+        std::span<const VkDescriptorSetLayout> l_LayoutSpan = m_FrameResources.HasDescriptors() ? std::span<const VkDescriptorSetLayout>(l_DescriptorLayouts) : std::span<const VkDescriptorSetLayout>();
 
         m_Pipeline.Initialize(m_Device, m_RenderPass, l_GraphicsPipelineDescription, l_LayoutSpan);
     }
@@ -331,9 +324,9 @@ namespace Engine
 
             vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline.GetPipeline());
 
-            if (m_Descriptors.IsValid())
+            if (m_FrameResources.HasDescriptors())
             {
-                VkDescriptorSet l_DescriptorSet = m_Descriptors.GetDescriptorSet((uint32_t)m_CurrentFrame);
+                VkDescriptorSet l_DescriptorSet = m_FrameResources.GetDescriptorSet((uint32_t)m_CurrentFrame);
                 if (l_DescriptorSet != VK_NULL_HANDLE)
                 {
                     // Bind per-frame descriptor set at set 0 to match the pipeline layout.
@@ -387,6 +380,6 @@ namespace Engine
         CreateFramebuffers();
         CreatePipeline();
 
-        m_Sync.OnSwapchainRecreated(m_Swapchain.GetImages().size());
+        m_FrameResources.OnSwapchainRecreated(m_Swapchain.GetImages().size());
     }
 }
