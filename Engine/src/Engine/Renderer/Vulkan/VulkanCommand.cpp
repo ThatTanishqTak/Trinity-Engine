@@ -143,7 +143,7 @@ namespace Engine
     {
         if (!m_Device || !m_Device->GetDevice())
         {
-            std::abort;
+            std::abort();
         }
 
         VkCommandPoolCreateInfo l_CommandPoolCreateInfo{};
@@ -158,7 +158,7 @@ namespace Engine
     {
         if (!m_Device || !m_Device->GetDevice() || !m_CommandPool || m_FramesInFlight == 0)
         {
-            std::abort;
+            std::abort();
         }
 
         m_CommandBuffers.resize(m_FramesInFlight);

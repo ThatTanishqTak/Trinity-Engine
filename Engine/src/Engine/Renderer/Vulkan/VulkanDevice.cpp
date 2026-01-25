@@ -44,7 +44,7 @@ namespace Engine
         {
             TR_CORE_CRITICAL("No Vulkan GPUs found.");
 
-            std::abort;
+            std::abort();
         }
 
         std::vector<VkPhysicalDevice> l_Devices(it_DeviceCount);
@@ -65,7 +65,7 @@ namespace Engine
         {
             TR_CORE_CRITICAL("Failed to find a suitable GPU.");
 
-            std::abort;
+            std::abort();
         }
     }
 

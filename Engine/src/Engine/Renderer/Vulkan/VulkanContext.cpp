@@ -54,7 +54,7 @@ namespace Engine
         {
             TR_CORE_CRITICAL("Validation layers requested, but not available");
 
-            std::abort;
+            std::abort();
         }
 
         VkApplicationInfo l_ApplicationInfo{};

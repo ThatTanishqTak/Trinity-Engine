@@ -193,7 +193,7 @@ namespace Engine
         {
             TR_CORE_CRITICAL("Shader file is empty: {}", path);
 
-            std::abort;
+            std::abort();
         }
 
         VkShaderModuleCreateInfo l_CreateInfo{};

@@ -100,7 +100,7 @@ namespace Engine
             {
                 TR_CORE_CRITICAL("Vulkan failure: {} (VkResult = {})", what, (int)result);
 
-                std::abort;
+                std::abort();
             }
         }
 
@@ -113,7 +113,7 @@ namespace Engine
             {
                 TR_CORE_CRITICAL("Failed to open file: {}", path.c_str());
 
-                std::abort;
+                std::abort();
             }
 
             const size_t l_FileSize = (size_t)l_File.tellg();
