@@ -39,6 +39,7 @@ namespace Engine
         VkFence GetInFlightFence(uint32_t frameIndex) const;
         VkDescriptorSetLayout GetDescriptorSetLayout() const;
         VkDescriptorSet GetDescriptorSet(uint32_t frameIndex) const;
+        uint32_t GetFramesInFlight() const;
 
         void WaitForFrameFence(VulkanDevice& device, uint32_t frameIndex, uint64_t timeout = UINT64_MAX) const;
         void WaitForImageFenceIfNeeded(VulkanDevice& device, uint32_t imageIndex, uint64_t timeout = UINT64_MAX) const;

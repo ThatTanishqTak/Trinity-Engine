@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Engine/Renderer/Renderer.h"
+#include "Engine/Renderer/DeletionQueue.h"
 #include "Engine/Renderer/Pass/RenderPassManager.h"
 #include "Engine/Renderer/Vulkan/VulkanContext.h"
 #include "Engine/Renderer/Vulkan/VulkanDevice.h"
@@ -10,6 +11,7 @@
 #include <vulkan/vulkan.h>
 
 #include <cstdint>
+#include <functional>
 #include <vector>
 
 #include <glm/glm.hpp>
@@ -39,7 +41,8 @@ namespace Engine
 
         void SetClearColor(const glm::vec4& a_Color) override;
         void Clear() override;
-        void DrawCube(const glm::vec3& a_Size, const glm::vec3& a_Position, const glm::vec4& a_Tint) override;
+        void DrawCube(const glm::vec3& size, const glm::vec3& position, const glm::vec4& tint) override;
+        void SubmitResourceFree(std::function<void()>&& function);
 
         void OnResize(uint32_t width, uint32_t height) override;
 
@@ -55,6 +58,7 @@ namespace Engine
         VulkanSwapchain m_Swapchain;
         VulkanFrameResources m_FrameResources;
         RenderPassManager m_PassManager;
+        DeletionQueue m_DeletionQueue;
 
         static constexpr int s_MaxFramesInFlight = 2;
         int m_CurrentFrame = 0;

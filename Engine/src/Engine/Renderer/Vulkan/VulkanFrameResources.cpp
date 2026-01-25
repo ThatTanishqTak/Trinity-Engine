@@ -85,6 +85,11 @@ namespace Engine
         return m_Descriptors.GetDescriptorSet(frameIndex);
     }
 
+    uint32_t VulkanFrameResources::GetFramesInFlight() const
+    {
+        return m_FramesInFlight;
+    }
+
     void VulkanFrameResources::WaitForFrameFence(VulkanDevice& device, uint32_t frameIndex, uint64_t timeout) const
     {
         m_Sync.WaitForFrameFence(device, frameIndex, timeout);

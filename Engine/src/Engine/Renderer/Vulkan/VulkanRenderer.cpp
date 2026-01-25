@@ -6,6 +6,7 @@
 
 #include <GLFW/glfw3.h>
 
+#include <cstddef>
 #include <memory>
 
 namespace Engine
@@ -48,6 +49,7 @@ namespace Engine
         m_Context.Initialize(window);
         m_Device.Initialize(m_Context);
         m_FrameResources.Initialize(m_Device, (uint32_t)s_MaxFramesInFlight);
+        m_DeletionQueue.Initialize(m_FrameResources.GetFramesInFlight());
         m_Swapchain.Initialize(m_Context, m_Device, window);
         m_FrameResources.OnSwapchainRecreated(m_Swapchain.GetImages().size());
         m_PassManager.AddPass(std::make_unique<MainPass>());
@@ -93,6 +95,7 @@ namespace Engine
         m_ImageIndex = 0;
 
         m_PassManager = RenderPassManager();
+        m_DeletionQueue.Reset();
     }
 
     void VulkanRenderer::OnResize(uint32_t width, uint32_t height)
@@ -104,6 +107,12 @@ namespace Engine
             m_Window->SetWidth(width);
             m_Window->SetHeight(height);
         }
+    }
+
+    void VulkanRenderer::SubmitResourceFree(std::function<void()>&& function)
+    {
+        const uint32_t l_FrameIndex = static_cast<uint32_t>(m_CurrentFrame);
+        m_DeletionQueue.Push(l_FrameIndex, std::move(function));
     }
 
     void VulkanRenderer::BeginFrame()
@@ -126,8 +135,8 @@ namespace Engine
 
         m_FrameResources.WaitForFrameFence(m_Device, (uint32_t)m_CurrentFrame, UINT64_MAX);
 
+        const size_t l_FlushCount = m_DeletionQueue.Flush((uint32_t)m_CurrentFrame);
         VkSemaphore l_ImageAvailable = m_FrameResources.GetImageAvailableSemaphore((uint32_t)m_CurrentFrame);
-
         VkResult l_AcquireResult = m_Swapchain.AcquireNextImage(UINT64_MAX, l_ImageAvailable, VK_NULL_HANDLE, m_ImageIndex);
 
         if (l_AcquireResult == VK_ERROR_OUT_OF_DATE_KHR)
@@ -142,7 +151,7 @@ namespace Engine
             Utilities::VulkanUtilities::VKCheckStrict(l_AcquireResult, "vkAcquireNextImageKHR");
         }
 
-        m_FrameResources.WaitForImageFenceIfNeeded(m_Device, m_ImageIndex, UINT64_MAX);
+        m_FrameResources.WaitForImageFenceIfunctioneeded(m_Device, m_ImageIndex, UINT64_MAX);
 
         VkFence l_FrameFence = m_FrameResources.GetInFlightFence((uint32_t)m_CurrentFrame);
         m_FrameResources.MarkImageInFlight(m_ImageIndex, l_FrameFence);
@@ -205,7 +214,15 @@ namespace Engine
         }
 
         m_FrameInProgress = false;
-        m_CurrentFrame = (m_CurrentFrame + 1) % s_MaxFramesInFlight;
+        const uint32_t l_FramesInFlight = m_FrameResources.GetFramesInFlight();
+        if (l_FramesInFlight > 0)
+        {
+            m_CurrentFrame = (m_CurrentFrame + 1) % static_cast<int>(l_FramesInFlight);
+        }
+        else
+        {
+            m_CurrentFrame = 0;
+        }
     }
 
     void VulkanRenderer::RecreateSwapchain()
