@@ -1,11 +1,11 @@
 #pragma once
 
 #include "Engine/Renderer/Renderer.h"
+#include "Engine/Renderer/Pass/MainPass.h"
 #include "Engine/Renderer/Vulkan/VulkanContext.h"
 #include "Engine/Renderer/Vulkan/VulkanDevice.h"
 #include "Engine/Renderer/Vulkan/VulkanSwapchain.h"
 #include "Engine/Renderer/Vulkan/VulkanFrameResources.h"
-#include "Engine/Renderer/Vulkan/VulkanPipeline.h"
 
 #include <vulkan/vulkan.h>
 
@@ -44,21 +44,7 @@ namespace Engine
         void OnResize(uint32_t width, uint32_t height) override;
 
     private:
-        struct PendingCube
-        {
-            glm::vec3 Size{ 1.0f };
-            glm::vec3 Position{ 0.0f };
-            glm::vec4 Tint{ 1.0f };
-        };
-
-        void CreateRenderPass();
-        void CreateFramebuffers();
-
-        void CreatePipeline();
-        void CleanupSwapchainDependents();
         void RecreateSwapchain();
-
-        void RecordCommandBuffer(VkCommandBuffer command, uint32_t imageIndex);
 
     private:
         Window* m_Window = nullptr;
@@ -68,10 +54,7 @@ namespace Engine
         VulkanDevice m_Device;
         VulkanSwapchain m_Swapchain;
         VulkanFrameResources m_FrameResources;
-        VulkanPipeline m_Pipeline;
-
-        VkRenderPass m_RenderPass = VK_NULL_HANDLE;
-        std::vector<VkFramebuffer> m_Framebuffers;
+        MainPass m_MainPass;
 
         static constexpr int s_MaxFramesInFlight = 2;
         int m_CurrentFrame = 0;
@@ -86,6 +69,6 @@ namespace Engine
 
         glm::vec4 m_ClearColor = glm::vec4(0.05f, 0.05f, 0.05f, 1.0f);
         bool m_ClearRequested = true;
-        std::vector<PendingCube> m_PendingCubes;
+        std::vector<RenderCube> m_PendingCubes;
     };
 }
