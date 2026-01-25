@@ -3,6 +3,7 @@
 
 #include "Engine/Utilities/Utilities.h"
 
+#include <cstdlib>
 #include <stdexcept>
 #include <string>
 
@@ -142,7 +143,7 @@ namespace Engine
     {
         if (!m_Device || !m_Device->GetDevice())
         {
-            throw std::runtime_error("VulkanCommand::CreateCommandPool called without a valid device");
+            std::abort;
         }
 
         VkCommandPoolCreateInfo l_CommandPoolCreateInfo{};
@@ -157,7 +158,7 @@ namespace Engine
     {
         if (!m_Device || !m_Device->GetDevice() || !m_CommandPool || m_FramesInFlight == 0)
         {
-            throw std::runtime_error("VulkanCommand::AllocateCommandBuffers invalid state");
+            std::abort;
         }
 
         m_CommandBuffers.resize(m_FramesInFlight);

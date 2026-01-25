@@ -8,6 +8,7 @@
 
 #include <GLFW/glfw3.h>
 
+#include <cstdlib>
 #include <algorithm>
 #include <stdexcept>
 #include <string>
@@ -105,7 +106,7 @@ namespace Engine
         {
             TR_CORE_CRITICAL("Swapchain support is incomplete (no formats or present modes)");
 
-            throw std::runtime_error("Swapchain support incomplete");
+            std::abort;
         }
 
         const auto a_SurfaceFormat = ChooseSurfaceFormat(a_Support.Formats);

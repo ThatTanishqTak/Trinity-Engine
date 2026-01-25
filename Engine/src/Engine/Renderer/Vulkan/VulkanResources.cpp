@@ -2,6 +2,7 @@
 
 #include "Engine/Utilities/Utilities.h"
 
+#include <cstdlib>
 #include <cstring>
 #include <stdexcept>
 
@@ -34,6 +35,7 @@ namespace Engine
         Utilities::VulkanUtilities::VKCheckStrict(vkBindBufferMemory(device.GetDevice(), l_Buffer.Buffer, l_Buffer.Memory, 0), "vkBindBufferMemory");
 
         l_Buffer.Size = size;
+
         return l_Buffer;
     }
 
@@ -220,7 +222,7 @@ namespace Engine
         }
 
         // If no compatible memory type is found, Vulkan resource creation must fail.
-        throw std::runtime_error("Failed to find suitable memory type.");
+        std::abort;
     }
 
     VkImageAspectFlags VulkanResources::GetAspectFlags(VkFormat format)

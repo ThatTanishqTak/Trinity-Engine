@@ -5,6 +5,7 @@
 
 #include <GLFW/glfw3.h>
 
+#include <cstdlib>
 #include <stdexcept>
 #include <string>
 #include <cstring>
@@ -53,7 +54,7 @@ namespace Engine
         {
             TR_CORE_CRITICAL("Validation layers requested, but not available");
 
-            throw std::runtime_error("Validation layers not available");
+            std::abort;
         }
 
         VkApplicationInfo l_ApplicationInfo{};

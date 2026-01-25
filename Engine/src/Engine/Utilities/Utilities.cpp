@@ -3,6 +3,7 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/basic_file_sink.h>
 
+#include <cstdlib>
 #include <chrono>
 
 namespace Engine
@@ -99,7 +100,7 @@ namespace Engine
             {
                 TR_CORE_CRITICAL("Vulkan failure: {} (VkResult = {})", what, (int)result);
 
-                throw std::runtime_error(std::string(what) + " failed");
+                std::abort;
             }
         }
 
@@ -112,7 +113,7 @@ namespace Engine
             {
                 TR_CORE_CRITICAL("Failed to open file: {}", path.c_str());
 
-                throw std::runtime_error("Failed to open file: " + path);
+                std::abort;
             }
 
             const size_t l_FileSize = (size_t)l_File.tellg();

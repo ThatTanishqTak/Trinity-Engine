@@ -3,6 +3,7 @@
 #include "Engine/Renderer/Vulkan/VulkanDevice.h"
 #include "Engine/Utilities/Utilities.h"
 
+#include <cstdlib>
 #include <fstream>
 #include <stdexcept>
 #include <vector>
@@ -192,7 +193,7 @@ namespace Engine
         {
             TR_CORE_CRITICAL("Shader file is empty: {}", path);
 
-            throw std::runtime_error("Shader file is empty: " + path);
+            std::abort;
         }
 
         VkShaderModuleCreateInfo l_CreateInfo{};

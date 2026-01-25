@@ -12,6 +12,7 @@
 
 #include "Engine/Input/Input.h"
 
+#include <cstdlib>
 #include <utility>
 
 namespace Engine
@@ -21,6 +22,13 @@ namespace Engine
     Application::Application()
     {
         TR_CORE_INFO("INITIALIZING APPLICATION");
+
+        if (s_Instance != nullptr)
+        {
+            TR_CORE_CRITICAL("Application instance already exists.");
+
+            std::abort();
+        }
 
         s_Instance = this;
 
@@ -48,6 +56,18 @@ namespace Engine
         s_Instance = nullptr;
 
         TR_CORE_INFO("APPLICATION SHUTDOWN COMPLETE");
+    }
+
+    Application& Application::Get()
+    {
+        if (s_Instance == nullptr)
+        {
+            TR_CORE_CRITICAL("Application instance not available.");
+
+            std::abort();
+        }
+
+        return *s_Instance;
     }
 
     void Application::Close()

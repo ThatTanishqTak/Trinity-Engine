@@ -23,7 +23,7 @@ namespace Engine
         void PushLayer(std::unique_ptr<Layer> layer);
         void PushOverlay(std::unique_ptr<Layer> overlay);
 
-        static Application& Get() { return *s_Instance; }
+        static Application& Get();
 
     private:
         void OnEvent(Event& e);

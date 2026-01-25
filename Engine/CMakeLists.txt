@@ -71,32 +71,26 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC
 
 option(ENGINE_EMBED_SHADERS "Embed SPIR-V shaders into binary instead of runtime files" OFF)
 
-set(SHADER_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Assets/Shaders")
+set(SHADER_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Assets/Shaders)
 
-# Compile into the build tree (real path, safe for OUTPUT)
-set(SHADER_BUILD_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/Assets/Shaders")
-file(MAKE_DIRECTORY "${SHADER_BUILD_OUTPUT_DIR}")
+set(SHADER_BUILD_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/Assets/Shaders)
+file(MAKE_DIRECTORY ${SHADER_BUILD_OUTPUT_DIR})
 
 file(GLOB_RECURSE SHADER_SOURCES CONFIGURE_DEPENDS
-    "${SHADER_SOURCE_DIR}/*.vert"
-    "${SHADER_SOURCE_DIR}/*.frag"
+    ${SHADER_SOURCE_DIR}/*.vert
+    ${SHADER_SOURCE_DIR}/*.frag
 )
 
 set(ALL_SPV_OUTPUTS "")
-
-# Multi-config safe flags (VS/Ninja Multi-Config)
-set(GLSLC_FLAGS
-    --target-env=vulkan1.4
-)
+set(GLSLC_FLAGS --target-env=vulkan1.4)
 
 foreach(SHADER_FILE IN LISTS SHADER_SOURCES)
-    get_filename_component(SHADER_NAME "${SHADER_FILE}" NAME)
-    set(SPV_OUTPUT "${SHADER_BUILD_OUTPUT_DIR}/${SHADER_NAME}.spv")
+    get_filename_component(SHADER_NAME ${SHADER_FILE} NAME)
+    set(SPV_OUTPUT ${SHADER_BUILD_OUTPUT_DIR}/${SHADER_NAME}.spv)
 
-    add_custom_command(
-        OUTPUT "${SPV_OUTPUT}"
-        COMMAND Vulkan::glslc ${GLSLC_FLAGS} -o "${SPV_OUTPUT}" "${SHADER_FILE}"
-        DEPENDS "${SHADER_FILE}"
+    add_custom_command(OUTPUT ${SPV_OUTPUT}
+        COMMAND Vulkan::glslc ${GLSLC_FLAGS} -o ${SPV_OUTPUT} ${SHADER_FILE}
+        DEPENDS ${SHADER_FILE}
         COMMENT "Compiling shader: ${SHADER_NAME}"
         VERBATIM
     )
@@ -111,13 +105,9 @@ add_custom_target(EngineShaders ALL
 
 add_dependencies(${PROJECT_NAME} EngineShaders)
 
-# Copy compiled SPV files next to the built binary/lib
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory
-        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Assets/Shaders"
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${SHADER_BUILD_OUTPUT_DIR}"
-        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Assets/Shaders"
+    COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${PROJECT_NAME}>/Assets/Shaders
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${SHADER_BUILD_OUTPUT_DIR} $<TARGET_FILE_DIR:${PROJECT_NAME}>/Assets/Shaders
     COMMENT "Copying compiled shaders to output"
     USES_TERMINAL
 )
