@@ -1,4 +1,5 @@
 #include "Engine/Renderer/Pass/MainPass.h"
+#include "Engine/Renderer/Pass/DrawPushConstants.h"
 
 #include "Engine/Renderer/Vulkan/VulkanDevice.h"
 #include "Engine/Renderer/Vulkan/VulkanDescriptors.h"
@@ -296,6 +297,8 @@ namespace Engine
         l_GraphicsPipelineDescription.CullMode = VK_CULL_MODE_NONE;
         l_GraphicsPipelineDescription.FrontFace = VK_FRONT_FACE_CLOCKWISE;
         l_GraphicsPipelineDescription.PipelineCachePath = "pipeline_cache.bin";
+        l_GraphicsPipelineDescription.PushConstantSize = sizeof(DrawPushConstant);
+        l_GraphicsPipelineDescription.PushConstantStages = VK_SHADER_STAGE_VERTEX_BIT;
 
         std::array<VkDescriptorSetLayout, 1> l_DescriptorLayouts = { frameResources.GetGlobalSetLayout() };
         std::span<const VkDescriptorSetLayout> l_LayoutSpan = l_DescriptorLayouts[0] != VK_NULL_HANDLE

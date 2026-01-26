@@ -26,6 +26,9 @@ namespace Engine
             VkCullModeFlags CullMode = VK_CULL_MODE_BACK_BIT;
             VkFrontFace FrontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 
+            uint32_t PushConstantSize = 0;
+            VkShaderStageFlags PushConstantStages = VK_SHADER_STAGE_VERTEX_BIT;
+
             // Where to store/load pipeline cache on disk.
             std::string PipelineCachePath = "Cache/pipeline_cache.bin";
         };

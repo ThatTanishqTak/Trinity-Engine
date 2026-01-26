@@ -106,6 +106,17 @@ namespace Engine
         l_LayoutInfo.setLayoutCount = static_cast<uint32_t>(m_DescriptorSetLayouts.size());
         l_LayoutInfo.pSetLayouts = m_DescriptorSetLayouts.empty() ? nullptr : m_DescriptorSetLayouts.data();
 
+        VkPushConstantRange l_PushConstantRange{};
+        if (description.PushConstantSize > 0)
+        {
+            l_PushConstantRange.stageFlags = description.PushConstantStages;
+            l_PushConstantRange.offset = 0;
+            l_PushConstantRange.size = description.PushConstantSize;
+
+            l_LayoutInfo.pushConstantRangeCount = 1;
+            l_LayoutInfo.pPushConstantRanges = &l_PushConstantRange;
+        }
+
         Utilities::VulkanUtilities::VKCheckStrict(vkCreatePipelineLayout(device.GetDevice(), &l_LayoutInfo, nullptr, &m_PipelineLayout), "vkCreatePipelineLayout");
 
         VkGraphicsPipelineCreateInfo l_PipelineInfo{};
