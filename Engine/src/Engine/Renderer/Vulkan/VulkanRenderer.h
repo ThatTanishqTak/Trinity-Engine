@@ -7,6 +7,7 @@
 #include "Engine/Renderer/Vulkan/VulkanDevice.h"
 #include "Engine/Renderer/Vulkan/VulkanSwapchain.h"
 #include "Engine/Renderer/Vulkan/VulkanFrameResources.h"
+#include "Engine/Renderer/Vulkan/VulkanTransformBuffer.h"
 #include "Engine/Renderer/Vulkan/VulkanUploadContext.h"
 
 #include "Engine/Utilities/Utilities.h"
@@ -47,6 +48,9 @@ namespace Engine
         void DrawCube(const glm::vec3& size, const glm::vec3& position, const glm::vec4& tint) override;
         void SubmitResourceFree(std::function<void()>&& function);
 
+        uint32_t PushTransform(const glm::mat4& transform);
+        VkBuffer GetTransformBufferForFrame() const;
+
         VulkanUploadContext& GetUploadContext() { return m_Upload; }
         const VulkanUploadContext& GetUploadContext() const { return m_Upload; }
 
@@ -63,6 +67,7 @@ namespace Engine
         VulkanDevice m_Device;
         VulkanSwapchain m_Swapchain;
         VulkanFrameResources m_FrameResources;
+        VulkanTransformBuffer m_Transforms;
         VulkanUploadContext m_Upload;
         RenderPassManager m_PassManager;
         DeletionQueue m_DeletionQueue;

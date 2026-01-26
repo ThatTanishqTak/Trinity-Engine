@@ -44,6 +44,7 @@ namespace Engine
         m_Context.Initialize(window);
         m_Device.Initialize(m_Context);
         m_FrameResources.Initialize(m_Device, (uint32_t)s_MaxFramesInFlight);
+        m_Transforms.Initialize(m_Device, m_FrameResources.GetFramesInFlight(), 2048);
         m_DeletionQueue.Initialize(m_FrameResources.GetFramesInFlight());
         m_Swapchain.Initialize(m_Context, m_Device, window);
         m_FrameResources.OnSwapchainRecreated(m_Swapchain.GetImages().size());
@@ -81,6 +82,7 @@ namespace Engine
             TR_CORE_INFO("Destroying render passes");
             m_PassManager.OnDestroyAll(m_Device);
             m_Swapchain.Shutdown();
+            m_Transforms.Shutdown(m_Device, &m_DeletionQueue);
             m_FrameResources.Shutdown(m_Device);
             m_Upload.Shutdown(m_Device);
             m_Device.Shutdown();
@@ -119,6 +121,16 @@ namespace Engine
         m_DeletionQueue.Push(l_FrameIndex, std::move(function));
     }
 
+    uint32_t VulkanRenderer::PushTransform(const glm::mat4& transform)
+    {
+        return m_Transforms.PushTransform((uint32_t)m_CurrentFrame, transform);
+    }
+
+    VkBuffer VulkanRenderer::GetTransformBufferForFrame() const
+    {
+        return m_Transforms.GetBuffer((uint32_t)m_CurrentFrame);
+    }
+
     void VulkanRenderer::BeginFrame()
     {
         if (!m_Initialized || !m_Device.GetDevice() || !m_Swapchain.IsValid() || !m_FrameResources.IsValid())
@@ -139,6 +151,7 @@ namespace Engine
 
         m_FrameResources.WaitForFrameFence(m_Device, (uint32_t)m_CurrentFrame, UINT64_MAX);
         m_FrameResources.OnBeginFrame(m_Device, (uint32_t)m_CurrentFrame);
+        m_Transforms.BeginFrame((uint32_t)m_CurrentFrame);
 
         const size_t l_FlushCount = m_DeletionQueue.Flush((uint32_t)m_CurrentFrame);
         VkSemaphore l_ImageAvailable = m_FrameResources.GetImageAvailableSemaphore((uint32_t)m_CurrentFrame);
