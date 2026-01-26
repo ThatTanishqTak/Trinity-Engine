@@ -82,11 +82,11 @@ namespace Engine
             m_PassManager.OnDestroyAll(m_Device);
             m_Swapchain.Shutdown();
             m_FrameResources.Shutdown(m_Device);
+            m_Upload.Shutdown(m_Device);
             m_Device.Shutdown();
         }
 
         m_Context.Shutdown();
-        m_Upload.Shutdown(m_Device);
 
         m_Window = nullptr;
         m_GLFWWindow = nullptr;
