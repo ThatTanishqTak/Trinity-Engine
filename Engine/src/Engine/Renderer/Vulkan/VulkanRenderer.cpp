@@ -56,6 +56,7 @@ namespace Engine
 
         m_Context.Initialize(window);
         m_Device.Initialize(m_Context);
+        m_DebugUtils.Initialize(m_Context.GetInstance(), m_Device.GetDevice());
         m_FrameResources.Initialize(m_Device, (uint32_t)s_MaxFramesInFlight);
         m_Transforms.Initialize(m_Device, m_FrameResources.GetFramesInFlight(), 2048);
         m_DeletionQueue.Initialize(m_FrameResources.GetFramesInFlight());
@@ -78,6 +79,7 @@ namespace Engine
         if (!m_Initialized)
         {
             m_DeletionQueue.Reset();
+            m_DebugUtils.Shutdown();
             m_Context.Shutdown();
 
             return;
@@ -86,6 +88,7 @@ namespace Engine
         if (m_Device.GetDevice())
         {
             vkDeviceWaitIdle(m_Device.GetDevice());
+            m_DebugUtils.Shutdown();
 
             TR_CORE_INFO("Destroying render passes");
             m_PassManager.OnDestroyAll(m_Device);

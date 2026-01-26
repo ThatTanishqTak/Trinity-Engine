@@ -3,7 +3,9 @@
 #include "Engine/Renderer/Renderer.h"
 #include "Engine/Renderer/DeletionQueue.h"
 #include "Engine/Renderer/Pass/RenderPassManager.h"
+
 #include "Engine/Renderer/Vulkan/VulkanContext.h"
+#include "Engine/Renderer/Vulkan/VulkanDebugUtils.h"
 #include "Engine/Renderer/Vulkan/VulkanDevice.h"
 #include "Engine/Renderer/Vulkan/VulkanSwapchain.h"
 #include "Engine/Renderer/Vulkan/VulkanFrameResources.h"
@@ -62,6 +64,7 @@ namespace Engine
         GLFWwindow* m_GLFWWindow = nullptr;
 
         VulkanContext m_Context;
+        VulkanDebugUtils m_DebugUtils;
         VulkanDevice m_Device;
         VulkanSwapchain m_Swapchain;
         VulkanFrameResources m_FrameResources;
