@@ -62,7 +62,8 @@ namespace Engine
         CreatePipeline(device, swapchain, frameResources);
     }
 
-    void MainPass::RecordCommandBuffer(VkCommandBuffer command, uint32_t imageIndex, uint32_t currentFrame, const glm::vec4& clearColor, std::span<const RenderCube> pendingCubes)
+    void MainPass::RecordCommandBuffer(VkCommandBuffer command, uint32_t imageIndex, uint32_t currentFrame, const glm::vec4& clearColor, std::span<const RenderCube> pendingCubes,
+        VulkanRenderer& renderer)
     {
         VkCommandBufferBeginInfo l_CommandBufferBeginInfo{};
         l_CommandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -128,6 +129,16 @@ namespace Engine
 
                     const VulkanDescriptors& l_Descriptors = m_FrameResources->GetDescriptors();
                     l_Descriptors.WriteBuffer(l_DescriptorSet, 0, l_BufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+
+                    VkDescriptorBufferInfo l_TransformBufferInfo{};
+                    l_TransformBufferInfo.buffer = renderer.GetTransformBufferForFrame();
+                    l_TransformBufferInfo.offset = 0;
+                    l_TransformBufferInfo.range = VK_WHOLE_SIZE;
+
+                    if (l_TransformBufferInfo.buffer != VK_NULL_HANDLE)
+                    {
+                        l_Descriptors.WriteBuffer(l_DescriptorSet, 1, l_TransformBufferInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+                    }
 
                     vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline.GetPipelineLayout(), 0, 1, &l_DescriptorSet, 0, nullptr);
                 }

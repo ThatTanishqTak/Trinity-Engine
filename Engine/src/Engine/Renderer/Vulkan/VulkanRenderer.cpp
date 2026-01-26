@@ -66,6 +66,7 @@ namespace Engine
         {
             m_DeletionQueue.Reset();
             m_Context.Shutdown();
+
             return;
         }
 
@@ -176,7 +177,7 @@ namespace Engine
         m_FrameResources.ResetForFrame(m_Device, (uint32_t)m_CurrentFrame);
 
         VkCommandBuffer l_CommandBuffer = m_FrameResources.GetCommandBuffer((uint32_t)m_CurrentFrame);
-        m_PassManager.RecordAll(l_CommandBuffer, m_ImageIndex, (uint32_t)m_CurrentFrame, m_ClearColor, m_PendingCubes);
+        m_PassManager.RecordAll(l_CommandBuffer, m_ImageIndex, (uint32_t)m_CurrentFrame, m_ClearColor, m_PendingCubes, *this);
         m_PendingCubes.clear();
         m_ClearRequested = false;
 

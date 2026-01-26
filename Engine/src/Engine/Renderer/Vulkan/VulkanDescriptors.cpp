@@ -27,7 +27,7 @@ namespace Engine
 
         l_GlobalBindings[1].binding = 1;
         l_GlobalBindings[1].descriptorCount = 1;
-        l_GlobalBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        l_GlobalBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         l_GlobalBindings[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
         VkDescriptorSetLayoutCreateInfo l_GlobalLayoutCreateInfo{};
@@ -53,14 +53,17 @@ namespace Engine
             "vkCreateDescriptorSetLayout(Material)");
 
         constexpr uint32_t s_MaxUniformBuffers = 512;
+        constexpr uint32_t s_MaxStorageBuffers = 512;
         constexpr uint32_t s_MaxImageSamplers = 512;
         constexpr uint32_t s_MaxDescriptorSets = 512;
 
-        std::array<VkDescriptorPoolSize, 2> l_PoolSizes{};
+        std::array<VkDescriptorPoolSize, 3> l_PoolSizes{};
         l_PoolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         l_PoolSizes[0].descriptorCount = s_MaxUniformBuffers;
-        l_PoolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        l_PoolSizes[1].descriptorCount = s_MaxImageSamplers;
+        l_PoolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        l_PoolSizes[1].descriptorCount = s_MaxStorageBuffers;
+        l_PoolSizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        l_PoolSizes[2].descriptorCount = s_MaxImageSamplers;
 
         m_Pools.assign(framesInFlight, VK_NULL_HANDLE);
         for (uint32_t l_FrameIndex = 0; l_FrameIndex < framesInFlight; ++l_FrameIndex)

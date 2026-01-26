@@ -22,7 +22,8 @@ namespace Engine
         const char* GetName() const override { return "MainPass"; }
         void Initialize(VulkanDevice& device, VulkanSwapchain& swapchain, VulkanFrameResources& frameResources) override;
         void OnResize(VulkanDevice& device, VulkanSwapchain& swapchain, VulkanFrameResources& frameResources, VulkanRenderer& renderer) override;
-        void RecordCommandBuffer(VkCommandBuffer command, uint32_t imageIndex, uint32_t currentFrame, const glm::vec4& clearColor, std::span<const RenderCube> pendingCubes) override;
+        void RecordCommandBuffer(VkCommandBuffer command, uint32_t imageIndex, uint32_t currentFrame, const glm::vec4& clearColor, std::span<const RenderCube> pendingCubes,
+            VulkanRenderer& renderer) override;
         void OnDestroy(VulkanDevice& device) override;
 
     private:
