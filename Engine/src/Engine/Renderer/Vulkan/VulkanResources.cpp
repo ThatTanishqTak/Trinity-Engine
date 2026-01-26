@@ -316,13 +316,28 @@ namespace Engine
 
         const VkImageAspectFlags l_AspectFlags = GetAspectFlags(format);
 
-        // Transition to transfer destination so the copy can write into the image.
-        TransitionImageLayout(device, command, image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, l_AspectFlags, mipLevels, arrayLayers);
+        VkCommandBuffer l_Command = command.BeginSingleTime();
 
-        CopyBufferToImage(device, command, l_Staging.Buffer, image, width, height, l_AspectFlags, arrayLayers);
+        // Transition to transfer destination so the copy can write into the image.
+        RecordImageLayoutTransition(l_Command, image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, l_AspectFlags, mipLevels, arrayLayers);
+
+        VkBufferImageCopy l_Region{};
+        l_Region.bufferOffset = 0;
+        l_Region.bufferRowLength = 0;
+        l_Region.bufferImageHeight = 0;
+        l_Region.imageSubresource.aspectMask = l_AspectFlags;
+        l_Region.imageSubresource.mipLevel = 0;
+        l_Region.imageSubresource.baseArrayLayer = 0;
+        l_Region.imageSubresource.layerCount = arrayLayers;
+        l_Region.imageOffset = { 0, 0, 0 };
+        l_Region.imageExtent = { width, height, 1 };
+
+        vkCmdCopyBufferToImage(l_Command, l_Staging.Buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &l_Region);
 
         // Transition to the requested layout for shader access or general usage.
-        TransitionImageLayout(device, command, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, finalLayout, l_AspectFlags, mipLevels, arrayLayers);
+        RecordImageLayoutTransition(l_Command, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, finalLayout, l_AspectFlags, mipLevels, arrayLayers);
+
+        command.EndSingleTime(l_Command, device.GetGraphicsQueue());
 
         DestroyBuffer(device, l_Staging);
     }
@@ -356,10 +371,13 @@ namespace Engine
         {
             case VK_FORMAT_D16_UNORM:
             case VK_FORMAT_D32_SFLOAT:
+                return VK_IMAGE_ASPECT_DEPTH_BIT;
             case VK_FORMAT_D16_UNORM_S8_UINT:
             case VK_FORMAT_D24_UNORM_S8_UINT:
             case VK_FORMAT_D32_SFLOAT_S8_UINT:
-                return VK_IMAGE_ASPECT_DEPTH_BIT;
+                return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+            case VK_FORMAT_S8_UINT:
+                return VK_IMAGE_ASPECT_STENCIL_BIT;
             default:
                 break;
         }
@@ -367,12 +385,9 @@ namespace Engine
         return VK_IMAGE_ASPECT_COLOR_BIT;
     }
 
-    void VulkanResources::TransitionImageLayout(VulkanDevice& device, VulkanCommand& command, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageAspectFlags aspectFlags, 
+    void VulkanResources::RecordImageLayoutTransition(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageAspectFlags aspectFlags,
         uint32_t mipLevels, uint32_t arrayLayers)
     {
-        // Layout transitions make image usage explicit and avoid undefined behavior.
-        VkCommandBuffer l_Command = command.BeginSingleTime();
-
         VkImageMemoryBarrier l_Barrier{};
         l_Barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         l_Barrier.oldLayout = oldLayout;
@@ -422,7 +437,15 @@ namespace Engine
             l_DestinationStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
         }
 
-        vkCmdPipelineBarrier(l_Command, l_SourceStage, l_DestinationStage, 0, 0, nullptr, 0, nullptr, 1, &l_Barrier);
+        vkCmdPipelineBarrier(commandBuffer, l_SourceStage, l_DestinationStage, 0, 0, nullptr, 0, nullptr, 1, &l_Barrier);
+    }
+
+    void VulkanResources::TransitionImageLayout(VulkanDevice& device, VulkanCommand& command, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout,
+        VkImageAspectFlags aspectFlags, uint32_t mipLevels, uint32_t arrayLayers)
+    {
+        VkCommandBuffer l_Command = command.BeginSingleTime();
+
+        RecordImageLayoutTransition(l_Command, image, oldLayout, newLayout, aspectFlags, mipLevels, arrayLayers);
 
         command.EndSingleTime(l_Command, device.GetGraphicsQueue());
     }

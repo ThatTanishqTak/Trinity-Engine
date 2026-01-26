@@ -28,12 +28,14 @@ namespace Engine
         void EndAndSubmitAndWait();
 
         void UploadBuffer(VkBuffer destination, const void* data, VkDeviceSize size);
-        void UploadImage(VkImage image, uint32_t width, uint32_t height, VkFormat format, const void* data, VkDeviceSize size, VkImageLayout finalLayout, uint32_t mipLevels = 1, 
-            uint32_t arrayLayers = 1);
+        void UploadImage(VkImage image, uint32_t width, uint32_t height, VkFormat format, const void* data, VkDeviceSize size, VkImageLayout finalLayout,
+            uint32_t mipLevels = 1, uint32_t arrayLayers = 1);
 
         VkCommandBuffer GetCommandBuffer() const { return m_CommandBuffer; }
 
     private:
+        void RecordImageLayoutTransition(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageAspectFlags aspectFlags,
+            uint32_t mipLevels, uint32_t arrayLayers) const;
         void TransitionImageLayout(VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageAspectFlags aspectFlags, uint32_t mipLevels, uint32_t arrayLayers) const;
         void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, VkImageAspectFlags aspectFlags, uint32_t arrayLayers) const;
         static VkImageAspectFlags GetAspectFlags(VkFormat format);

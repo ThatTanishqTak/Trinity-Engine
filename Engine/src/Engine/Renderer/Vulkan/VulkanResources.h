@@ -55,6 +55,8 @@ namespace Engine
     private:
         static uint32_t FindMemoryType(VulkanDevice& device, uint32_t typeFilter, VkMemoryPropertyFlags properties);
         static VkImageAspectFlags GetAspectFlags(VkFormat format);
+        static void RecordImageLayoutTransition(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageAspectFlags aspectFlags,
+            uint32_t mipLevels, uint32_t arrayLayers);
         static void TransitionImageLayout(VulkanDevice& device, VulkanCommand& command, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageAspectFlags aspectFlags, 
             uint32_t mipLevels, uint32_t arrayLayers);
         static void CopyBuffer(VulkanDevice& device, VulkanCommand& command, VkBuffer source, VkBuffer destination, VkDeviceSize size);

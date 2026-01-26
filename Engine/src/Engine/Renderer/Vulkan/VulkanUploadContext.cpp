@@ -141,16 +141,18 @@ namespace Engine
         const VkImageAspectFlags l_AspectFlags = GetAspectFlags(format);
 
         Begin();
-        TransitionImageLayout(image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, l_AspectFlags, mipLevels, arrayLayers);
+        
+        RecordImageLayoutTransition(m_CommandBuffer, image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, l_AspectFlags, mipLevels, arrayLayers);
         CopyBufferToImage(l_Staging.Buffer, image, width, height, l_AspectFlags, arrayLayers);
-        TransitionImageLayout(image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, finalLayout, l_AspectFlags, mipLevels, arrayLayers);
+        RecordImageLayoutTransition(m_CommandBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, finalLayout, l_AspectFlags, mipLevels, arrayLayers);
+
         EndAndSubmitAndWait();
 
         VulkanResources::DestroyBuffer(*m_Device, l_Staging);
     }
 
-    void VulkanUploadContext::TransitionImageLayout(VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageAspectFlags aspectFlags, uint32_t mipLevels, 
-        uint32_t arrayLayers) const
+    void VulkanUploadContext::RecordImageLayoutTransition(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageAspectFlags aspectFlags,
+        uint32_t mipLevels, uint32_t arrayLayers) const
     {
         VkImageMemoryBarrier l_Barrier{};
         l_Barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -190,7 +192,13 @@ namespace Engine
             l_DestinationStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
         }
 
-        vkCmdPipelineBarrier(m_CommandBuffer, l_SourceStage, l_DestinationStage, 0, 0, nullptr, 0, nullptr, 1, &l_Barrier);
+        vkCmdPipelineBarrier(commandBuffer, l_SourceStage, l_DestinationStage, 0, 0, nullptr, 0, nullptr, 1, &l_Barrier);
+    }
+
+    void VulkanUploadContext::TransitionImageLayout(VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageAspectFlags aspectFlags,
+        uint32_t mipLevels, uint32_t arrayLayers) const
+    {
+        RecordImageLayoutTransition(m_CommandBuffer, image, oldLayout, newLayout, aspectFlags, mipLevels, arrayLayers);
     }
 
     void VulkanUploadContext::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, VkImageAspectFlags aspectFlags, uint32_t arrayLayers) const
@@ -215,12 +223,13 @@ namespace Engine
         {
             case VK_FORMAT_D16_UNORM:
             case VK_FORMAT_D32_SFLOAT:
-            case VK_FORMAT_D16_UNORM_S8_UINT:
-            case VK_FORMAT_D24_UNORM_S8_UINT:
-            case VK_FORMAT_D32_SFLOAT_S8_UINT:
                 return VK_IMAGE_ASPECT_DEPTH_BIT;
             case VK_FORMAT_S8_UINT:
                 return VK_IMAGE_ASPECT_STENCIL_BIT;
+            case VK_FORMAT_D16_UNORM_S8_UINT:
+            case VK_FORMAT_D24_UNORM_S8_UINT:
+            case VK_FORMAT_D32_SFLOAT_S8_UINT:
+                return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
             default:
                 return VK_IMAGE_ASPECT_COLOR_BIT;
         }
