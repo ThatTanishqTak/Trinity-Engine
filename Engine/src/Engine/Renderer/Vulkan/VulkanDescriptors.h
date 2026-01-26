@@ -21,21 +21,27 @@ namespace Engine
         VulkanDescriptors(VulkanDescriptors&&) = delete;
         VulkanDescriptors& operator=(VulkanDescriptors&&) = delete;
 
-        // Owns the descriptor set layout and pool. These are device-level objects that
-        // can survive swapchain recreation, but must be recreated if the device or layout changes.
         void Initialize(VulkanDevice& device, uint32_t framesInFlight);
         void Shutdown(VulkanDevice& device);
         void Shutdown(VulkanDevice& device, const std::function<void(std::function<void()>&&)>& submitResourceFree);
+        void OnBeginFrame(uint32_t frameIndex);
 
-        bool IsValid() const { return m_Layout != VK_NULL_HANDLE && m_Pool != VK_NULL_HANDLE && !m_DescriptorSets.empty(); }
+        bool IsValid() const { return m_GlobalSetLayout != VK_NULL_HANDLE && m_MaterialSetLayout != VK_NULL_HANDLE && !m_Pools.empty(); }
 
-        VkDescriptorSetLayout GetLayout() const { return m_Layout; }
-        VkDescriptorSet GetDescriptorSet(uint32_t frameIndex) const;
+        VkDescriptorSetLayout GetGlobalSetLayout() const { return m_GlobalSetLayout; }
+        VkDescriptorSetLayout GetMaterialSetLayout() const { return m_MaterialSetLayout; }
+
+        VkDescriptorSet AllocateGlobalSet(uint32_t frameIndex) const;
+        VkDescriptorSet AllocateMaterialSet(uint32_t frameIndex) const;
+
+        void WriteBuffer(VkDescriptorSet descriptorSet, uint32_t binding, const VkDescriptorBufferInfo& bufferInfo, VkDescriptorType descriptorType) const;
+        void WriteImageSampler(VkDescriptorSet descriptorSet, uint32_t binding, const VkDescriptorImageInfo& imageInfo) const;
 
     private:
         VulkanDevice* m_Device = nullptr;
-        VkDescriptorSetLayout m_Layout = VK_NULL_HANDLE;
-        VkDescriptorPool m_Pool = VK_NULL_HANDLE;
-        std::vector<VkDescriptorSet> m_DescriptorSets;
+        VkDescriptorSetLayout m_GlobalSetLayout = VK_NULL_HANDLE;
+        VkDescriptorSetLayout m_MaterialSetLayout = VK_NULL_HANDLE;
+        std::vector<VkDescriptorPool> m_Pools;
+        uint32_t m_FramesInFlight = 0;
     };
 }

@@ -38,6 +38,7 @@ namespace Engine
     {
         m_Sync.ResetFrameFence(device, frameIndex);
         m_Command.ResetCommandBuffer(frameIndex);
+        m_Descriptors.OnBeginFrame(frameIndex);
     }
 
     void VulkanFrameResources::OnSwapchainRecreated(size_t swapchainImageCount)
@@ -75,14 +76,24 @@ namespace Engine
         return m_Sync.GetInFlightFence(frameIndex);
     }
 
-    VkDescriptorSetLayout VulkanFrameResources::GetDescriptorSetLayout() const
+    VkDescriptorSetLayout VulkanFrameResources::GetGlobalDescriptorSetLayout() const
     {
-        return m_Descriptors.GetLayout();
+        return m_Descriptors.GetGlobalSetLayout();
     }
 
-    VkDescriptorSet VulkanFrameResources::GetDescriptorSet(uint32_t frameIndex) const
+    VkDescriptorSetLayout VulkanFrameResources::GetMaterialDescriptorSetLayout() const
     {
-        return m_Descriptors.GetDescriptorSet(frameIndex);
+        return m_Descriptors.GetMaterialSetLayout();
+    }
+
+    VkDescriptorSet VulkanFrameResources::AllocateGlobalDescriptorSet(uint32_t frameIndex) const
+    {
+        return m_Descriptors.AllocateGlobalSet(frameIndex);
+    }
+
+    VkDescriptorSet VulkanFrameResources::AllocateMaterialDescriptorSet(uint32_t frameIndex) const
+    {
+        return m_Descriptors.AllocateMaterialSet(frameIndex);
     }
 
     uint32_t VulkanFrameResources::GetFramesInFlight() const

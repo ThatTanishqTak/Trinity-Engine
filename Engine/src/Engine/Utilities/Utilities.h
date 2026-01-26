@@ -120,3 +120,9 @@ namespace Engine
 #define TR_WARN(...)  ::Engine::Utilities::Log::GetClientLogger()->warn(__VA_ARGS__)
 #define TR_ERROR(...) ::Engine::Utilities::Log::GetClientLogger()->error(__VA_ARGS__)
 #define TR_CRITICAL(...) ::Engine::Utilities::Log::GetClientLogger()->critical(__VA_ARGS__)
+
+// Macros for color
+#define TR_COLOR_GREY glm::vec4(0.05f, 0.05f, 0.05f, 1.0f);
+#define TR_COLOR_RED glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+#define TR_COLOR_GREEN glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
+#define TR_COLOR_BLUE glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);

@@ -96,7 +96,7 @@ namespace Engine
             // Bind per-frame descriptor set at set 0 to match the pipeline layout.
             if (m_FrameResources && m_FrameResources->HasDescriptors())
             {
-                VkDescriptorSet l_DescriptorSet = m_FrameResources->GetDescriptorSet(currentFrame);
+                VkDescriptorSet l_DescriptorSet = m_FrameResources->AllocateGlobalDescriptorSet(currentFrame);
                 if (l_DescriptorSet != VK_NULL_HANDLE)
                 {
                     vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline.GetPipelineLayout(), 0, 1, &l_DescriptorSet, 0, nullptr);
@@ -256,7 +256,7 @@ namespace Engine
         l_GraphicsPipelineDescription.PipelineCachePath = "pipeline_cache.bin";
 
         // Use the shared per-frame descriptor set layout when available.
-        std::array<VkDescriptorSetLayout, 1> l_DescriptorLayouts = { frameResources.GetDescriptorSetLayout() };
+        std::array<VkDescriptorSetLayout, 1> l_DescriptorLayouts = { frameResources.GetGlobalDescriptorSetLayout() };
         std::span<const VkDescriptorSetLayout> l_LayoutSpan = frameResources.HasDescriptors()
             ? std::span<const VkDescriptorSetLayout>(l_DescriptorLayouts) : std::span<const VkDescriptorSetLayout>();
 
