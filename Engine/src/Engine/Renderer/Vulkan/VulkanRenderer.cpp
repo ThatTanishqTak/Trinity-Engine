@@ -16,24 +16,19 @@ namespace Engine
         Shutdown();
     }
 
-    void VulkanRenderer::SetClearColor(const glm::vec4& a_Color)
+    void VulkanRenderer::SetClearColor(const glm::vec4& color)
     {
-        // Stored and applied during command buffer recording.
-        m_ClearColor = a_Color;
+        m_ClearColor = color;
     }
 
     void VulkanRenderer::Clear()
     {
-        // Vulkan clear happens via render pass loadOp (we use CLEAR) and the clear value.
-        // This function exists for API symmetry; RecordCommandBuffer uses m_ClearColor.
         m_ClearRequested = true;
     }
 
-    void VulkanRenderer::DrawCube(const glm::vec3& a_Size, const glm::vec3& a_Position, const glm::vec4& a_Tint)
+    void VulkanRenderer::DrawCube(const glm::vec3& size, const glm::vec3& position, const glm::vec4& tint)
     {
-        // For now, queue requests and let RecordCommandBuffer emit the draw calls.
-        // Real cube rendering will be wired once the pipeline/shaders support it.
-        m_PendingCubes.push_back({ a_Size, a_Position, a_Tint });
+        m_PendingCubes.push_back({ size, position, tint });
     }
 
     void VulkanRenderer::Initialize(Window& window)
@@ -53,6 +48,7 @@ namespace Engine
         m_Swapchain.Initialize(m_Context, m_Device, window);
         m_FrameResources.OnSwapchainRecreated(m_Swapchain.GetImages().size());
         m_PassManager.AddPass(std::make_unique<MainPass>());
+        m_Upload.Initialize(m_Device);
         m_PassManager.OnCreateAll(m_Device, m_Swapchain, m_FrameResources);
 
         m_CurrentFrame = 0;
@@ -90,6 +86,7 @@ namespace Engine
         }
 
         m_Context.Shutdown();
+        m_Upload.Shutdown(m_Device);
 
         m_Window = nullptr;
         m_GLFWWindow = nullptr;
@@ -158,7 +155,7 @@ namespace Engine
             Utilities::VulkanUtilities::VKCheckStrict(l_AcquireResult, "vkAcquireNextImageKHR");
         }
 
-        m_FrameResources.WaitForImageFenceIfunctioneeded(m_Device, m_ImageIndex, UINT64_MAX);
+        m_FrameResources.WaitForImageFenceIfNeeded(m_Device, m_ImageIndex, UINT64_MAX);
 
         VkFence l_FrameFence = m_FrameResources.GetInFlightFence((uint32_t)m_CurrentFrame);
         m_FrameResources.MarkImageInFlight(m_ImageIndex, l_FrameFence);

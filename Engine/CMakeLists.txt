@@ -91,7 +91,7 @@ foreach(SHADER_FILE IN LISTS SHADER_SOURCES)
     add_custom_command(OUTPUT ${SPV_OUTPUT}
         COMMAND Vulkan::glslc ${GLSLC_FLAGS} -o ${SPV_OUTPUT} ${SHADER_FILE}
         DEPENDS ${SHADER_FILE}
-        COMMENT "Compiling shader: ${SHADER_NAME}"
+        COMMENT "COMPILING SHADER: ${SHADER_NAME}"
         VERBATIM
     )
 
@@ -108,7 +108,7 @@ add_dependencies(${PROJECT_NAME} ENGINE_SHADERS)
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:${PROJECT_NAME}>/Assets/Shaders
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${SHADER_BUILD_OUTPUT_DIR} $<TARGET_FILE_DIR:${PROJECT_NAME}>/Assets/Shaders
-    COMMENT "Copying compiled shaders to output"
+    COMMENT "COPYING SHADERS TO OUTPUT PATH"
     USES_TERMINAL
 )
 
