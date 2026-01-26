@@ -1,6 +1,7 @@
 #include "Engine/Renderer/Pass/MainPass.h"
 
 #include "Engine/Renderer/Vulkan/VulkanDevice.h"
+#include "Engine/Renderer/Vulkan/VulkanDescriptors.h"
 #include "Engine/Renderer/Vulkan/VulkanFrameResources.h"
 #include "Engine/Renderer/Vulkan/VulkanRenderer.h"
 #include "Engine/Renderer/Vulkan/VulkanSwapchain.h"
@@ -8,6 +9,7 @@
 
 #include <array>
 #include <functional>
+#include <cstring>
 #include <span>
 
 namespace Engine
@@ -20,11 +22,13 @@ namespace Engine
     {
         TR_CORE_INFO("MainPass initialize");
 
+        m_Device = &device;
         m_FrameResources = &frameResources;
         m_Extent = swapchain.GetExtent();
 
         CreateRenderPass(device, swapchain);
         CreateFramebuffers(device, swapchain);
+        CreateGlobalUniformBuffers(device, frameResources);
         CreatePipeline(device, swapchain, frameResources);
     }
 
@@ -43,11 +47,18 @@ namespace Engine
         // Swapchain-dependent resources must be destroyed before rebuilding them for the new extent.
         DestroySwapchainResources(device, renderer);
 
+        if (m_FrameResources && m_FrameResources->GetFramesInFlight() != frameResources.GetFramesInFlight())
+        {
+            DestroyGlobalUniformBuffers(device);
+        }
+
+        m_Device = &device;
         m_FrameResources = &frameResources;
         m_Extent = swapchain.GetExtent();
 
         CreateRenderPass(device, swapchain);
         CreateFramebuffers(device, swapchain);
+        CreateGlobalUniformBuffers(device, frameResources);
         CreatePipeline(device, swapchain, frameResources);
     }
 
@@ -94,11 +105,30 @@ namespace Engine
             vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline.GetPipeline());
 
             // Bind per-frame descriptor set at set 0 to match the pipeline layout.
-            if (m_FrameResources && m_FrameResources->HasDescriptors())
+            if (m_Device && m_FrameResources && m_FrameResources->HasDescriptors() && currentFrame < m_GlobalUniformBuffers.size())
             {
+                VulkanResources::BufferResource& l_GlobalBuffer = m_GlobalUniformBuffers[currentFrame];
                 VkDescriptorSet l_DescriptorSet = m_FrameResources->AllocateGlobalDescriptorSet(currentFrame);
-                if (l_DescriptorSet != VK_NULL_HANDLE)
+                if (l_DescriptorSet != VK_NULL_HANDLE && l_GlobalBuffer.Buffer != VK_NULL_HANDLE && l_GlobalBuffer.Memory != VK_NULL_HANDLE)
                 {
+                    GlobalUniformData l_GlobalData{};
+                    void* l_MappedData = nullptr;
+                    Utilities::VulkanUtilities::VKCheckStrict(vkMapMemory(m_Device->GetDevice(), l_GlobalBuffer.Memory, 0, sizeof(GlobalUniformData), 0, &l_MappedData),
+                        "vkMapMemory(GlobalUniformData)");
+                    if (l_MappedData)
+                    {
+                        std::memcpy(l_MappedData, &l_GlobalData, sizeof(GlobalUniformData));
+                    }
+                    vkUnmapMemory(m_Device->GetDevice(), l_GlobalBuffer.Memory);
+
+                    VkDescriptorBufferInfo l_BufferInfo{};
+                    l_BufferInfo.buffer = l_GlobalBuffer.Buffer;
+                    l_BufferInfo.offset = 0;
+                    l_BufferInfo.range = sizeof(GlobalUniformData);
+
+                    const VulkanDescriptors& l_Descriptors = m_FrameResources->GetDescriptors();
+                    l_Descriptors.WriteBuffer(l_DescriptorSet, 0, l_BufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+
                     vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline.GetPipelineLayout(), 0, 1, &l_DescriptorSet, 0, nullptr);
                 }
             }
@@ -128,9 +158,11 @@ namespace Engine
     void MainPass::OnDestroy(VulkanDevice& device)
     {
         m_Pipeline.Shutdown(device);
+        DestroyGlobalUniformBuffers(device);
         DestroySwapchainResources(device);
 
         m_FrameResources = nullptr;
+        m_Device = nullptr;
 
         TR_CORE_INFO("MainPass destroy");
     }
@@ -254,15 +286,41 @@ namespace Engine
         l_GraphicsPipelineDescription.FrontFace = VK_FRONT_FACE_CLOCKWISE;
         l_GraphicsPipelineDescription.PipelineCachePath = "pipeline_cache.bin";
 
-        // Use the shared per-frame descriptor set layout when available.
         std::array<VkDescriptorSetLayout, 1> l_DescriptorLayouts = { frameResources.GetGlobalDescriptorSetLayout() };
-        std::span<const VkDescriptorSetLayout> l_LayoutSpan = frameResources.HasDescriptors()
+        std::span<const VkDescriptorSetLayout> l_LayoutSpan = l_DescriptorLayouts[0] != VK_NULL_HANDLE
             ? std::span<const VkDescriptorSetLayout>(l_DescriptorLayouts) : std::span<const VkDescriptorSetLayout>();
 
         TR_CORE_INFO("MainPass create pipeline");
         m_Pipeline.Initialize(device, m_RenderPass, l_GraphicsPipelineDescription, l_LayoutSpan);
 
         m_Extent = l_GraphicsPipelineDescription.Extent;
+    }
+
+    void MainPass::CreateGlobalUniformBuffers(VulkanDevice& device, VulkanFrameResources& frameResources)
+    {
+        if (!m_GlobalUniformBuffers.empty())
+        {
+            return;
+        }
+
+        const uint32_t l_FramesInFlight = frameResources.GetFramesInFlight();
+        m_GlobalUniformBuffers.resize(l_FramesInFlight);
+
+        for (uint32_t it_Frame = 0; it_Frame < l_FramesInFlight; ++it_Frame)
+        {
+            m_GlobalUniformBuffers[it_Frame] = VulkanResources::CreateBuffer(device, sizeof(GlobalUniformData),
+                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        }
+    }
+
+    void MainPass::DestroyGlobalUniformBuffers(VulkanDevice& device)
+    {
+        for (auto& it_Buffer : m_GlobalUniformBuffers)
+        {
+            VulkanResources::DestroyBuffer(device, it_Buffer);
+        }
+
+        m_GlobalUniformBuffers.clear();
     }
 
     void MainPass::DestroySwapchainResources(VulkanDevice& device, VulkanRenderer& renderer)

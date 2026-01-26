@@ -42,6 +42,7 @@ namespace Engine
         VkDescriptorSetLayout GetMaterialDescriptorSetLayout() const;
         VkDescriptorSet AllocateGlobalDescriptorSet(uint32_t frameIndex) const;
         VkDescriptorSet AllocateMaterialDescriptorSet(uint32_t frameIndex) const;
+        const VulkanDescriptors& GetDescriptors() const;
         uint32_t GetFramesInFlight() const;
 
         void WaitForFrameFence(VulkanDevice& device, uint32_t frameIndex, uint64_t timeout = UINT64_MAX) const;

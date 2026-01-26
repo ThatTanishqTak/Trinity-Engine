@@ -100,6 +100,11 @@ namespace Engine
         return m_Descriptors.AllocateMaterialSet(frameIndex);
     }
 
+    const VulkanDescriptors& VulkanFrameResources::GetDescriptors() const
+    {
+        return m_Descriptors;
+    }
+
     uint32_t VulkanFrameResources::GetFramesInFlight() const
     {
         return m_FramesInFlight;

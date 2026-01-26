@@ -2,6 +2,7 @@
 
 #include "Engine/Renderer/Pass/IRenderPass.h"
 #include "Engine/Renderer/Vulkan/VulkanPipeline.h"
+#include "Engine/Renderer/Vulkan/VulkanResources.h"
 
 #include <vector>
 
@@ -28,10 +29,18 @@ namespace Engine
         void CreateRenderPass(VulkanDevice& device, VulkanSwapchain& swapchain);
         void CreateFramebuffers(VulkanDevice& device, VulkanSwapchain& swapchain);
         void CreatePipeline(VulkanDevice& device, VulkanSwapchain& swapchain, VulkanFrameResources& frameResources);
+        void CreateGlobalUniformBuffers(VulkanDevice& device, VulkanFrameResources& frameResources);
+        
+        void DestroyGlobalUniformBuffers(VulkanDevice& device);
         void DestroySwapchainResources(VulkanDevice& device);
         void DestroySwapchainResources(VulkanDevice& device, VulkanRenderer& renderer);
 
     private:
+        struct GlobalUniformData
+        {
+            glm::mat4 ViewProjection{ 1.0f };
+        };
+
         // Swapchain-dependent resources.
         VkRenderPass m_RenderPass = VK_NULL_HANDLE;
         std::vector<VkFramebuffer> m_Framebuffers;
@@ -39,5 +48,7 @@ namespace Engine
         VkExtent2D m_Extent{};
 
         VulkanFrameResources* m_FrameResources = nullptr;
+        VulkanDevice* m_Device = nullptr;
+        std::vector<VulkanResources::BufferResource> m_GlobalUniformBuffers;
     };
 }
