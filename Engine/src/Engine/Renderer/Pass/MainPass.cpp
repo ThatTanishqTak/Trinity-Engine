@@ -12,6 +12,7 @@
 #include <array>
 #include <functional>
 #include <cstring>
+#include <memory>
 #include <string>
 
 #include <glm/gtc/matrix_transform.hpp>
@@ -87,114 +88,123 @@ namespace Engine
         l_CommandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         Utilities::VulkanUtilities::VKCheckStrict(vkBeginCommandBuffer(command, &l_CommandBufferBeginInfo), "vkBeginCommandBuffer");
 
-        VkClearValue l_ClearValue{};
-        l_ClearValue.color.float32[0] = m_ClearColor.r;
-        l_ClearValue.color.float32[1] = m_ClearColor.g;
-        l_ClearValue.color.float32[2] = m_ClearColor.b;
-        l_ClearValue.color.float32[3] = m_ClearColor.a;
-
-        VkRenderPassBeginInfo l_RenderPassBeginInfo{};
-        l_RenderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        l_RenderPassBeginInfo.renderPass = m_RenderPass;
-        l_RenderPassBeginInfo.framebuffer = m_Framebuffers[imageIndex];
-        l_RenderPassBeginInfo.renderArea.offset = { 0, 0 };
-        l_RenderPassBeginInfo.renderArea.extent = m_Extent;
-        l_RenderPassBeginInfo.clearValueCount = 1;
-        l_RenderPassBeginInfo.pClearValues = &l_ClearValue;
-
-        vkCmdBeginRenderPass(command, &l_RenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-        if (m_Pipeline.IsValid())
+        const VulkanDebugUtils* l_DebugUtils = m_Device ? m_Device->GetDebugUtils() : nullptr;
         {
-            VkViewport l_Viewport{};
-            l_Viewport.x = 0.0f;
-            l_Viewport.y = 0.0f;
-            l_Viewport.width = (float)m_Extent.width;
-            l_Viewport.height = (float)m_Extent.height;
-            l_Viewport.minDepth = 0.0f;
-            l_Viewport.maxDepth = 1.0f;
-
-            VkRect2D l_Scissor{};
-            l_Scissor.offset = { 0, 0 };
-            l_Scissor.extent = m_Extent;
-
-            vkCmdSetViewport(command, 0, 1, &l_Viewport);
-            vkCmdSetScissor(command, 0, 1, &l_Scissor);
-
-            vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline.GetPipeline());
-
-            // Bind per-frame descriptor set at set 0 to match the pipeline layout.
-            VkDescriptorSet l_DescriptorSet = VK_NULL_HANDLE;
-            if (m_Device && m_FrameResources && m_FrameResources->HasDescriptors() && currentFrame < m_GlobalUniformBuffers.size())
+            std::unique_ptr<VulkanDebugUtils::ScopedCmdLabel> l_MainPassLabel;
+            if (l_DebugUtils)
             {
-                VulkanResources::BufferResource& l_GlobalBuffer = m_GlobalUniformBuffers[currentFrame];
-                l_DescriptorSet = m_FrameResources->AllocateGlobalSet(currentFrame);
-                if (l_DescriptorSet != VK_NULL_HANDLE && l_GlobalBuffer.Buffer != VK_NULL_HANDLE && l_GlobalBuffer.Memory != VK_NULL_HANDLE)
+                l_MainPassLabel = std::make_unique<VulkanDebugUtils::ScopedCmdLabel>(*l_DebugUtils, command, "MainPass");
+            }
+
+            VkClearValue l_ClearValue{};
+            l_ClearValue.color.float32[0] = m_ClearColor.r;
+            l_ClearValue.color.float32[1] = m_ClearColor.g;
+            l_ClearValue.color.float32[2] = m_ClearColor.b;
+            l_ClearValue.color.float32[3] = m_ClearColor.a;
+
+            VkRenderPassBeginInfo l_RenderPassBeginInfo{};
+            l_RenderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+            l_RenderPassBeginInfo.renderPass = m_RenderPass;
+            l_RenderPassBeginInfo.framebuffer = m_Framebuffers[imageIndex];
+            l_RenderPassBeginInfo.renderArea.offset = { 0, 0 };
+            l_RenderPassBeginInfo.renderArea.extent = m_Extent;
+            l_RenderPassBeginInfo.clearValueCount = 1;
+            l_RenderPassBeginInfo.pClearValues = &l_ClearValue;
+
+            vkCmdBeginRenderPass(command, &l_RenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+            if (m_Pipeline.IsValid())
+            {
+                VkViewport l_Viewport{};
+                l_Viewport.x = 0.0f;
+                l_Viewport.y = 0.0f;
+                l_Viewport.width = (float)m_Extent.width;
+                l_Viewport.height = (float)m_Extent.height;
+                l_Viewport.minDepth = 0.0f;
+                l_Viewport.maxDepth = 1.0f;
+
+                VkRect2D l_Scissor{};
+                l_Scissor.offset = { 0, 0 };
+                l_Scissor.extent = m_Extent;
+
+                vkCmdSetViewport(command, 0, 1, &l_Viewport);
+                vkCmdSetScissor(command, 0, 1, &l_Scissor);
+
+                vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline.GetPipeline());
+
+                // Bind per-frame descriptor set at set 0 to match the pipeline layout.
+                VkDescriptorSet l_DescriptorSet = VK_NULL_HANDLE;
+                if (m_Device && m_FrameResources && m_FrameResources->HasDescriptors() && currentFrame < m_GlobalUniformBuffers.size())
                 {
-                    GlobalUniformData l_GlobalData{};
-                    void* l_MappedData = nullptr;
-                    Utilities::VulkanUtilities::VKCheckStrict(vkMapMemory(m_Device->GetDevice(), l_GlobalBuffer.Memory, 0, sizeof(GlobalUniformData), 0, &l_MappedData),
-                        "vkMapMemory(GlobalUniformData)");
-                    if (l_MappedData)
+                    VulkanResources::BufferResource& l_GlobalBuffer = m_GlobalUniformBuffers[currentFrame];
+                    l_DescriptorSet = m_FrameResources->AllocateGlobalSet(currentFrame);
+                    if (l_DescriptorSet != VK_NULL_HANDLE && l_GlobalBuffer.Buffer != VK_NULL_HANDLE && l_GlobalBuffer.Memory != VK_NULL_HANDLE)
                     {
-                        std::memcpy(l_MappedData, &l_GlobalData, sizeof(GlobalUniformData));
+                        GlobalUniformData l_GlobalData{};
+                        void* l_MappedData = nullptr;
+                        Utilities::VulkanUtilities::VKCheckStrict(vkMapMemory(m_Device->GetDevice(), l_GlobalBuffer.Memory, 0, sizeof(GlobalUniformData), 0, &l_MappedData),
+                            "vkMapMemory(GlobalUniformData)");
+                        if (l_MappedData)
+                        {
+                            std::memcpy(l_MappedData, &l_GlobalData, sizeof(GlobalUniformData));
+                        }
+                        vkUnmapMemory(m_Device->GetDevice(), l_GlobalBuffer.Memory);
+
+                        VkDescriptorBufferInfo l_BufferInfo{};
+                        l_BufferInfo.buffer = l_GlobalBuffer.Buffer;
+                        l_BufferInfo.offset = 0;
+                        l_BufferInfo.range = sizeof(GlobalUniformData);
+
+                        const VulkanDescriptors& l_Descriptors = m_FrameResources->GetDescriptors();
+                        l_Descriptors.WriteBuffer(l_DescriptorSet, 0, l_BufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+
+                        VkDescriptorBufferInfo l_TransformBufferInfo{};
+                        l_TransformBufferInfo.buffer = renderer.GetTransformBufferForFrame();
+                        l_TransformBufferInfo.offset = 0;
+                        l_TransformBufferInfo.range = VK_WHOLE_SIZE;
+
+                        if (l_TransformBufferInfo.buffer != VK_NULL_HANDLE)
+                        {
+                            l_Descriptors.WriteBuffer(l_DescriptorSet, 1, l_TransformBufferInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+                        }
+
+                        vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline.GetPipelineLayout(), 0, 1, &l_DescriptorSet, 0, nullptr);
                     }
-                    vkUnmapMemory(m_Device->GetDevice(), l_GlobalBuffer.Memory);
-
-                    VkDescriptorBufferInfo l_BufferInfo{};
-                    l_BufferInfo.buffer = l_GlobalBuffer.Buffer;
-                    l_BufferInfo.offset = 0;
-                    l_BufferInfo.range = sizeof(GlobalUniformData);
-
-                    const VulkanDescriptors& l_Descriptors = m_FrameResources->GetDescriptors();
-                    l_Descriptors.WriteBuffer(l_DescriptorSet, 0, l_BufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-
-                    VkDescriptorBufferInfo l_TransformBufferInfo{};
-                    l_TransformBufferInfo.buffer = renderer.GetTransformBufferForFrame();
-                    l_TransformBufferInfo.offset = 0;
-                    l_TransformBufferInfo.range = VK_WHOLE_SIZE;
-
-                    if (l_TransformBufferInfo.buffer != VK_NULL_HANDLE)
-                    {
-                        l_Descriptors.WriteBuffer(l_DescriptorSet, 1, l_TransformBufferInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-                    }
-
-                    vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline.GetPipelineLayout(), 0, 1, &l_DescriptorSet, 0, nullptr);
                 }
-            }
 
-            // The shaders must be written to use gl_VertexIndex (no vertex buffers).
-            // If no draw calls were queued, keep the default triangle so you see something.
-            if (m_PendingCubes.empty())
-            {
-                glm::mat4 l_TransformMatrix{ 1.0f };
-                const uint32_t l_TransformIndex = renderer.PushTransform(l_TransformMatrix);
-
-                DrawPushConstant l_DrawPushConstant{};
-                l_DrawPushConstant.TransformIndex = l_TransformIndex;
-                vkCmdPushConstants(command, m_Pipeline.GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(DrawPushConstant), &l_DrawPushConstant);
-                vkCmdDraw(command, 3, 1, 0, 0);
-            }
-            else
-            {
-                // Placeholder draw loop for cube requests.
-                for (const auto& it_Cube : m_PendingCubes)
+                // The shaders must be written to use gl_VertexIndex (no vertex buffers).
+                // If no draw calls were queued, keep the default triangle so you see something.
+                if (m_PendingCubes.empty())
                 {
                     glm::mat4 l_TransformMatrix{ 1.0f };
-                    l_TransformMatrix = glm::translate(l_TransformMatrix, it_Cube.m_Position);
-                    l_TransformMatrix = glm::scale(l_TransformMatrix, it_Cube.m_Size);
-
                     const uint32_t l_TransformIndex = renderer.PushTransform(l_TransformMatrix);
 
                     DrawPushConstant l_DrawPushConstant{};
                     l_DrawPushConstant.TransformIndex = l_TransformIndex;
                     vkCmdPushConstants(command, m_Pipeline.GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(DrawPushConstant), &l_DrawPushConstant);
-                    vkCmdDraw(command, 36, 1, 0, 0);
+                    vkCmdDraw(command, 3, 1, 0, 0);
+                }
+                else
+                {
+                    // Placeholder draw loop for cube requests.
+                    for (const auto& it_Cube : m_PendingCubes)
+                    {
+                        glm::mat4 l_TransformMatrix{ 1.0f };
+                        l_TransformMatrix = glm::translate(l_TransformMatrix, it_Cube.m_Position);
+                        l_TransformMatrix = glm::scale(l_TransformMatrix, it_Cube.m_Size);
+
+                        const uint32_t l_TransformIndex = renderer.PushTransform(l_TransformMatrix);
+
+                        DrawPushConstant l_DrawPushConstant{};
+                        l_DrawPushConstant.TransformIndex = l_TransformIndex;
+                        vkCmdPushConstants(command, m_Pipeline.GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(DrawPushConstant), &l_DrawPushConstant);
+                        vkCmdDraw(command, 36, 1, 0, 0);
+                    }
                 }
             }
-        }
 
-        vkCmdEndRenderPass(command);
+            vkCmdEndRenderPass(command);
+        }
 
         Utilities::VulkanUtilities::VKCheckStrict(vkEndCommandBuffer(command), "vkEndCommandBuffer");
 

@@ -1,10 +1,12 @@
 #pragma once
 
+#include "Engine/Renderer/Vulkan/VulkanDebugUtils.h"
 #include "Engine/Renderer/Vulkan/VulkanResources.h"
 
 #include <vulkan/vulkan.h>
 
 #include <cstdint>
+#include <memory>
 
 namespace Engine
 {
@@ -24,7 +26,7 @@ namespace Engine
         void Initialize(VulkanDevice& device);
         void Shutdown(VulkanDevice& device);
 
-        void Begin();
+        void Begin(const char* labelName);
         void EndAndSubmitAndWait();
 
         void UploadBuffer(VkBuffer destination, const void* data, VkDeviceSize size);
@@ -46,5 +48,6 @@ namespace Engine
         VkCommandPool m_CommandPool = VK_NULL_HANDLE;
         VkCommandBuffer m_CommandBuffer = VK_NULL_HANDLE;
         VkFence m_UploadFence = VK_NULL_HANDLE;
+        std::unique_ptr<VulkanDebugUtils::ScopedCmdLabel> m_ActiveLabel;
     };
 }

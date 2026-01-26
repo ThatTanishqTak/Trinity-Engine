@@ -71,12 +71,14 @@ namespace Engine
         m_Device = nullptr;
     }
 
-    void VulkanUploadContext::Begin()
+    void VulkanUploadContext::Begin(const char* labelName)
     {
         if (!m_Device || !m_Device->GetDevice() || !m_CommandPool || !m_CommandBuffer || !m_UploadFence)
         {
             return;
         }
+
+        m_ActiveLabel.reset();
 
         Utilities::VulkanUtilities::VKCheckStrict(vkResetFences(m_Device->GetDevice(), 1, &m_UploadFence), "vkResetFences (upload)");
         Utilities::VulkanUtilities::VKCheckStrict(vkResetCommandPool(m_Device->GetDevice(), m_CommandPool, 0), "vkResetCommandPool (upload)");
@@ -86,6 +88,14 @@ namespace Engine
         l_BeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
         Utilities::VulkanUtilities::VKCheckStrict(vkBeginCommandBuffer(m_CommandBuffer, &l_BeginInfo), "vkBeginCommandBuffer (upload)");
+        if (labelName && labelName[0] != '\0')
+        {
+            const VulkanDebugUtils* l_DebugUtils = m_Device->GetDebugUtils();
+            if (l_DebugUtils)
+            {
+                m_ActiveLabel = std::make_unique<VulkanDebugUtils::ScopedCmdLabel>(*l_DebugUtils, m_CommandBuffer, labelName);
+            }
+        }
     }
 
     void VulkanUploadContext::EndAndSubmitAndWait()
@@ -94,6 +104,8 @@ namespace Engine
         {
             return;
         }
+
+        m_ActiveLabel.reset();
 
         Utilities::VulkanUtilities::VKCheckStrict(vkEndCommandBuffer(m_CommandBuffer), "vkEndCommandBuffer (upload)");
 
@@ -123,7 +135,7 @@ namespace Engine
         std::memcpy(l_Mapped, data, static_cast<size_t>(size));
         vkUnmapMemory(m_Device->GetDevice(), l_Staging.Memory);
 
-        Begin();
+        Begin("UploadBuffer");
 
         VkBufferCopy l_CopyRegion{};
         l_CopyRegion.size = size;
@@ -155,7 +167,7 @@ namespace Engine
 
         const VkImageAspectFlags l_AspectFlags = GetAspectFlags(format);
 
-        Begin();
+        Begin("UploadImage");
         
         RecordImageLayoutTransition(m_CommandBuffer, image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, l_AspectFlags, mipLevels, arrayLayers);
         CopyBufferToImage(l_Staging.Buffer, image, width, height, l_AspectFlags, arrayLayers);
