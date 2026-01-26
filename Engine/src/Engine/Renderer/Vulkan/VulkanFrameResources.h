@@ -27,6 +27,7 @@ namespace Engine
         void Initialize(VulkanDevice& device, uint32_t framesInFlight);
         void Shutdown(VulkanDevice& device);
 
+        void OnBeginFrame(VulkanDevice& device, uint32_t frameIndex);
         void ResetForFrame(VulkanDevice& device, uint32_t frameIndex);
         void OnSwapchainRecreated(size_t swapchainImageCount);
 

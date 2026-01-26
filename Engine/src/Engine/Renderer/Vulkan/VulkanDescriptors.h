@@ -24,7 +24,7 @@ namespace Engine
         void Initialize(VulkanDevice& device, uint32_t framesInFlight);
         void Shutdown(VulkanDevice& device);
         void Shutdown(VulkanDevice& device, const std::function<void(std::function<void()>&&)>& submitResourceFree);
-        void OnBeginFrame(uint32_t frameIndex);
+        void OnBeginFrame(VulkanDevice& device, uint32_t frameIndex);
 
         bool IsValid() const { return m_GlobalSetLayout != VK_NULL_HANDLE && m_MaterialSetLayout != VK_NULL_HANDLE && !m_Pools.empty(); }
 

@@ -138,6 +138,7 @@ namespace Engine
         }
 
         m_FrameResources.WaitForFrameFence(m_Device, (uint32_t)m_CurrentFrame, UINT64_MAX);
+        m_FrameResources.OnBeginFrame(m_Device, (uint32_t)m_CurrentFrame);
 
         const size_t l_FlushCount = m_DeletionQueue.Flush((uint32_t)m_CurrentFrame);
         VkSemaphore l_ImageAvailable = m_FrameResources.GetImageAvailableSemaphore((uint32_t)m_CurrentFrame);

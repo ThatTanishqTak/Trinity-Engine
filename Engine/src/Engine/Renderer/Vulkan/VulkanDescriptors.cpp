@@ -35,8 +35,7 @@ namespace Engine
         l_GlobalLayoutCreateInfo.bindingCount = static_cast<uint32_t>(l_GlobalBindings.size());
         l_GlobalLayoutCreateInfo.pBindings = l_GlobalBindings.data();
 
-        Utilities::VulkanUtilities::VKCheckStrict(
-            vkCreateDescriptorSetLayout(device.GetDevice(), &l_GlobalLayoutCreateInfo, nullptr, &m_GlobalSetLayout),
+        Utilities::VulkanUtilities::VKCheckStrict(vkCreateDescriptorSetLayout(device.GetDevice(), &l_GlobalLayoutCreateInfo, nullptr, &m_GlobalSetLayout), 
             "vkCreateDescriptorSetLayout(Global)");
 
         VkDescriptorSetLayoutBinding l_MaterialBinding{};
@@ -50,8 +49,7 @@ namespace Engine
         l_MaterialLayoutCreateInfo.bindingCount = 1;
         l_MaterialLayoutCreateInfo.pBindings = &l_MaterialBinding;
 
-        Utilities::VulkanUtilities::VKCheckStrict(
-            vkCreateDescriptorSetLayout(device.GetDevice(), &l_MaterialLayoutCreateInfo, nullptr, &m_MaterialSetLayout),
+        Utilities::VulkanUtilities::VKCheckStrict(vkCreateDescriptorSetLayout(device.GetDevice(), &l_MaterialLayoutCreateInfo, nullptr, &m_MaterialSetLayout), 
             "vkCreateDescriptorSetLayout(Material)");
 
         constexpr uint32_t s_MaxUniformBuffers = 512;
@@ -73,9 +71,7 @@ namespace Engine
             l_PoolCreateInfo.pPoolSizes = l_PoolSizes.data();
             l_PoolCreateInfo.maxSets = s_MaxDescriptorSets;
 
-            Utilities::VulkanUtilities::VKCheckStrict(
-                vkCreateDescriptorPool(device.GetDevice(), &l_PoolCreateInfo, nullptr, &m_Pools[l_FrameIndex]),
-                "vkCreateDescriptorPool");
+            Utilities::VulkanUtilities::VKCheckStrict(vkCreateDescriptorPool(device.GetDevice(), &l_PoolCreateInfo, nullptr, &m_Pools[l_FrameIndex]), "vkCreateDescriptorPool");
         }
     }
 
@@ -158,9 +154,9 @@ namespace Engine
         }
     }
 
-    void VulkanDescriptors::OnBeginFrame(uint32_t frameIndex)
+    void VulkanDescriptors::OnBeginFrame(VulkanDevice& device, uint32_t frameIndex)
     {
-        if (!m_Device || !m_Device->GetDevice())
+        if (!device.GetDevice())
         {
             return;
         }
@@ -170,9 +166,7 @@ namespace Engine
             return;
         }
 
-        Utilities::VulkanUtilities::VKCheckStrict(
-            vkResetDescriptorPool(m_Device->GetDevice(), m_Pools[frameIndex], 0),
-            "vkResetDescriptorPool");
+        Utilities::VulkanUtilities::VKCheckStrict(vkResetDescriptorPool(device.GetDevice(), m_Pools[frameIndex], 0), "vkResetDescriptorPool");
     }
 
     VkDescriptorSet VulkanDescriptors::AllocateGlobalSet(uint32_t frameIndex) const
@@ -194,9 +188,7 @@ namespace Engine
         l_AllocateInfo.descriptorSetCount = 1;
         l_AllocateInfo.pSetLayouts = &m_GlobalSetLayout;
 
-        Utilities::VulkanUtilities::VKCheckStrict(
-            vkAllocateDescriptorSets(m_Device->GetDevice(), &l_AllocateInfo, &l_Set),
-            "vkAllocateDescriptorSets(Global)");
+        Utilities::VulkanUtilities::VKCheckStrict(vkAllocateDescriptorSets(m_Device->GetDevice(), &l_AllocateInfo, &l_Set), "vkAllocateDescriptorSets(Global)");
 
         return l_Set;
     }
@@ -220,9 +212,7 @@ namespace Engine
         l_AllocateInfo.descriptorSetCount = 1;
         l_AllocateInfo.pSetLayouts = &m_MaterialSetLayout;
 
-        Utilities::VulkanUtilities::VKCheckStrict(
-            vkAllocateDescriptorSets(m_Device->GetDevice(), &l_AllocateInfo, &l_Set),
-            "vkAllocateDescriptorSets(Material)");
+        Utilities::VulkanUtilities::VKCheckStrict(vkAllocateDescriptorSets(m_Device->GetDevice(), &l_AllocateInfo, &l_Set), "vkAllocateDescriptorSets(Material)");
 
         return l_Set;
     }

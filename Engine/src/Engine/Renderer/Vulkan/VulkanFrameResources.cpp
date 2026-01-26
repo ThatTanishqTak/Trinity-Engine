@@ -38,7 +38,11 @@ namespace Engine
     {
         m_Sync.ResetFrameFence(device, frameIndex);
         m_Command.ResetCommandBuffer(frameIndex);
-        m_Descriptors.OnBeginFrame(frameIndex);
+    }
+
+    void VulkanFrameResources::OnBeginFrame(VulkanDevice& device, uint32_t frameIndex)
+    {
+        m_Descriptors.OnBeginFrame(device, frameIndex);
     }
 
     void VulkanFrameResources::OnSwapchainRecreated(size_t swapchainImageCount)

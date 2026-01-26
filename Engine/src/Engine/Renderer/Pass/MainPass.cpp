@@ -127,13 +127,12 @@ namespace Engine
 
     void MainPass::OnDestroy(VulkanDevice& device)
     {
-        TR_CORE_INFO("MainPass destroy");
-
-        // Pipeline depends on the render pass, so shut it down before destroying swapchain resources.
         m_Pipeline.Shutdown(device);
-        // Destroy swapchain-dependent resources before the swapchain or device is torn down.
         DestroySwapchainResources(device);
+
         m_FrameResources = nullptr;
+
+        TR_CORE_INFO("MainPass destroy");
     }
 
     void MainPass::CreateRenderPass(VulkanDevice& device, VulkanSwapchain& swapchain)
