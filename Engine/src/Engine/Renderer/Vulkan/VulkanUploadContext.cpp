@@ -81,6 +81,10 @@ namespace Engine
         }
 
         m_ActiveLabel.reset();
+        m_BatchBufferCount = 0;
+        m_BatchImageCount = 0;
+        m_BatchBufferBytes = 0;
+        m_BatchImageBytes = 0;
 
         Utilities::VulkanUtilities::VKCheckStrict(vkResetFences(m_Device->GetDevice(), 1, &m_UploadFence), "vkResetFences (upload)");
         Utilities::VulkanUtilities::VKCheckStrict(vkResetCommandPool(m_Device->GetDevice(), m_CommandPool, 0), "vkResetCommandPool (upload)");
@@ -143,6 +147,8 @@ namespace Engine
         vkUnmapMemory(m_Device->GetDevice(), l_Staging.Memory);
 
         Begin("UploadBuffer");
+        ++m_BatchBufferCount;
+        m_BatchBufferBytes += size;
 
         VkBufferCopy l_CopyRegion{};
         l_CopyRegion.size = size;
@@ -181,6 +187,8 @@ namespace Engine
         const VkImageAspectFlags l_AspectFlags = GetAspectFlags(format);
 
         Begin("UploadImage");
+        ++m_BatchImageCount;
+        m_BatchImageBytes += size;
         
         RecordImageLayoutTransition(m_CommandBuffer, image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, l_AspectFlags, mipLevels, arrayLayers);
         CopyBufferToImage(l_Staging.Buffer, image, width, height, l_AspectFlags, arrayLayers);

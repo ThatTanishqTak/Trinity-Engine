@@ -51,5 +51,9 @@ namespace Engine
         VkCommandBuffer m_CommandBuffer = VK_NULL_HANDLE;
         VkFence m_UploadFence = VK_NULL_HANDLE;
         std::unique_ptr<VulkanDebugUtils::ScopedCmdLabel> m_ActiveLabel;
+        uint32_t m_BatchBufferCount = 0;
+        uint32_t m_BatchImageCount = 0;
+        VkDeviceSize m_BatchBufferBytes = 0;
+        VkDeviceSize m_BatchImageBytes = 0;
     };
 }
