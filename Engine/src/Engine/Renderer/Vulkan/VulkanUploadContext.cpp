@@ -2,13 +2,14 @@
 
 #include "Engine/Renderer/Vulkan/VulkanDebugUtils.h"
 #include "Engine/Renderer/Vulkan/VulkanDevice.h"
+#include "Engine/Renderer/Vulkan/VulkanRenderer.h"
 #include "Engine/Utilities/Utilities.h"
 
 #include <cstring>
 
 namespace Engine
 {
-    void VulkanUploadContext::Initialize(VulkanDevice& device)
+    void VulkanUploadContext::Initialize(VulkanDevice& device, const VulkanRenderer* renderer)
     {
         m_Device = &device;
 
@@ -69,6 +70,7 @@ namespace Engine
         }
 
         m_Device = nullptr;
+        m_Renderer = nullptr;
     }
 
     void VulkanUploadContext::Begin(const char* labelName)
@@ -125,6 +127,11 @@ namespace Engine
             return;
         }
 
+        if (m_Renderer && m_Renderer->IsFrameInProgress())
+        {
+            TR_CORE_WARN("UploadBuffer called while a frame is in progress");
+        }
+
         TR_CORE_INFO("Uploading buffer {} bytes", static_cast<uint64_t>(size));
 
         VulkanResources::BufferResource l_Staging = VulkanResources::CreateStagingBuffer(*m_Device, size);
@@ -144,6 +151,7 @@ namespace Engine
 
         EndAndSubmitAndWait();
 
+        VulkanResources::ScopedDestroyContext l_DestroyContext("UploadBuffer");
         VulkanResources::DestroyBuffer(*m_Device, l_Staging);
     }
 
@@ -153,6 +161,11 @@ namespace Engine
         if (!m_Device || !m_Device->GetDevice() || !image || !data || size == 0)
         {
             return;
+        }
+
+        if (m_Renderer && m_Renderer->IsFrameInProgress())
+        {
+            TR_CORE_WARN("UploadImage called while a frame is in progress");
         }
 
         TR_CORE_INFO("Uploading image {}x{} ({} bytes)", width, height, static_cast<uint64_t>(size));
@@ -175,6 +188,7 @@ namespace Engine
 
         EndAndSubmitAndWait();
 
+        VulkanResources::ScopedDestroyContext l_DestroyContext("UploadImage");
         VulkanResources::DestroyBuffer(*m_Device, l_Staging);
     }
 

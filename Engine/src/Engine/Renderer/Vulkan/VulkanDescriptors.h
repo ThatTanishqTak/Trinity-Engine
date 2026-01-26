@@ -37,6 +37,11 @@ namespace Engine
         void WriteBuffer(VkDescriptorSet descriptorSet, uint32_t binding, const VkDescriptorBufferInfo& bufferInfo, VkDescriptorType descriptorType) const;
         void WriteImageSampler(VkDescriptorSet descriptorSet, uint32_t binding, const VkDescriptorImageInfo& imageInfo) const;
 
+        static void SetPassCreationInProgress(bool value);
+        static void SetPassRecordInProgress(bool value);
+        static bool IsPassCreationInProgress();
+        static bool IsPassRecordInProgress();
+
     private:
         VulkanDevice* m_Device = nullptr;
         VkDescriptorSetLayout m_GlobalSetLayout = VK_NULL_HANDLE;

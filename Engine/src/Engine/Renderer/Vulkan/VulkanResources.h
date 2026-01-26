@@ -15,6 +15,21 @@ namespace Engine
     public:
         using SubmitResourceFreeCallback = std::function<void(std::function<void()>&&)>;
 
+        class ScopedDestroyContext
+        {
+        public:
+            explicit ScopedDestroyContext(const char* contextName);
+            ~ScopedDestroyContext();
+
+            ScopedDestroyContext(const ScopedDestroyContext&) = delete;
+            ScopedDestroyContext& operator=(const ScopedDestroyContext&) = delete;
+            ScopedDestroyContext(ScopedDestroyContext&&) = delete;
+            ScopedDestroyContext& operator=(ScopedDestroyContext&&) = delete;
+        };
+
+        static bool IsDestroyContextActive();
+        static const char* GetDestroyContextName();
+
         struct BufferResource
         {
             VkBuffer Buffer = VK_NULL_HANDLE;
@@ -53,6 +68,10 @@ namespace Engine
             VkImageLayout finalLayout, uint32_t mipLevels = 1, uint32_t arrayLayers = 1);
 
     private:
+        static void BeginDestroyContext(const char* contextName);
+        static void EndDestroyContext();
+        static void AssertDestroyContext(const char* functionName);
+
         static uint32_t FindMemoryType(VulkanDevice& device, uint32_t typeFilter, VkMemoryPropertyFlags properties);
         static VkImageAspectFlags GetAspectFlags(VkFormat format);
         static void RecordImageLayoutTransition(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageAspectFlags aspectFlags,
@@ -60,6 +79,7 @@ namespace Engine
         static void TransitionImageLayout(VulkanDevice& device, VulkanCommand& command, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageAspectFlags aspectFlags, 
             uint32_t mipLevels, uint32_t arrayLayers);
         static void CopyBuffer(VulkanDevice& device, VulkanCommand& command, VkBuffer source, VkBuffer destination, VkDeviceSize size);
-        static void CopyBufferToImage(VulkanDevice& device, VulkanCommand& command, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, VkImageAspectFlags aspectFlags, uint32_t arrayLayers);
+        static void CopyBufferToImage(VulkanDevice& device, VulkanCommand& command, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, VkImageAspectFlags aspectFlags,
+            uint32_t arrayLayers);
     };
 }

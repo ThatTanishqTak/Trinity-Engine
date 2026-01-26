@@ -9,8 +9,40 @@
 
 namespace Engine
 {
+    namespace
+    {
+        bool s_PassCreationInProgress = false;
+        bool s_PassRecordInProgress = false;
+    }
+
+    void VulkanDescriptors::SetPassCreationInProgress(bool value)
+    {
+        s_PassCreationInProgress = value;
+    }
+
+    void VulkanDescriptors::SetPassRecordInProgress(bool value)
+    {
+        s_PassRecordInProgress = value;
+    }
+
+    bool VulkanDescriptors::IsPassCreationInProgress()
+    {
+        return s_PassCreationInProgress;
+    }
+
+    bool VulkanDescriptors::IsPassRecordInProgress()
+    {
+        return s_PassRecordInProgress;
+    }
+
     void VulkanDescriptors::Initialize(VulkanDevice& device, uint32_t framesInFlight)
     {
+        if (IsPassCreationInProgress() || IsPassRecordInProgress())
+        {
+            TR_CORE_ERROR("VulkanDescriptors::Initialize called during pass creation or record");
+
+            return;
+        }
         Shutdown(device);
 
         m_Device = &device;

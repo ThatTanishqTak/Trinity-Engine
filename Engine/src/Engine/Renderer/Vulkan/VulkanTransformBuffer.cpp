@@ -77,6 +77,7 @@ namespace Engine
                 }
                 else
                 {
+                    VulkanResources::ScopedDestroyContext l_DestroyContext("VulkanTransformBuffer::Shutdown");
                     VulkanResources::DestroyBuffer(device, l_Frame.Buffer);
                 }
             }

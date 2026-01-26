@@ -2,6 +2,7 @@
 
 #include "Engine/Platform/Window.h"
 #include "Engine/Renderer/Pass/MainPass.h"
+#include "Engine/Renderer/Vulkan/VulkanResources.h"
 #include "Engine/Utilities/Utilities.h"
 
 #include <GLFW/glfw3.h>
@@ -64,7 +65,7 @@ namespace Engine
         m_Swapchain.Initialize(m_Context, m_Device, window);
         m_FrameResources.OnSwapchainRecreated(m_Swapchain.GetImages().size());
         m_PassManager.AddPass(std::make_unique<MainPass>());
-        m_Upload.Initialize(m_Device);
+        m_Upload.Initialize(m_Device, this);
         m_PassManager.OnCreateAll(m_Device, m_Swapchain, m_FrameResources);
 
         m_CurrentFrame = 0;
@@ -97,6 +98,7 @@ namespace Engine
             const uint32_t l_FramesInFlight = m_FrameResources.GetFramesInFlight();
             for (uint32_t l_FrameIndex = 0; l_FrameIndex < l_FramesInFlight; ++l_FrameIndex)
             {
+                VulkanResources::ScopedDestroyContext l_DestroyContext("ShutdownDeletionQueue::Flush");
                 m_DeletionQueue.Flush(l_FrameIndex);
             }
 
@@ -172,7 +174,11 @@ namespace Engine
         m_FrameResources.OnBeginFrame(m_Device, (uint32_t)m_CurrentFrame);
         m_Transforms.BeginFrame((uint32_t)m_CurrentFrame);
 
-        const size_t l_FlushCount = m_DeletionQueue.Flush((uint32_t)m_CurrentFrame);
+        {
+            VulkanResources::ScopedDestroyContext l_DestroyContext("DeletionQueue::Flush");
+            const size_t l_FlushCount = m_DeletionQueue.Flush((uint32_t)m_CurrentFrame);
+            (void)l_FlushCount;
+        }
         VkSemaphore l_ImageAvailable = m_FrameResources.GetImageAvailableSemaphore((uint32_t)m_CurrentFrame);
         VkResult l_AcquireResult = m_Swapchain.AcquireNextImage(UINT64_MAX, l_ImageAvailable, VK_NULL_HANDLE, m_ImageIndex);
 
@@ -194,6 +200,8 @@ namespace Engine
         m_FrameResources.MarkImageInFlight(m_ImageIndex, l_FrameFence);
         m_FrameResources.ResetForFrame(m_Device, (uint32_t)m_CurrentFrame);
 
+        m_FrameInProgress = true;
+
         VkCommandBuffer l_CommandBuffer = m_FrameResources.GetCommandBuffer((uint32_t)m_CurrentFrame);
         m_PassManager.RecordAll(l_CommandBuffer, m_ImageIndex, (uint32_t)m_CurrentFrame, *this);
 
@@ -214,8 +222,6 @@ namespace Engine
         l_SubmitInfo.pSignalSemaphores = l_SignalSemaphores;
 
         Utilities::VulkanUtilities::VKCheckStrict(vkQueueSubmit(m_Device.GetGraphicsQueue(), 1, &l_SubmitInfo, l_FrameFence), "vkQueueSubmit");
-
-        m_FrameInProgress = true;
     }
 
     void VulkanRenderer::EndFrame()

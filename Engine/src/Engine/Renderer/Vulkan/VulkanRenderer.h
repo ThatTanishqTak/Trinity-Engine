@@ -54,6 +54,8 @@ namespace Engine
         VulkanUploadContext& GetUploadContext() { return m_Upload; }
         const VulkanUploadContext& GetUploadContext() const { return m_Upload; }
 
+        bool IsFrameInProgress() const { return m_FrameInProgress; }
+
         void OnResize(uint32_t width, uint32_t height) override;
 
     private:

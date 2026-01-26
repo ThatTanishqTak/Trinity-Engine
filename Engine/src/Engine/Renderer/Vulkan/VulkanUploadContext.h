@@ -11,6 +11,7 @@
 namespace Engine
 {
     class VulkanDevice;
+    class VulkanRenderer;
 
     class VulkanUploadContext final
     {
@@ -23,7 +24,7 @@ namespace Engine
         VulkanUploadContext(VulkanUploadContext&&) = delete;
         VulkanUploadContext& operator=(VulkanUploadContext&&) = delete;
 
-        void Initialize(VulkanDevice& device);
+        void Initialize(VulkanDevice& device, const VulkanRenderer* renderer);
         void Shutdown(VulkanDevice& device);
 
         void Begin(const char* labelName);
@@ -44,6 +45,7 @@ namespace Engine
 
     private:
         VulkanDevice* m_Device = nullptr;
+        const VulkanRenderer* m_Renderer = nullptr;
 
         VkCommandPool m_CommandPool = VK_NULL_HANDLE;
         VkCommandBuffer m_CommandBuffer = VK_NULL_HANDLE;

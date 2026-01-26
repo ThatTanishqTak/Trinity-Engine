@@ -6,6 +6,7 @@
 #include "Engine/Renderer/Vulkan/VulkanDescriptors.h"
 #include "Engine/Renderer/Vulkan/VulkanFrameResources.h"
 #include "Engine/Renderer/Vulkan/VulkanRenderer.h"
+#include "Engine/Renderer/Vulkan/VulkanResources.h"
 #include "Engine/Renderer/Vulkan/VulkanSwapchain.h"
 #include "Engine/Utilities/Utilities.h"
 
@@ -386,6 +387,7 @@ namespace Engine
 
     void MainPass::DestroyGlobalUniformBuffers(VulkanDevice& device)
     {
+        VulkanResources::ScopedDestroyContext l_DestroyContext("MainPass::DestroyGlobalUniformBuffers");
         for (auto& it_Buffer : m_GlobalUniformBuffers)
         {
             VulkanResources::DestroyBuffer(device, it_Buffer);

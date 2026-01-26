@@ -1,11 +1,54 @@
 #include "Engine/Renderer/Pass/RenderPassManager.h"
 
+#include "Engine/Renderer/Vulkan/VulkanDescriptors.h"
+#include "Engine/Renderer/Vulkan/VulkanRenderer.h"
 #include "Engine/Utilities/Utilities.h"
 
 #include <cstring>
 
 namespace Engine
 {
+    namespace
+    {
+        class ScopedPassCreationGuard
+        {
+        public:
+            ScopedPassCreationGuard()
+            {
+                VulkanDescriptors::SetPassCreationInProgress(true);
+            }
+
+            ~ScopedPassCreationGuard()
+            {
+                VulkanDescriptors::SetPassCreationInProgress(false);
+            }
+
+            ScopedPassCreationGuard(const ScopedPassCreationGuard&) = delete;
+            ScopedPassCreationGuard& operator=(const ScopedPassCreationGuard&) = delete;
+            ScopedPassCreationGuard(ScopedPassCreationGuard&&) = delete;
+            ScopedPassCreationGuard& operator=(ScopedPassCreationGuard&&) = delete;
+        };
+
+        class ScopedPassRecordGuard
+        {
+        public:
+            ScopedPassRecordGuard()
+            {
+                VulkanDescriptors::SetPassRecordInProgress(true);
+            }
+
+            ~ScopedPassRecordGuard()
+            {
+                VulkanDescriptors::SetPassRecordInProgress(false);
+            }
+
+            ScopedPassRecordGuard(const ScopedPassRecordGuard&) = delete;
+            ScopedPassRecordGuard& operator=(const ScopedPassRecordGuard&) = delete;
+            ScopedPassRecordGuard(ScopedPassRecordGuard&&) = delete;
+            ScopedPassRecordGuard& operator=(ScopedPassRecordGuard&&) = delete;
+        };
+    }
+
     void RenderPassManager::AddPass(std::unique_ptr<IRenderPass> pass)
     {
         // Order of operations: register passes before creation.
@@ -43,6 +86,8 @@ namespace Engine
         // Order of operations: create all pass resources before any recording.
         if (m_IsCreated)
         {
+            assert(false && "RenderPassManager::OnCreateAll called when passes are already created");
+
             return;
         }
 
@@ -62,6 +107,8 @@ namespace Engine
         // Order of operations: destroy all pass resources before renderer shutdown.
         if (!m_IsCreated)
         {
+            assert(false && "RenderPassManager::OnDestroyAll called when passes are not created");
+
             return;
         }
 
@@ -99,6 +146,12 @@ namespace Engine
         // Order of operations: record pass commands inside a begun command buffer.
         if (!m_IsCreated)
         {
+            return;
+        }
+
+        if (!renderer.IsFrameInProgress())
+        {
+            assert(false && "RenderPassManager::RecordAll called outside of a frame");
             return;
         }
 
