@@ -91,8 +91,7 @@ namespace Engine
     }
 
 
-    void RenderPassManager::RecordAll(VkCommandBuffer command, uint32_t imageIndex, uint32_t currentFrame, const glm::vec4& clearColor, std::span<const RenderCube> pendingCubes,
-        VulkanRenderer& renderer)
+    void RenderPassManager::RecordAll(VkCommandBuffer command, uint32_t imageIndex, uint32_t currentFrame, VulkanRenderer& renderer)
     {
         // Order of operations: record pass commands inside a begun command buffer.
         if (!m_IsCreated)
@@ -102,7 +101,43 @@ namespace Engine
 
         for (const auto& it_Pass : m_Passes)
         {
-            it_Pass->RecordCommandBuffer(command, imageIndex, currentFrame, clearColor, pendingCubes, renderer);
+            it_Pass->RecordCommandBuffer(command, imageIndex, currentFrame, renderer);
         }
+    }
+
+    IRenderPass* RenderPassManager::FindPass(const char* passName)
+    {
+        if (!passName)
+        {
+            return nullptr;
+        }
+
+        for (const auto& it_Pass : m_Passes)
+        {
+            if (std::strcmp(it_Pass->GetName(), passName) == 0)
+            {
+                return it_Pass.get();
+            }
+        }
+
+        return nullptr;
+    }
+
+    const IRenderPass* RenderPassManager::FindPass(const char* passName) const
+    {
+        if (!passName)
+        {
+            return nullptr;
+        }
+
+        for (const auto& it_Pass : m_Passes)
+        {
+            if (std::strcmp(it_Pass->GetName(), passName) == 0)
+            {
+                return it_Pass.get();
+            }
+        }
+
+        return nullptr;
     }
 }

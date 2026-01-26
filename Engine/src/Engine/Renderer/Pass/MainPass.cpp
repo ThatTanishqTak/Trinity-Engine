@@ -11,7 +11,6 @@
 #include <array>
 #include <functional>
 #include <cstring>
-#include <span>
 
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -20,6 +19,21 @@ namespace Engine
     // Shader paths for the main pass pipeline.
     static const char* s_DefaultVertShader = "Assets/Shaders/Simple.vert.spv";
     static const char* s_DefaultFragShader = "Assets/Shaders/Simple.frag.spv";
+
+    void MainPass::SetClearColor(const glm::vec4& clearColor)
+    {
+        m_ClearColor = clearColor;
+    }
+
+    void MainPass::Clear()
+    {
+        m_ClearRequested = true;
+    }
+
+    void MainPass::DrawCube(const glm::vec3& size, const glm::vec3& position, const glm::vec4& tint)
+    {
+        m_PendingCubes.push_back({ size, position, tint });
+    }
 
     void MainPass::Initialize(VulkanDevice& device, VulkanSwapchain& swapchain, VulkanFrameResources& frameResources)
     {
@@ -65,18 +79,17 @@ namespace Engine
         CreatePipeline(device, swapchain, frameResources);
     }
 
-    void MainPass::RecordCommandBuffer(VkCommandBuffer command, uint32_t imageIndex, uint32_t currentFrame, const glm::vec4& clearColor, std::span<const RenderCube> pendingCubes,
-        VulkanRenderer& renderer)
+    void MainPass::RecordCommandBuffer(VkCommandBuffer command, uint32_t imageIndex, uint32_t currentFrame, VulkanRenderer& renderer)
     {
         VkCommandBufferBeginInfo l_CommandBufferBeginInfo{};
         l_CommandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         Utilities::VulkanUtilities::VKCheckStrict(vkBeginCommandBuffer(command, &l_CommandBufferBeginInfo), "vkBeginCommandBuffer");
 
         VkClearValue l_ClearValue{};
-        l_ClearValue.color.float32[0] = clearColor.r;
-        l_ClearValue.color.float32[1] = clearColor.g;
-        l_ClearValue.color.float32[2] = clearColor.b;
-        l_ClearValue.color.float32[3] = clearColor.a;
+        l_ClearValue.color.float32[0] = m_ClearColor.r;
+        l_ClearValue.color.float32[1] = m_ClearColor.g;
+        l_ClearValue.color.float32[2] = m_ClearColor.b;
+        l_ClearValue.color.float32[3] = m_ClearColor.a;
 
         VkRenderPassBeginInfo l_RenderPassBeginInfo{};
         l_RenderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -150,7 +163,7 @@ namespace Engine
 
             // The shaders must be written to use gl_VertexIndex (no vertex buffers).
             // If no draw calls were queued, keep the default triangle so you see something.
-            if (pendingCubes.empty())
+            if (m_PendingCubes.empty())
             {
                 glm::mat4 l_TransformMatrix{ 1.0f };
                 const uint32_t l_TransformIndex = renderer.PushTransform(l_TransformMatrix);
@@ -163,7 +176,7 @@ namespace Engine
             else
             {
                 // Placeholder draw loop for cube requests.
-                for (const auto& it_Cube : pendingCubes)
+                for (const auto& it_Cube : m_PendingCubes)
                 {
                     glm::mat4 l_TransformMatrix{ 1.0f };
                     l_TransformMatrix = glm::translate(l_TransformMatrix, it_Cube.m_Position);
@@ -182,6 +195,9 @@ namespace Engine
         vkCmdEndRenderPass(command);
 
         Utilities::VulkanUtilities::VKCheckStrict(vkEndCommandBuffer(command), "vkEndCommandBuffer");
+
+        m_PendingCubes.clear();
+        m_ClearRequested = false;
     }
 
     void MainPass::OnDestroy(VulkanDevice& device)

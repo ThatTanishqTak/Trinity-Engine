@@ -10,8 +10,6 @@
 #include "Engine/Renderer/Vulkan/VulkanTransformBuffer.h"
 #include "Engine/Renderer/Vulkan/VulkanUploadContext.h"
 
-#include "Engine/Utilities/Utilities.h"
-
 #include <vulkan/vulkan.h>
 
 #include <cstdint>
@@ -82,9 +80,5 @@ namespace Engine
         bool m_Initialized = false;
 
         bool m_LastVSync = true;
-
-        glm::vec4 m_ClearColor = TR_COLOR_GREY;
-        bool m_ClearRequested = true;
-        std::vector<RenderCube> m_PendingCubes;
     };
 }

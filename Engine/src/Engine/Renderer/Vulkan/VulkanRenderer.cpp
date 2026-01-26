@@ -18,17 +18,29 @@ namespace Engine
 
     void VulkanRenderer::SetClearColor(const glm::vec4& color)
     {
-        m_ClearColor = color;
+        auto* l_MainPass = dynamic_cast<MainPass*>(m_PassManager.FindPass("MainPass"));
+        if (l_MainPass)
+        {
+            l_MainPass->SetClearColor(color);
+        }
     }
 
     void VulkanRenderer::Clear()
     {
-        m_ClearRequested = true;
+        auto* l_MainPass = dynamic_cast<MainPass*>(m_PassManager.FindPass("MainPass"));
+        if (l_MainPass)
+        {
+            l_MainPass->Clear();
+        }
     }
 
     void VulkanRenderer::DrawCube(const glm::vec3& size, const glm::vec3& position, const glm::vec4& tint)
     {
-        m_PendingCubes.push_back({ size, position, tint });
+        auto* l_MainPass = dynamic_cast<MainPass*>(m_PassManager.FindPass("MainPass"));
+        if (l_MainPass)
+        {
+            l_MainPass->DrawCube(size, position, tint);
+        }
     }
 
     void VulkanRenderer::Initialize(Window& window)
@@ -177,9 +189,7 @@ namespace Engine
         m_FrameResources.ResetForFrame(m_Device, (uint32_t)m_CurrentFrame);
 
         VkCommandBuffer l_CommandBuffer = m_FrameResources.GetCommandBuffer((uint32_t)m_CurrentFrame);
-        m_PassManager.RecordAll(l_CommandBuffer, m_ImageIndex, (uint32_t)m_CurrentFrame, m_ClearColor, m_PendingCubes, *this);
-        m_PendingCubes.clear();
-        m_ClearRequested = false;
+        m_PassManager.RecordAll(l_CommandBuffer, m_ImageIndex, (uint32_t)m_CurrentFrame, *this);
 
         VkSemaphore l_WaitSemaphores[] = { l_ImageAvailable };
         VkPipelineStageFlags l_WaitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };

@@ -1,8 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <span>
-
 #include <glm/glm.hpp>
 #include <vulkan/vulkan.h>
 
@@ -28,8 +26,7 @@ namespace Engine
         virtual const char* GetName() const = 0;
         virtual void Initialize(VulkanDevice& device, VulkanSwapchain& swapchain, VulkanFrameResources& frameResources) = 0;
         virtual void OnResize(VulkanDevice& device, VulkanSwapchain& swapchain, VulkanFrameResources& frameResources, VulkanRenderer& renderer) = 0;
-        virtual void RecordCommandBuffer(VkCommandBuffer command, uint32_t imageIndex, uint32_t currentFrame, const glm::vec4& clearColor, std::span<const RenderCube> pendingCubes,
-            VulkanRenderer& renderer) = 0;
+        virtual void RecordCommandBuffer(VkCommandBuffer command, uint32_t imageIndex, uint32_t currentFrame, VulkanRenderer& renderer) = 0;
         virtual void OnDestroy(VulkanDevice& device) = 0;
     };
 }
