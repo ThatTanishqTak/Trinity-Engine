@@ -234,10 +234,10 @@ namespace Engine
 
         VkResult l_PresentResult = vkQueuePresentKHR(m_Device.GetPresentQueue(), &l_PresentInfo);
 
-        if (l_PresentResult == VK_ERROR_OUT_OF_DATE_KHR || l_PresentResult == VK_SUBOPTIMAL_KHR || m_FramebufferResized)
+        const bool l_NeedsSwapchainRebuild = (l_PresentResult == VK_ERROR_OUT_OF_DATE_KHR || l_PresentResult == VK_SUBOPTIMAL_KHR || m_FramebufferResized);
+        if (l_NeedsSwapchainRebuild)
         {
             m_FramebufferResized = false;
-            RecreateSwapchain();
         }
         else if (l_PresentResult != VK_SUCCESS)
         {
@@ -253,6 +253,11 @@ namespace Engine
         else
         {
             m_CurrentFrame = 0;
+        }
+
+        if (l_NeedsSwapchainRebuild)
+        {
+            RecreateSwapchain();
         }
     }
 
