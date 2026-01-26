@@ -74,7 +74,8 @@ namespace Engine
         const VulkanDebugUtils* l_DebugUtils = device.GetDebugUtils();
         if (l_DebugUtils && m_GlobalSetLayout)
         {
-            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, static_cast<uint64_t>(m_GlobalSetLayout), "GlobalSetLayout");
+            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, static_cast<uint64_t>(reinterpret_cast<uintptr_t>(m_GlobalSetLayout)), 
+                "GlobalSetLayout");
         }
 
         VkDescriptorSetLayoutBinding l_MaterialBinding{};
@@ -92,7 +93,8 @@ namespace Engine
             "vkCreateDescriptorSetLayout(Material)");
         if (l_DebugUtils && m_MaterialSetLayout)
         {
-            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, static_cast<uint64_t>(m_MaterialSetLayout), "MaterialSetLayout");
+            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, static_cast<uint64_t>(reinterpret_cast<uintptr_t>(m_MaterialSetLayout)), 
+                "MaterialSetLayout");
         }
 
         constexpr uint32_t s_MaxUniformBuffers = 512;
@@ -121,7 +123,8 @@ namespace Engine
             if (l_DebugUtils && m_Pools[l_FrameIndex])
             {
                 const std::string l_PoolName = "DescriptorPool_Frame" + std::to_string(l_FrameIndex);
-                l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_DESCRIPTOR_POOL, static_cast<uint64_t>(m_Pools[l_FrameIndex]), l_PoolName.c_str());
+                l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_DESCRIPTOR_POOL, static_cast<uint64_t>(reinterpret_cast<uintptr_t>(m_Pools[l_FrameIndex])),
+                    l_PoolName.c_str());
             }
         }
     }

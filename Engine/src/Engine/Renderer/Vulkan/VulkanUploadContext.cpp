@@ -22,7 +22,7 @@ namespace Engine
         const VulkanDebugUtils* l_DebugUtils = device.GetDebugUtils();
         if (l_DebugUtils && m_CommandPool)
         {
-            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_COMMAND_POOL, static_cast<uint64_t>(m_CommandPool), "Upload_CommandPool");
+            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_COMMAND_POOL, static_cast<uint64_t>(reinterpret_cast<uintptr_t>(m_CommandPool)), "Upload_CommandPool");
         }
 
 
@@ -35,7 +35,7 @@ namespace Engine
         Utilities::VulkanUtilities::VKCheckStrict(vkAllocateCommandBuffers(device.GetDevice(), &l_AllocateInfo, &m_CommandBuffer), "vkAllocateCommandBuffers (upload)");
         if (l_DebugUtils && m_CommandBuffer)
         {
-            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_COMMAND_BUFFER, static_cast<uint64_t>(m_CommandBuffer), "Upload_CommandBuffer");
+            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_COMMAND_BUFFER, static_cast<uint64_t>(reinterpret_cast<uintptr_t>(m_CommandBuffer)), "Upload_CommandBuffer");
         }
 
         VkFenceCreateInfo l_FenceCreateInfo{};
@@ -45,7 +45,7 @@ namespace Engine
         Utilities::VulkanUtilities::VKCheckStrict(vkCreateFence(device.GetDevice(), &l_FenceCreateInfo, nullptr, &m_UploadFence), "vkCreateFence (upload)");
         if (l_DebugUtils && m_UploadFence)
         {
-            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_FENCE, static_cast<uint64_t>(m_UploadFence), "Upload_Fence");
+            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_FENCE, static_cast<uint64_t>(reinterpret_cast<uintptr_t>(m_UploadFence)), "Upload_Fence");
         }
     }
 

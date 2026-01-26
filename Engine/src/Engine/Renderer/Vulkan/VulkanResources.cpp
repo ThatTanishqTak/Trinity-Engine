@@ -291,7 +291,7 @@ namespace Engine
         {
             static uint32_t s_StagingBufferIndex = 0;
             const std::string l_BufferName = "Upload_StagingBuffer_" + std::to_string(s_StagingBufferIndex++);
-            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_BUFFER, static_cast<uint64_t>(l_Buffer.Buffer), l_BufferName.c_str());
+            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_BUFFER, static_cast<uint64_t>(reinterpret_cast<uintptr_t>(l_Buffer.Buffer)), l_BufferName.c_str());
         }
 
         return l_Buffer;

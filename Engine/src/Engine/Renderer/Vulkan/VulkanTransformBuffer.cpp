@@ -34,7 +34,7 @@ namespace Engine
             if (l_DebugUtils && l_Frame.Buffer.Buffer)
             {
                 const std::string l_BufferName = "TransformBuffer_Frame" + std::to_string(l_FrameIndex);
-                l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_BUFFER, static_cast<uint64_t>(l_Frame.Buffer.Buffer), l_BufferName.c_str());
+                l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_BUFFER, static_cast<uint64_t>(reinterpret_cast<uintptr_t>(l_Frame.Buffer.Buffer)), l_BufferName.c_str());
             }
 
             void* l_Mapped = nullptr;

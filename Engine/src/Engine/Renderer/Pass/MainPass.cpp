@@ -273,7 +273,7 @@ namespace Engine
         const VulkanDebugUtils* l_DebugUtils = device.GetDebugUtils();
         if (l_DebugUtils && m_RenderPass)
         {
-            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_RENDER_PASS, static_cast<uint64_t>(m_RenderPass), "MainPass_RenderPass");
+            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_RENDER_PASS, static_cast<uint64_t>(reinterpret_cast<uintptr_t>(m_RenderPass)), "MainPass_RenderPass");
         }
     }
 
@@ -309,7 +309,7 @@ namespace Engine
             if (l_DebugUtils && m_Framebuffers[i])
             {
                 const std::string l_FramebufferName = "MainPass_Framebuffer_" + std::to_string(i);
-                l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_FRAMEBUFFER, static_cast<uint64_t>(m_Framebuffers[i]), l_FramebufferName.c_str());
+                l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_FRAMEBUFFER, static_cast<uint64_t>(reinterpret_cast<uintptr_t>(m_Framebuffers[i])), l_FramebufferName.c_str());
             }
         }
 

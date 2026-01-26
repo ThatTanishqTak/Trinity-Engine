@@ -181,7 +181,7 @@ namespace Engine
             for (size_t i = 0; i < m_Images.size(); ++i)
             {
                 const std::string l_ImageName = "Swapchain_Image_" + std::to_string(i);
-                l_DebugUtils->SetObjectName(m_Device->GetDevice(), VK_OBJECT_TYPE_IMAGE, static_cast<uint64_t>(m_Images[i]), l_ImageName.c_str());
+                l_DebugUtils->SetObjectName(m_Device->GetDevice(), VK_OBJECT_TYPE_IMAGE, static_cast<uint64_t>(reinterpret_cast<uintptr_t>(m_Images[i])), l_ImageName.c_str());
             }
         }
 
@@ -194,7 +194,7 @@ namespace Engine
             if (l_DebugUtils && m_ImageViews[i])
             {
                 const std::string l_ImageViewName = "Swapchain_ImageView_" + std::to_string(i);
-                l_DebugUtils->SetObjectName(m_Device->GetDevice(), VK_OBJECT_TYPE_IMAGE_VIEW, static_cast<uint64_t>(m_ImageViews[i]), l_ImageViewName.c_str());
+                l_DebugUtils->SetObjectName(m_Device->GetDevice(), VK_OBJECT_TYPE_IMAGE_VIEW, static_cast<uint64_t>(reinterpret_cast<uintptr_t>(m_ImageViews[i])), l_ImageViewName.c_str());
             }
         }
     }

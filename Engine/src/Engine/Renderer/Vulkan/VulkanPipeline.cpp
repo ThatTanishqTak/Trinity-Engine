@@ -28,7 +28,7 @@ namespace Engine
         {
             const std::string l_BaseName = description.DebugName.empty() ? "GraphicsPipeline" : description.DebugName;
             const std::string l_CacheName = l_BaseName + "_PipelineCache";
-            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_PIPELINE_CACHE, static_cast<uint64_t>(m_PipelineCache), l_CacheName.c_str());
+            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_PIPELINE_CACHE, static_cast<uint64_t>(reinterpret_cast<uintptr_t>(m_PipelineCache)), l_CacheName.c_str());
         }
 
         VkShaderModule l_VertModule = VK_NULL_HANDLE;
@@ -130,7 +130,7 @@ namespace Engine
         {
             const std::string l_BaseName = description.DebugName.empty() ? "GraphicsPipeline" : description.DebugName;
             const std::string l_LayoutName = l_BaseName + "_PipelineLayout";
-            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_PIPELINE_LAYOUT, static_cast<uint64_t>(m_PipelineLayout), l_LayoutName.c_str());
+            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_PIPELINE_LAYOUT, static_cast<uint64_t>(reinterpret_cast<uintptr_t>(m_PipelineLayout)), l_LayoutName.c_str());
         }
 
         VkGraphicsPipelineCreateInfo l_PipelineInfo{};
@@ -153,7 +153,7 @@ namespace Engine
         {
             const std::string l_BaseName = description.DebugName.empty() ? "GraphicsPipeline" : description.DebugName;
             const std::string l_PipelineName = l_BaseName + "_Pipeline";
-            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_PIPELINE, static_cast<uint64_t>(m_Pipeline), l_PipelineName.c_str());
+            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_PIPELINE, static_cast<uint64_t>(reinterpret_cast<uintptr_t>(m_Pipeline)), l_PipelineName.c_str());
         }
 
         vkDestroyShaderModule(device.GetDevice(), l_VertModule, nullptr);
