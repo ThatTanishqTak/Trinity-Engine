@@ -86,6 +86,9 @@ namespace Engine
 
         for (const auto& it_Pass : m_Passes)
         {
+            const char* l_PassName = it_Pass->GetName();
+            TR_CORE_INFO("Resizing render pass {}", l_PassName ? l_PassName : "Unknown");
+
             it_Pass->OnResize(device, swapchain, frameResources, renderer);
         }
     }
