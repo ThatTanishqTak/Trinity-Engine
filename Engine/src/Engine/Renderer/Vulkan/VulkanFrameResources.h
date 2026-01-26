@@ -38,10 +38,10 @@ namespace Engine
         VkSemaphore GetImageAvailableSemaphore(uint32_t frameIndex) const;
         VkSemaphore GetRenderFinishedSemaphore(uint32_t frameIndex) const;
         VkFence GetInFlightFence(uint32_t frameIndex) const;
-        VkDescriptorSetLayout GetGlobalDescriptorSetLayout() const;
-        VkDescriptorSetLayout GetMaterialDescriptorSetLayout() const;
-        VkDescriptorSet AllocateGlobalDescriptorSet(uint32_t frameIndex) const;
-        VkDescriptorSet AllocateMaterialDescriptorSet(uint32_t frameIndex) const;
+        VkDescriptorSetLayout GetGlobalSetLayout() const;
+        VkDescriptorSetLayout GetMaterialSetLayout() const;
+        VkDescriptorSet AllocateGlobalSet(uint32_t frameIndex) const;
+        VkDescriptorSet AllocateMaterialSet(uint32_t frameIndex) const;
         const VulkanDescriptors& GetDescriptors() const;
         uint32_t GetFramesInFlight() const;
 

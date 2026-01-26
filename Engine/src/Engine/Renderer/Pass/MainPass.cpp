@@ -108,7 +108,7 @@ namespace Engine
             if (m_Device && m_FrameResources && m_FrameResources->HasDescriptors() && currentFrame < m_GlobalUniformBuffers.size())
             {
                 VulkanResources::BufferResource& l_GlobalBuffer = m_GlobalUniformBuffers[currentFrame];
-                VkDescriptorSet l_DescriptorSet = m_FrameResources->AllocateGlobalDescriptorSet(currentFrame);
+                VkDescriptorSet l_DescriptorSet = m_FrameResources->AllocateGlobalSet(currentFrame);
                 if (l_DescriptorSet != VK_NULL_HANDLE && l_GlobalBuffer.Buffer != VK_NULL_HANDLE && l_GlobalBuffer.Memory != VK_NULL_HANDLE)
                 {
                     GlobalUniformData l_GlobalData{};
@@ -286,7 +286,7 @@ namespace Engine
         l_GraphicsPipelineDescription.FrontFace = VK_FRONT_FACE_CLOCKWISE;
         l_GraphicsPipelineDescription.PipelineCachePath = "pipeline_cache.bin";
 
-        std::array<VkDescriptorSetLayout, 1> l_DescriptorLayouts = { frameResources.GetGlobalDescriptorSetLayout() };
+        std::array<VkDescriptorSetLayout, 1> l_DescriptorLayouts = { frameResources.GetGlobalSetLayout() };
         std::span<const VkDescriptorSetLayout> l_LayoutSpan = l_DescriptorLayouts[0] != VK_NULL_HANDLE
             ? std::span<const VkDescriptorSetLayout>(l_DescriptorLayouts) : std::span<const VkDescriptorSetLayout>();
 

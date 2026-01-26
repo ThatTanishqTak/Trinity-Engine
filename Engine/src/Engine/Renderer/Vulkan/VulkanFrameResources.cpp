@@ -80,22 +80,22 @@ namespace Engine
         return m_Sync.GetInFlightFence(frameIndex);
     }
 
-    VkDescriptorSetLayout VulkanFrameResources::GetGlobalDescriptorSetLayout() const
+    VkDescriptorSetLayout VulkanFrameResources::GetGlobalSetLayout() const
     {
         return m_Descriptors.GetGlobalSetLayout();
     }
 
-    VkDescriptorSetLayout VulkanFrameResources::GetMaterialDescriptorSetLayout() const
+    VkDescriptorSetLayout VulkanFrameResources::GetMaterialSetLayout() const
     {
         return m_Descriptors.GetMaterialSetLayout();
     }
 
-    VkDescriptorSet VulkanFrameResources::AllocateGlobalDescriptorSet(uint32_t frameIndex) const
+    VkDescriptorSet VulkanFrameResources::AllocateGlobalSet(uint32_t frameIndex) const
     {
         return m_Descriptors.AllocateGlobalSet(frameIndex);
     }
 
-    VkDescriptorSet VulkanFrameResources::AllocateMaterialDescriptorSet(uint32_t frameIndex) const
+    VkDescriptorSet VulkanFrameResources::AllocateMaterialSet(uint32_t frameIndex) const
     {
         return m_Descriptors.AllocateMaterialSet(frameIndex);
     }
