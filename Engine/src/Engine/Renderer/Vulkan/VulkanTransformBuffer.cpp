@@ -1,11 +1,13 @@
 #include "Engine/Renderer/Vulkan/VulkanTransformBuffer.h"
 
+#include "Engine/Renderer/Vulkan/VulkanDebugUtils.h"
 #include "Engine/Renderer/Vulkan/VulkanDevice.h"
 #include "Engine/Utilities/Utilities.h"
 
 #include <cassert>
 #include <cstddef>
 #include <cstring>
+#include <string>
 
 namespace Engine
 {
@@ -23,11 +25,17 @@ namespace Engine
         m_FrameData.resize(framesInFlight);
 
         const VkDeviceSize l_BufferSize = static_cast<VkDeviceSize>(maxDraws) * sizeof(glm::mat4);
+        const VulkanDebugUtils* l_DebugUtils = device.GetDebugUtils();
         for (uint32_t l_FrameIndex = 0; l_FrameIndex < framesInFlight; ++l_FrameIndex)
         {
             FrameData& l_Frame = m_FrameData[l_FrameIndex];
             l_Frame.Buffer = VulkanResources::CreateBuffer(device, l_BufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT 
                 | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+            if (l_DebugUtils && l_Frame.Buffer.Buffer)
+            {
+                const std::string l_BufferName = "TransformBuffer_Frame" + std::to_string(l_FrameIndex);
+                l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_BUFFER, static_cast<uint64_t>(l_Frame.Buffer.Buffer), l_BufferName.c_str());
+            }
 
             void* l_Mapped = nullptr;
             Utilities::VulkanUtilities::VKCheckStrict(vkMapMemory(device.GetDevice(), l_Frame.Buffer.Memory, 0, l_BufferSize, 0, &l_Mapped), "vkMapMemory (transform buffer)");

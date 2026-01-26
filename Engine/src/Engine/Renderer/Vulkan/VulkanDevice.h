@@ -11,6 +11,8 @@
 
 namespace Engine
 {
+    class VulkanDebugUtils;
+
     class VulkanDevice
     {
     public:
@@ -24,6 +26,9 @@ namespace Engine
 
         void Initialize(VulkanContext& context);
         void Shutdown();
+
+        void SetDebugUtils(VulkanDebugUtils* debugUtils) { m_DebugUtils = debugUtils; }
+        const VulkanDebugUtils* GetDebugUtils() const { return m_DebugUtils; }
 
         VkPhysicalDevice GetPhysicalDevice() const { return m_PhysicalDevice; }
         VkDevice GetDevice() const { return m_Device; }
@@ -59,6 +64,7 @@ namespace Engine
 
     private:
         VulkanContext* m_Context = nullptr;
+        VulkanDebugUtils* m_DebugUtils = nullptr;
 
         VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
         VkDevice m_Device = VK_NULL_HANDLE;

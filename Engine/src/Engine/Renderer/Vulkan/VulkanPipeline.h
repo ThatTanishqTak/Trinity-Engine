@@ -18,6 +18,7 @@ namespace Engine
         {
             std::string VertexShaderPath;
             std::string FragmentShaderPath;
+            std::string DebugName;
 
             VkExtent2D Extent{};
 

@@ -1,5 +1,6 @@
 #include "Engine/Renderer/Vulkan/VulkanPipeline.h"
 
+#include "Engine/Renderer/Vulkan/VulkanDebugUtils.h"
 #include "Engine/Renderer/Vulkan/VulkanDevice.h"
 #include "Engine/Utilities/Utilities.h"
 
@@ -22,6 +23,13 @@ namespace Engine
         m_DescriptorSetLayouts.assign(descriptorSetLayouts.begin(), descriptorSetLayouts.end());
 
         CreatePipelineCache(device, m_PipelineCachePath);
+        const VulkanDebugUtils* l_DebugUtils = device.GetDebugUtils();
+        if (l_DebugUtils && m_PipelineCache)
+        {
+            const std::string l_BaseName = description.DebugName.empty() ? "GraphicsPipeline" : description.DebugName;
+            const std::string l_CacheName = l_BaseName + "_PipelineCache";
+            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_PIPELINE_CACHE, static_cast<uint64_t>(m_PipelineCache), l_CacheName.c_str());
+        }
 
         VkShaderModule l_VertModule = VK_NULL_HANDLE;
         VkShaderModule l_FragModule = VK_NULL_HANDLE;
@@ -118,6 +126,12 @@ namespace Engine
         }
 
         Utilities::VulkanUtilities::VKCheckStrict(vkCreatePipelineLayout(device.GetDevice(), &l_LayoutInfo, nullptr, &m_PipelineLayout), "vkCreatePipelineLayout");
+        if (l_DebugUtils && m_PipelineLayout)
+        {
+            const std::string l_BaseName = description.DebugName.empty() ? "GraphicsPipeline" : description.DebugName;
+            const std::string l_LayoutName = l_BaseName + "_PipelineLayout";
+            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_PIPELINE_LAYOUT, static_cast<uint64_t>(m_PipelineLayout), l_LayoutName.c_str());
+        }
 
         VkGraphicsPipelineCreateInfo l_PipelineInfo{};
         l_PipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -135,6 +149,12 @@ namespace Engine
         l_PipelineInfo.subpass = 0;
 
         Utilities::VulkanUtilities::VKCheckStrict(vkCreateGraphicsPipelines(device.GetDevice(), m_PipelineCache, 1, &l_PipelineInfo, nullptr, &m_Pipeline), "vkCreateGraphicsPipelines");
+        if (l_DebugUtils && m_Pipeline)
+        {
+            const std::string l_BaseName = description.DebugName.empty() ? "GraphicsPipeline" : description.DebugName;
+            const std::string l_PipelineName = l_BaseName + "_Pipeline";
+            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_PIPELINE, static_cast<uint64_t>(m_Pipeline), l_PipelineName.c_str());
+        }
 
         vkDestroyShaderModule(device.GetDevice(), l_VertModule, nullptr);
         vkDestroyShaderModule(device.GetDevice(), l_FragModule, nullptr);

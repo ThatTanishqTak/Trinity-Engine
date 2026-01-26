@@ -32,6 +32,7 @@ namespace Engine
         m_PresentQueue = VK_NULL_HANDLE;
         m_QueueFamilies = {};
 
+        m_DebugUtils = nullptr;
         m_Context = nullptr;
     }
 

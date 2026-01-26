@@ -1,5 +1,6 @@
 #include "Engine/Renderer/Vulkan/VulkanUploadContext.h"
 
+#include "Engine/Renderer/Vulkan/VulkanDebugUtils.h"
 #include "Engine/Renderer/Vulkan/VulkanDevice.h"
 #include "Engine/Utilities/Utilities.h"
 
@@ -17,6 +18,12 @@ namespace Engine
         l_CommandPoolCreateInfo.queueFamilyIndex = device.GetGraphicsQueueFamily();
 
         Utilities::VulkanUtilities::VKCheckStrict(vkCreateCommandPool(device.GetDevice(), &l_CommandPoolCreateInfo, nullptr, &m_CommandPool), "vkCreateCommandPool (upload)");
+        const VulkanDebugUtils* l_DebugUtils = device.GetDebugUtils();
+        if (l_DebugUtils && m_CommandPool)
+        {
+            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_COMMAND_POOL, static_cast<uint64_t>(m_CommandPool), "Upload_CommandPool");
+        }
+
 
         VkCommandBufferAllocateInfo l_AllocateInfo{};
         l_AllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -25,12 +32,20 @@ namespace Engine
         l_AllocateInfo.commandBufferCount = 1;
 
         Utilities::VulkanUtilities::VKCheckStrict(vkAllocateCommandBuffers(device.GetDevice(), &l_AllocateInfo, &m_CommandBuffer), "vkAllocateCommandBuffers (upload)");
+        if (l_DebugUtils && m_CommandBuffer)
+        {
+            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_COMMAND_BUFFER, static_cast<uint64_t>(m_CommandBuffer), "Upload_CommandBuffer");
+        }
 
         VkFenceCreateInfo l_FenceCreateInfo{};
         l_FenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         l_FenceCreateInfo.flags = 0;
 
         Utilities::VulkanUtilities::VKCheckStrict(vkCreateFence(device.GetDevice(), &l_FenceCreateInfo, nullptr, &m_UploadFence), "vkCreateFence (upload)");
+        if (l_DebugUtils && m_UploadFence)
+        {
+            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_FENCE, static_cast<uint64_t>(m_UploadFence), "Upload_Fence");
+        }
     }
 
     void VulkanUploadContext::Shutdown(VulkanDevice& device)

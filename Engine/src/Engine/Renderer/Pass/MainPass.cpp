@@ -2,6 +2,7 @@
 #include "Engine/Renderer/Pass/DrawPushConstants.h"
 
 #include "Engine/Renderer/Vulkan/VulkanDevice.h"
+#include "Engine/Renderer/Vulkan/VulkanDebugUtils.h"
 #include "Engine/Renderer/Vulkan/VulkanDescriptors.h"
 #include "Engine/Renderer/Vulkan/VulkanFrameResources.h"
 #include "Engine/Renderer/Vulkan/VulkanRenderer.h"
@@ -11,6 +12,7 @@
 #include <array>
 #include <functional>
 #include <cstring>
+#include <string>
 
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -257,6 +259,11 @@ namespace Engine
 
         TR_CORE_INFO("MainPass create render pass");
         Utilities::VulkanUtilities::VKCheckStrict(vkCreateRenderPass(device.GetDevice(), &l_RenderPassCreateInfo, nullptr, &m_RenderPass), "vkCreateRenderPass");
+        const VulkanDebugUtils* l_DebugUtils = device.GetDebugUtils();
+        if (l_DebugUtils && m_RenderPass)
+        {
+            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_RENDER_PASS, static_cast<uint64_t>(m_RenderPass), "MainPass_RenderPass");
+        }
     }
 
     void MainPass::CreateFramebuffers(VulkanDevice& device, VulkanSwapchain& swapchain)
@@ -272,6 +279,7 @@ namespace Engine
 
         const auto& a_ImageViews = swapchain.GetImageViews();
         m_Framebuffers.resize(a_ImageViews.size());
+        const VulkanDebugUtils* l_DebugUtils = device.GetDebugUtils();
 
         for (size_t i = 0; i < a_ImageViews.size(); ++i)
         {
@@ -287,6 +295,11 @@ namespace Engine
             l_FramebufferCreateInfo.layers = 1;
 
             Utilities::VulkanUtilities::VKCheckStrict(vkCreateFramebuffer(device.GetDevice(), &l_FramebufferCreateInfo, nullptr, &m_Framebuffers[i]), "vkCreateFramebuffer");
+            if (l_DebugUtils && m_Framebuffers[i])
+            {
+                const std::string l_FramebufferName = "MainPass_Framebuffer_" + std::to_string(i);
+                l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_FRAMEBUFFER, static_cast<uint64_t>(m_Framebuffers[i]), l_FramebufferName.c_str());
+            }
         }
 
         TR_CORE_INFO("MainPass create framebuffers");
@@ -332,6 +345,7 @@ namespace Engine
         l_GraphicsPipelineDescription.PipelineCachePath = "pipeline_cache.bin";
         l_GraphicsPipelineDescription.PushConstantSize = sizeof(DrawPushConstant);
         l_GraphicsPipelineDescription.PushConstantStages = VK_SHADER_STAGE_VERTEX_BIT;
+        l_GraphicsPipelineDescription.DebugName = "MainPass";
 
         std::array<VkDescriptorSetLayout, 1> l_DescriptorLayouts = { frameResources.GetGlobalSetLayout() };
         std::span<const VkDescriptorSetLayout> l_LayoutSpan = l_DescriptorLayouts[0] != VK_NULL_HANDLE

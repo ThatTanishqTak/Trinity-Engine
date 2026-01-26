@@ -1,9 +1,11 @@
 #include "Engine/Renderer/Vulkan/VulkanDescriptors.h"
 
+#include "Engine/Renderer/Vulkan/VulkanDebugUtils.h"
 #include "Engine/Renderer/Vulkan/VulkanDevice.h"
 #include "Engine/Utilities/Utilities.h"
 
 #include <array>
+#include <string>
 
 namespace Engine
 {
@@ -37,6 +39,11 @@ namespace Engine
 
         Utilities::VulkanUtilities::VKCheckStrict(vkCreateDescriptorSetLayout(device.GetDevice(), &l_GlobalLayoutCreateInfo, nullptr, &m_GlobalSetLayout), 
             "vkCreateDescriptorSetLayout(Global)");
+        const VulkanDebugUtils* l_DebugUtils = device.GetDebugUtils();
+        if (l_DebugUtils && m_GlobalSetLayout)
+        {
+            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, static_cast<uint64_t>(m_GlobalSetLayout), "GlobalSetLayout");
+        }
 
         VkDescriptorSetLayoutBinding l_MaterialBinding{};
         l_MaterialBinding.binding = 0;
@@ -51,6 +58,10 @@ namespace Engine
 
         Utilities::VulkanUtilities::VKCheckStrict(vkCreateDescriptorSetLayout(device.GetDevice(), &l_MaterialLayoutCreateInfo, nullptr, &m_MaterialSetLayout), 
             "vkCreateDescriptorSetLayout(Material)");
+        if (l_DebugUtils && m_MaterialSetLayout)
+        {
+            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, static_cast<uint64_t>(m_MaterialSetLayout), "MaterialSetLayout");
+        }
 
         constexpr uint32_t s_MaxUniformBuffers = 512;
         constexpr uint32_t s_MaxStorageBuffers = 512;
@@ -75,6 +86,11 @@ namespace Engine
             l_PoolCreateInfo.maxSets = s_MaxDescriptorSets;
 
             Utilities::VulkanUtilities::VKCheckStrict(vkCreateDescriptorPool(device.GetDevice(), &l_PoolCreateInfo, nullptr, &m_Pools[l_FrameIndex]), "vkCreateDescriptorPool");
+            if (l_DebugUtils && m_Pools[l_FrameIndex])
+            {
+                const std::string l_PoolName = "DescriptorPool_Frame" + std::to_string(l_FrameIndex);
+                l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_DESCRIPTOR_POOL, static_cast<uint64_t>(m_Pools[l_FrameIndex]), l_PoolName.c_str());
+            }
         }
     }
 

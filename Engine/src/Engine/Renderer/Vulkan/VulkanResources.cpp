@@ -1,10 +1,12 @@
 #include "Engine/Renderer/Vulkan/VulkanResources.h"
 
+#include "Engine/Renderer/Vulkan/VulkanDebugUtils.h"
 #include "Engine/Utilities/Utilities.h"
 
 #include <cstdlib>
 #include <cstring>
 #include <stdexcept>
+#include <string>
 
 namespace Engine
 {
@@ -283,7 +285,16 @@ namespace Engine
     VulkanResources::BufferResource VulkanResources::CreateStagingBuffer(VulkanDevice& device, VkDeviceSize size)
     {
         // Staging buffers live in host visible memory to upload data to the GPU.
-        return CreateBuffer(device, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        BufferResource l_Buffer = CreateBuffer(device, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        const VulkanDebugUtils* l_DebugUtils = device.GetDebugUtils();
+        if (l_DebugUtils && l_Buffer.Buffer)
+        {
+            static uint32_t s_StagingBufferIndex = 0;
+            const std::string l_BufferName = "Upload_StagingBuffer_" + std::to_string(s_StagingBufferIndex++);
+            l_DebugUtils->SetObjectName(device.GetDevice(), VK_OBJECT_TYPE_BUFFER, static_cast<uint64_t>(l_Buffer.Buffer), l_BufferName.c_str());
+        }
+
+        return l_Buffer;
     }
 
     void VulkanResources::UploadToBuffer(VulkanDevice& device, VulkanCommand& command, VkBuffer destination, const void* data, VkDeviceSize size)

@@ -3,6 +3,7 @@
 #include "Engine/Platform/Window.h"
 #include "Engine/Renderer/Vulkan/VulkanContext.h"
 #include "Engine/Renderer/Vulkan/VulkanDevice.h"
+#include "Engine/Renderer/Vulkan/VulkanDebugUtils.h"
 #include "Engine/Renderer/Vulkan/VulkanRenderer.h"
 #include "Engine/Renderer/Vulkan/VulkanResources.h"
 #include "Engine/Utilities/Utilities.h"
@@ -174,12 +175,27 @@ namespace Engine
         m_ImageFormat = a_SurfaceFormat.format;
         m_Extent = a_Extent;
 
+        const VulkanDebugUtils* l_DebugUtils = m_Device ? m_Device->GetDebugUtils() : nullptr;
+        if (l_DebugUtils)
+        {
+            for (size_t i = 0; i < m_Images.size(); ++i)
+            {
+                const std::string l_ImageName = "Swapchain_Image_" + std::to_string(i);
+                l_DebugUtils->SetObjectName(m_Device->GetDevice(), VK_OBJECT_TYPE_IMAGE, static_cast<uint64_t>(m_Images[i]), l_ImageName.c_str());
+            }
+        }
+
         // Create image views.
         m_ImageViews.resize(m_Images.size());
         for (size_t i = 0; i < m_Images.size(); ++i)
         {
             // Swapchain image views must exist so the render pass can attach them.
             m_ImageViews[i] = VulkanResources::CreateImageView(*m_Device, m_Images[i], m_ImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+            if (l_DebugUtils && m_ImageViews[i])
+            {
+                const std::string l_ImageViewName = "Swapchain_ImageView_" + std::to_string(i);
+                l_DebugUtils->SetObjectName(m_Device->GetDevice(), VK_OBJECT_TYPE_IMAGE_VIEW, static_cast<uint64_t>(m_ImageViews[i]), l_ImageViewName.c_str());
+            }
         }
     }
 
