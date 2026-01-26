@@ -13,6 +13,8 @@
 #include <cstring>
 #include <span>
 
+#include <glm/gtc/matrix_transform.hpp>
+
 namespace Engine
 {
     // Shader paths for the main pass pipeline.
@@ -107,10 +109,11 @@ namespace Engine
             vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline.GetPipeline());
 
             // Bind per-frame descriptor set at set 0 to match the pipeline layout.
+            VkDescriptorSet l_DescriptorSet = VK_NULL_HANDLE;
             if (m_Device && m_FrameResources && m_FrameResources->HasDescriptors() && currentFrame < m_GlobalUniformBuffers.size())
             {
                 VulkanResources::BufferResource& l_GlobalBuffer = m_GlobalUniformBuffers[currentFrame];
-                VkDescriptorSet l_DescriptorSet = m_FrameResources->AllocateGlobalSet(currentFrame);
+                l_DescriptorSet = m_FrameResources->AllocateGlobalSet(currentFrame);
                 if (l_DescriptorSet != VK_NULL_HANDLE && l_GlobalBuffer.Buffer != VK_NULL_HANDLE && l_GlobalBuffer.Memory != VK_NULL_HANDLE)
                 {
                     GlobalUniformData l_GlobalData{};
@@ -149,6 +152,12 @@ namespace Engine
             // If no draw calls were queued, keep the default triangle so you see something.
             if (pendingCubes.empty())
             {
+                glm::mat4 l_TransformMatrix{ 1.0f };
+                const uint32_t l_TransformIndex = renderer.PushTransform(l_TransformMatrix);
+
+                DrawPushConstant l_DrawPushConstant{};
+                l_DrawPushConstant.TransformIndex = l_TransformIndex;
+                vkCmdPushConstants(command, m_Pipeline.GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(DrawPushConstant), &l_DrawPushConstant);
                 vkCmdDraw(command, 3, 1, 0, 0);
             }
             else
@@ -156,7 +165,15 @@ namespace Engine
                 // Placeholder draw loop for cube requests.
                 for (const auto& it_Cube : pendingCubes)
                 {
-                    (void)it_Cube;
+                    glm::mat4 l_TransformMatrix{ 1.0f };
+                    l_TransformMatrix = glm::translate(l_TransformMatrix, it_Cube.m_Position);
+                    l_TransformMatrix = glm::scale(l_TransformMatrix, it_Cube.m_Size);
+
+                    const uint32_t l_TransformIndex = renderer.PushTransform(l_TransformMatrix);
+
+                    DrawPushConstant l_DrawPushConstant{};
+                    l_DrawPushConstant.TransformIndex = l_TransformIndex;
+                    vkCmdPushConstants(command, m_Pipeline.GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(DrawPushConstant), &l_DrawPushConstant);
                     vkCmdDraw(command, 36, 1, 0, 0);
                 }
             }
