@@ -10,6 +10,65 @@
 
 namespace Engine
 {
+    namespace
+    {
+        thread_local const char* s_DestroyContextName = nullptr;
+        thread_local uint32_t s_DestroyContextDepth = 0u;
+    }
+
+    VulkanResources::ScopedDestroyContext::ScopedDestroyContext(const char* contextName)
+    {
+        BeginDestroyContext(contextName);
+    }
+
+    VulkanResources::ScopedDestroyContext::~ScopedDestroyContext()
+    {
+        EndDestroyContext();
+    }
+
+    bool VulkanResources::IsDestroyContextActive()
+    {
+        return s_DestroyContextDepth > 0u;
+    }
+
+    const char* VulkanResources::GetDestroyContextName()
+    {
+        return s_DestroyContextName;
+    }
+
+    void VulkanResources::BeginDestroyContext(const char* contextName)
+    {
+        const char* l_ContextName = contextName ? contextName : "UnknownDestroyContext";
+        if (s_DestroyContextDepth == 0u)
+        {
+            s_DestroyContextName = l_ContextName;
+        }
+
+        ++s_DestroyContextDepth;
+    }
+
+    void VulkanResources::EndDestroyContext()
+    {
+        if (s_DestroyContextDepth == 0u)
+        {
+            return;
+        }
+
+        --s_DestroyContextDepth;
+        if (s_DestroyContextDepth == 0u)
+        {
+            s_DestroyContextName = nullptr;
+        }
+    }
+
+    void VulkanResources::AssertDestroyContext(const char* functionName)
+    {
+        if (!IsDestroyContextActive())
+        {
+            TR_CORE_ERROR("Destroy context missing for {}", functionName ? functionName : "UnknownFunction");
+        }
+    }
+
     VulkanResources::BufferResource VulkanResources::CreateBuffer(VulkanDevice& device, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties)
     {
         // Create the buffer handle so we can query memory requirements.
