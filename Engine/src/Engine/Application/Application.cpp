@@ -2,7 +2,6 @@
 #include "Engine/Layer/Layer.h"
 
 #include "Engine/Utilities/Utilities.h"
-#include "Engine/Renderer/Renderer.h"
 
 #include "Engine/Events/Event.h"
 #include "Engine/Events/ApplicationEvent.h"
@@ -38,9 +37,6 @@ namespace Engine
             OnEvent(e);
         });
 
-        m_Renderer = Renderer::Create();
-        m_Renderer->Initialize(*m_Window);
-
         TR_CORE_INFO("------- APPLICATION INITIALIZED -------");
     }
 
@@ -50,7 +46,6 @@ namespace Engine
 
         m_LayerStack.Shutdown();
 
-        m_Renderer.reset();
         m_Window.reset();
 
         s_Instance = nullptr;
@@ -83,12 +78,7 @@ namespace Engine
 
         if (e.GetEventType() == EventType::WindowResize)
         {
-            const auto& l_ResizeEvent = static_cast<const WindowResizeEvent&>(e);
-
-            if (!m_Window->IsMinimized() && m_Renderer)
-            {
-                m_Renderer->OnResize(l_ResizeEvent.GetWidth(), l_ResizeEvent.GetHeight());
-            }
+            return;
         }
 
         // Layers get events from top to bottom
@@ -137,7 +127,7 @@ namespace Engine
                 it_Layer->OnUpdate(Utilities::Time::DeltaTime());
             }
 
-            m_Renderer->BeginFrame();
+            // Begin Frame
 
             for (const std::unique_ptr<Layer>& it_Layer : m_LayerStack)
             {
@@ -149,7 +139,7 @@ namespace Engine
                 it_Layer->OnImGuiRender();
             }
 
-            m_Renderer->EndFrame();
+            // End Frame
         }
     }
 

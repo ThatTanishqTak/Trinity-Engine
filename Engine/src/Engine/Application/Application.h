@@ -7,8 +7,6 @@
 
 namespace Engine
 {
-    class Renderer;
-
     class Event;
 
     class Application
@@ -33,7 +31,6 @@ namespace Engine
         LayerStack m_LayerStack;
 
         std::unique_ptr<Window> m_Window;
-        std::unique_ptr<Renderer> m_Renderer;
 
         static Application* s_Instance;
     };
