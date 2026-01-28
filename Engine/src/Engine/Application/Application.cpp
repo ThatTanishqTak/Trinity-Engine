@@ -2,6 +2,7 @@
 #include "Engine/Layer/Layer.h"
 
 #include "Engine/Utilities/Utilities.h"
+#include "Engine/Renderer/Renderer.h"
 
 #include "Engine/Events/Event.h"
 #include "Engine/Events/ApplicationEvent.h"
@@ -37,6 +38,9 @@ namespace Engine
             OnEvent(e);
         });
 
+        // Renderer starts after window exists.
+        Render::Renderer::Initialize(m_Window.get());
+
         TR_CORE_INFO("------- APPLICATION INITIALIZED -------");
     }
 
@@ -44,8 +48,9 @@ namespace Engine
     {
         TR_CORE_INFO("------- SHUTTING DOWN APPLICATION -------");
 
-        m_LayerStack.Shutdown();
+        Render::Renderer::Shutdown();
 
+        m_LayerStack.Shutdown();
         m_Window.reset();
 
         s_Instance = nullptr;
@@ -73,15 +78,15 @@ namespace Engine
     void Application::OnEvent(Event& e)
     {
         Input::OnEvent(e);
-
         m_Window->OnEvent(e);
 
+        // Let renderer know about resizes.
         if (e.GetEventType() == EventType::WindowResize)
         {
-            return;
+            auto& l_Resize = static_cast<WindowResizeEvent&>(e);
+            Render::Renderer::OnResize(l_Resize.GetWidth(), l_Resize.GetHeight());
         }
 
-        // Layers get events from top to bottom
         for (auto it = m_LayerStack.end(); it != m_LayerStack.begin(); )
         {
             (*--it)->OnEvent(e);
@@ -99,10 +104,8 @@ namespace Engine
         while (m_Running)
         {
             Utilities::Time::Update();
-
             Input::BeginFrame();
 
-            // Poll events
             m_Window->OnUpdate();
 
             if (!m_Running)
@@ -127,7 +130,7 @@ namespace Engine
                 it_Layer->OnUpdate(Utilities::Time::DeltaTime());
             }
 
-            // Begin Frame
+            Render::Renderer::BeginFrame();
 
             for (const std::unique_ptr<Layer>& it_Layer : m_LayerStack)
             {
@@ -139,7 +142,7 @@ namespace Engine
                 it_Layer->OnImGuiRender();
             }
 
-            // End Frame
+            Render::Renderer::EndFrame();
         }
     }
 
