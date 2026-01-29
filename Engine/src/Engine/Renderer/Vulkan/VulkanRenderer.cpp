@@ -81,7 +81,7 @@ namespace Engine
         m_Resources.Initialize(l_PhysicalDevice, l_Device, m_VulkanDevice.GetGraphicsQueue(), m_Command.GetCommandPool());
 
         m_RenderPass.Initialize(l_Device);
-        m_RenderPass.CreateSwapchainPass(m_Swapchain.GetImageFormat());
+        m_RenderPass.CreateSwapchainPass(m_Swapchain.GetImageFormat(), VK_FORMAT_UNDEFINED);
 
         m_Framebuffers.Initialize(l_Device);
         m_Framebuffers.SetSwapchainViews(m_Swapchain.GetImageFormat(), m_Swapchain.GetImageViews());
@@ -285,7 +285,7 @@ namespace Engine
         CleanupSwapchain();
 
         m_Swapchain.Create();
-        m_RenderPass.CreateSwapchainPass(m_Swapchain.GetImageFormat());
+        m_RenderPass.CreateSwapchainPass(m_Swapchain.GetImageFormat(), VK_FORMAT_UNDEFINED);
         CreatePipeline();
         m_Framebuffers.SetSwapchainViews(m_Swapchain.GetImageFormat(), m_Swapchain.GetImageViews());
         m_Framebuffers.Create(m_RenderPass.GetSwapchainRenderPass(), m_Swapchain.GetExtent());

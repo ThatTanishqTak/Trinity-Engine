@@ -10,7 +10,7 @@ namespace Engine
         void Initialize(VkDevice device);
         void Shutdown();
 
-        void CreateSwapchainPass(VkFormat swapchainImageFormat);
+        void CreateSwapchainPass(VkFormat swapchainImageFormat, VkFormat depthFormat);
         void CleanupSwapchainPass();
 
         VkRenderPass GetSwapchainRenderPass() const;
@@ -18,6 +18,7 @@ namespace Engine
     private:
         VkDevice m_Device = VK_NULL_HANDLE;
         VkFormat m_SwapchainImageFormat = VK_FORMAT_UNDEFINED;
+        VkFormat m_DepthFormat = VK_FORMAT_UNDEFINED;
         VkRenderPass m_SwapchainRenderPass = VK_NULL_HANDLE;
     };
 }

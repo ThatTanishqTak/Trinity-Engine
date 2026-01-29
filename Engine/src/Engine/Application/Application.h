@@ -16,7 +16,7 @@ namespace Engine
         virtual ~Application();
 
         void Run();
-        void Close();
+        static void Close();
 
         void PushLayer(std::unique_ptr<Layer> layer);
         void PushOverlay(std::unique_ptr<Layer> overlay);
@@ -27,7 +27,7 @@ namespace Engine
         void OnEvent(Event& e);
 
     private:
-        bool m_Running = true;
+        static bool s_Running;
         LayerStack m_LayerStack;
 
         std::unique_ptr<Window> m_Window;

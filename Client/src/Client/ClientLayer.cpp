@@ -1,6 +1,8 @@
 #include "ClientLayer.h"
 
 #include "Engine/Utilities/Utilities.h"
+#include "Engine/Input/Input.h"
+#include "Engine/Application/Application.h"
 #include "Engine/Renderer/RenderCommand.h"
 
 ClientLayer::ClientLayer() : Engine::Layer("ClientLayer")
@@ -38,5 +40,9 @@ void ClientLayer::OnImGuiRender()
 
 void ClientLayer::OnEvent(Engine::Event& e)
 {
-    (void)e;
+    if (Engine::Input::KeyPressed(Engine::Code::KeyCode::TR_KEY_ESCAPE))
+    {
+        // Close Client
+        Engine::Application::Close();
+    }
 }

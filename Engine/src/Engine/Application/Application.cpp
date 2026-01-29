@@ -20,6 +20,7 @@
 namespace Engine
 {
     Application* Application::s_Instance = nullptr;
+    bool Application::s_Running = true;
 
     Application::Application()
     {
@@ -74,7 +75,7 @@ namespace Engine
 
     void Application::Close()
     {
-        m_Running = false;
+        s_Running = false;
     }
 
     void Application::OnEvent(Event& e)
@@ -103,21 +104,21 @@ namespace Engine
 
     void Application::Run()
     {
-        while (m_Running)
+        while (s_Running)
         {
             Utilities::Time::Update();
             Input::BeginFrame();
 
             m_Window->OnUpdate();
 
-            if (!m_Running)
+            if (!s_Running)
             {
                 break;
             }
 
             if (m_Window->ShouldClose())
             {
-                m_Running = false;
+                s_Running = false;
 
                 break;
             }
