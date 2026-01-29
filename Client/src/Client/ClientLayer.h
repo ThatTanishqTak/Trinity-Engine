@@ -2,6 +2,8 @@
 
 #include "Engine/Layer/Layer.h"
 
+#include <memory>
+
 namespace Engine
 {
     class Event;
@@ -22,4 +24,8 @@ public:
     void OnImGuiRender() override;
 
     void OnEvent(Engine::Event& e) override;
+
+private:
+    class EditorCamera;
+    std::unique_ptr<EditorCamera> m_EditorCamera;
 };
