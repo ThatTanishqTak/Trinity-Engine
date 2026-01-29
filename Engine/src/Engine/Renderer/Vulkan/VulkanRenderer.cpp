@@ -6,10 +6,7 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-#include <glm/gtc/matrix_transform.hpp>
-
 #include <array>
-#include <string>
 #include <vector>
 #include <limits>
 
@@ -87,8 +84,9 @@ namespace Engine
         m_Framebuffers.Create(m_Swapchain.GetExtent());
 
         m_Descriptors.Initialize(l_Device);
-        CreateUniformBuffers();
-        CreateDescriptors();
+        m_FrameResources.Initialize(l_Device, &m_Resources, &m_Descriptors, s_MaxFramesInFlight);
+        m_FrameResources.CreateUniformBuffers();
+        m_FrameResources.CreateDescriptors();
 
         m_Pipeline.Initialize(l_Device);
         CreatePipeline();
@@ -108,15 +106,11 @@ namespace Engine
 
         DestroyTriangleResources();
 
-        DestroyUniformBuffers();
-
         CleanupSwapchain(); // destroys pipeline + renderpass; required before destroying descriptor set layouts
+
         m_Framebuffers.Shutdown();
-
-        DestroyDescriptors();
-
+        m_FrameResources.Shutdown();
         m_Swapchain.Shutdown();
-
         m_Sync.Shutdown();
         m_Command.Shutdown();
         m_Resources.Shutdown();
@@ -155,7 +149,7 @@ namespace Engine
 
     void VulkanRenderer::Execute(const std::vector<Command>& commandList)
     {
-        UpdateUniformBuffer(m_CurrentFrame);
+        m_FrameResources.UpdateUniformBuffer(m_CurrentFrame, m_Swapchain.GetExtent());
         RecordCommandBuffer(m_Command.GetCommandBuffer(m_CurrentFrame), m_CurrentImageIndex, commandList);
     }
 
@@ -252,103 +246,6 @@ namespace Engine
         m_Resources.DestroyBuffer(m_VertexBuffer, m_VertexBufferMemory);
     }
 
-    void VulkanRenderer::CreateUniformBuffers()
-    {
-        m_UniformBuffers.resize(s_MaxFramesInFlight);
-        m_UniformBuffersMemory.resize(s_MaxFramesInFlight);
-        m_UniformBuffersMapped.resize(s_MaxFramesInFlight);
-
-        VkDeviceSize l_BufferSize = sizeof(UniformBufferObject);
-
-        for (uint32_t i = 0; i < s_MaxFramesInFlight; ++i)
-        {
-            m_Resources.CreateBuffer(l_BufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                m_UniformBuffers[i], m_UniformBuffersMemory[i]);
-
-            void* l_Mapped = nullptr;
-            Engine::Utilities::VulkanUtilities::VKCheckStrict(vkMapMemory(m_VulkanDevice.GetDevice(), m_UniformBuffersMemory[i], 0, l_BufferSize, 0, &l_Mapped), "vkMapMemory(UniformBuffer)");
-
-            m_UniformBuffersMapped[i] = l_Mapped;
-        }
-    }
-
-    void VulkanRenderer::DestroyUniformBuffers()
-    {
-        for (uint32_t i = 0; i < static_cast<uint32_t>(m_UniformBuffers.size()); ++i)
-        {
-            if (m_UniformBuffersMapped[i])
-            {
-                vkUnmapMemory(m_VulkanDevice.GetDevice(), m_UniformBuffersMemory[i]);
-                m_UniformBuffersMapped[i] = nullptr;
-            }
-
-            m_Resources.DestroyBuffer(m_UniformBuffers[i], m_UniformBuffersMemory[i]);
-        }
-
-        m_UniformBuffers.clear();
-        m_UniformBuffersMemory.clear();
-        m_UniformBuffersMapped.clear();
-    }
-
-    void VulkanRenderer::UpdateUniformBuffer(uint32_t frameIndex)
-    {
-        UniformBufferObject l_Ubo{};
-
-        float l_Aspect = 1.0f;
-        VkExtent2D l_Extent = m_Swapchain.GetExtent();
-        if (l_Extent.height != 0)
-        {
-            l_Aspect = static_cast<float>(l_Extent.width) / static_cast<float>(l_Extent.height);
-        }
-
-        glm::mat4 l_Model = glm::mat4(1.0f);
-        glm::mat4 l_View = glm::lookAt(glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        glm::mat4 l_Proj = glm::perspective(glm::radians(45.0f), l_Aspect, 0.1f, 10.0f);
-
-        // Vulkan clip space has inverted Y compared to OpenGL.
-        l_Proj[1][1] *= -1.0f;
-
-        l_Ubo.MVP = l_Proj * l_View * l_Model;
-
-        std::memcpy(m_UniformBuffersMapped[frameIndex], &l_Ubo, sizeof(UniformBufferObject));
-    }
-
-    void VulkanRenderer::CreateDescriptors()
-    {
-        // Layout: binding 0 = uniform buffer (vertex shader)
-        VkDescriptorSetLayoutBinding l_UboBinding{};
-        l_UboBinding.binding = 0;
-        l_UboBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        l_UboBinding.descriptorCount = 1;
-        l_UboBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        l_UboBinding.pImmutableSamplers = nullptr;
-
-        m_Descriptors.CreateLayout({ l_UboBinding });
-
-        // Pool: enough UBO descriptors for frames-in-flight
-        VkDescriptorPoolSize l_PoolSize{};
-        l_PoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        l_PoolSize.descriptorCount = s_MaxFramesInFlight;
-
-        m_Descriptors.CreatePool(s_MaxFramesInFlight, { l_PoolSize });
-
-        m_Descriptors.AllocateSets(s_MaxFramesInFlight, m_DescriptorSets);
-
-        for (uint32_t i = 0; i < s_MaxFramesInFlight; ++i)
-        {
-            m_Descriptors.UpdateBuffer(m_DescriptorSets[i], 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, m_UniformBuffers[i], sizeof(UniformBufferObject), 0);
-        }
-    }
-
-    void VulkanRenderer::DestroyDescriptors()
-    {
-        m_DescriptorSets.clear();
-        m_Descriptors.Shutdown();
-        m_Descriptors.Initialize(m_VulkanDevice.GetDevice());
-        m_Descriptors.DestroyLayout();      // no-op after Shutdown, but explicit is fine
-        m_Descriptors.DestroyPool();        // ditto
-    }
-
     void VulkanRenderer::CleanupSwapchain()
     {
         m_Sync.DestroyPerImage();
@@ -435,7 +332,7 @@ namespace Engine
             {
                 vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline.GetHandle());
 
-                VkDescriptorSet l_Set = m_DescriptorSets[m_CurrentFrame];
+                VkDescriptorSet l_Set = m_FrameResources.GetDescriptorSet(m_CurrentFrame);
                 vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline.GetLayout(), 0, 1, &l_Set, 0, nullptr);
 
                 VkBuffer l_VB[] = { m_VertexBuffer };

@@ -10,6 +10,7 @@
 #include "Engine/Renderer/Vulkan/VulkanPipeline.h"
 #include "Engine/Renderer/Vulkan/VulkanDescriptors.h"
 #include "Engine/Renderer/Vulkan/VulkanFramebuffers.h"
+#include "Engine/Renderer/Vulkan/VulkanFrameResources.h"
 
 #include <vector>
 
@@ -38,23 +39,10 @@ namespace Engine
         void WaitIdle() override;
 
     private:
-        struct UniformBufferObject
-        {
-            glm::mat4 MVP;
-        };
-
-    private:
         void CreatePipeline();
 
         void CreateTriangleResources();
         void DestroyTriangleResources();
-
-        void CreateUniformBuffers();
-        void DestroyUniformBuffers();
-        void UpdateUniformBuffer(uint32_t frameIndex);
-
-        void CreateDescriptors();
-        void DestroyDescriptors();
 
         void CleanupSwapchain();
         void RecreateSwapchain();
@@ -74,6 +62,7 @@ namespace Engine
         VulkanDescriptors m_Descriptors;
         VulkanPipeline m_Pipeline;
         VulkanFramebuffers m_Framebuffers;
+        VulkanFrameResources m_FrameResources;
 
         static constexpr uint32_t s_MaxFramesInFlight = 2;
 
@@ -83,11 +72,6 @@ namespace Engine
 
         VkBuffer m_VertexBuffer = VK_NULL_HANDLE;
         VkDeviceMemory m_VertexBufferMemory = VK_NULL_HANDLE;
-
-        std::vector<VkBuffer> m_UniformBuffers;
-        std::vector<VkDeviceMemory> m_UniformBuffersMemory;
-        std::vector<void*> m_UniformBuffersMapped;
-        std::vector<VkDescriptorSet> m_DescriptorSets;
 
         glm::vec4 m_LastClearColor = glm::vec4(0.05f, 0.05f, 0.05f, 1.0f);
     };
