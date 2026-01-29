@@ -261,8 +261,8 @@ namespace Engine
     {
         m_Sync.DestroyPerImage();
 
-        m_Pipeline.Cleanup();
         m_Framebuffers.Cleanup();
+        m_Pipeline.Cleanup();
         m_RenderPass.CleanupSwapchainPass();
 
         m_Swapchain.Cleanup();
@@ -286,10 +286,9 @@ namespace Engine
 
         m_Swapchain.Create();
         m_RenderPass.CreateSwapchainPass(m_Swapchain.GetImageFormat());
-        m_Framebuffers.Initialize(m_VulkanDevice.GetDevice());
+        CreatePipeline();
         m_Framebuffers.SetSwapchainViews(m_Swapchain.GetImageFormat(), m_Swapchain.GetImageViews());
         m_Framebuffers.Create(m_RenderPass.GetSwapchainRenderPass(), m_Swapchain.GetExtent());
-        CreatePipeline();
 
         m_Sync.RecreatePerImage(m_Swapchain.GetImageCount());
 
