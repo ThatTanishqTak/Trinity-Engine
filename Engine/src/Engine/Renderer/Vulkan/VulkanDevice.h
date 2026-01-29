@@ -2,7 +2,7 @@
 
 #include <optional>
 
-#include <vulkan/vulkan.h>
+#include "Engine/Renderer/Vulkan/VulkanContext.h"
 
 struct GLFWwindow;
 
@@ -22,8 +22,8 @@ namespace Engine
         void Initialize(GLFWwindow* nativeWindow);
         void Shutdown();
 
-        VkInstance GetInstance() const { return m_Instance; }
-        VkSurfaceKHR GetSurface() const { return m_Surface; }
+        VkInstance GetInstance() const { return m_Context.GetInstance(); }
+        VkSurfaceKHR GetSurface() const { return m_Context.GetSurface(); }
         VkPhysicalDevice GetPhysicalDevice() const { return m_PhysicalDevice; }
         VkDevice GetDevice() const { return m_Device; }
         VkQueue GetGraphicsQueue() const { return m_GraphicsQueue; }
@@ -31,9 +31,6 @@ namespace Engine
         QueueFamilyIndices GetQueueFamilyIndices() const { return m_QueueFamilyIndices; }
 
     private:
-        void CreateInstance();
-        void SetupDebugMessenger();
-        void CreateSurface();
         void PickPhysicalDevice();
         void CreateLogicalDevice();
 
@@ -45,9 +42,7 @@ namespace Engine
         GLFWwindow* m_NativeWindow = nullptr;
         QueueFamilyIndices m_QueueFamilyIndices;
 
-        VkInstance m_Instance = VK_NULL_HANDLE;
-        VkDebugUtilsMessengerEXT m_DebugMessenger = VK_NULL_HANDLE;
-        VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
+        VulkanContext m_Context;
 
         VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
         VkDevice m_Device = VK_NULL_HANDLE;
