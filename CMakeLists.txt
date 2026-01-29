@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.30)
-project(PhysicsEngine)
+project(TrinityEngine)
 
 if (MSVC)
     add_compile_options(/MP)

@@ -3,13 +3,13 @@
 #include "Engine/Renderer/RendererAPI.h"
 
 #include "Engine/Renderer/Vulkan/VulkanSwapchain.h"
+#include "Engine/Renderer/Vulkan/VulkanDevice.h"
 #include "Engine/Renderer/Vulkan/VulkanCommand.h"
 #include "Engine/Renderer/Vulkan/VulkanSync.h"
 #include "Engine/Renderer/Vulkan/VulkanResources.h"
 #include "Engine/Renderer/Vulkan/VulkanPipeline.h"
 #include "Engine/Renderer/Vulkan/VulkanDescriptors.h"
 
-#include <optional>
 #include <vector>
 
 #include <glm/glm.hpp>
@@ -37,26 +37,12 @@ namespace Engine
         void WaitIdle() override;
 
     private:
-        struct QueueFamilyIndices
-        {
-            std::optional<uint32_t> GraphicsFamily;
-            std::optional<uint32_t> PresentFamily;
-
-            bool IsComplete() const { return GraphicsFamily.has_value() && PresentFamily.has_value(); }
-        };
-
         struct UniformBufferObject
         {
             glm::mat4 MVP;
         };
 
     private:
-        void CreateInstance();
-        void SetupDebugMessenger();
-        void CreateSurface();
-        void PickPhysicalDevice();
-        void CreateLogicalDevice();
-
         void CreateRenderPass();
         void CreatePipeline();
         void CreateFramebuffers();
@@ -76,24 +62,11 @@ namespace Engine
 
         void RecordCommandBuffer(VkCommandBuffer cmd, uint32_t imageIndex, const std::vector<Command>& commandList);
 
-        QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device) const;
-        bool CheckDeviceExtensionSupport(VkPhysicalDevice device) const;
-
-        uint32_t RateDeviceSuitability(VkPhysicalDevice device) const;
-
     private:
         Window* m_Window = nullptr;
         GLFWwindow* m_NativeWindow = nullptr;
 
-        VkInstance m_Instance = VK_NULL_HANDLE;
-        VkDebugUtilsMessengerEXT m_DebugMessenger = VK_NULL_HANDLE;
-        VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
-
-        VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
-        VkDevice m_Device = VK_NULL_HANDLE;
-
-        VkQueue m_GraphicsQueue = VK_NULL_HANDLE;
-        VkQueue m_PresentQueue = VK_NULL_HANDLE;
+        VulkanDevice m_VulkanDevice;
 
         VulkanSwapchain m_Swapchain;
         VulkanCommand m_Command;
