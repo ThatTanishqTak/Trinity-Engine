@@ -37,6 +37,8 @@ namespace Engine
         void Execute(const std::vector<Command>& commandList) override;
         void EndFrame() override;
 
+        void SetActiveCamera(Render::Camera* camera) override;
+
         void OnResize(uint32_t width, uint32_t height) override;
         void WaitIdle() override;
 
@@ -85,6 +87,7 @@ namespace Engine
 
         glm::vec4 m_LastClearColor = glm::vec4(0.05f, 0.05f, 0.05f, 1.0f);
 
-        Render::Camera m_ActiveCamera;
+        Render::Camera* m_ActiveCamera = nullptr;
+        Render::Camera m_DefaultCamera;
     };
 }

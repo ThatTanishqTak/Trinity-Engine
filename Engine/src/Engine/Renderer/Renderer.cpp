@@ -13,6 +13,7 @@ namespace Engine
         std::unique_ptr<RendererAPI> Renderer::s_RendererAPI;
         std::vector<Command> Renderer::s_CommandList;
         glm::vec4 Renderer::s_ClearColor = glm::vec4(0.05f, 0.05f, 0.05f, 1.0f);
+        Camera* Renderer::s_ActiveCamera = nullptr;
 
         void Renderer::Initialize(Window* window)
         {
@@ -102,6 +103,15 @@ namespace Engine
             Command l_Command;
             l_Command.Type = CommandType::DrawCube;
             s_CommandList.push_back(l_Command);
+        }
+
+        void Renderer::SetActiveCamera(Camera* camera)
+        {
+            s_ActiveCamera = camera;
+            if (s_RendererAPI)
+            {
+                s_RendererAPI->SetActiveCamera(camera);
+            }
         }
 
         RendererAPI& Renderer::GetRendererAPI()

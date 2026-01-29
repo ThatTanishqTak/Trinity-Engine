@@ -86,10 +86,10 @@ namespace Engine
             std::abort();
         }
 
-        m_ActiveCamera.SetPosition(glm::vec3(0.0f, 0.0f, 2.0f));
-        m_ActiveCamera.SetFov(45.0f);
-        m_ActiveCamera.SetNear(0.1f);
-        m_ActiveCamera.SetFar(10.0f);
+        m_ActiveCamera->SetPosition(glm::vec3(0.0f, 0.0f, 2.0f));
+        m_ActiveCamera->SetFov(45.0f);
+        m_ActiveCamera->SetNear(0.1f);
+        m_ActiveCamera->SetFar(10.0f);
 
         m_VulkanDevice.Initialize(m_NativeWindow);
 
@@ -196,8 +196,9 @@ namespace Engine
             l_Aspect = static_cast<float>(l_Extent.width) / static_cast<float>(l_Extent.height);
         }
 
-        m_ActiveCamera.SetAspect(l_Aspect);
-        m_FrameResources.UpdateUniformBuffer(m_CurrentFrame, l_Extent, m_ActiveCamera);
+        Render::Camera* l_ActiveCamera = m_ActiveCamera ? m_ActiveCamera : &m_DefaultCamera;
+        l_ActiveCamera->SetAspect(l_Aspect);
+        m_FrameResources.UpdateUniformBuffer(m_CurrentFrame, l_Extent, *l_ActiveCamera);
         RecordCommandBuffer(m_Command.GetCommandBuffer(m_CurrentFrame), m_CurrentImageIndex, commandList);
     }
 
@@ -251,7 +252,22 @@ namespace Engine
         (void)width;
         (void)height;
 
+        VkExtent2D l_Extent = m_Swapchain.GetExtent();
+        float l_Aspect = 1.0f;
+        if (l_Extent.height != 0)
+        {
+            l_Aspect = static_cast<float>(l_Extent.width) / static_cast<float>(l_Extent.height);
+        }
+
+        Render::Camera* l_ActiveCamera = m_ActiveCamera ? m_ActiveCamera : &m_DefaultCamera;
+        l_ActiveCamera->SetAspect(l_Aspect);
+
         m_FramebufferResized = true;
+    }
+
+    void VulkanRenderer::SetActiveCamera(Render::Camera* camera)
+    {
+        m_ActiveCamera = camera;
     }
 
     void VulkanRenderer::WaitIdle()

@@ -7,6 +7,11 @@
 namespace Engine
 {
     class Window;
+
+    namespace Render
+    {
+        class Camera;
+    }
 }
 
 namespace Engine
@@ -31,12 +36,15 @@ namespace Engine
             static void DrawTriangle();
             static void DrawCube();
 
+            static void SetActiveCamera(Camera* camera);
+
             static RendererAPI& GetRendererAPI();
 
         private:
             static std::unique_ptr<RendererAPI> s_RendererAPI;
             static std::vector<Command> s_CommandList;
             static glm::vec4 s_ClearColor;
+            static Camera* s_ActiveCamera;
         };
     }
 }

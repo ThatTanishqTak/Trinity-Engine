@@ -9,6 +9,11 @@ namespace Engine
 {
     class Window;
 
+    namespace Render
+    {
+        class Camera;
+    }
+
     enum class API
     {
         None = 0,
@@ -41,6 +46,8 @@ namespace Engine
         virtual bool BeginFrame() = 0;
         virtual void Execute(const std::vector<Command>& commandList) = 0;
         virtual void EndFrame() = 0;
+
+        virtual void SetActiveCamera(Render::Camera* camera) = 0;
 
         virtual void OnResize(uint32_t width, uint32_t height) = 0;
         virtual void WaitIdle() = 0;
