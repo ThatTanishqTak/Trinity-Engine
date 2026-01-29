@@ -3,15 +3,19 @@
 #include <cstdint>
 #include <glm/glm.hpp>
 
-namespace Engine::Render
+namespace Engine
 {
-    class RenderCommand
+    namespace Render
     {
-    public:
-        static void SetClearColor(const glm::vec4& color);
-        static void Clear();
+        class RenderCommand
+        {
+        public:
+            static void SetClearColor(const glm::vec4& color);
+            static void Clear();
 
-        // Debug primitive for sanity (and for keeping you from spiraling).
-        static void DrawTriangle();
-    };
+            // Debug primitive for sanity (and for keeping you from spiraling).
+            static void DrawTriangle();
+            static void DrawCube();
+        };
+    }
 }

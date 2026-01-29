@@ -18,7 +18,8 @@ namespace Engine
     enum class CommandType
     {
         Clear = 0,
-        DrawTriangle
+        DrawTriangle,
+        DrawCube
     };
 
     struct Command
