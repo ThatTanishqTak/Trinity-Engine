@@ -14,7 +14,7 @@ namespace Engine
 {
     struct Vertex
     {
-        glm::vec2 Position;
+        glm::vec3 Position;
         glm::vec3 Color;
 
         static VkVertexInputBindingDescription GetBindingDescription()
@@ -33,7 +33,7 @@ namespace Engine
 
             l_Attributes[0].binding = 0;
             l_Attributes[0].location = 0;
-            l_Attributes[0].format = VK_FORMAT_R32G32_SFLOAT;
+            l_Attributes[0].format = VK_FORMAT_R32G32B32_SFLOAT;
             l_Attributes[0].offset = offsetof(Vertex, Position);
 
             l_Attributes[1].binding = 0;
@@ -47,9 +47,9 @@ namespace Engine
 
     static const std::array<Vertex, 3> s_TriangleVertices =
     {
-        Vertex{ {  0.0f, -0.5f }, { 1.0f, 0.2f, 0.2f } },
-        Vertex{ {  0.5f,  0.5f }, { 0.2f, 1.0f, 0.2f } },
-        Vertex{ { -0.5f,  0.5f }, { 0.2f, 0.2f, 1.0f } },
+        Vertex{ {  0.0f, -0.5f, 0.0f }, { 1.0f, 0.2f, 0.2f } },
+        Vertex{ {  0.5f,  0.5f, 0.0f }, { 0.2f, 1.0f, 0.2f } },
+        Vertex{ { -0.5f,  0.5f, 0.0f }, { 0.2f, 0.2f, 1.0f } },
     };
 
     void VulkanRenderer::Initialize(Window* window)
