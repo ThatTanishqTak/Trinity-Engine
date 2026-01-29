@@ -86,6 +86,11 @@ namespace Engine
             std::abort();
         }
 
+        m_ActiveCamera.SetPosition(glm::vec3(0.0f, 0.0f, 2.0f));
+        m_ActiveCamera.SetFov(45.0f);
+        m_ActiveCamera.SetNear(0.1f);
+        m_ActiveCamera.SetFar(10.0f);
+
         m_VulkanDevice.Initialize(m_NativeWindow);
 
         VulkanDevice::QueueFamilyIndices l_Indices = m_VulkanDevice.GetQueueFamilyIndices();
@@ -184,7 +189,15 @@ namespace Engine
 
     void VulkanRenderer::Execute(const std::vector<Command>& commandList)
     {
-        m_FrameResources.UpdateUniformBuffer(m_CurrentFrame, m_Swapchain.GetExtent());
+        VkExtent2D l_Extent = m_Swapchain.GetExtent();
+        float l_Aspect = 1.0f;
+        if (l_Extent.height != 0)
+        {
+            l_Aspect = static_cast<float>(l_Extent.width) / static_cast<float>(l_Extent.height);
+        }
+
+        m_ActiveCamera.SetAspect(l_Aspect);
+        m_FrameResources.UpdateUniformBuffer(m_CurrentFrame, l_Extent, m_ActiveCamera);
         RecordCommandBuffer(m_Command.GetCommandBuffer(m_CurrentFrame), m_CurrentImageIndex, commandList);
     }
 

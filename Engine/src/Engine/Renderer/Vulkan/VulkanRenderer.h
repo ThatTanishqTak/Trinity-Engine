@@ -12,6 +12,7 @@
 #include "Engine/Renderer/Vulkan/VulkanRenderPass.h"
 #include "Engine/Renderer/Vulkan/VulkanFramebuffers.h"
 #include "Engine/Renderer/Vulkan/VulkanFrameResources.h"
+#include "Engine/Renderer/Camera.h"
 
 #include <vector>
 
@@ -83,5 +84,7 @@ namespace Engine
         VkDeviceMemory m_CubeIndexBufferMemory = VK_NULL_HANDLE;
 
         glm::vec4 m_LastClearColor = glm::vec4(0.05f, 0.05f, 0.05f, 1.0f);
+
+        Render::Camera m_ActiveCamera;
     };
 }

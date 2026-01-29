@@ -6,6 +6,11 @@
 
 namespace Engine
 {
+    namespace Render
+    {
+        class Camera;
+    }
+
     class VulkanDescriptors;
     class VulkanResources;
 
@@ -17,7 +22,7 @@ namespace Engine
 
         void CreateUniformBuffers();
         void DestroyUniformBuffers();
-        void UpdateUniformBuffer(uint32_t frameIndex, VkExtent2D extent);
+        void UpdateUniformBuffer(uint32_t frameIndex, VkExtent2D extent, const Render::Camera& camera);
 
         void CreateDescriptors();
         void DestroyDescriptors();

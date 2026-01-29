@@ -2,9 +2,10 @@
 
 #include "Engine/Renderer/Vulkan/VulkanDescriptors.h"
 #include "Engine/Renderer/Vulkan/VulkanResources.h"
+#include "Engine/Renderer/Camera.h"
 #include "Engine/Utilities/Utilities.h"
 
-#include <glm/gtc/matrix_transform.hpp>
+#include <glm/glm.hpp>
 
 #include <cstring>
 
@@ -80,19 +81,15 @@ namespace Engine
         m_UniformBuffersMapped.clear();
     }
 
-    void VulkanFrameResources::UpdateUniformBuffer(uint32_t frameIndex, VkExtent2D extent)
+    void VulkanFrameResources::UpdateUniformBuffer(uint32_t frameIndex, VkExtent2D extent, const Render::Camera& camera)
     {
+        (void)extent;
+
         UniformBufferObject l_Ubo{};
 
-        float l_Aspect = 1.0f;
-        if (extent.height != 0)
-        {
-            l_Aspect = static_cast<float>(extent.width) / static_cast<float>(extent.height);
-        }
-
         glm::mat4 l_Model = glm::mat4(1.0f);
-        glm::mat4 l_View = glm::lookAt(glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        glm::mat4 l_Proj = glm::perspective(glm::radians(45.0f), l_Aspect, 0.1f, 10.0f);
+        glm::mat4 l_View = camera.GetViewMatrix();
+        glm::mat4 l_Proj = camera.GetProjectionMatrix();
 
         // Vulkan clip space has inverted Y compared to OpenGL.
         l_Proj[1][1] *= -1.0f;
