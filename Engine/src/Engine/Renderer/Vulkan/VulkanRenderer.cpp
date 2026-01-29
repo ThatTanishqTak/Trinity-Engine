@@ -52,6 +52,28 @@ namespace Engine
         Vertex{ { -0.5f,  0.5f, 0.0f }, { 0.2f, 0.2f, 1.0f } },
     };
 
+    static const std::array<Vertex, 8> s_CubeVertices =
+    {
+        Vertex{ { -0.5f, -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f } },
+        Vertex{ {  0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f } },
+        Vertex{ {  0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f } },
+        Vertex{ { -0.5f,  0.5f, -0.5f }, { 1.0f, 1.0f, 0.0f } },
+        Vertex{ { -0.5f, -0.5f,  0.5f }, { 1.0f, 0.0f, 1.0f } },
+        Vertex{ {  0.5f, -0.5f,  0.5f }, { 0.0f, 1.0f, 1.0f } },
+        Vertex{ {  0.5f,  0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f } },
+        Vertex{ { -0.5f,  0.5f,  0.5f }, { 0.3f, 0.3f, 0.3f } },
+    };
+
+    static const std::array<uint16_t, 36> s_CubeIndices =
+    {
+        0, 1, 2, 2, 3, 0,
+        4, 5, 6, 6, 7, 4,
+        4, 0, 3, 3, 7, 4,
+        1, 5, 6, 6, 2, 1,
+        3, 2, 6, 6, 7, 3,
+        4, 5, 1, 1, 0, 4
+    };
+
     void VulkanRenderer::Initialize(Window* window)
     {
         m_Window = window;
