@@ -22,6 +22,7 @@ namespace Engine
         void PushOverlay(std::unique_ptr<Layer> overlay);
 
         static Application& Get();
+        Window& GetWindow();
 
     private:
         void OnEvent(Event& e);

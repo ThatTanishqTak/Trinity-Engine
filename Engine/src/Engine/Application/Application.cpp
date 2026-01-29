@@ -78,6 +78,11 @@ namespace Engine
         s_Running = false;
     }
 
+    Window& Application::GetWindow()
+    {
+        return *m_Window;
+    }
+
     void Application::OnEvent(Event& e)
     {
         Input::OnEvent(e);
