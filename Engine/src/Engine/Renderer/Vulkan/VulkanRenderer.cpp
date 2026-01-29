@@ -384,6 +384,21 @@ namespace Engine
 
         for (const auto& it_Cmd : commandList)
         {
+            if (it_Cmd.Type == CommandType::DrawCube)
+            {
+                vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline.GetHandle());
+
+                VkDescriptorSet l_Set = m_FrameResources.GetDescriptorSet(m_CurrentFrame);
+                vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline.GetLayout(), 0, 1, &l_Set, 0, nullptr);
+
+                VkBuffer l_VB[] = { m_CubeVertexBuffer };
+                VkDeviceSize l_Offsets[] = { 0 };
+                vkCmdBindVertexBuffers(cmd, 0, 1, l_VB, l_Offsets);
+                vkCmdBindIndexBuffer(cmd, m_CubeIndexBuffer, 0, VK_INDEX_TYPE_UINT16);
+
+                vkCmdDrawIndexed(cmd, 36, 1, 0, 0, 0);
+            }
+
             if (it_Cmd.Type == CommandType::DrawTriangle)
             {
                 vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline.GetHandle());
