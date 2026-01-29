@@ -9,6 +9,7 @@
 #include "Engine/Renderer/Vulkan/VulkanResources.h"
 #include "Engine/Renderer/Vulkan/VulkanPipeline.h"
 #include "Engine/Renderer/Vulkan/VulkanDescriptors.h"
+#include "Engine/Renderer/Vulkan/VulkanFramebuffers.h"
 
 #include <vector>
 
@@ -43,9 +44,7 @@ namespace Engine
         };
 
     private:
-        void CreateRenderPass();
         void CreatePipeline();
-        void CreateFramebuffers();
 
         void CreateTriangleResources();
         void DestroyTriangleResources();
@@ -74,9 +73,7 @@ namespace Engine
         VulkanResources m_Resources;
         VulkanDescriptors m_Descriptors;
         VulkanPipeline m_Pipeline;
-
-        VkRenderPass m_RenderPass = VK_NULL_HANDLE;
-        std::vector<VkFramebuffer> m_Framebuffers;
+        VulkanFramebuffers m_Framebuffers;
 
         static constexpr uint32_t s_MaxFramesInFlight = 2;
 
