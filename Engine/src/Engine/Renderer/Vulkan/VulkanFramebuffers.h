@@ -13,13 +13,13 @@ namespace Engine
         void SetSwapchainViews(VkFormat format, const std::vector<VkImageView>& views);
         void Shutdown();
 
-        void Create(VkRenderPass renderPass, VkExtent2D extent);
+        void Create(VkRenderPass renderPass, VkExtent2D extent, VkImageView depthView);
         void Cleanup();
 
         const std::vector<VkFramebuffer>& GetFramebuffers() const { return m_Framebuffers; }
 
     private:
-        void CreateFramebuffers(VkRenderPass renderPass, VkExtent2D extent);
+        void CreateFramebuffers(VkRenderPass renderPass, VkExtent2D extent, VkImageView depthView);
 
     private:
         VkDevice m_Device = VK_NULL_HANDLE;

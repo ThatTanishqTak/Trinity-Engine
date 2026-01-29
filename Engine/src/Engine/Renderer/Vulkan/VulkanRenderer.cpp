@@ -85,7 +85,8 @@ namespace Engine
 
         m_Framebuffers.Initialize(l_Device);
         m_Framebuffers.SetSwapchainViews(m_Swapchain.GetImageFormat(), m_Swapchain.GetImageViews());
-        m_Framebuffers.Create(m_RenderPass.GetSwapchainRenderPass(), m_Swapchain.GetExtent());
+        VkImageView l_DepthView = VK_NULL_HANDLE;
+        m_Framebuffers.Create(m_RenderPass.GetSwapchainRenderPass(), m_Swapchain.GetExtent(), l_DepthView);
 
         m_Descriptors.Initialize(l_Device);
         m_FrameResources.Initialize(l_Device, &m_Resources, &m_Descriptors, s_MaxFramesInFlight);
@@ -288,7 +289,8 @@ namespace Engine
         m_RenderPass.CreateSwapchainPass(m_Swapchain.GetImageFormat(), VK_FORMAT_UNDEFINED);
         CreatePipeline();
         m_Framebuffers.SetSwapchainViews(m_Swapchain.GetImageFormat(), m_Swapchain.GetImageViews());
-        m_Framebuffers.Create(m_RenderPass.GetSwapchainRenderPass(), m_Swapchain.GetExtent());
+        VkImageView l_DepthView = VK_NULL_HANDLE;
+        m_Framebuffers.Create(m_RenderPass.GetSwapchainRenderPass(), m_Swapchain.GetExtent(), l_DepthView);
 
         m_Sync.RecreatePerImage(m_Swapchain.GetImageCount());
 

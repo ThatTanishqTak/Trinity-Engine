@@ -24,9 +24,9 @@ namespace Engine
         m_SwapchainImageViews.clear();
     }
 
-    void VulkanFramebuffers::Create(VkRenderPass renderPass, VkExtent2D extent)
+    void VulkanFramebuffers::Create(VkRenderPass renderPass, VkExtent2D extent, VkImageView depthView)
     {
-        CreateFramebuffers(renderPass, extent);
+        CreateFramebuffers(renderPass, extent, depthView);
     }
 
     void VulkanFramebuffers::Cleanup()
@@ -38,18 +38,18 @@ namespace Engine
         m_Framebuffers.clear();
     }
 
-    void VulkanFramebuffers::CreateFramebuffers(VkRenderPass renderPass, VkExtent2D extent)
+    void VulkanFramebuffers::CreateFramebuffers(VkRenderPass renderPass, VkExtent2D extent, VkImageView depthView)
     {
         m_Framebuffers.resize(m_SwapchainImageViews.size());
 
         for (size_t l_Index = 0; l_Index < m_SwapchainImageViews.size(); ++l_Index)
         {
-            VkImageView l_Attachments[] = { m_SwapchainImageViews[l_Index] };
+            VkImageView l_Attachments[] = { m_SwapchainImageViews[l_Index], depthView };
 
             VkFramebufferCreateInfo l_FBInfo{};
             l_FBInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
             l_FBInfo.renderPass = renderPass;
-            l_FBInfo.attachmentCount = 1;
+            l_FBInfo.attachmentCount = 2;
             l_FBInfo.pAttachments = l_Attachments;
             l_FBInfo.width = extent.width;
             l_FBInfo.height = extent.height;
