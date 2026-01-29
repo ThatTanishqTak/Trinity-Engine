@@ -47,7 +47,7 @@ namespace Engine
 
     void VulkanPipeline::CreateGraphicsPipeline(VkRenderPass renderPass, const VkVertexInputBindingDescription& bindingDescription,
         const std::vector<VkVertexInputAttributeDescription>& attributeDescriptions, const char* vertexSpvPath, const char* fragmentSpvPath,
-        const std::vector<VkDescriptorSetLayout>& setLayouts, const std::vector<VkPushConstantRange>& pushConstantRanges)
+        bool depthEnabled, const std::vector<VkDescriptorSetLayout>& setLayouts, const std::vector<VkPushConstantRange>& pushConstantRanges)
     {
         Cleanup();
 
@@ -113,6 +113,14 @@ namespace Engine
         l_ColorBlend.attachmentCount = 1;
         l_ColorBlend.pAttachments = &l_ColorBlendAtt;
 
+        VkPipelineDepthStencilStateCreateInfo l_DepthStencil{};
+        l_DepthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        l_DepthStencil.depthTestEnable = depthEnabled ? VK_TRUE : VK_FALSE;
+        l_DepthStencil.depthWriteEnable = depthEnabled ? VK_TRUE : VK_FALSE;
+        l_DepthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+        l_DepthStencil.depthBoundsTestEnable = VK_FALSE;
+        l_DepthStencil.stencilTestEnable = VK_FALSE;
+
         std::array<VkDynamicState, 2> l_DynamicStates =
         {
             VK_DYNAMIC_STATE_VIEWPORT,
@@ -143,6 +151,7 @@ namespace Engine
         l_PipelineInfo.pRasterizationState = &l_Raster;
         l_PipelineInfo.pMultisampleState = &l_MS;
         l_PipelineInfo.pColorBlendState = &l_ColorBlend;
+        l_PipelineInfo.pDepthStencilState = depthEnabled ? &l_DepthStencil : nullptr;
         l_PipelineInfo.pDynamicState = &l_Dynamic;
         l_PipelineInfo.layout = m_PipelineLayout;
         l_PipelineInfo.renderPass = renderPass;

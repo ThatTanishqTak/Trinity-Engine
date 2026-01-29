@@ -11,9 +11,9 @@ namespace Engine
         void Initialize(VkDevice device);
         void Shutdown();
 
-        void CreateGraphicsPipeline(VkRenderPass renderPass, const VkVertexInputBindingDescription& bindingDescription, 
+        void CreateGraphicsPipeline(VkRenderPass renderPass, const VkVertexInputBindingDescription& bindingDescription,
             const std::vector<VkVertexInputAttributeDescription>& attributeDescriptions, const char* vertexSpvPath, const char* fragmentSpvPath,
-            const std::vector<VkDescriptorSetLayout>& setLayouts = {}, const std::vector<VkPushConstantRange>& pushConstantRanges = {});
+            bool depthEnabled, const std::vector<VkDescriptorSetLayout>& setLayouts = {}, const std::vector<VkPushConstantRange>& pushConstantRanges = {});
 
         void Cleanup();
 

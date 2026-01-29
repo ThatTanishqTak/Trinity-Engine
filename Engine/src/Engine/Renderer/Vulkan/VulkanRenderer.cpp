@@ -243,7 +243,9 @@ namespace Engine
             m_Descriptors.GetLayout()
         };
 
-        m_Pipeline.CreateGraphicsPipeline(m_RenderPass.GetSwapchainRenderPass(), l_Binding, l_Attributes, "Assets/Shaders/Simple.vert.spv", "Assets/Shaders/Simple.frag.spv", l_SetLayouts);
+        const bool l_DepthEnabled = m_Swapchain.GetDepthFormat() != VK_FORMAT_UNDEFINED;
+        m_Pipeline.CreateGraphicsPipeline(m_RenderPass.GetSwapchainRenderPass(), l_Binding, l_Attributes, "Assets/Shaders/Simple.vert.spv", "Assets/Shaders/Simple.frag.spv",
+            l_DepthEnabled, l_SetLayouts);
     }
 
     void VulkanRenderer::CreateTriangleResources()
