@@ -122,6 +122,7 @@ namespace Engine
         m_Sync.RecreatePerImage(m_Swapchain.GetImageCount());
 
         CreateTriangleResources();
+        CreateCubeResources();
 
         TR_CORE_INFO("VulkanRenderer initialized.");
     }
@@ -131,6 +132,7 @@ namespace Engine
         WaitIdle();
 
         DestroyTriangleResources();
+        DestroyCubeResources();
 
         CleanupSwapchain(); // destroys pipeline + renderpass; required before destroying descriptor set layouts
 
@@ -279,6 +281,21 @@ namespace Engine
     void VulkanRenderer::DestroyTriangleResources()
     {
         m_Resources.DestroyBuffer(m_VertexBuffer, m_VertexBufferMemory);
+    }
+
+    void VulkanRenderer::CreateCubeResources()
+    {
+        const VkDeviceSize l_VertexSizeBytes = static_cast<VkDeviceSize>(sizeof(s_CubeVertices));
+        const VkDeviceSize l_IndexSizeBytes = static_cast<VkDeviceSize>(sizeof(s_CubeIndices));
+
+        m_Resources.CreateVertexBufferStaged(s_CubeVertices.data(), l_VertexSizeBytes, m_CubeVertexBuffer, m_CubeVertexBufferMemory);
+        m_Resources.CreateIndexBufferStaged(s_CubeIndices.data(), l_IndexSizeBytes, m_CubeIndexBuffer, m_CubeIndexBufferMemory);
+    }
+
+    void VulkanRenderer::DestroyCubeResources()
+    {
+        m_Resources.DestroyBuffer(m_CubeIndexBuffer, m_CubeIndexBufferMemory);
+        m_Resources.DestroyBuffer(m_CubeVertexBuffer, m_CubeVertexBufferMemory);
     }
 
     void VulkanRenderer::CleanupSwapchain()

@@ -148,6 +148,26 @@ namespace Engine
         DestroyBuffer(l_StagingBuffer, l_StagingMemory);
     }
 
+    void VulkanResources::CreateIndexBufferStaged(const void* indexData, VkDeviceSize sizeBytes, VkBuffer& outBuffer, VkDeviceMemory& outMemory) const
+    {
+        VkBuffer l_StagingBuffer = VK_NULL_HANDLE;
+        VkDeviceMemory l_StagingMemory = VK_NULL_HANDLE;
+
+        CreateBuffer(sizeBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, l_StagingBuffer, l_StagingMemory);
+
+        void* l_Mapped = nullptr;
+        Engine::Utilities::VulkanUtilities::VKCheckStrict(vkMapMemory(m_Device, l_StagingMemory, 0, sizeBytes, 0, &l_Mapped), "vkMapMemory(staging)");
+
+        std::memcpy(l_Mapped, indexData, static_cast<size_t>(sizeBytes));
+        vkUnmapMemory(m_Device, l_StagingMemory);
+
+        CreateBuffer(sizeBytes, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, outBuffer, outMemory);
+
+        CopyBuffer(l_StagingBuffer, outBuffer, sizeBytes);
+
+        DestroyBuffer(l_StagingBuffer, l_StagingMemory);
+    }
+
     void VulkanResources::CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
         VkMemoryPropertyFlags properties, VkImage& outImage, VkDeviceMemory& outMemory) const
     {

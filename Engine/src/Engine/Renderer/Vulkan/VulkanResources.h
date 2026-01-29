@@ -18,6 +18,7 @@ namespace Engine
         void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize sizeBytes) const;
 
         void CreateVertexBufferStaged(const void* vertexData, VkDeviceSize sizeBytes, VkBuffer& outBuffer, VkDeviceMemory& outMemory) const;
+        void CreateIndexBufferStaged(const void* indexData, VkDeviceSize sizeBytes, VkBuffer& outBuffer, VkDeviceMemory& outMemory) const;
 
         // Optional for now
         void CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties,

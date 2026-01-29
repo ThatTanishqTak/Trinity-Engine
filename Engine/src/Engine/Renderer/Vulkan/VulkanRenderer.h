@@ -44,6 +44,8 @@ namespace Engine
 
         void CreateTriangleResources();
         void DestroyTriangleResources();
+        void CreateCubeResources();
+        void DestroyCubeResources();
 
         void CleanupSwapchain();
         void RecreateSwapchain();
@@ -74,6 +76,11 @@ namespace Engine
 
         VkBuffer m_VertexBuffer = VK_NULL_HANDLE;
         VkDeviceMemory m_VertexBufferMemory = VK_NULL_HANDLE;
+
+        VkBuffer m_CubeVertexBuffer = VK_NULL_HANDLE;
+        VkBuffer m_CubeIndexBuffer = VK_NULL_HANDLE;
+        VkDeviceMemory m_CubeVertexBufferMemory = VK_NULL_HANDLE;
+        VkDeviceMemory m_CubeIndexBufferMemory = VK_NULL_HANDLE;
 
         glm::vec4 m_LastClearColor = glm::vec4(0.05f, 0.05f, 0.05f, 1.0f);
     };
