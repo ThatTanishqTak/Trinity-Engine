@@ -121,30 +121,36 @@ namespace Engine
         TR_CORE_INFO("VulkanRenderer shutdown.");
     }
 
-    void VulkanRenderer::BeginFrame()
+    bool VulkanRenderer::BeginFrame()
     {
         m_Sync.WaitForFrame(m_CurrentFrame);
 
-        VkResult l_Acquire = vkAcquireNextImageKHR(m_VulkanDevice.GetDevice(), m_Swapchain.GetHandle(), std::numeric_limits<uint64_t>::max(), 
-            m_Sync.GetImageAvailableSemaphore(m_CurrentFrame), VK_NULL_HANDLE, &m_CurrentImageIndex);
+        uint32_t l_ImageIndex = 0;
+        VkResult l_Acquire = vkAcquireNextImageKHR(m_VulkanDevice.GetDevice(), m_Swapchain.GetHandle(), std::numeric_limits<uint64_t>::max(),
+            m_Sync.GetImageAvailableSemaphore(m_CurrentFrame), VK_NULL_HANDLE, &l_ImageIndex);
 
         if (l_Acquire == VK_ERROR_OUT_OF_DATE_KHR)
         {
             RecreateSwapchain();
 
-            return;
+            return false;
         }
 
         if (l_Acquire != VK_SUCCESS && l_Acquire != VK_SUBOPTIMAL_KHR)
         {
-            Engine::Utilities::VulkanUtilities::VKCheckStrict(l_Acquire, "vkAcquireNextImageKHR");
+            TR_CORE_CRITICAL("vkAcquireNextImageKHR failed (VkResult = {})", static_cast<int>(l_Acquire));
+
+            return false;
         }
 
+        m_CurrentImageIndex = l_ImageIndex;
         m_Sync.WaitForImage(m_CurrentImageIndex);
         m_Sync.SetImageInFlight(m_CurrentImageIndex, m_Sync.GetInFlightFence(m_CurrentFrame));
 
         m_Sync.ResetFrame(m_CurrentFrame);
         m_Command.ResetCommandBuffer(m_CurrentFrame);
+
+        return true;
     }
 
     void VulkanRenderer::Execute(const std::vector<Command>& commandList)

@@ -37,7 +37,7 @@ namespace Engine
         virtual void Initialize(Window* window) = 0;
         virtual void Shutdown() = 0;
 
-        virtual void BeginFrame() = 0;
+        virtual bool BeginFrame() = 0;
         virtual void Execute(const std::vector<Command>& commandList) = 0;
         virtual void EndFrame() = 0;
 

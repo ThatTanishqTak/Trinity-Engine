@@ -41,10 +41,10 @@ namespace Engine::Render
         TR_CORE_INFO("Renderer shutdown complete.");
     }
 
-    void Renderer::BeginFrame()
+    bool Renderer::BeginFrame()
     {
         s_CommandList.clear();
-        s_RendererAPI->BeginFrame();
+        return s_RendererAPI->BeginFrame();
     }
 
     void Renderer::EndFrame()

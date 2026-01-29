@@ -130,19 +130,21 @@ namespace Engine
                 it_Layer->OnUpdate(Utilities::Time::DeltaTime());
             }
 
-            Render::Renderer::BeginFrame();
-
-            for (const std::unique_ptr<Layer>& it_Layer : m_LayerStack)
+            const bool l_CanRender = Render::Renderer::BeginFrame();
+            if (l_CanRender)
             {
-                it_Layer->OnRender();
-            }
+                for (const std::unique_ptr<Layer>& it_Layer : m_LayerStack)
+                {
+                    it_Layer->OnRender();
+                }
 
-            for (const std::unique_ptr<Layer>& it_Layer : m_LayerStack)
-            {
-                it_Layer->OnImGuiRender();
-            }
+                for (const std::unique_ptr<Layer>& it_Layer : m_LayerStack)
+                {
+                    it_Layer->OnImGuiRender();
+                }
 
-            Render::Renderer::EndFrame();
+                Render::Renderer::EndFrame();
+            }
         }
     }
 

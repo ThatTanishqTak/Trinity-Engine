@@ -17,7 +17,7 @@ namespace Engine::Render
         static void Initialize(Window* window);
         static void Shutdown();
 
-        static void BeginFrame();
+        static bool BeginFrame();
         static void EndFrame();
 
         static void OnResize(uint32_t width, uint32_t height);

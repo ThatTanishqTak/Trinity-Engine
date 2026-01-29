@@ -5,8 +5,13 @@ layout(location = 1) in vec3 inColor;
 
 layout(location = 0) out vec3 vColor;
 
+layout(set = 0, binding = 0) uniform UBO
+{
+    mat4 MVP;
+} ubo;
+
 void main()
 {
     vColor = inColor;
-    gl_Position = vec4(inPos, 0.0, 1.0);
+    gl_Position = ubo.MVP * vec4(inPos, 0.0, 1.0);
 }

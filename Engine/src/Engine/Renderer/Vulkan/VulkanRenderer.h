@@ -31,7 +31,7 @@ namespace Engine
         void Initialize(Window* window) override;
         void Shutdown() override;
 
-        void BeginFrame() override;
+        bool BeginFrame() override;
         void Execute(const std::vector<Command>& commandList) override;
         void EndFrame() override;
 
