@@ -17,15 +17,10 @@ void ClientLayer::OnInitialize()
     Engine::Render::RenderCommand::SetClearColor(glm::vec4(0.05f, 0.05f, 0.05f, 1.0f));
 
     m_EditorCamera = std::make_unique<EditorCamera>();
-    Engine::Render::Renderer::SetActiveCamera(m_EditorCamera.get());
+    Engine::Render::Renderer::SetActiveCamera(static_cast<Engine::Render::Camera*>(m_EditorCamera.get()));
 }
 
 ClientLayer::~ClientLayer() = default;
-
-void ClientLayer::OnInitialize()
-{
-    Engine::Render::RenderCommand::SetClearColor(glm::vec4(0.05f, 0.05f, 0.05f, 1.0f));
-}
 
 void ClientLayer::OnShutdown()
 {
