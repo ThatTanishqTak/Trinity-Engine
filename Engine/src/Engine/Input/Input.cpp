@@ -100,6 +100,7 @@ namespace Engine
     {
         const int l_ButtonValue = static_cast<int>(button);
         auto a_Index = s_MouseButtonStates.find(l_ButtonValue);
+
         return (a_Index != s_MouseButtonStates.end()) ? a_Index->second.Pressed : false;
     }
 

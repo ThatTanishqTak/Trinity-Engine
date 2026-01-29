@@ -9,6 +9,7 @@
 #include "Engine/Renderer/Vulkan/VulkanResources.h"
 #include "Engine/Renderer/Vulkan/VulkanPipeline.h"
 #include "Engine/Renderer/Vulkan/VulkanDescriptors.h"
+#include "Engine/Renderer/Vulkan/VulkanRenderPass.h"
 #include "Engine/Renderer/Vulkan/VulkanFramebuffers.h"
 #include "Engine/Renderer/Vulkan/VulkanFrameResources.h"
 
@@ -61,6 +62,7 @@ namespace Engine
         VulkanResources m_Resources;
         VulkanDescriptors m_Descriptors;
         VulkanPipeline m_Pipeline;
+        VulkanRenderPass m_RenderPass;
         VulkanFramebuffers m_Framebuffers;
         VulkanFrameResources m_FrameResources;
 

@@ -80,8 +80,12 @@ namespace Engine
 
         m_Resources.Initialize(l_PhysicalDevice, l_Device, m_VulkanDevice.GetGraphicsQueue(), m_Command.GetCommandPool());
 
-        m_Framebuffers.Initialize(l_Device, m_Swapchain.GetImageFormat(), m_Swapchain.GetImageViews());
-        m_Framebuffers.Create(m_Swapchain.GetExtent());
+        m_RenderPass.Initialize(l_Device);
+        m_RenderPass.CreateSwapchainPass(m_Swapchain.GetImageFormat());
+
+        m_Framebuffers.Initialize(l_Device);
+        m_Framebuffers.SetSwapchainViews(m_Swapchain.GetImageFormat(), m_Swapchain.GetImageViews());
+        m_Framebuffers.Create(m_RenderPass.GetSwapchainRenderPass(), m_Swapchain.GetExtent());
 
         m_Descriptors.Initialize(l_Device);
         m_FrameResources.Initialize(l_Device, &m_Resources, &m_Descriptors, s_MaxFramesInFlight);
@@ -116,6 +120,7 @@ namespace Engine
         m_Resources.Shutdown();
         m_Pipeline.Shutdown();
         m_Descriptors.Shutdown();
+        m_RenderPass.Shutdown();
         m_VulkanDevice.Shutdown();
 
         TR_CORE_INFO("VulkanRenderer shutdown.");
@@ -238,7 +243,7 @@ namespace Engine
             m_Descriptors.GetLayout()
         };
 
-        m_Pipeline.CreateGraphicsPipeline(m_Framebuffers.GetRenderPass(), l_Binding, l_Attributes, "Assets/Shaders/Simple.vert.spv", "Assets/Shaders/Simple.frag.spv", l_SetLayouts);
+        m_Pipeline.CreateGraphicsPipeline(m_RenderPass.GetSwapchainRenderPass(), l_Binding, l_Attributes, "Assets/Shaders/Simple.vert.spv", "Assets/Shaders/Simple.frag.spv", l_SetLayouts);
     }
 
     void VulkanRenderer::CreateTriangleResources()
@@ -258,6 +263,7 @@ namespace Engine
 
         m_Pipeline.Cleanup();
         m_Framebuffers.Cleanup();
+        m_RenderPass.CleanupSwapchainPass();
 
         m_Swapchain.Cleanup();
     }
@@ -279,8 +285,10 @@ namespace Engine
         CleanupSwapchain();
 
         m_Swapchain.Create();
-        m_Framebuffers.Initialize(m_VulkanDevice.GetDevice(), m_Swapchain.GetImageFormat(), m_Swapchain.GetImageViews());
-        m_Framebuffers.Create(m_Swapchain.GetExtent());
+        m_RenderPass.CreateSwapchainPass(m_Swapchain.GetImageFormat());
+        m_Framebuffers.Initialize(m_VulkanDevice.GetDevice());
+        m_Framebuffers.SetSwapchainViews(m_Swapchain.GetImageFormat(), m_Swapchain.GetImageViews());
+        m_Framebuffers.Create(m_RenderPass.GetSwapchainRenderPass(), m_Swapchain.GetExtent());
         CreatePipeline();
 
         m_Sync.RecreatePerImage(m_Swapchain.GetImageCount());
@@ -309,7 +317,7 @@ namespace Engine
         const auto& a_Framebuffers = m_Framebuffers.GetFramebuffers();
         VkRenderPassBeginInfo l_RP{};
         l_RP.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        l_RP.renderPass = m_Framebuffers.GetRenderPass();
+        l_RP.renderPass = m_RenderPass.GetSwapchainRenderPass();
         l_RP.framebuffer = a_Framebuffers[imageIndex];
         l_RP.renderArea.offset = { 0, 0 };
         l_RP.renderArea.extent = m_Swapchain.GetExtent();
