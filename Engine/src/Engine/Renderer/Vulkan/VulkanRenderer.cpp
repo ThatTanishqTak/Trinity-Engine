@@ -81,12 +81,11 @@ namespace Engine
         m_Resources.Initialize(l_PhysicalDevice, l_Device, m_VulkanDevice.GetGraphicsQueue(), m_Command.GetCommandPool());
 
         m_RenderPass.Initialize(l_Device);
-        m_RenderPass.CreateSwapchainPass(m_Swapchain.GetImageFormat(), VK_FORMAT_UNDEFINED);
+        m_RenderPass.CreateSwapchainPass(m_Swapchain.GetImageFormat(), m_Swapchain.GetDepthFormat());
 
         m_Framebuffers.Initialize(l_Device);
         m_Framebuffers.SetSwapchainViews(m_Swapchain.GetImageFormat(), m_Swapchain.GetImageViews());
-        VkImageView l_DepthView = VK_NULL_HANDLE;
-        m_Framebuffers.Create(m_RenderPass.GetSwapchainRenderPass(), m_Swapchain.GetExtent(), l_DepthView);
+        m_Framebuffers.Create(m_RenderPass.GetSwapchainRenderPass(), m_Swapchain.GetExtent(), m_Swapchain.GetDepthView());
 
         m_Descriptors.Initialize(l_Device);
         m_FrameResources.Initialize(l_Device, &m_Resources, &m_Descriptors, s_MaxFramesInFlight);
@@ -286,11 +285,10 @@ namespace Engine
         CleanupSwapchain();
 
         m_Swapchain.Create();
-        m_RenderPass.CreateSwapchainPass(m_Swapchain.GetImageFormat(), VK_FORMAT_UNDEFINED);
+        m_RenderPass.CreateSwapchainPass(m_Swapchain.GetImageFormat(), m_Swapchain.GetDepthFormat());
         CreatePipeline();
         m_Framebuffers.SetSwapchainViews(m_Swapchain.GetImageFormat(), m_Swapchain.GetImageViews());
-        VkImageView l_DepthView = VK_NULL_HANDLE;
-        m_Framebuffers.Create(m_RenderPass.GetSwapchainRenderPass(), m_Swapchain.GetExtent(), l_DepthView);
+        m_Framebuffers.Create(m_RenderPass.GetSwapchainRenderPass(), m_Swapchain.GetExtent(), m_Swapchain.GetDepthView());
 
         m_Sync.RecreatePerImage(m_Swapchain.GetImageCount());
 
@@ -312,8 +310,10 @@ namespace Engine
             }
         }
 
-        VkClearValue l_Clear{};
-        l_Clear.color = { { m_LastClearColor.r, m_LastClearColor.g, m_LastClearColor.b, m_LastClearColor.a } };
+        VkClearValue l_ClearValues[2]{};
+        l_ClearValues[0].color = { { m_LastClearColor.r, m_LastClearColor.g, m_LastClearColor.b, m_LastClearColor.a } };
+        l_ClearValues[1].depthStencil = { 1.0f, 0 };
+        const uint32_t l_ClearCount = m_Swapchain.GetDepthFormat() == VK_FORMAT_UNDEFINED ? 1u : 2u;
 
         const auto& a_Framebuffers = m_Framebuffers.GetFramebuffers();
         VkRenderPassBeginInfo l_RP{};
@@ -322,8 +322,8 @@ namespace Engine
         l_RP.framebuffer = a_Framebuffers[imageIndex];
         l_RP.renderArea.offset = { 0, 0 };
         l_RP.renderArea.extent = m_Swapchain.GetExtent();
-        l_RP.clearValueCount = 1;
-        l_RP.pClearValues = &l_Clear;
+        l_RP.clearValueCount = l_ClearCount;
+        l_RP.pClearValues = l_ClearValues;
 
         vkCmdBeginRenderPass(cmd, &l_RP, VK_SUBPASS_CONTENTS_INLINE);
 
