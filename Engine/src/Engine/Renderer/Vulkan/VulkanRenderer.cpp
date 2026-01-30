@@ -47,31 +47,52 @@ namespace Engine
 
     static const std::array<Vertex, 3> s_TriangleVertices =
     {
-        Vertex{ {  0.0f, -0.5f, 0.0f }, { 1.0f, 0.2f, 0.2f } },
-        Vertex{ {  0.5f,  0.5f, 0.0f }, { 0.2f, 1.0f, 0.2f } },
-        Vertex{ { -0.5f,  0.5f, 0.0f }, { 0.2f, 0.2f, 1.0f } },
+        Vertex{ {  0.0f,  0.5f, 0.0f }, { 1.0f, 0.2f, 0.2f } },
+        Vertex{ {  0.5f, -0.5f, 0.0f }, { 0.2f, 1.0f, 0.2f } },
+        Vertex{ { -0.5f, -0.5f, 0.0f }, { 0.2f, 0.2f, 1.0f } },
     };
 
-    static const std::array<Vertex, 8> s_CubeVertices =
+    static const std::array<Vertex, 24> s_CubeVertices =
     {
         Vertex{ { -0.5f, -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f } },
-        Vertex{ {  0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f } },
-        Vertex{ {  0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f } },
-        Vertex{ { -0.5f,  0.5f, -0.5f }, { 1.0f, 1.0f, 0.0f } },
-        Vertex{ { -0.5f, -0.5f,  0.5f }, { 1.0f, 0.0f, 1.0f } },
+        Vertex{ {  0.5f, -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f } },
+        Vertex{ {  0.5f,  0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f } },
+        Vertex{ { -0.5f,  0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f } },
+
+        Vertex{ { -0.5f, -0.5f,  0.5f }, { 0.0f, 1.0f, 0.0f } },
+        Vertex{ {  0.5f, -0.5f,  0.5f }, { 0.0f, 1.0f, 0.0f } },
+        Vertex{ {  0.5f,  0.5f,  0.5f }, { 0.0f, 1.0f, 0.0f } },
+        Vertex{ { -0.5f,  0.5f,  0.5f }, { 0.0f, 1.0f, 0.0f } },
+
+        Vertex{ { -0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f } },
+        Vertex{ { -0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f } },
+        Vertex{ { -0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f, 1.0f } },
+        Vertex{ { -0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f, 1.0f } },
+
+        Vertex{ {  0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f, 0.0f } },
+        Vertex{ {  0.5f,  0.5f, -0.5f }, { 1.0f, 1.0f, 0.0f } },
+        Vertex{ {  0.5f,  0.5f,  0.5f }, { 1.0f, 1.0f, 0.0f } },
+        Vertex{ {  0.5f, -0.5f,  0.5f }, { 1.0f, 1.0f, 0.0f } },
+
+        Vertex{ { -0.5f,  0.5f, -0.5f }, { 1.0f, 0.0f, 1.0f } },
+        Vertex{ {  0.5f,  0.5f, -0.5f }, { 1.0f, 0.0f, 1.0f } },
+        Vertex{ {  0.5f,  0.5f,  0.5f }, { 1.0f, 0.0f, 1.0f } },
+        Vertex{ { -0.5f,  0.5f,  0.5f }, { 1.0f, 0.0f, 1.0f } },
+
+        Vertex{ { -0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 1.0f } },
+        Vertex{ {  0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 1.0f } },
         Vertex{ {  0.5f, -0.5f,  0.5f }, { 0.0f, 1.0f, 1.0f } },
-        Vertex{ {  0.5f,  0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f } },
-        Vertex{ { -0.5f,  0.5f,  0.5f }, { 0.3f, 0.3f, 0.3f } },
+        Vertex{ { -0.5f, -0.5f,  0.5f }, { 0.0f, 1.0f, 1.0f } },
     };
 
     static const std::array<uint16_t, 36> s_CubeIndices =
     {
         0, 1, 2, 2, 3, 0,
         4, 5, 6, 6, 7, 4,
-        4, 0, 3, 3, 7, 4,
-        1, 5, 6, 6, 2, 1,
-        3, 2, 6, 6, 7, 3,
-        4, 5, 1, 1, 0, 4
+        8, 9, 10, 10, 11, 8,
+        12, 13, 14, 14, 15, 12,
+        16, 17, 18, 18, 19, 16,
+        20, 21, 22, 22, 23, 20
     };
 
     void VulkanRenderer::Initialize(Window* window)

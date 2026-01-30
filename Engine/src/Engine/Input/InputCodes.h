@@ -52,10 +52,10 @@ namespace Engine
             TR_KEY_X = 88,
             TR_KEY_Y = 89,
             TR_KEY_Z = 90,
-            TR_KEY_LEFTBRACKET = 91,
-            TR_KEY_BACKSLASH = 92,
-            TR_KEY_RIGHTBRACKET = 93,
-            TR_KEY_GRAVEACCENT = 96,
+            TR_KEY_LEFT_BRACKET = 91,
+            TR_KEY_BACK_SLASH = 92,
+            TR_KEY_RIGHT_BRACKET = 93,
+            TR_KEY_GRAVE_ACCENT = 96,
             TR_KEY_WORLD1 = 161,
             TR_KEY_WORLD2 = 162,
             TR_KEY_ESCAPE = 256,
@@ -68,8 +68,8 @@ namespace Engine
             TR_KEY_LEFT = 263,
             TR_KEY_DOWN = 264,
             TR_KEY_UP = 265,
-            TR_KEY_PAGEUP = 266,
-            TR_KEY_PAGEDOWN = 267,
+            TR_KEY_PAGE_UP = 266,
+            TR_KEY_PAGE_DOWN = 267,
             TR_KEY_HOME = 268,
             TR_KEY_END = 269,
             TR_KEY_CAPSLOCK = 280,
@@ -112,21 +112,21 @@ namespace Engine
             TR_KEY_KP7 = 327,
             TR_KEY_KP8 = 328,
             TR_KEY_KP9 = 329,
-            TR_KEY_KPDECIMAL = 330,
-            TR_KEY_KPDIVIDE = 331,
-            TR_KEY_KPMULTIPLY = 332,
-            TR_KEY_KPSUBTRACT = 333,
-            TR_KEY_KPADD = 334,
-            TR_KEY_KPENTER = 335,
-            TR_KEY_KPEQUAL = 336,
-            TR_KEY_LEFTSHIFT = 340,
-            TR_KEY_LEFTCONTROL = 341,
-            TR_KEY_LEFTALT = 342,
-            TR_KEY_LEFTSUPER = 343,
-            TR_KEY_RIGHTSHIFT = 344,
-            TR_KEY_RIGHTCONTROL = 345,
-            TR_KEY_RIGHTALT = 346,
-            TR_KEY_RIGHTSUPER = 347,
+            TR_KEY_KEYPAD_DECIMAL = 330,
+            TR_KEY_KEYPAD_DIVIDE = 331,
+            TR_KEY_KEYPAD_MULTIPLY = 332,
+            TR_KEY_KEYPAD_SUBTRACT = 333,
+            TR_KEY_KEYPAD_ADD = 334,
+            TR_KEY_KEYPAD_ENTER = 335,
+            TR_KEY_KEYPAD_EQUAL = 336,
+            TR_KEY_LEFT_SHIFT = 340,
+            TR_KEY_LEFT_CONTROL = 341,
+            TR_KEY_LEFT_ALT = 342,
+            TR_KEY_LEFT_SUPER = 343,
+            TR_KEY_RIGHT_SHIFT = 344,
+            TR_KEY_RIGHT_CONTROL = 345,
+            TR_KEY_RIGHT_ALT = 346,
+            TR_KEY_RIGHT_SUPER = 347,
             TR_KEY_MENU = 348
         };
 
@@ -140,10 +140,10 @@ namespace Engine
             TR_BUTTON_5 = 5,
             TR_BUTTON_6 = 6,
             TR_BUTTON_7 = 7,
-            TR_BUTTONLAST = TR_BUTTON_7,
-            TR_BUTTONLEFT = TR_BUTTON_0,
-            TR_BUTTONRIGHT = TR_BUTTON_1,
-            TR_BUTTONMIDDLE = TR_BUTTON_2
+            TR_BUTTON_LAST = TR_BUTTON_7,
+            TR_BUTTON_LEFT = TR_BUTTON_0,
+            TR_BUTTON_RIGHT = TR_BUTTON_1,
+            TR_BUTTON_MIDDLE = TR_BUTTON_2
         };
 
         // Gamepad buttons (GLFW gamepad mapping compatible)
@@ -153,30 +153,30 @@ namespace Engine
             TR_BUTTON_B = 1,
             TR_BUTTON_X = 2,
             TR_BUTTON_Y = 3,
-            TR_BUTTON_LEFTBUMPER = 4,
-            TR_BUTTON_RIGHTBUMPER = 5,
+            TR_BUTTON_LEFT_BUMPER = 4,
+            TR_BUTTON_RIGHT_BUMPER = 5,
             TR_BUTTON_BACK = 6,
             TR_BUTTON_START = 7,
             TR_BUTTON_GUIDE = 8,
-            TR_BUTTON_LEFTTHUMB = 9,
-            TR_BUTTON_RIGHTTHUMB = 10,
-            TR_BUTTON_DPADUP = 11,
-            TR_BUTTON_DPADRIGHT = 12,
-            TR_BUTTON_DPADDOWN = 13,
-            TR_BUTTON_DPADLEFT = 14,
-            TR_BUTTON_LAST = TR_BUTTON_DPADLEFT
+            TR_BUTTON_LEFT_THUMB = 9,
+            TR_BUTTON_RIGHT_THUMB = 10,
+            TR_BUTTON_DPAD_UP = 11,
+            TR_BUTTON_DPAD_RIGHT = 12,
+            TR_BUTTON_DPAD_DOWN = 13,
+            TR_BUTTON_DPAD_LEFT = 14,
+            TR_BUTTON_LAST = TR_BUTTON_DPAD_LEFT
         };
 
         // Gamepad axes (GLFW gamepad mapping compatible)
         enum class GamepadAxis : int
         {
-            TR_AXIS_LEFTX = 0,
-            TR_AXIS_LEFTY = 1,
-            TR_AXIS_RIGHTX = 2,
-            TR_AXIS_RIGHTY = 3,
-            TR_AXIS_LEFTTRIGGER = 4,
-            TR_AXIS_RIGHTTRIGGER = 5,
-            TR_AXIS_LAST = TR_AXIS_RIGHTTRIGGER
+            TR_AXIS_LEFT_X = 0,
+            TR_AXIS_LEFT_Y = 1,
+            TR_AXIS_RIGHT_X = 2,
+            TR_AXIS_RIGHT_Y = 3,
+            TR_AXIS_LEFT_TRIGGER = 4,
+            TR_AXIS_RIGHT_TRIGGER = 5,
+            TR_AXIS_LAST = TR_AXIS_RIGHT_TRIGGER
         };
     }
 }

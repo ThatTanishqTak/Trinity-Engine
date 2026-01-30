@@ -152,7 +152,7 @@ namespace Engine
             TR_EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryGamepad)
 
     private:
-        Code::GamepadAxis m_Axis = Code::GamepadAxis::TR_AXIS_LEFTX;
+        Code::GamepadAxis m_Axis = Code::GamepadAxis::TR_AXIS_LEFT_X;
         float m_Value = 0.0f;
     };
 }

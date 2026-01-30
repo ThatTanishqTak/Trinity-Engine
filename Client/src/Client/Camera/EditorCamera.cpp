@@ -35,7 +35,7 @@ EditorCamera::EditorCamera() : Engine::Render::Camera()
 
 void EditorCamera::OnUpdate(float deltaTime)
 {
-    const bool l_ShiftDown = Engine::Input::KeyDown(Engine::Code::KeyCode::TR_KEY_LEFTSHIFT);
+    const bool l_ShiftDown = Engine::Input::KeyDown(Engine::Code::KeyCode::TR_KEY_LEFT_SHIFT);
     const float l_MoveDistance = m_MoveSpeed * (l_ShiftDown ? m_ShiftSpeedMultiplier : 1.0f) * deltaTime;
 
     glm::vec3 l_MovementDelta(0.0f, 0.0f, 0.0f);
@@ -43,34 +43,38 @@ void EditorCamera::OnUpdate(float deltaTime)
     const glm::vec3 l_Right = GetRightDirection();
     const glm::vec3 l_Up = GetUpDirection();
 
-    if (Engine::Input::KeyDown(Engine::Code::KeyCode::TR_KEY_W))
+    if (Engine::Input::MouseButtonDown(Engine::Code::MouseCode::TR_BUTTON_RIGHT))
     {
-        l_MovementDelta += l_Forward * l_MoveDistance;
-    }
 
-    if (Engine::Input::KeyDown(Engine::Code::KeyCode::TR_KEY_S))
-    {
-        l_MovementDelta -= l_Forward * l_MoveDistance;
-    }
+        if (Engine::Input::KeyDown(Engine::Code::KeyCode::TR_KEY_W))
+        {
+            l_MovementDelta += l_Forward * l_MoveDistance;
+        }
 
-    if (Engine::Input::KeyDown(Engine::Code::KeyCode::TR_KEY_A))
-    {
-        l_MovementDelta -= l_Right * l_MoveDistance;
-    }
+        if (Engine::Input::KeyDown(Engine::Code::KeyCode::TR_KEY_S))
+        {
+            l_MovementDelta -= l_Forward * l_MoveDistance;
+        }
 
-    if (Engine::Input::KeyDown(Engine::Code::KeyCode::TR_KEY_D))
-    {
-        l_MovementDelta += l_Right * l_MoveDistance;
-    }
+        if (Engine::Input::KeyDown(Engine::Code::KeyCode::TR_KEY_A))
+        {
+            l_MovementDelta -= l_Right * l_MoveDistance;
+        }
 
-    if (Engine::Input::KeyDown(Engine::Code::KeyCode::TR_KEY_Q))
-    {
-        l_MovementDelta -= l_Up * l_MoveDistance;
-    }
+        if (Engine::Input::KeyDown(Engine::Code::KeyCode::TR_KEY_D))
+        {
+            l_MovementDelta += l_Right * l_MoveDistance;
+        }
 
-    if (Engine::Input::KeyDown(Engine::Code::KeyCode::TR_KEY_E))
-    {
-        l_MovementDelta += l_Up * l_MoveDistance;
+        if (Engine::Input::KeyDown(Engine::Code::KeyCode::TR_KEY_Q))
+        {
+            l_MovementDelta -= l_Up * l_MoveDistance;
+        }
+
+        if (Engine::Input::KeyDown(Engine::Code::KeyCode::TR_KEY_E))
+        {
+            l_MovementDelta += l_Up * l_MoveDistance;
+        }
     }
 
     if (l_MovementDelta != glm::vec3(0.0f, 0.0f, 0.0f))
@@ -79,8 +83,8 @@ void EditorCamera::OnUpdate(float deltaTime)
         m_FocalPoint += l_MovementDelta;
     }
 
-    const bool l_RightMouseDown = Engine::Input::MouseButtonDown(Engine::Code::MouseCode::TR_BUTTONRIGHT);
-    const bool l_MiddleMouseDown = Engine::Input::MouseButtonDown(Engine::Code::MouseCode::TR_BUTTONMIDDLE);
+    const bool l_RightMouseDown = Engine::Input::MouseButtonDown(Engine::Code::MouseCode::TR_BUTTON_RIGHT);
+    const bool l_MiddleMouseDown = Engine::Input::MouseButtonDown(Engine::Code::MouseCode::TR_BUTTON_MIDDLE);
     const bool l_PanActive = l_ShiftDown && (l_RightMouseDown || l_MiddleMouseDown);
     const bool l_OrbitActive = l_MiddleMouseDown && !l_ShiftDown;
     const bool l_MouseActionActive = l_RightMouseDown || l_MiddleMouseDown;

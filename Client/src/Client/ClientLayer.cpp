@@ -38,7 +38,7 @@ void ClientLayer::OnUpdate(float deltaTime)
 void ClientLayer::OnRender()
 {
     Engine::Render::RenderCommand::Clear();
-    Engine::Render::RenderCommand::DrawCube();
+    Engine::Render::RenderCommand::DrawTriangle();
 }
 
 void ClientLayer::OnImGuiRender()
