@@ -86,10 +86,11 @@ namespace Engine
             std::abort();
         }
 
-        m_ActiveCamera->SetPosition(glm::vec3(0.0f, 0.0f, 2.0f));
-        m_ActiveCamera->SetFov(45.0f);
-        m_ActiveCamera->SetNear(0.1f);
-        m_ActiveCamera->SetFar(10.0f);
+        Render::Camera* l_ActiveCamera = m_ActiveCamera ? m_ActiveCamera : &m_DefaultCamera;
+        l_ActiveCamera->SetPosition(glm::vec3(0.0f, 0.0f, 2.0f));
+        l_ActiveCamera->SetFov(45.0f);
+        l_ActiveCamera->SetNear(0.1f);
+        l_ActiveCamera->SetFar(10.0f);
 
         m_VulkanDevice.Initialize(m_NativeWindow);
 
