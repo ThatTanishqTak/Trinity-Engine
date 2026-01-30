@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Engine/Layer/Layer.h"
+#include "Client/Camera/EditorCamera.h"
 
 #include <memory>
 
@@ -26,6 +27,5 @@ public:
     void OnEvent(Engine::Event& e) override;
 
 private:
-    class EditorCamera;
     std::unique_ptr<EditorCamera> m_EditorCamera;
 };
