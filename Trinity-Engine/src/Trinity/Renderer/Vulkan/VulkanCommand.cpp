@@ -46,8 +46,6 @@ namespace Trinity
 			return;
 		}
 
-		vkDeviceWaitIdle(m_Device);
-
 		DestroyUploadPool();
 		DestroyPerFrame();
 

@@ -48,8 +48,6 @@ namespace Trinity
 			return;
 		}
 
-		vkDeviceWaitIdle(m_Device);
-
 		DestroyFramebuffers();
 		DestroyDepthResources();
 

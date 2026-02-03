@@ -55,7 +55,7 @@ namespace Trinity
 		if (m_Device != VK_NULL_HANDLE)
 		{
 			TR_CORE_TRACE("Destroying Vulkan logical device");
-			vkDeviceWaitIdle(m_Device);
+
 			vkDestroyDevice(m_Device, m_Allocator);
 			m_Device = VK_NULL_HANDLE;
 		}

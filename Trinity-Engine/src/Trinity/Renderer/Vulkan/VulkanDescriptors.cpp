@@ -28,18 +28,13 @@ namespace Trinity
 
 		CreateLayouts();
 
-		// Pool sizing philosophy:
-		// - One global set per frame by default
-		// - Keep some slack so you can add a few more sets without re-plumbing everything
 		const uint32_t l_MaxSets = framesInFlight + 32;
 
-		// Default global layout uses:
 		// binding 0: UBO (1 per set)
 		// binding 1: Combined image sampler (1 per set) - optional at runtime, but reserve capacity anyway
 		const uint32_t l_UBOCount = l_MaxSets * 1;
 		const uint32_t l_SamplerCount = l_MaxSets * 1;
 
-		// Storage buffers later
 		const uint32_t l_StorageCount = 0;
 
 		CreateDescriptorPool(l_MaxSets, l_UBOCount, l_SamplerCount, l_StorageCount);
@@ -56,8 +51,6 @@ namespace Trinity
 
 			return;
 		}
-
-		vkDeviceWaitIdle(m_Device);
 
 		m_Frames.clear();
 

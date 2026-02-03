@@ -54,8 +54,6 @@ namespace Trinity
 			return;
 		}
 
-		vkDeviceWaitIdle(m_Device);
-
 		DestroyGraphicsPipeline();
 		DestroyPipelineLayout();
 		DestroyPipelineCache();

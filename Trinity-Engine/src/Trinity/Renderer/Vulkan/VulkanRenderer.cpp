@@ -59,6 +59,8 @@ namespace Trinity
 
 	void VulkanRenderer::Shutdown()
 	{
+		vkDeviceWaitIdle(m_Device.GetDevice());
+
 		m_Command.Shutdown();
 		m_Pipeline.Shutdown();
 		m_Descriptors.Shutdown();

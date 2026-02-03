@@ -45,7 +45,6 @@ namespace Trinity
 		}
 
 		TR_CORE_TRACE("Destroying swapchain");
-		vkDeviceWaitIdle(m_Device);
 
 		DestroyImageViews(m_ImageViews);
 		m_ImageViews.clear();
