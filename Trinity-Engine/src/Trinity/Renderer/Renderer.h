@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Trinity/Utilities/Utilities.h"
-
 #include <cstdint>
 
 namespace Trinity
@@ -20,25 +18,9 @@ namespace Trinity
 	class Renderer
 	{
 	public:
-		inline Renderer() : m_CurrentAPI(RendererAPI::VULKAN)
-		{
-			switch (m_CurrentAPI)
-			{
-				case RendererAPI::NONE:
-					TR_CORE_CRITICAL("No Renderer API was selected");
-					break;
-
-				case RendererAPI::VULKAN:
-					break;
-
-				case RendererAPI::MOLTENVK:
-					break;
-
-				case RendererAPI::DIRECTX:
-					break;
-			}
-		}
 		virtual ~Renderer() = default;
+
+		RendererAPI GetAPI() const { return m_CurrentAPI; }
 
 		virtual void SetWindow(Window& window) = 0;
 
@@ -51,6 +33,12 @@ namespace Trinity
 		virtual void EndFrame() = 0;
 
 	protected:
-		RendererAPI m_CurrentAPI;
+		explicit Renderer(RendererAPI api) : m_CurrentAPI(api)
+		{
+
+		}
+
+	protected:
+		RendererAPI m_CurrentAPI = RendererAPI::NONE;
 	};
 }

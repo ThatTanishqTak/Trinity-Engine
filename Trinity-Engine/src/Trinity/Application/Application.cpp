@@ -13,8 +13,6 @@
 
 #include "Trinity/Input/Input.h"
 
-#include "Trinity/Renderer/Vulkan/VulkanRenderer.h"
-
 #include <chrono>
 #include <cstdlib>
 #include <thread>
@@ -45,9 +43,7 @@ namespace Trinity
             OnEvent(e);
         });
 
-        m_Renderer = std::make_unique<VulkanRenderer>();
-        m_Renderer->SetWindow(*m_Window);
-        m_Renderer->Initialize();
+        RenderCommand::Initialize(*m_Window, RendererAPI::VULKAN);
 
         TR_CORE_INFO("------- APPLICATION INITIALIZED -------");
     }
@@ -56,8 +52,7 @@ namespace Trinity
     {
         TR_CORE_INFO("------- SHUTTING DOWN APPLICATION -------");
 
-        m_Renderer->Shutdown();
-        m_Renderer.reset();
+        RenderCommand::Shutdown();
 
         m_LayerStack.Shutdown();
 
@@ -96,10 +91,10 @@ namespace Trinity
         Input::OnEvent(e);
         m_Window->OnEvent(e);
 
-        // Let renderer know about resizes.
         if (e.GetEventType() == EventType::WindowResize)
         {
             auto& l_Resize = static_cast<WindowResizeEvent&>(e);
+            RenderCommand::Resize(l_Resize.GetWidth(), l_Resize.GetHeight());
         }
 
         for (auto it = m_LayerStack.end(); it != m_LayerStack.begin(); )
@@ -150,7 +145,7 @@ namespace Trinity
                 it_Layer->OnUpdate(Utilities::Time::DeltaTime());
             }
 
-            m_Renderer->BeginFrame();
+            RenderCommand::BeginFrame();
 
             for (const std::unique_ptr<Layer>& it_Layer : m_LayerStack)
             {
@@ -162,7 +157,7 @@ namespace Trinity
                 it_Layer->OnImGuiRender();
             }
 
-            m_Renderer->EndFrame();
+            RenderCommand::EndFrame();
         }
     }
 

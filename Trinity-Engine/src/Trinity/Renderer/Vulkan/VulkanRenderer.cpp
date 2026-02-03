@@ -7,7 +7,7 @@
 
 namespace Trinity
 {
-	VulkanRenderer::VulkanRenderer()
+	VulkanRenderer::VulkanRenderer() : Renderer(RendererAPI::VULKAN)
 	{
 
 	}

@@ -4,7 +4,7 @@
 
 namespace Trinity
 {
-	MoltenVKRenderer::MoltenVKRenderer()
+	MoltenVKRenderer::MoltenVKRenderer() : Renderer(RendererAPI::MOLTENVK)
 	{
 
 	}

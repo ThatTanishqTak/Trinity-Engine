@@ -4,7 +4,7 @@
 
 namespace Trinity
 {
-	DirectXRenderer::DirectXRenderer()
+	DirectXRenderer::DirectXRenderer() : Renderer(RendererAPI::DIRECTX)
 	{
 
 	}

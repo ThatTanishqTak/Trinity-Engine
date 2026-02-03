@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Trinity/Layer/LayerStack.h"
+#include "Trinity/Renderer/RenderCommand.h"
 
 #include <memory>
 
@@ -8,7 +9,6 @@ namespace Trinity
 {
     class Window;
     class Event;
-    class VulkanRenderer;
 
     class Application
     {
@@ -33,7 +33,6 @@ namespace Trinity
 
         LayerStack m_LayerStack;
         std::unique_ptr<Window> m_Window;
-        std::unique_ptr<VulkanRenderer> m_Renderer;
 
         static Application* s_Instance;
     };
