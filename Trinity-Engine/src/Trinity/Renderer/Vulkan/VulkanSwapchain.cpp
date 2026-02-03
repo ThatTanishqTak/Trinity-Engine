@@ -16,6 +16,8 @@ namespace Trinity
 		m_Surface = surface;
 		m_Allocator = allocator;
 		m_VSync = vsync;
+		m_GraphicsQueueFamilyIndex = device.GetGraphicsQueueFamilyIndex();
+		m_PresentQueueFamilyIndex = device.GetPresentQueueFamilyIndex();
 
 		if (m_Device == VK_NULL_HANDLE || m_PhysicalDevice == VK_NULL_HANDLE || m_Surface == VK_NULL_HANDLE)
 		{
@@ -226,9 +228,19 @@ namespace Trinity
 		l_CreateInfo.imageExtent = l_Extent;
 		l_CreateInfo.imageArrayLayers = 1;
 		l_CreateInfo.imageUsage = m_ImageUsageFlags;
-		l_CreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		l_CreateInfo.queueFamilyIndexCount = 0;
-		l_CreateInfo.pQueueFamilyIndices = nullptr;
+		uint32_t l_QueueFamilyIndices[] = { m_GraphicsQueueFamilyIndex, m_PresentQueueFamilyIndex };
+		if (m_GraphicsQueueFamilyIndex == m_PresentQueueFamilyIndex)
+		{
+			l_CreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+			l_CreateInfo.queueFamilyIndexCount = 0;
+			l_CreateInfo.pQueueFamilyIndices = nullptr;
+		}
+		else
+		{
+			l_CreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+			l_CreateInfo.queueFamilyIndexCount = 2;
+			l_CreateInfo.pQueueFamilyIndices = l_QueueFamilyIndices;
+		}
 		l_CreateInfo.preTransform = l_Capabilities.currentTransform;
 		l_CreateInfo.compositeAlpha = ChooseCompositeAlpha(l_Capabilities);
 		l_CreateInfo.presentMode = l_PresentMode;

@@ -15,8 +15,8 @@ namespace Trinity
 
 		VulkanSync(const VulkanSync&) = delete;
 		VulkanSync& operator=(const VulkanSync&) = delete;
-		VulkanSync(const VulkanSync&&) = delete;
-		VulkanSync& operator=(const VulkanSync&&) = delete;
+		VulkanSync(VulkanSync&&) = delete;
+		VulkanSync& operator=(VulkanSync&&) = delete;
 
 		void Initialize(VkDevice device);
 		void Create(uint32_t maxFramesInFlight, uint32_t swapchainImageCount);

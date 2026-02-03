@@ -71,5 +71,7 @@ namespace Trinity
 
 		VkImageUsageFlags m_ImageUsageFlags = 0;
 		bool m_VSync = true;
+		uint32_t m_GraphicsQueueFamilyIndex = 0;
+		uint32_t m_PresentQueueFamilyIndex = 0;
 	};
 }
