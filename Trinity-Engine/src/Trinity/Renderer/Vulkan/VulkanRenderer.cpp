@@ -41,7 +41,7 @@ namespace Trinity
 		m_Sync.Create(m_FramesInFlight, m_Swapchain.GetImageCount());
 		m_RenderPass.Initialize(m_Device, m_Swapchain, m_Instance.GetAllocator());
 		m_Framebuffers.Initialize(m_Device, m_Swapchain, m_RenderPass, m_Instance.GetAllocator());
-		m_FrameResources.Initialize(m_Device, m_FramesInFlight, m_Instance.GetAllocator());
+		m_FrameResources.Initialize(m_FramesInFlight);
 		m_Descriptors.Initialize(m_Device, m_FramesInFlight, m_Instance.GetAllocator());
 
 		VulkanPipeline::GraphicsDescription l_PipelineDesc{};
@@ -72,18 +72,26 @@ namespace Trinity
 
 	void VulkanRenderer::Resize(uint32_t width, uint32_t height)
 	{
-		m_Swapchain.Recreate(width, height);
-
-		m_Sync.Create(m_FramesInFlight, m_Swapchain.GetImageCount());
-
-		m_RenderPass.Recreate(m_Swapchain);
-		m_Framebuffers.Recreate(m_Swapchain, m_RenderPass);
-		m_Pipeline.Recreate(m_RenderPass);
+		m_PendingWidth = width;
+		m_PendingHeight = height;
+		m_ResizePending = true;
 	}
 
 	void VulkanRenderer::BeginFrame()
 	{
 		m_FrameBegun = false;
+
+		if (m_ResizePending)
+		{
+			RecreateSwapchain(m_PendingWidth, m_PendingHeight);
+			m_ResizePending = false;
+
+			const VkExtent2D l_Extent = m_Swapchain.GetExtent();
+			if (l_Extent.width == 0 || l_Extent.height == 0)
+			{
+				return; // minimized: skip rendering until we get a real size
+			}
+		}
 
 		const uint32_t l_FrameIndex = m_FrameResources.GetCurrentFrameIndex();
 
@@ -94,11 +102,7 @@ namespace Trinity
 		VkResult l_AcquireResult = m_Swapchain.AcquireNextImage(l_ImageAvailableSemaphore, m_CurrentImageIndex);
 		if (l_AcquireResult == VK_ERROR_OUT_OF_DATE_KHR)
 		{
-			m_Swapchain.Recreate();
-			m_Sync.Create(m_FramesInFlight, m_Swapchain.GetImageCount());
-			m_RenderPass.Recreate(m_Swapchain);
-			m_Framebuffers.Recreate(m_Swapchain, m_RenderPass);
-			m_Pipeline.Recreate(m_RenderPass);
+			RecreateSwapchain(0, 0);
 
 			return;
 		}
@@ -122,41 +126,6 @@ namespace Trinity
 
 		VkCommandBuffer l_CommandBuffer = m_Command.BeginFrame(l_FrameIndex);
 
-		VkImage l_Image = m_Swapchain.GetImage(m_CurrentImageIndex);
-
-		VkImageSubresourceRange l_Range{};
-		l_Range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		l_Range.baseMipLevel = 0;
-		l_Range.levelCount = 1;
-		l_Range.baseArrayLayer = 0;
-		l_Range.layerCount = 1;
-
-		VkImageLayout l_OldLayout = m_Swapchain.GetTrackedLayout(m_CurrentImageIndex);
-
-		if (l_OldLayout != VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-		{
-			VkImageMemoryBarrier l_ToColor{};
-			l_ToColor.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-			l_ToColor.oldLayout = l_OldLayout;
-			l_ToColor.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-			l_ToColor.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			l_ToColor.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			l_ToColor.image = l_Image;
-			l_ToColor.subresourceRange = l_Range;
-			l_ToColor.srcAccessMask = 0;
-			l_ToColor.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-			VkPipelineStageFlags l_SrcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-			if (l_OldLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
-			{
-				l_SrcStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-			}
-
-			vkCmdPipelineBarrier(l_CommandBuffer, l_SrcStage, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &l_ToColor);
-
-			m_Swapchain.SetTrackedLayout(m_CurrentImageIndex, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-		}
-
 		VkClearValue l_ClearValues[2]{};
 
 		// Color clear
@@ -165,6 +134,7 @@ namespace Trinity
 		l_ClearValues[0].color.float32[2] = 0.01f;
 		l_ClearValues[0].color.float32[3] = 1.0f;
 
+		// Depth clear
 		l_ClearValues[1].depthStencil.depth = 1.0f;
 		l_ClearValues[1].depthStencil.stencil = 0;
 
@@ -219,7 +189,6 @@ namespace Trinity
 		VkCommandBuffer l_CommandBuffer = m_Command.GetCommandBuffer(l_FrameIndex);
 
 		vkCmdEndRenderPass(l_CommandBuffer);
-		m_Swapchain.SetTrackedLayout(m_CurrentImageIndex, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
 		m_Command.EndFrame(l_FrameIndex);
 
@@ -248,15 +217,11 @@ namespace Trinity
 
 		Utilities::VulkanUtilities::VKCheck(vkQueueSubmit(m_Device.GetGraphicsQueue(), 1, &l_SubmitInfo, l_InFlightFence), "Failed vkQueueSubmit");
 
-		VkResult l_PresentResult = m_Swapchain.Present(m_Device.GetPresentQueue(), m_CurrentImageIndex);
+		VkResult l_PresentResult = m_Swapchain.Present(m_Device.GetPresentQueue(), m_CurrentImageIndex, l_RenderFinishedSemaphore);
 
 		if (l_PresentResult == VK_ERROR_OUT_OF_DATE_KHR || l_PresentResult == VK_SUBOPTIMAL_KHR)
 		{
-			m_Swapchain.Recreate();
-			m_Sync.Create(m_FramesInFlight, m_Swapchain.GetImageCount());
-			m_RenderPass.Recreate(m_Swapchain);
-			m_Framebuffers.Recreate(m_Swapchain, m_RenderPass);
-			m_Pipeline.Recreate(m_RenderPass);
+			RecreateSwapchain(0, 0);
 		}
 		else if (l_PresentResult != VK_SUCCESS)
 		{
@@ -266,6 +231,27 @@ namespace Trinity
 		}
 
 		m_FrameResources.AdvanceFrame();
+		m_FrameBegun = false;
+	}
+
+	void VulkanRenderer::RecreateSwapchain(uint32_t preferredWidth, uint32_t preferredHeight)
+	{
+		vkDeviceWaitIdle(m_Device.GetDevice());
+
+		const bool l_Recreated = m_Swapchain.Recreate(preferredWidth, preferredHeight);
+		if (!l_Recreated)
+		{
+			return;
+		}
+
+		m_Sync.Create(m_FramesInFlight, m_Swapchain.GetImageCount());
+		m_RenderPass.Recreate(m_Swapchain);
+		m_Framebuffers.Recreate(m_Swapchain, m_RenderPass);
+		m_Pipeline.Recreate(m_RenderPass);
+
+		m_FrameResources.Reset();
+
+		m_CurrentImageIndex = 0;
 		m_FrameBegun = false;
 	}
 }

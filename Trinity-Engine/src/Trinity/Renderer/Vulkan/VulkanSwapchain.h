@@ -24,10 +24,10 @@ namespace Trinity
 			uint32_t preferredHeight = 0);
 		void Shutdown();
 
-		void Recreate(uint32_t preferredWidth = 0, uint32_t preferredHeight = 0);
+		bool Recreate(uint32_t preferredWidth = 0, uint32_t preferredHeight = 0);
 
 		VkResult AcquireNextImage(VkSemaphore imageAvailableSemaphore, uint32_t& outImageIndex);
-		VkResult Present(VkQueue presentQueue, uint32_t imageIndex);
+		VkResult Present(VkQueue presentQueue, uint32_t imageIndex, VkSemaphore renderFinishedSemaphore);
 
 		VkSwapchainKHR GetSwapchain() const { return m_SwapchainHandle; }
 		VkFormat GetImageFormat() const { return m_ImageFormat; }
@@ -40,27 +40,14 @@ namespace Trinity
 		VkImage GetImage(uint32_t index) const;
 		VkImageView GetImageView(uint32_t index) const;
 
-		// Per-swapchain-image semaphores (fixes "semaphore still in use by swapchain" reuse issues)
-		VkSemaphore GetRenderFinishedSemaphore(uint32_t imageIndex) const;
-
-		// Track which fence last used a swapchain image (prevents CPU from reusing an image still in flight)
-		VkFence GetImageInFlightFence(uint32_t imageIndex) const;
-		void SetImageInFlightFence(uint32_t imageIndex, VkFence fence);
-
-		// Layout tracking (lets us do explicit transitions cleanly before you have a render pass)
-		VkImageLayout GetTrackedLayout(uint32_t imageIndex) const;
-		void SetTrackedLayout(uint32_t imageIndex, VkImageLayout layout);
-
 		VkImageUsageFlags GetImageUsageFlags() const { return m_ImageUsageFlags; }
 		bool IsVSyncEnabled() const { return m_VSync; }
 
 	private:
 		void CreateSwapchain(uint32_t preferredWidth, uint32_t preferredHeight, VkSwapchainKHR oldSwapchain);
 		void CreateImageViews();
-		void CreatePerImageSync();
 
 		void DestroyImageViews(const std::vector<VkImageView>& imageViews);
-		void DestroyPerImageSync(const std::vector<VkSemaphore>& semaphores);
 		void DestroySwapchain(VkSwapchainKHR swapchainHandle);
 
 		VkSurfaceFormatKHR ChooseSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats) const;
@@ -78,10 +65,6 @@ namespace Trinity
 
 		std::vector<VkImage> m_Images;
 		std::vector<VkImageView> m_ImageViews;
-
-		std::vector<VkSemaphore> m_RenderFinishedSemaphores; // per swapchain image
-		std::vector<VkFence> m_ImagesInFlightFences;          // not owned, just tracked
-		std::vector<VkImageLayout> m_TrackedLayouts;
 
 		VkFormat m_ImageFormat = VK_FORMAT_UNDEFINED;
 		VkExtent2D m_Extent{};

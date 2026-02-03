@@ -28,7 +28,6 @@ namespace Trinity
 
 		CreateSwapchain(preferredWidth, preferredHeight, VK_NULL_HANDLE);
 		CreateImageViews();
-		CreatePerImageSync();
 
 		TR_CORE_TRACE("Swapchain created: images = {}, format = {}, extent = {}x{}", GetImageCount(), (int)m_ImageFormat, m_Extent.width, m_Extent.height);
 	}
@@ -39,18 +38,12 @@ namespace Trinity
 		{
 			m_Images.clear();
 			m_ImageViews.clear();
-			m_RenderFinishedSemaphores.clear();
-			m_ImagesInFlightFences.clear();
-			m_TrackedLayouts.clear();
 
 			return;
 		}
 
 		TR_CORE_TRACE("Destroying swapchain");
 		vkDeviceWaitIdle(m_Device);
-
-		DestroyPerImageSync(m_RenderFinishedSemaphores);
-		m_RenderFinishedSemaphores.clear();
 
 		DestroyImageViews(m_ImageViews);
 		m_ImageViews.clear();
@@ -59,8 +52,6 @@ namespace Trinity
 		m_SwapchainHandle = VK_NULL_HANDLE;
 
 		m_Images.clear();
-		m_ImagesInFlightFences.clear();
-		m_TrackedLayouts.clear();
 
 		m_ImageFormat = VK_FORMAT_UNDEFINED;
 		m_Extent = {};
@@ -72,7 +63,7 @@ namespace Trinity
 		m_Allocator = nullptr;
 	}
 
-	void VulkanSwapchain::Recreate(uint32_t preferredWidth, uint32_t preferredHeight)
+	bool VulkanSwapchain::Recreate(uint32_t preferredWidth, uint32_t preferredHeight)
 	{
 		if (m_Device == VK_NULL_HANDLE || m_PhysicalDevice == VK_NULL_HANDLE || m_Surface == VK_NULL_HANDLE)
 		{
@@ -81,26 +72,34 @@ namespace Trinity
 			std::abort();
 		}
 
+		VkSurfaceCapabilitiesKHR l_Capabilities{};
+		Utilities::VulkanUtilities::VKCheck(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_PhysicalDevice, m_Surface, &l_Capabilities), "Failed vkGetPhysicalDeviceSurfaceCapabilitiesKHR");
+
+		const VkExtent2D l_TargetExtent = ChooseExtent(l_Capabilities, preferredWidth, preferredHeight);
+		if (l_TargetExtent.width == 0 || l_TargetExtent.height == 0)
+		{
+			TR_CORE_TRACE("Swapchain recreate skipped: extent is {}x{}", l_TargetExtent.width, l_TargetExtent.height);
+
+			return false;
+		}
+
 		TR_CORE_TRACE("Recreating swapchain");
-		vkDeviceWaitIdle(m_Device);
 
 		VkSwapchainKHR l_OldSwapchain = m_SwapchainHandle;
 		std::vector<VkImageView> l_OldImageViews = std::move(m_ImageViews);
-		std::vector<VkSemaphore> l_OldSemaphores = std::move(m_RenderFinishedSemaphores);
 
 		m_Images.clear();
-		m_ImagesInFlightFences.clear();
-		m_TrackedLayouts.clear();
+		m_ImageViews.clear();
 
 		CreateSwapchain(preferredWidth, preferredHeight, l_OldSwapchain);
 		CreateImageViews();
-		CreatePerImageSync();
 
-		DestroyPerImageSync(l_OldSemaphores);
 		DestroyImageViews(l_OldImageViews);
 		DestroySwapchain(l_OldSwapchain);
 
 		TR_CORE_TRACE("Swapchain recreated: images = {}, extent = {}x{}", GetImageCount(), m_Extent.width, m_Extent.height);
+
+		return true;
 	}
 
 	VkResult VulkanSwapchain::AcquireNextImage(VkSemaphore imageAvailableSemaphore, uint32_t& outImageIndex)
@@ -113,19 +112,17 @@ namespace Trinity
 		return vkAcquireNextImageKHR(m_Device, m_SwapchainHandle, UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &outImageIndex);
 	}
 
-	VkResult VulkanSwapchain::Present(VkQueue presentQueue, uint32_t imageIndex)
+	VkResult VulkanSwapchain::Present(VkQueue presentQueue, uint32_t imageIndex, VkSemaphore renderFinishedSemaphore)
 	{
 		if (m_SwapchainHandle == VK_NULL_HANDLE)
 		{
 			return VK_ERROR_INITIALIZATION_FAILED;
 		}
 
-		VkSemaphore l_WaitSemaphore = GetRenderFinishedSemaphore(imageIndex);
-
 		VkPresentInfoKHR l_PresentInfo{};
 		l_PresentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 		l_PresentInfo.waitSemaphoreCount = 1;
-		l_PresentInfo.pWaitSemaphores = &l_WaitSemaphore;
+		l_PresentInfo.pWaitSemaphores = &renderFinishedSemaphore;
 		l_PresentInfo.swapchainCount = 1;
 		l_PresentInfo.pSwapchains = &m_SwapchainHandle;
 		l_PresentInfo.pImageIndices = &imageIndex;
@@ -155,66 +152,6 @@ namespace Trinity
 		}
 
 		return m_ImageViews[index];
-	}
-
-	VkSemaphore VulkanSwapchain::GetRenderFinishedSemaphore(uint32_t imageIndex) const
-	{
-		if (imageIndex >= m_RenderFinishedSemaphores.size())
-		{
-			TR_CORE_CRITICAL("VulkanSwapchain::GetRenderFinishedSemaphore invalid imageIndex {}", imageIndex);
-
-			std::abort();
-		}
-
-		return m_RenderFinishedSemaphores[imageIndex];
-	}
-
-	VkFence VulkanSwapchain::GetImageInFlightFence(uint32_t imageIndex) const
-	{
-		if (imageIndex >= m_ImagesInFlightFences.size())
-		{
-			TR_CORE_CRITICAL("VulkanSwapchain::GetImageInFlightFence invalid imageIndex {}", imageIndex);
-
-			std::abort();
-		}
-
-		return m_ImagesInFlightFences[imageIndex];
-	}
-
-	void VulkanSwapchain::SetImageInFlightFence(uint32_t imageIndex, VkFence fence)
-	{
-		if (imageIndex >= m_ImagesInFlightFences.size())
-		{
-			TR_CORE_CRITICAL("VulkanSwapchain::SetImageInFlightFence invalid imageIndex {}", imageIndex);
-
-			std::abort();
-		}
-
-		m_ImagesInFlightFences[imageIndex] = fence;
-	}
-
-	VkImageLayout VulkanSwapchain::GetTrackedLayout(uint32_t imageIndex) const
-	{
-		if (imageIndex >= m_TrackedLayouts.size())
-		{
-			TR_CORE_CRITICAL("VulkanSwapchain::GetTrackedLayout invalid imageIndex {}", imageIndex);
-
-			std::abort();
-		}
-
-		return m_TrackedLayouts[imageIndex];
-	}
-
-	void VulkanSwapchain::SetTrackedLayout(uint32_t imageIndex, VkImageLayout layout)
-	{
-		if (imageIndex >= m_TrackedLayouts.size())
-		{
-			TR_CORE_CRITICAL("VulkanSwapchain::SetTrackedLayout invalid imageIndex {}", imageIndex);
-
-			std::abort();
-		}
-
-		m_TrackedLayouts[imageIndex] = layout;
 	}
 
 	void VulkanSwapchain::CreateSwapchain(uint32_t preferredWidth, uint32_t preferredHeight, VkSwapchainKHR oldSwapchain)
@@ -307,9 +244,6 @@ namespace Trinity
 		Utilities::VulkanUtilities::VKCheck(vkGetSwapchainImagesKHR(m_Device, m_SwapchainHandle, &l_SwapchainImageCount, nullptr), "Failed vkGetSwapchainImagesKHR (count)");
 		m_Images.resize(l_SwapchainImageCount);
 		Utilities::VulkanUtilities::VKCheck(vkGetSwapchainImagesKHR(m_Device, m_SwapchainHandle, &l_SwapchainImageCount, m_Images.data()), "Failed vkGetSwapchainImagesKHR");
-
-		m_ImagesInFlightFences.assign(m_Images.size(), VK_NULL_HANDLE);
-		m_TrackedLayouts.assign(m_Images.size(), VK_IMAGE_LAYOUT_UNDEFINED);
 	}
 
 	void VulkanSwapchain::CreateImageViews()
@@ -338,20 +272,6 @@ namespace Trinity
 		}
 	}
 
-	void VulkanSwapchain::CreatePerImageSync()
-	{
-		m_RenderFinishedSemaphores.clear();
-		m_RenderFinishedSemaphores.resize(m_Images.size(), VK_NULL_HANDLE);
-
-		VkSemaphoreCreateInfo l_SemInfo{};
-		l_SemInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-		for (uint32_t i = 0; i < m_Images.size(); ++i)
-		{
-			Utilities::VulkanUtilities::VKCheck(vkCreateSemaphore(m_Device, &l_SemInfo, m_Allocator, &m_RenderFinishedSemaphores[i]), "Failed vkCreateSemaphore (RenderFinished per-image)");
-		}
-	}
-
 	void VulkanSwapchain::DestroyImageViews(const std::vector<VkImageView>& imageViews)
 	{
 		for (VkImageView it_View : imageViews)
@@ -359,17 +279,6 @@ namespace Trinity
 			if (it_View != VK_NULL_HANDLE)
 			{
 				vkDestroyImageView(m_Device, it_View, m_Allocator);
-			}
-		}
-	}
-
-	void VulkanSwapchain::DestroyPerImageSync(const std::vector<VkSemaphore>& semaphores)
-	{
-		for (VkSemaphore it_Sem : semaphores)
-		{
-			if (it_Sem != VK_NULL_HANDLE)
-			{
-				vkDestroySemaphore(m_Device, it_Sem, m_Allocator);
 			}
 		}
 	}

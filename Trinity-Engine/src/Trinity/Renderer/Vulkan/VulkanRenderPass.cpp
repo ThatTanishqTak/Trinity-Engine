@@ -74,7 +74,7 @@ namespace Trinity
 		l_ColorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 		l_ColorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		l_ColorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		l_ColorAttachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		l_ColorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		l_ColorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 		VkAttachmentDescription l_DepthAttachment{};

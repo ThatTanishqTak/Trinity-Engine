@@ -34,6 +34,9 @@ namespace Trinity
 		void EndFrame() override;
 
 	private:
+		void RecreateSwapchain(uint32_t preferredWidth, uint32_t preferredHeight);
+
+	private:
 		Window* m_Window = nullptr;
 
 		VulkanInstance m_Instance;
@@ -51,5 +54,9 @@ namespace Trinity
 		uint32_t m_FramesInFlight = 2;
 		uint32_t m_CurrentImageIndex = 0;
 		bool m_FrameBegun = false;
+
+		bool m_ResizePending = false;
+		uint32_t m_PendingWidth = 0;
+		uint32_t m_PendingHeight = 0;
 	};
 }

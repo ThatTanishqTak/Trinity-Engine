@@ -58,8 +58,8 @@ namespace Trinity
 		l_ApplicationInfo.apiVersion = VK_API_VERSION_1_3;
 		l_ApplicationInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
 		l_ApplicationInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-		l_ApplicationInfo.pApplicationName = "Trinity Application";
-		l_ApplicationInfo.pEngineName = "Trinity Engine";
+		l_ApplicationInfo.pApplicationName = "Trinity-Application";
+		l_ApplicationInfo.pEngineName = "Trinity-Engine";
 
 		VkInstanceCreateInfo l_InstanceInfo{};
 		l_InstanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -278,10 +278,6 @@ namespace Trinity
 		else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
 		{
 			TR_CORE_WARN("[VULKAN] {}", pCallbackData->pMessage);
-		}
-		else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
-		{
-			TR_CORE_TRACE("[VULKAN] {}", pCallbackData->pMessage);
 		}
 
 		return VK_FALSE;
