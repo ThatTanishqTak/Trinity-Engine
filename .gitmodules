@@ -1,9 +1,6 @@
 [submodule "Engine/vendor/spdlog"]
 	path = Engine/vendor/spdlog
 	url = https://github.com/ThatTanishqTak/spdlog.git
-[submodule "Engine/vendor/glfw"]
-	path = Engine/vendor/glfw
-	url = https://github.com/ThatTanishqTak/glfw.git
 [submodule "Engine/vendor/imgui"]
 	path = Engine/vendor/imgui
 	url = https://github.com/ThatTanishqTak/imgui.git

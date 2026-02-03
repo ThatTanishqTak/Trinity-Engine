@@ -1,8 +1,12 @@
 cmake_minimum_required(VERSION 3.30)
-project(TrinityEngine)
+project(Trinity)
 
 if (MSVC)
     add_compile_options(/MP)
+endif()
+
+if (_WIN32)
+    target_compile_definitions(VK_USE_PLATFORM_WIN32_KHR)
 endif()
 
 set(CMAKE_CXX_STANDARD 23)
@@ -21,5 +25,5 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_BASE}/${PROJECT_NAME})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${OUTPUT_BASE}/${PROJECT_NAME})
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${OUTPUT_BASE}/${PROJECT_NAME})
 
-add_subdirectory(Engine)
-add_subdirectory(Client)
+add_subdirectory(Trinity-Engine)
+add_subdirectory(Trinity-Forge)
