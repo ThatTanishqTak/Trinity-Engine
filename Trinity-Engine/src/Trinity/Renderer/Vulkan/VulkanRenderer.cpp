@@ -48,6 +48,8 @@ namespace Trinity
 		l_PipelineDesc.EnableDepthTest = true;
 		l_PipelineDesc.EnableDepthWrite = true;
 		l_PipelineDesc.DepthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+		l_PipelineDesc.CullMode = VK_CULL_MODE_BACK_BIT;
+		l_PipelineDesc.FrontFace = VK_FRONT_FACE_CLOCKWISE;
 		m_Pipeline.SetGraphicsDescription(l_PipelineDesc);
 		m_Pipeline.Initialize(m_Device, m_RenderPass, m_Descriptors, "Assets/Shaders/Simple.vert.spv", "Assets/Shaders/Simple.frag.spv", m_Instance.GetAllocator(), true);
 		m_Command.Initialize(m_Device, m_FramesInFlight, m_Instance.GetAllocator());
