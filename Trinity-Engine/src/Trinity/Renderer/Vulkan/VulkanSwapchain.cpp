@@ -5,28 +5,40 @@
 
 #include <algorithm>
 #include <cstdlib>
-#include <cstring>
 
 namespace Trinity
 {
-	void VulkanSwapchain::Initialize(const VulkanDevice& device, VkSurfaceKHR surface, VkAllocationCallbacks* allocator, bool vsync, uint32_t preferredWidth, uint32_t preferredHeight)
+	void VulkanSwapchain::Initialize(const VulkanContext& context, bool vsync, uint32_t preferredWidth, uint32_t preferredHeight)
 	{
-		m_Device = device.GetDevice();
-		m_PhysicalDevice = device.GetPhysicalDevice();
+		InitializeInternal(context.Device, context.PhysicalDevice, context.Surface, context.Allocator, context.Queues.GraphicsFamilyIndex, context.Queues.PresentFamilyIndex,
+			vsync, preferredWidth, preferredHeight);
+	}
+
+	void VulkanSwapchain::InitializeInternal(VkDevice device, VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, VkAllocationCallbacks* allocator,
+		uint32_t graphicsQueueFamilyIndex, uint32_t presentQueueFamilyIndex, bool vsync, uint32_t preferredWidth, uint32_t preferredHeight)
+	{
+		m_Device = device;
+		m_PhysicalDevice = physicalDevice;
 		m_Surface = surface;
 		m_Allocator = allocator;
 		m_VSync = vsync;
-		m_GraphicsQueueFamilyIndex = device.GetGraphicsQueueFamilyIndex();
-		m_PresentQueueFamilyIndex = device.GetPresentQueueFamilyIndex();
+		m_GraphicsQueueFamilyIndex = graphicsQueueFamilyIndex;
+		m_PresentQueueFamilyIndex = presentQueueFamilyIndex;
 
 		if (m_Device == VK_NULL_HANDLE || m_PhysicalDevice == VK_NULL_HANDLE || m_Surface == VK_NULL_HANDLE)
 		{
 			TR_CORE_CRITICAL("VulkanSwapchain::Initialize called with invalid device/physicalDevice/surface");
-
 			std::abort();
 		}
 
-		TR_CORE_TRACE("Creating swapchain");
+		if (m_GraphicsQueueFamilyIndex == UINT32_MAX || m_PresentQueueFamilyIndex == UINT32_MAX)
+		{
+			TR_CORE_CRITICAL("VulkanSwapchain::Initialize called with invalid queue family indices (graphics={}, present={})",
+				m_GraphicsQueueFamilyIndex, m_PresentQueueFamilyIndex);
+			std::abort();
+		}
+
+		TR_CORE_TRACE("Creating swapchain (vsync={}, preferredExtent={}x{})", m_VSync, preferredWidth, preferredHeight);
 
 		CreateSwapchain(preferredWidth, preferredHeight, VK_NULL_HANDLE);
 		CreateImageViews();
@@ -62,6 +74,9 @@ namespace Trinity
 		m_PhysicalDevice = VK_NULL_HANDLE;
 		m_Surface = VK_NULL_HANDLE;
 		m_Allocator = nullptr;
+
+		m_GraphicsQueueFamilyIndex = UINT32_MAX;
+		m_PresentQueueFamilyIndex = UINT32_MAX;
 	}
 
 	bool VulkanSwapchain::Recreate(uint32_t preferredWidth, uint32_t preferredHeight)
@@ -84,7 +99,13 @@ namespace Trinity
 			return false;
 		}
 
-		TR_CORE_TRACE("Recreating swapchain");
+		if (l_Capabilities.currentExtent.width == UINT32_MAX && (preferredWidth == 0 || preferredHeight == 0))
+		{
+			TR_CORE_WARN("Swapchain recreate requested with preferredExtent={}x{} while surface currentExtent is dynamic"
+				"Pass the window framebuffer size for correct results.", preferredWidth, preferredHeight);
+		}
+
+		TR_CORE_TRACE("Recreating swapchain (preferredExtent={}x{})", preferredWidth, preferredHeight);
 
 		VkSwapchainKHR l_OldSwapchain = m_SwapchainHandle;
 		std::vector<VkImageView> l_OldImageViews = std::move(m_ImageViews);
@@ -170,13 +191,10 @@ namespace Trinity
 		}
 
 		std::vector<VkSurfaceFormatKHR> l_Formats(l_FormatCount);
-		Utilities::VulkanUtilities::VKCheck(vkGetPhysicalDeviceSurfaceFormatsKHR(m_PhysicalDevice, m_Surface, &l_FormatCount, l_Formats.data()),
-			"Failed vkGetPhysicalDeviceSurfaceFormatsKHR");
+		Utilities::VulkanUtilities::VKCheck(vkGetPhysicalDeviceSurfaceFormatsKHR(m_PhysicalDevice, m_Surface, &l_FormatCount, l_Formats.data()), "Failed vkGetPhysicalDeviceSurfaceFormatsKHR");
 
 		uint32_t l_PresentModeCount = 0;
-		Utilities::VulkanUtilities::VKCheck(vkGetPhysicalDeviceSurfacePresentModesKHR(m_PhysicalDevice, m_Surface, &l_PresentModeCount, nullptr),
-			"Failed vkGetPhysicalDeviceSurfacePresentModesKHR (count)");
-
+		Utilities::VulkanUtilities::VKCheck(vkGetPhysicalDeviceSurfacePresentModesKHR(m_PhysicalDevice, m_Surface, &l_PresentModeCount, nullptr), "Failed vkGetPhysicalDeviceSurfacePresentModesKHR (count)");
 		if (l_PresentModeCount == 0)
 		{
 			TR_CORE_CRITICAL("Swapchain: surface has no present modes");
@@ -185,8 +203,7 @@ namespace Trinity
 		}
 
 		std::vector<VkPresentModeKHR> l_PresentModes(l_PresentModeCount);
-		Utilities::VulkanUtilities::VKCheck(vkGetPhysicalDeviceSurfacePresentModesKHR(m_PhysicalDevice, m_Surface, &l_PresentModeCount, l_PresentModes.data()),
-			"Failed vkGetPhysicalDeviceSurfacePresentModesKHR");
+		Utilities::VulkanUtilities::VKCheck(vkGetPhysicalDeviceSurfacePresentModesKHR(m_PhysicalDevice, m_Surface, &l_PresentModeCount, l_PresentModes.data()), "Failed vkGetPhysicalDeviceSurfacePresentModesKHR");
 
 		const VkSurfaceFormatKHR l_SurfaceFormat = ChooseSurfaceFormat(l_Formats);
 		const VkPresentModeKHR l_PresentMode = ChoosePresentMode(l_PresentModes);
@@ -206,7 +223,6 @@ namespace Trinity
 			l_ImageCount = l_Capabilities.maxImageCount;
 		}
 
-		// We want to be able to clear the image before you have a render pass.
 		VkImageUsageFlags l_RequestedUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 		l_RequestedUsage &= l_Capabilities.supportedUsageFlags;
 		if ((l_RequestedUsage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) == 0)
@@ -227,6 +243,7 @@ namespace Trinity
 		l_CreateInfo.imageExtent = l_Extent;
 		l_CreateInfo.imageArrayLayers = 1;
 		l_CreateInfo.imageUsage = m_ImageUsageFlags;
+
 		uint32_t l_QueueFamilyIndices[] = { m_GraphicsQueueFamilyIndex, m_PresentQueueFamilyIndex };
 		if (m_GraphicsQueueFamilyIndex == m_PresentQueueFamilyIndex)
 		{
@@ -240,6 +257,7 @@ namespace Trinity
 			l_CreateInfo.queueFamilyIndexCount = 2;
 			l_CreateInfo.pQueueFamilyIndices = l_QueueFamilyIndices;
 		}
+
 		l_CreateInfo.preTransform = l_Capabilities.currentTransform;
 		l_CreateInfo.compositeAlpha = ChooseCompositeAlpha(l_Capabilities);
 		l_CreateInfo.presentMode = l_PresentMode;
@@ -252,7 +270,8 @@ namespace Trinity
 		m_Extent = l_Extent;
 
 		uint32_t l_SwapchainImageCount = 0;
-		Utilities::VulkanUtilities::VKCheck(vkGetSwapchainImagesKHR(m_Device, m_SwapchainHandle, &l_SwapchainImageCount, nullptr), "Failed vkGetSwapchainImagesKHR (count)");
+		Utilities::VulkanUtilities::VKCheck( vkGetSwapchainImagesKHR(m_Device, m_SwapchainHandle, &l_SwapchainImageCount, nullptr), "Failed vkGetSwapchainImagesKHR (count)");
+		
 		m_Images.resize(l_SwapchainImageCount);
 		Utilities::VulkanUtilities::VKCheck(vkGetSwapchainImagesKHR(m_Device, m_SwapchainHandle, &l_SwapchainImageCount, m_Images.data()), "Failed vkGetSwapchainImagesKHR");
 	}
@@ -262,7 +281,7 @@ namespace Trinity
 		m_ImageViews.clear();
 		m_ImageViews.resize(m_Images.size());
 
-		for (uint32_t i = 0; i < m_Images.size(); ++i)
+		for (uint32_t i = 0; i < static_cast<uint32_t>(m_Images.size()); ++i)
 		{
 			VkImageViewCreateInfo l_ViewInfo{};
 			l_ViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;

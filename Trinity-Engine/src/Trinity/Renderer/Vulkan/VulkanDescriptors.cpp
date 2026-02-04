@@ -1,14 +1,20 @@
 #include "Trinity/Renderer/Vulkan/VulkanDescriptors.h"
 
-#include "Trinity/Renderer/Vulkan/VulkanDevice.h"
 #include "Trinity/Utilities/Utilities.h"
 
 #include <cstdlib>
 
 namespace Trinity
 {
-	void VulkanDescriptors::Initialize(const VulkanDevice& device, uint32_t framesInFlight, VkAllocationCallbacks* allocator)
+	void VulkanDescriptors::Initialize(const VulkanContext& context, uint32_t framesInFlight)
 	{
+		if (m_Device != VK_NULL_HANDLE)
+		{
+			TR_CORE_CRITICAL("VulkanDescriptors::Initialize called twice (Shutdown first)");
+
+			std::abort();
+		}
+
 		if (framesInFlight == 0)
 		{
 			TR_CORE_CRITICAL("VulkanDescriptors::Initialize called with framesInFlight == 0");
@@ -16,8 +22,8 @@ namespace Trinity
 			std::abort();
 		}
 
-		m_Device = device.GetDevice();
-		m_Allocator = allocator;
+		m_Device = context.Device;
+		m_Allocator = context.Allocator;
 
 		if (m_Device == VK_NULL_HANDLE)
 		{
@@ -28,13 +34,17 @@ namespace Trinity
 
 		CreateLayouts();
 
-		const uint32_t l_MaxSets = framesInFlight + 32;
+		// Reserve extra sets for future material/object descriptors without immediately redesigning the pool.
+		const uint32_t l_ExtraSets = 64;
+		const uint32_t l_MaxSets = framesInFlight + l_ExtraSets;
 
+		// Global set layout:
 		// binding 0: UBO (1 per set)
-		// binding 1: Combined image sampler (1 per set) - optional at runtime, but reserve capacity anyway
+		// binding 1: Combined image sampler (1 per set)
 		const uint32_t l_UBOCount = l_MaxSets * 1;
 		const uint32_t l_SamplerCount = l_MaxSets * 1;
 
+		// Not used yet, but the pool helper supports it.
 		const uint32_t l_StorageCount = 0;
 
 		CreateDescriptorPool(l_MaxSets, l_UBOCount, l_SamplerCount, l_StorageCount);
@@ -82,7 +92,7 @@ namespace Trinity
 			std::abort();
 		}
 
-		VkDescriptorSet l_Set = GetGlobalSet(frameIndex);
+		const VkDescriptorSet l_Set = GetGlobalSet(frameIndex);
 		WriteUniformBuffer(l_Set, 0, buffer, offset, range);
 	}
 
@@ -95,7 +105,7 @@ namespace Trinity
 			std::abort();
 		}
 
-		VkDescriptorSet l_Set = GetGlobalSet(frameIndex);
+		const VkDescriptorSet l_Set = GetGlobalSet(frameIndex);
 		WriteCombinedImageSampler(l_Set, 1, imageView, sampler, imageLayout);
 	}
 
@@ -120,10 +130,10 @@ namespace Trinity
 
 	void VulkanDescriptors::WriteCombinedImageSampler(VkDescriptorSet descriptorSet, uint32_t binding, VkImageView imageView, VkSampler sampler, VkImageLayout imageLayout)
 	{
-		VkDescriptorImageInfo l_ImageInfo{};
-		l_ImageInfo.sampler = sampler;
-		l_ImageInfo.imageView = imageView;
-		l_ImageInfo.imageLayout = imageLayout;
+		VkDescriptorImageInfo imageInfo{};
+		imageInfo.sampler = sampler;
+		imageInfo.imageView = imageView;
+		imageInfo.imageLayout = imageLayout;
 
 		VkWriteDescriptorSet l_Write{};
 		l_Write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -132,7 +142,7 @@ namespace Trinity
 		l_Write.dstArrayElement = 0;
 		l_Write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		l_Write.descriptorCount = 1;
-		l_Write.pImageInfo = &l_ImageInfo;
+		l_Write.pImageInfo = &imageInfo;
 
 		vkUpdateDescriptorSets(m_Device, 1, &l_Write, 0, nullptr);
 	}
@@ -160,7 +170,7 @@ namespace Trinity
 	{
 		// Global layout (Set 0):
 		// binding 0: Uniform buffer (camera/scene)
-		// binding 1: Combined image sampler (optional default texture slot)
+		// binding 1: Combined image sampler (default texture slot)
 		VkDescriptorSetLayoutBinding l_UBOBinding{};
 		l_UBOBinding.binding = 0;
 		l_UBOBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -239,7 +249,7 @@ namespace Trinity
 
 		VkDescriptorPoolCreateInfo l_PoolInfo{};
 		l_PoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		l_PoolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+		l_PoolInfo.flags = 0; // No per-set free. Pool is destroyed as a whole.
 		l_PoolInfo.maxSets = maxSets;
 		l_PoolInfo.poolSizeCount = static_cast<uint32_t>(l_PoolSizes.size());
 		l_PoolInfo.pPoolSizes = l_PoolSizes.data();
@@ -272,9 +282,9 @@ namespace Trinity
 
 		Utilities::VulkanUtilities::VKCheck(vkAllocateDescriptorSets(m_Device, &l_AllocInfo, l_Sets.data()), "Failed vkAllocateDescriptorSets (per-frame Global)");
 
-		for (uint32_t l_i = 0; l_i < framesInFlight; ++l_i)
+		for (uint32_t i = 0; i < framesInFlight; ++i)
 		{
-			m_Frames[l_i].GlobalSet = l_Sets[l_i];
+			m_Frames[i].GlobalSet = l_Sets[i];
 		}
 	}
 }

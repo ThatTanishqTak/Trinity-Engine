@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Trinity/Renderer/Vulkan/VulkanContext.h"
+
 #include <vulkan/vulkan.h>
 
 #include <cstdint>
@@ -18,10 +20,10 @@ namespace Trinity
 		VulkanSync(VulkanSync&&) = delete;
 		VulkanSync& operator=(VulkanSync&&) = delete;
 
-		void Initialize(VkDevice device);
-		void Create(uint32_t maxFramesInFlight, uint32_t swapchainImageCount);
+		void Initialize(const VulkanContext& context, uint32_t maxFramesInFlight, uint32_t swapchainImageCount);
+		void Shutdown();
 
-		void Cleanup();
+		void RecreateForSwapchain(uint32_t swapchainImageCount);
 
 	public:
 		VkSemaphore GetImageAvailableSemaphore(uint32_t frameIndex) const;
@@ -39,20 +41,27 @@ namespace Trinity
 		uint32_t GetSwapchainImageCount() const { return m_SwapchainImageCount; }
 
 	private:
-		void DestroySyncObjects();
+		void CreateFrameSyncObjects();
+		void DestroyFrameSyncObjects();
+
+		void CreateSwapchainSyncObjects(uint32_t swapchainImageCount);
+		void DestroySwapchainSyncObjects();
 
 	private:
 		VkDevice m_Device = VK_NULL_HANDLE;
+		VkAllocationCallbacks* m_Allocator = nullptr;
 
 		uint32_t m_MaxFramesInFlight = 0;
 		uint32_t m_SwapchainImageCount = 0;
 
+		// Per-frame
 		std::vector<VkSemaphore> m_ImageAvailableSemaphores;
 		std::vector<VkFence> m_InFlightFences;
 
+		// Per-swapchain-image (avoids semaphore reuse warnings)
 		std::vector<VkSemaphore> m_RenderFinishedSemaphores;
-		std::vector<VkFence> m_ImagesInFlight;
 
-		bool m_IsCreated = false;
+		// Fence tracking per swapchain image
+		std::vector<VkFence> m_ImagesInFlight;
 	};
 }

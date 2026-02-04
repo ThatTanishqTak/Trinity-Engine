@@ -8,10 +8,18 @@
 
 namespace Trinity
 {
-	void VulkanRenderPass::Initialize(const VulkanDevice& device, const VulkanSwapchain& swapchain, VkAllocationCallbacks* allocator)
+	void VulkanRenderPass::Initialize(const VulkanContext& context, const VulkanSwapchain& swapchain)
 	{
-		m_Device = device.GetDevice();
-		m_Allocator = allocator;
+		if (m_Device != VK_NULL_HANDLE)
+		{
+			TR_CORE_CRITICAL("VulkanRenderPass::Initialize called twice (Shutdown first)");
+
+			std::abort();
+		}
+
+		m_DeviceRef = context.DeviceRef;
+		m_Device = context.Device;
+		m_Allocator = context.Allocator;
 
 		if (m_Device == VK_NULL_HANDLE)
 		{
@@ -20,8 +28,16 @@ namespace Trinity
 			std::abort();
 		}
 
+		if (m_DeviceRef == nullptr)
+		{
+			TR_CORE_CRITICAL("VulkanRenderPass::Initialize requires VulkanContext.DeviceRef");
+
+			std::abort();
+		}
+
 		m_ColorFormat = swapchain.GetImageFormat();
-		m_DepthFormat = device.FindDepthFormat();
+
+		m_DepthFormat = m_DeviceRef->FindDepthFormat();
 		if (m_DepthFormat == VK_FORMAT_UNDEFINED)
 		{
 			TR_CORE_CRITICAL("VulkanRenderPass::Initialize failed to select a depth format");
@@ -41,8 +57,10 @@ namespace Trinity
 
 		DestroyRenderPass();
 
+		m_DeviceRef = nullptr;
 		m_Device = VK_NULL_HANDLE;
 		m_Allocator = nullptr;
+
 		m_ColorFormat = VK_FORMAT_UNDEFINED;
 		m_DepthFormat = VK_FORMAT_UNDEFINED;
 	}
@@ -56,11 +74,11 @@ namespace Trinity
 			std::abort();
 		}
 
-		const VkFormat l_NewFormat = swapchain.GetImageFormat();
-		if (l_NewFormat != m_ColorFormat)
+		const VkFormat l_NewColorFormat = swapchain.GetImageFormat();
+		if (l_NewColorFormat != m_ColorFormat)
 		{
 			DestroyRenderPass();
-			m_ColorFormat = l_NewFormat;
+			m_ColorFormat = l_NewColorFormat;
 			CreateRenderPass(m_ColorFormat, m_DepthFormat);
 		}
 	}

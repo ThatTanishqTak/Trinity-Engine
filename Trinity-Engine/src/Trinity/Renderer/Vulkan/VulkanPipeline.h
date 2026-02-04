@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Trinity/Renderer/Vulkan/VulkanContext.h"
+
 #include <vulkan/vulkan.h>
 
 #include <cstdint>
@@ -9,7 +11,6 @@
 
 namespace Trinity
 {
-	class VulkanDevice;
 	class VulkanRenderPass;
 	class VulkanDescriptors;
 
@@ -46,8 +47,8 @@ namespace Trinity
 		VulkanPipeline(VulkanPipeline&&) = delete;
 		VulkanPipeline& operator=(VulkanPipeline&&) = delete;
 
-		void Initialize(const VulkanDevice& device, const VulkanRenderPass& renderPass, const VulkanDescriptors& descriptors, const std::string& vertexSPVPath,
-			const std::string& fragmentSpvPath, VkAllocationCallbacks* allocator = nullptr, bool enablePipelineCache = true);
+		void Initialize(const VulkanContext& context, const VulkanRenderPass& renderPass, const VulkanDescriptors& descriptors,
+			const std::string& vertexSPVPath, const std::string& fragmentSpvPath, bool enablePipelineCache = true);
 
 		void Shutdown();
 

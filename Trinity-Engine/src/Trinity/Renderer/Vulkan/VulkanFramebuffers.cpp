@@ -3,22 +3,36 @@
 #include "Trinity/Renderer/Vulkan/VulkanDevice.h"
 #include "Trinity/Renderer/Vulkan/VulkanSwapchain.h"
 #include "Trinity/Renderer/Vulkan/VulkanRenderPass.h"
-
 #include "Trinity/Utilities/Utilities.h"
 
 #include <cstdlib>
 
 namespace Trinity
 {
-	void VulkanFramebuffers::Initialize(const VulkanDevice& device, const VulkanSwapchain& swapchain, const VulkanRenderPass& renderPass, VkAllocationCallbacks* allocator)
+	void VulkanFramebuffers::Initialize(const VulkanContext& context, const VulkanSwapchain& swapchain, const VulkanRenderPass& renderPass)
 	{
-		m_DeviceRef = &device;
-		m_Device = device.GetDevice();
-		m_Allocator = allocator;
+		if (m_Device != VK_NULL_HANDLE)
+		{
+			TR_CORE_CRITICAL("VulkanFramebuffers::Initialize called twice (Shutdown first)");
+
+			std::abort();
+		}
+
+		m_DeviceRef = context.DeviceRef;
+		m_Device = context.Device;
+		m_Allocator = context.Allocator;
 
 		if (m_Device == VK_NULL_HANDLE)
 		{
 			TR_CORE_CRITICAL("VulkanFramebuffers::Initialize called with invalid VkDevice");
+
+			std::abort();
+		}
+
+		if (m_DeviceRef == nullptr)
+		{
+			TR_CORE_CRITICAL("VulkanFramebuffers::Initialize requires VulkanContext.DeviceRef");
+
 			std::abort();
 		}
 
@@ -32,10 +46,8 @@ namespace Trinity
 			return;
 		}
 
-		CreateDepthResources(l_Extent);
+		CreateDepthResources(l_Extent, renderPass.GetDepthFormat());
 		CreateFramebuffers(swapchain, renderPass.GetRenderPass());
-
-		TR_CORE_TRACE("Framebuffers created: {} (extent {}x{})", (uint32_t)m_Framebuffers.size(), m_Extent.width, m_Extent.height);
 	}
 
 	void VulkanFramebuffers::Shutdown()
@@ -79,10 +91,8 @@ namespace Trinity
 			return;
 		}
 
-		CreateDepthResources(l_Extent);
+		CreateDepthResources(l_Extent, renderPass.GetDepthFormat());
 		CreateFramebuffers(swapchain, renderPass.GetRenderPass());
-
-		TR_CORE_TRACE("Framebuffers recreated: {} (extent {}x{})", (uint32_t)m_Framebuffers.size(), m_Extent.width, m_Extent.height);
 	}
 
 	VkFramebuffer VulkanFramebuffers::GetFramebuffer(uint32_t imageIndex) const
@@ -97,39 +107,33 @@ namespace Trinity
 		return m_Framebuffers[imageIndex];
 	}
 
-	void VulkanFramebuffers::CreateDepthResources(VkExtent2D extent)
+	void VulkanFramebuffers::CreateDepthResources(VkExtent2D extent, VkFormat depthFormat)
 	{
-		if (m_DeviceRef == nullptr)
+		if (depthFormat == VK_FORMAT_UNDEFINED)
 		{
-			TR_CORE_CRITICAL("VulkanFramebuffers::CreateDepthResources missing device reference");
+			TR_CORE_CRITICAL("VulkanFramebuffers::CreateDepthResources called with undefined depth format");
 
 			std::abort();
 		}
 
-		m_DepthFormat = m_DeviceRef->FindDepthFormat();
-		if (m_DepthFormat == VK_FORMAT_UNDEFINED)
-		{
-			TR_CORE_CRITICAL("VulkanFramebuffers: failed to select a depth format");
+		m_DepthFormat = depthFormat;
 
-			std::abort();
-		}
+		VkImageCreateInfo imageInfo{};
+		imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+		imageInfo.imageType = VK_IMAGE_TYPE_2D;
+		imageInfo.extent.width = extent.width;
+		imageInfo.extent.height = extent.height;
+		imageInfo.extent.depth = 1;
+		imageInfo.mipLevels = 1;
+		imageInfo.arrayLayers = 1;
+		imageInfo.format = m_DepthFormat;
+		imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+		imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		imageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+		imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+		imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-		VkImageCreateInfo l_ImageInfo{};
-		l_ImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-		l_ImageInfo.imageType = VK_IMAGE_TYPE_2D;
-		l_ImageInfo.extent.width = extent.width;
-		l_ImageInfo.extent.height = extent.height;
-		l_ImageInfo.extent.depth = 1;
-		l_ImageInfo.mipLevels = 1;
-		l_ImageInfo.arrayLayers = 1;
-		l_ImageInfo.format = m_DepthFormat;
-		l_ImageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-		l_ImageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		l_ImageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-		l_ImageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-		l_ImageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-		Utilities::VulkanUtilities::VKCheck(vkCreateImage(m_Device, &l_ImageInfo, m_Allocator, &m_DepthImage), "Failed vkCreateImage (depth)");
+		Utilities::VulkanUtilities::VKCheck(vkCreateImage(m_Device, &imageInfo, m_Allocator, &m_DepthImage), "Failed vkCreateImage (depth)");
 
 		VkMemoryRequirements l_MemReq{};
 		vkGetImageMemoryRequirements(m_Device, m_DepthImage, &l_MemReq);
@@ -210,10 +214,9 @@ namespace Trinity
 		}
 
 		const std::vector<VkImageView>& l_Views = swapchain.GetImageViews();
-		m_Framebuffers.clear();
-		m_Framebuffers.resize(l_Views.size(), VK_NULL_HANDLE);
+		m_Framebuffers.assign(l_Views.size(), VK_NULL_HANDLE);
 
-		for (uint32_t i = 0; i < l_Views.size(); ++i)
+		for (uint32_t i = 0; i < static_cast<uint32_t>(l_Views.size()); ++i)
 		{
 			VkImageView l_Attachments[] = { l_Views[i], m_DepthImageView };
 

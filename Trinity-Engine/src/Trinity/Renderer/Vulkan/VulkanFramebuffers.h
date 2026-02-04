@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Trinity/Renderer/Vulkan/VulkanContext.h"
+
 #include <vulkan/vulkan.h>
 
 #include <cstdint>
@@ -7,9 +9,9 @@
 
 namespace Trinity
 {
-	class VulkanDevice;
 	class VulkanSwapchain;
 	class VulkanRenderPass;
+	class VulkanDevice;
 
 	class VulkanFramebuffers
 	{
@@ -22,7 +24,7 @@ namespace Trinity
 		VulkanFramebuffers(VulkanFramebuffers&&) = delete;
 		VulkanFramebuffers& operator=(VulkanFramebuffers&&) = delete;
 
-		void Initialize(const VulkanDevice& device, const VulkanSwapchain& swapchain, const VulkanRenderPass& renderPass, VkAllocationCallbacks* allocator = nullptr);
+		void Initialize(const VulkanContext& context, const VulkanSwapchain& swapchain, const VulkanRenderPass& renderPass);
 		void Shutdown();
 
 		void Recreate(const VulkanSwapchain& swapchain, const VulkanRenderPass& renderPass);
@@ -33,7 +35,7 @@ namespace Trinity
 		VkImageView GetDepthImageView() const { return m_DepthImageView; }
 
 	private:
-		void CreateDepthResources(VkExtent2D extent);
+		void CreateDepthResources(VkExtent2D extent, VkFormat depthFormat);
 		void DestroyDepthResources();
 
 		void CreateFramebuffers(const VulkanSwapchain& swapchain, VkRenderPass renderPass);
@@ -43,6 +45,7 @@ namespace Trinity
 
 	private:
 		const VulkanDevice* m_DeviceRef = nullptr;
+
 		VkDevice m_Device = VK_NULL_HANDLE;
 		VkAllocationCallbacks* m_Allocator = nullptr;
 

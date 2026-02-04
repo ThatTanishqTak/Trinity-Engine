@@ -1,14 +1,21 @@
 #include "Trinity/Renderer/Vulkan/VulkanCommand.h"
 
-#include "Trinity/Renderer/Vulkan/VulkanDevice.h"
 #include "Trinity/Utilities/Utilities.h"
 
 #include <cstdlib>
+#include <limits>
 
 namespace Trinity
 {
-	void VulkanCommand::Initialize(const VulkanDevice& device, uint32_t framesInFlight, VkAllocationCallbacks* allocator)
+	void VulkanCommand::Initialize(const VulkanContext& context, uint32_t framesInFlight)
 	{
+		if (m_Device != VK_NULL_HANDLE)
+		{
+			TR_CORE_CRITICAL("VulkanCommand::Initialize called twice (Shutdown first)");
+
+			std::abort();
+		}
+
 		if (framesInFlight == 0)
 		{
 			TR_CORE_CRITICAL("VulkanCommand::Initialize called with framesInFlight == 0");
@@ -16,10 +23,10 @@ namespace Trinity
 			std::abort();
 		}
 
-		m_Device = device.GetDevice();
-		m_GraphicsQueueFamilyIndex = device.GetGraphicsQueueFamilyIndex();
-		m_TransferQueueFamilyIndex = device.GetTransferQueueFamilyIndex();
-		m_Allocator = allocator;
+		m_Device = context.Device;
+		m_Allocator = context.Allocator;
+		m_GraphicsQueueFamilyIndex = context.Queues.GraphicsFamilyIndex;
+		m_TransferQueueFamilyIndex = context.Queues.TransferFamilyIndex;
 
 		if (m_Device == VK_NULL_HANDLE || m_GraphicsQueueFamilyIndex == UINT32_MAX)
 		{
@@ -28,6 +35,7 @@ namespace Trinity
 			std::abort();
 		}
 
+		// If no dedicated transfer queue exists, fall back to graphics.
 		if (m_TransferQueueFamilyIndex == UINT32_MAX)
 		{
 			m_TransferQueueFamilyIndex = m_GraphicsQueueFamilyIndex;
@@ -50,9 +58,9 @@ namespace Trinity
 		DestroyPerFrame();
 
 		m_Device = VK_NULL_HANDLE;
+		m_Allocator = nullptr;
 		m_GraphicsQueueFamilyIndex = UINT32_MAX;
 		m_TransferQueueFamilyIndex = UINT32_MAX;
-		m_Allocator = nullptr;
 	}
 
 	VkCommandBuffer VulkanCommand::BeginFrame(uint32_t frameIndex, VkCommandBufferUsageFlags usageFlags)
@@ -84,10 +92,12 @@ namespace Trinity
 		if (frameIndex >= m_Frames.size())
 		{
 			TR_CORE_CRITICAL("VulkanCommand::EndFrame invalid frameIndex {}", frameIndex);
+
 			std::abort();
 		}
 
 		PerFrameCommand& l_Frame = m_Frames[frameIndex];
+
 		Utilities::VulkanUtilities::VKCheck(vkEndCommandBuffer(l_Frame.PrimaryCommandBuffer), "Failed vkEndCommandBuffer");
 	}
 
@@ -144,8 +154,16 @@ namespace Trinity
 		l_SubmitInfo.commandBufferCount = 1;
 		l_SubmitInfo.pCommandBuffers = &commandBuffer;
 
-		Utilities::VulkanUtilities::VKCheck(vkQueueSubmit(queue, 1, &l_SubmitInfo, VK_NULL_HANDLE), "Failed vkQueueSubmit (single-time)");
-		Utilities::VulkanUtilities::VKCheck(vkQueueWaitIdle(queue), "Failed vkQueueWaitIdle (single-time)");
+		// Fence-based wait avoids nuking the whole queue with vkQueueWaitIdle.
+		VkFenceCreateInfo l_FenceInfo{};
+		l_FenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+
+		VkFence l_Fence = VK_NULL_HANDLE;
+		Utilities::VulkanUtilities::VKCheck(vkCreateFence(m_Device, &l_FenceInfo, m_Allocator, &l_Fence), "Failed vkCreateFence (single-time)");
+		Utilities::VulkanUtilities::VKCheck(vkQueueSubmit(queue, 1, &l_SubmitInfo, l_Fence), "Failed vkQueueSubmit (single-time)");
+		Utilities::VulkanUtilities::VKCheck(vkWaitForFences(m_Device, 1, &l_Fence, VK_TRUE, std::numeric_limits<uint64_t>::max()), "Failed vkWaitForFences (single-time)");
+
+		vkDestroyFence(m_Device, l_Fence, m_Allocator);
 
 		vkFreeCommandBuffers(m_Device, commandPool, 1, &commandBuffer);
 	}
@@ -161,7 +179,7 @@ namespace Trinity
 
 			VkCommandPoolCreateInfo l_PoolInfo{};
 			l_PoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-			l_PoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+			l_PoolInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 			l_PoolInfo.queueFamilyIndex = m_GraphicsQueueFamilyIndex;
 
 			Utilities::VulkanUtilities::VKCheck(vkCreateCommandPool(m_Device, &l_PoolInfo, m_Allocator, &l_Frame.CommandPool), "Failed vkCreateCommandPool (per-frame)");

@@ -1,13 +1,13 @@
 #pragma once
 
-#include <vulkan/vulkan.h>
+#include "Trinity/Renderer/Vulkan/VulkanContext.h"
 
-#include <cstdint>
+#include <vulkan/vulkan.h>
 
 namespace Trinity
 {
-	class VulkanDevice;
 	class VulkanSwapchain;
+	class VulkanDevice;
 
 	class VulkanRenderPass
 	{
@@ -20,18 +20,22 @@ namespace Trinity
 		VulkanRenderPass(VulkanRenderPass&&) = delete;
 		VulkanRenderPass& operator=(VulkanRenderPass&&) = delete;
 
-		void Initialize(const VulkanDevice& device, const VulkanSwapchain& swapchain, VkAllocationCallbacks* allocator = nullptr);
+		void Initialize(const VulkanContext& context, const VulkanSwapchain& swapchain);
 		void Shutdown();
 
 		void Recreate(const VulkanSwapchain& swapchain);
 
 		VkRenderPass GetRenderPass() const { return m_RenderPass; }
+		VkFormat GetColorFormat() const { return m_ColorFormat; }
+		VkFormat GetDepthFormat() const { return m_DepthFormat; }
 
 	private:
 		void CreateRenderPass(VkFormat colorFormat, VkFormat depthFormat);
 		void DestroyRenderPass();
 
 	private:
+		const VulkanDevice* m_DeviceRef = nullptr;
+
 		VkDevice m_Device = VK_NULL_HANDLE;
 		VkAllocationCallbacks* m_Allocator = nullptr;
 

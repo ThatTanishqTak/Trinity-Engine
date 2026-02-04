@@ -1,6 +1,5 @@
 #include "Trinity/Renderer/Vulkan/VulkanPipeline.h"
 
-#include "Trinity/Renderer/Vulkan/VulkanDevice.h"
 #include "Trinity/Renderer/Vulkan/VulkanRenderPass.h"
 #include "Trinity/Renderer/Vulkan/VulkanDescriptors.h"
 #include "Trinity/Utilities/Utilities.h"
@@ -10,11 +9,18 @@
 
 namespace Trinity
 {
-	void VulkanPipeline::Initialize(const VulkanDevice& device, const VulkanRenderPass& renderPass, const VulkanDescriptors& descriptors, const std::string& vertexSPVPath,
-		const std::string& fragmentSpvPath, VkAllocationCallbacks* allocator, bool enablePipelineCache)
+	void VulkanPipeline::Initialize(const VulkanContext& context, const VulkanRenderPass& renderPass, const VulkanDescriptors& descriptors,
+		const std::string& vertexSPVPath, const std::string& fragmentSpvPath, bool enablePipelineCache)
 	{
-		m_Device = device.GetDevice();
-		m_Allocator = allocator;
+		if (m_Device != VK_NULL_HANDLE)
+		{
+			TR_CORE_CRITICAL("VulkanPipeline::Initialize called twice (Shutdown first)");
+
+			std::abort();
+		}
+
+		m_Device = context.Device;
+		m_Allocator = context.Allocator;
 
 		if (m_Device == VK_NULL_HANDLE)
 		{
@@ -309,7 +315,6 @@ namespace Trinity
 			return a_Module->second;
 		}
 
-		// Uses your existing file loader (and yes, it aborts on failure, so this will too).
 		const std::vector<char> l_Bytes = Utilities::FileManagement::LoadFromFile(SPVPath);
 
 		if (l_Bytes.empty())
@@ -326,7 +331,6 @@ namespace Trinity
 			std::abort();
 		}
 
-		// Ensure proper uint32_t alignment for pCode.
 		std::vector<uint32_t> l_Code(l_Bytes.size() / 4);
 		std::memcpy(l_Code.data(), l_Bytes.data(), l_Bytes.size());
 

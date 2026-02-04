@@ -1,9 +1,11 @@
 #pragma once
 
 #include "Trinity/Renderer/Renderer.h"
+
 #include "Trinity/Renderer/Vulkan/VulkanInstance.h"
 #include "Trinity/Renderer/Vulkan/VulkanSurface.h"
 #include "Trinity/Renderer/Vulkan/VulkanDevice.h"
+#include "Trinity/Renderer/Vulkan/VulkanContext.h"
 #include "Trinity/Renderer/Vulkan/VulkanSwapchain.h"
 #include "Trinity/Renderer/Vulkan/VulkanRenderPass.h"
 #include "Trinity/Renderer/Vulkan/VulkanFramebuffers.h"
@@ -42,6 +44,7 @@ namespace Trinity
 		VulkanInstance m_Instance;
 		VulkanSurface m_Surface;
 		VulkanDevice m_Device;
+		VulkanContext m_Context;
 		VulkanSwapchain m_Swapchain;
 		VulkanRenderPass m_RenderPass;
 		VulkanFramebuffers m_Framebuffers;

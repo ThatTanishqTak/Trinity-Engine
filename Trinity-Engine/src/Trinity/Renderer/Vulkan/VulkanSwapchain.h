@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Trinity/Renderer/Vulkan/VulkanContext.h"
+
 #include <vulkan/vulkan.h>
 
 #include <cstdint>
@@ -20,8 +22,7 @@ namespace Trinity
 		VulkanSwapchain(VulkanSwapchain&&) = delete;
 		VulkanSwapchain& operator=(VulkanSwapchain&&) = delete;
 
-		void Initialize(const VulkanDevice& device, VkSurfaceKHR surface, VkAllocationCallbacks* allocator = nullptr, bool vsync = true, uint32_t preferredWidth = 0,
-			uint32_t preferredHeight = 0);
+		void Initialize(const VulkanContext& context, bool vsync, uint32_t preferredWidth = 0, uint32_t preferredHeight = 0);
 		void Shutdown();
 
 		bool Recreate(uint32_t preferredWidth = 0, uint32_t preferredHeight = 0);
@@ -44,6 +45,9 @@ namespace Trinity
 		bool IsVSyncEnabled() const { return m_VSync; }
 
 	private:
+		void InitializeInternal(VkDevice device, VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, VkAllocationCallbacks* allocator,
+			uint32_t graphicsQueueFamilyIndex, uint32_t presentQueueFamilyIndex, bool vsync, uint32_t preferredWidth, uint32_t preferredHeight);
+
 		void CreateSwapchain(uint32_t preferredWidth, uint32_t preferredHeight, VkSwapchainKHR oldSwapchain);
 		void CreateImageViews();
 
@@ -71,7 +75,7 @@ namespace Trinity
 
 		VkImageUsageFlags m_ImageUsageFlags = 0;
 		bool m_VSync = true;
-		uint32_t m_GraphicsQueueFamilyIndex = 0;
-		uint32_t m_PresentQueueFamilyIndex = 0;
+		uint32_t m_GraphicsQueueFamilyIndex = UINT32_MAX;
+		uint32_t m_PresentQueueFamilyIndex = UINT32_MAX;
 	};
 }

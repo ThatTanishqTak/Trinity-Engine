@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Trinity/Renderer/Vulkan/VulkanContext.h"
+
 #include <vulkan/vulkan.h>
 
 #include <cstdint>
@@ -7,8 +9,6 @@
 
 namespace Trinity
 {
-	class VulkanDevice;
-
 	class VulkanCommand
 	{
 	public:
@@ -27,7 +27,7 @@ namespace Trinity
 		VulkanCommand(VulkanCommand&&) = delete;
 		VulkanCommand& operator=(VulkanCommand&&) = delete;
 
-		void Initialize(const VulkanDevice& device, uint32_t framesInFlight, VkAllocationCallbacks* allocator = nullptr);
+		void Initialize(const VulkanContext& context, uint32_t framesInFlight);
 		void Shutdown();
 
 		// Per-frame recording helpers
@@ -37,7 +37,7 @@ namespace Trinity
 		VkCommandPool GetCommandPool(uint32_t frameIndex) const;
 		VkCommandBuffer GetCommandBuffer(uint32_t frameIndex) const;
 
-		// One-off command buffer helpers (great for uploads during init)
+		// One-off command buffer helpers (uploads during init, staging copies, etc.)
 		VkCommandPool GetUploadCommandPool() const { return m_UploadCommandPool; }
 
 		VkCommandBuffer BeginSingleTime(VkCommandPool commandPool) const;
@@ -52,9 +52,10 @@ namespace Trinity
 
 	private:
 		VkDevice m_Device = VK_NULL_HANDLE;
+		VkAllocationCallbacks* m_Allocator = nullptr;
+
 		uint32_t m_GraphicsQueueFamilyIndex = UINT32_MAX;
 		uint32_t m_TransferQueueFamilyIndex = UINT32_MAX;
-		VkAllocationCallbacks* m_Allocator = nullptr;
 
 		std::vector<PerFrameCommand> m_Frames;
 

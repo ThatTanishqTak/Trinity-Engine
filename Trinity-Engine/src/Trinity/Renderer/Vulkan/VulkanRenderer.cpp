@@ -33,16 +33,24 @@ namespace Trinity
 
 		TR_CORE_TRACE("Initializing vulkan renderer");
 
+		// Core Vulkan
 		m_Instance.Initialize();
 		m_Surface.Initialize(m_Instance, *m_Window);
 		m_Device.Initialize(m_Instance.GetInstance(), m_Surface.GetSurface(), m_Instance.GetAllocator());
-		m_Swapchain.Initialize(m_Device, m_Surface.GetSurface(), m_Instance.GetAllocator(), m_Window->IsVSync());
-		m_Sync.Initialize(m_Device.GetDevice());
-		m_Sync.Create(m_FramesInFlight, m_Swapchain.GetImageCount());
-		m_RenderPass.Initialize(m_Device, m_Swapchain, m_Instance.GetAllocator());
-		m_Framebuffers.Initialize(m_Device, m_Swapchain, m_RenderPass, m_Instance.GetAllocator());
+
+		// Context (single source of truth)
+		m_Context = VulkanContext::Initialize(m_Instance, m_Surface, m_Device);
+
+		// Swapchain chain
+		m_Swapchain.Initialize(m_Context, m_Window->IsVSync());
+		m_RenderPass.Initialize(m_Context, m_Swapchain);
+		m_Framebuffers.Initialize(m_Context, m_Swapchain, m_RenderPass);
+
+		// Per-frame bookkeeping
 		m_FrameResources.Initialize(m_FramesInFlight);
-		m_Descriptors.Initialize(m_Device, m_FramesInFlight, m_Instance.GetAllocator());
+
+		// Descriptors + pipeline
+		m_Descriptors.Initialize(m_Context, m_FramesInFlight);
 
 		VulkanPipeline::GraphicsDescription l_PipelineDesc{};
 		l_PipelineDesc.EnableDepthTest = true;
@@ -51,27 +59,36 @@ namespace Trinity
 		l_PipelineDesc.CullMode = VK_CULL_MODE_BACK_BIT;
 		l_PipelineDesc.FrontFace = VK_FRONT_FACE_CLOCKWISE;
 		m_Pipeline.SetGraphicsDescription(l_PipelineDesc);
-		m_Pipeline.Initialize(m_Device, m_RenderPass, m_Descriptors, "Assets/Shaders/Simple.vert.spv", "Assets/Shaders/Simple.frag.spv", m_Instance.GetAllocator(), true);
-		m_Command.Initialize(m_Device, m_FramesInFlight, m_Instance.GetAllocator());
+
+		m_Pipeline.Initialize(m_Context, m_RenderPass, m_Descriptors, "Assets/Shaders/Simple.vert.spv", "Assets/Shaders/Simple.frag.spv", true);
+
+		// Commands + sync
+		m_Command.Initialize(m_Context, m_FramesInFlight);
+		m_Sync.Initialize(m_Context, m_FramesInFlight, m_Swapchain.GetImageCount());
 
 		TR_CORE_TRACE("Vulkan renderer initialized");
 	}
 
 	void VulkanRenderer::Shutdown()
 	{
-		vkDeviceWaitIdle(m_Device.GetDevice());
+		if (m_Context.Device != VK_NULL_HANDLE)
+		{
+			vkDeviceWaitIdle(m_Context.Device);
+		}
 
+		m_Sync.Shutdown();
 		m_Command.Shutdown();
 		m_Pipeline.Shutdown();
 		m_Descriptors.Shutdown();
 		m_FrameResources.Shutdown();
 		m_Framebuffers.Shutdown();
 		m_RenderPass.Shutdown();
-		m_Sync.Cleanup();
 		m_Swapchain.Shutdown();
 		m_Device.Shutdown();
 		m_Surface.Shutdown(m_Instance);
 		m_Instance.Shutdown();
+
+		m_Context = {};
 	}
 
 	void VulkanRenderer::Resize(uint32_t width, uint32_t height)
@@ -106,7 +123,7 @@ namespace Trinity
 		VkResult l_AcquireResult = m_Swapchain.AcquireNextImage(l_ImageAvailableSemaphore, m_CurrentImageIndex);
 		if (l_AcquireResult == VK_ERROR_OUT_OF_DATE_KHR)
 		{
-			RecreateSwapchain(0, 0);
+			RecreateSwapchain(m_PendingWidth, m_PendingHeight);
 
 			return;
 		}
@@ -120,9 +137,10 @@ namespace Trinity
 
 		const VkFence l_FrameFence = m_Sync.GetInFlightFence(l_FrameIndex);
 		const VkFence l_ImageFence = m_Sync.GetImageInFlightFence(m_CurrentImageIndex);
+
 		if (l_ImageFence != VK_NULL_HANDLE && l_ImageFence != l_FrameFence)
 		{
-			Utilities::VulkanUtilities::VKCheck(vkWaitForFences(m_Device.GetDevice(), 1, &l_ImageFence, VK_TRUE, UINT64_MAX), "Failed vkWaitForFences (image in flight)");
+			Utilities::VulkanUtilities::VKCheck(vkWaitForFences(m_Context.Device, 1, &l_ImageFence, VK_TRUE, UINT64_MAX), "Failed vkWaitForFences (image in flight)");
 		}
 
 		m_Sync.ResetFrameFence(l_FrameIndex);
@@ -189,11 +207,9 @@ namespace Trinity
 		}
 
 		const uint32_t l_FrameIndex = m_FrameResources.GetCurrentFrameIndex();
-
 		VkCommandBuffer l_CommandBuffer = m_Command.GetCommandBuffer(l_FrameIndex);
 
 		vkCmdEndRenderPass(l_CommandBuffer);
-
 		m_Command.EndFrame(l_FrameIndex);
 
 		const VkSemaphore l_ImageAvailableSemaphore = m_Sync.GetImageAvailableSemaphore(l_FrameIndex);
@@ -219,13 +235,13 @@ namespace Trinity
 		l_SubmitInfo.signalSemaphoreCount = 1;
 		l_SubmitInfo.pSignalSemaphores = l_SignalSemaphores;
 
-		Utilities::VulkanUtilities::VKCheck(vkQueueSubmit(m_Device.GetGraphicsQueue(), 1, &l_SubmitInfo, l_InFlightFence), "Failed vkQueueSubmit");
+		Utilities::VulkanUtilities::VKCheck(vkQueueSubmit(m_Context.Queues.GraphicsQueue, 1, &l_SubmitInfo, l_InFlightFence), "Failed vkQueueSubmit");
 
-		VkResult l_PresentResult = m_Swapchain.Present(m_Device.GetPresentQueue(), m_CurrentImageIndex, l_RenderFinishedSemaphore);
+		VkResult l_PresentResult = m_Swapchain.Present(m_Context.Queues.PresentQueue, m_CurrentImageIndex, l_RenderFinishedSemaphore);
 
 		if (l_PresentResult == VK_ERROR_OUT_OF_DATE_KHR || l_PresentResult == VK_SUBOPTIMAL_KHR)
 		{
-			RecreateSwapchain(0, 0);
+			RecreateSwapchain(m_PendingWidth, m_PendingHeight);
 		}
 		else if (l_PresentResult != VK_SUCCESS)
 		{
@@ -240,7 +256,12 @@ namespace Trinity
 
 	void VulkanRenderer::RecreateSwapchain(uint32_t preferredWidth, uint32_t preferredHeight)
 	{
-		vkDeviceWaitIdle(m_Device.GetDevice());
+		if (m_Context.Device == VK_NULL_HANDLE)
+		{
+			return;
+		}
+
+		vkDeviceWaitIdle(m_Context.Device);
 
 		const bool l_Recreated = m_Swapchain.Recreate(preferredWidth, preferredHeight);
 		if (!l_Recreated)
@@ -248,7 +269,9 @@ namespace Trinity
 			return;
 		}
 
-		m_Sync.Create(m_FramesInFlight, m_Swapchain.GetImageCount());
+		// Swapchain-dependent
+		m_Sync.RecreateForSwapchain(m_Swapchain.GetImageCount());
+
 		m_RenderPass.Recreate(m_Swapchain);
 		m_Framebuffers.Recreate(m_Swapchain, m_RenderPass);
 		m_Pipeline.Recreate(m_RenderPass);
