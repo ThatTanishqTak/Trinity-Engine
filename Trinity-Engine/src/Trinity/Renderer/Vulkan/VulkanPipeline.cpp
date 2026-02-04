@@ -1,5 +1,6 @@
 #include "Trinity/Renderer/Vulkan/VulkanPipeline.h"
 
+#include "Trinity/Renderer/Vulkan/VulkanContext.h"
 #include "Trinity/Renderer/Vulkan/VulkanRenderPass.h"
 #include "Trinity/Renderer/Vulkan/VulkanDescriptors.h"
 #include "Trinity/Utilities/Utilities.h"
@@ -31,6 +32,11 @@ namespace Trinity
 
 		m_VertexSPVPath = vertexSPVPath;
 		m_FragmentSPVPath = fragmentSpvPath;
+		m_EnablePipelineCache = enablePipelineCache;
+		if (m_EnablePipelineCache)
+		{
+			m_PipelineCachePath = BuildPipelineCachePath(context, m_VertexSPVPath, m_FragmentSPVPath);
+		}
 
 		m_RenderPass = renderPass.GetRenderPass();
 		if (m_RenderPass == VK_NULL_HANDLE)
@@ -76,6 +82,8 @@ namespace Trinity
 		m_RenderPass = VK_NULL_HANDLE;
 		m_VertexSPVPath.clear();
 		m_FragmentSPVPath.clear();
+		m_PipelineCachePath.clear();
+		m_EnablePipelineCache = true;
 
 		m_Device = VK_NULL_HANDLE;
 		m_Allocator = nullptr;
@@ -110,13 +118,25 @@ namespace Trinity
 
 	void VulkanPipeline::CreatePipelineCache()
 	{
-		if (m_PipelineCache != VK_NULL_HANDLE)
+		if (!m_EnablePipelineCache || m_PipelineCache != VK_NULL_HANDLE)
 		{
 			return;
 		}
 
+		std::vector<char> l_InitialData;
+		if (!m_PipelineCachePath.empty())
+		{
+			std::error_code l_Error;
+			if (std::filesystem::exists(m_PipelineCachePath, l_Error))
+			{
+				l_InitialData = Utilities::FileManagement::LoadFromFile(m_PipelineCachePath);
+			}
+		}
+
 		VkPipelineCacheCreateInfo l_Info{};
 		l_Info.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+		l_Info.initialDataSize = l_InitialData.size();
+		l_Info.pInitialData = l_InitialData.empty() ? nullptr : l_InitialData.data();
 
 		Utilities::VulkanUtilities::VKCheck(vkCreatePipelineCache(m_Device, &l_Info, m_Allocator, &m_PipelineCache), "Failed vkCreatePipelineCache");
 	}
@@ -125,6 +145,19 @@ namespace Trinity
 	{
 		if (m_PipelineCache != VK_NULL_HANDLE)
 		{
+			if (m_EnablePipelineCache && !m_PipelineCachePath.empty())
+			{
+				size_t l_Size = 0;
+				Utilities::VulkanUtilities::VKCheck(vkGetPipelineCacheData(m_Device, m_PipelineCache, &l_Size, nullptr), "Failed vkGetPipelineCacheData");
+				std::vector<char> l_Data(l_Size);
+				if (l_Size > 0)
+				{
+					Utilities::VulkanUtilities::VKCheck(vkGetPipelineCacheData(m_Device, m_PipelineCache, &l_Size, l_Data.data()), "Failed vkGetPipelineCacheData");
+				}
+
+				Utilities::FileManagement::SaveToFile(m_PipelineCachePath, l_Data);
+			}
+
 			vkDestroyPipelineCache(m_Device, m_PipelineCache, m_Allocator);
 			m_PipelineCache = VK_NULL_HANDLE;
 		}
@@ -346,5 +379,34 @@ namespace Trinity
 		TR_CORE_TRACE("Created shader module '{}'", SPVPath);
 
 		return l_Module;
+	}
+
+	std::string VulkanPipeline::BuildPipelineCachePath(const VulkanContext& context, const std::string& vertexPath, const std::string& fragmentPath)
+	{
+		VkPhysicalDeviceProperties l_Properties{};
+		if (context.DeviceRef != nullptr)
+		{
+			l_Properties = context.DeviceRef->GetProperties();
+		}
+		else if (context.PhysicalDevice != VK_NULL_HANDLE)
+		{
+			vkGetPhysicalDeviceProperties(context.PhysicalDevice, &l_Properties);
+		}
+
+		std::ostringstream l_Stream;
+		for (size_t it_Byte = 0; it_Byte < VK_UUID_SIZE; ++it_Byte)
+		{
+			l_Stream << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(l_Properties.pipelineCacheUUID[it_Byte]);
+		}
+
+		std::hash<std::string> l_Hasher;
+		const size_t l_ShaderHash = l_Hasher(vertexPath + "|" + fragmentPath);
+
+		const std::string l_FileName = std::to_string(l_Properties.vendorID) + "_" + std::to_string(l_Properties.deviceID) + "_" +
+			std::to_string(l_Properties.driverVersion) + "_" + l_Stream.str() + "_" + std::to_string(l_ShaderHash) + ".bin";
+
+		const std::filesystem::path l_CachePath = std::filesystem::path("PipelineCache") / l_FileName;
+
+		return l_CachePath.string();
 	}
 }

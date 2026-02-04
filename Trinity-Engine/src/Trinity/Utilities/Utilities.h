@@ -21,6 +21,7 @@
 #include <vulkan/vulkan.h>
 
 #include <memory>
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -104,6 +105,7 @@ namespace Trinity
         {
         public:
             static std::vector<char> LoadFromFile(const std::string& path);
+            static void SaveToFile(const std::string& path, const std::vector<char>& data);
         };
     }
 }

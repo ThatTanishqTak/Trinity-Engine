@@ -72,6 +72,7 @@ namespace Trinity
 		void DestroyGraphicsPipeline();
 
 		VkShaderModule GetOrCreateShaderModule(const std::string& SPVPath);
+		std::string BuildPipelineCachePath(const VulkanContext& context, const std::string& vertexPath, const std::string& fragmentPath);
 
 	private:
 		VkDevice m_Device = VK_NULL_HANDLE;
@@ -85,6 +86,8 @@ namespace Trinity
 
 		std::string m_VertexSPVPath;
 		std::string m_FragmentSPVPath;
+		std::string m_PipelineCachePath;
+		bool m_EnablePipelineCache = true;
 
 		GraphicsDescription m_GraphicsDescription{};
 

@@ -127,5 +127,29 @@ namespace Trinity
 
             return l_Buffer;
         }
+
+        void FileManagement::SaveToFile(const std::string& path, const std::vector<char>& data)
+        {
+            const std::filesystem::path l_Path(path);
+            const std::filesystem::path l_ParentPath = l_Path.parent_path();
+            if (!l_ParentPath.empty())
+            {
+                std::error_code l_Error;
+                std::filesystem::create_directories(l_ParentPath, l_Error);
+            }
+
+            std::ofstream l_File(path, std::ios::binary | std::ios::trunc);
+            if (!l_File.is_open())
+            {
+                TR_CORE_ERROR("Failed to open file for writing: {}", path.c_str());
+
+                return;
+            }
+
+            if (!data.empty())
+            {
+                l_File.write(data.data(), static_cast<std::streamsize>(data.size()));
+            }
+        }
     }
 }
