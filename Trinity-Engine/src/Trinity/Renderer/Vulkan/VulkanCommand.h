@@ -40,6 +40,8 @@ namespace Trinity
 		// One-off command buffer helpers (uploads during init, staging copies, etc.)
 		VkCommandPool GetUploadCommandPool() const { return m_UploadCommandPool; }
 		VkQueue GetUploadQueue() const { return m_UploadQueue; }
+		uint32_t GetGraphicsQueueFamilyIndex() const { return m_GraphicsQueueFamilyIndex; }
+		uint32_t GetTransferQueueFamilyIndex() const { return m_TransferQueueFamilyIndex; }
 
 		VkCommandBuffer BeginSingleTime(VkCommandPool commandPool) const;
 		void EndSingleTime(VkCommandBuffer commandBuffer, VkCommandPool commandPool, VkQueue queue) const;

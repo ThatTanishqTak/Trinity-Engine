@@ -157,6 +157,23 @@ namespace Trinity
 
 		vkCmdCopyBuffer(l_CommandBuffer, stagingBuffer.m_Buffer, m_Buffer, 1, &l_Region);
 
+		uint32_t l_TransferQueueFamilyIndex = command.GetTransferQueueFamilyIndex();
+		uint32_t l_GraphicsQueueFamilyIndex = command.GetGraphicsQueueFamilyIndex();
+		if (l_TransferQueueFamilyIndex != l_GraphicsQueueFamilyIndex)
+		{
+			VkBufferMemoryBarrier l_BufferBarrier{};
+			l_BufferBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+			l_BufferBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			l_BufferBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+			l_BufferBarrier.srcQueueFamilyIndex = l_TransferQueueFamilyIndex;
+			l_BufferBarrier.dstQueueFamilyIndex = l_GraphicsQueueFamilyIndex;
+			l_BufferBarrier.buffer = m_Buffer;
+			l_BufferBarrier.offset = 0;
+			l_BufferBarrier.size = VK_WHOLE_SIZE;
+
+			vkCmdPipelineBarrier(l_CommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 1, &l_BufferBarrier, 0, nullptr);
+		}
+
 		command.EndSingleTime(l_CommandBuffer, command.GetUploadCommandPool(), l_Queue);
 	}
 }
