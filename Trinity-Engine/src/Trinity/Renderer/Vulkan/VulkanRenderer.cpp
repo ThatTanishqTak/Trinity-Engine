@@ -66,6 +66,15 @@ namespace Trinity
 		m_Command.Initialize(m_Context, m_FramesInFlight);
 		m_Sync.Initialize(m_Context, m_FramesInFlight, m_Swapchain.GetImageCount());
 
+		std::vector<Geometry::Vertex> l_Vertices =
+		{
+			{ { -0.5f, -0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },
+			{ { 0.5f, -0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },
+			{ { 0.0f, 0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 0.5f, 1.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } }
+		};
+		std::vector<uint32_t> l_Indices = { 0, 1, 2 };
+		m_Mesh.Upload(m_Device, m_Command, m_Context.Queues.GraphicsQueue, l_Vertices, l_Indices);
+
 		TR_CORE_TRACE("Vulkan renderer initialized");
 	}
 
@@ -78,6 +87,7 @@ namespace Trinity
 
 		m_Sync.Shutdown();
 		m_Command.Shutdown();
+		m_Mesh.Destroy();
 		m_Pipeline.Shutdown();
 		m_Descriptors.Shutdown();
 		m_FrameResources.Shutdown();
@@ -209,7 +219,11 @@ namespace Trinity
 			vkCmdBindDescriptorSets(l_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline.GetPipelineLayout(), 0, 1, &l_GlobalSet, 0, nullptr);
 		}
 
-		vkCmdDraw(l_CommandBuffer, 3, 1, 0, 0);
+		VkBuffer l_VertexBuffer = m_Mesh.VertexBuffer.GetBuffer();
+		VkDeviceSize l_VertexOffsets[] = { 0 };
+		vkCmdBindVertexBuffers(l_CommandBuffer, 0, 1, &l_VertexBuffer, l_VertexOffsets);
+		vkCmdBindIndexBuffer(l_CommandBuffer, m_Mesh.IndexBuffer.GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
+		vkCmdDrawIndexed(l_CommandBuffer, m_Mesh.IndexCount, 1, 0, 0, 0);
 	}
 
 	void VulkanRenderer::EndFrame()

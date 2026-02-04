@@ -14,6 +14,7 @@
 #include "Trinity/Renderer/Vulkan/VulkanPipeline.h"
 #include "Trinity/Renderer/Vulkan/VulkanCommand.h"
 #include "Trinity/Renderer/Vulkan/VulkanSync.h"
+#include "Trinity/Geometry/Mesh.h"
 
 #include <optional>
 
@@ -66,6 +67,7 @@ namespace Trinity
 		VulkanPipeline m_Pipeline;
 		VulkanCommand m_Command;
 		VulkanSync m_Sync;
+		Geometry::Mesh m_Mesh;
 
 		uint32_t m_FramesInFlight = 2;
 		std::optional<FrameContext> m_FrameContext;
