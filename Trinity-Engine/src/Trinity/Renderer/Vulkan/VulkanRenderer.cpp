@@ -101,6 +101,7 @@ namespace Trinity
 	void VulkanRenderer::BeginFrame()
 	{
 		m_FrameBegun = false;
+		m_FrameContext.reset();
 
 		if (m_ResizePending)
 		{
@@ -120,7 +121,8 @@ namespace Trinity
 
 		const VkSemaphore l_ImageAvailableSemaphore = m_Sync.GetImageAvailableSemaphore(l_FrameIndex);
 
-		VkResult l_AcquireResult = m_Swapchain.AcquireNextImage(l_ImageAvailableSemaphore, m_CurrentImageIndex);
+		uint32_t l_ImageIndex = 0;
+		VkResult l_AcquireResult = m_Swapchain.AcquireNextImage(l_ImageAvailableSemaphore, l_ImageIndex);
 		if (l_AcquireResult == VK_ERROR_OUT_OF_DATE_KHR)
 		{
 			RecreateSwapchain(m_PendingWidth, m_PendingHeight);
@@ -136,7 +138,7 @@ namespace Trinity
 		}
 
 		const VkFence l_FrameFence = m_Sync.GetInFlightFence(l_FrameIndex);
-		const VkFence l_ImageFence = m_Sync.GetImageInFlightFence(m_CurrentImageIndex);
+		const VkFence l_ImageFence = m_Sync.GetImageInFlightFence(l_ImageIndex);
 
 		if (l_ImageFence != VK_NULL_HANDLE && l_ImageFence != l_FrameFence)
 		{
@@ -144,9 +146,22 @@ namespace Trinity
 		}
 
 		m_Sync.ResetFrameFence(l_FrameIndex);
-		m_Sync.SetImageInFlightFence(m_CurrentImageIndex, l_FrameFence);
+		m_Sync.SetImageInFlightFence(l_ImageIndex, l_FrameFence);
 
 		VkCommandBuffer l_CommandBuffer = m_Command.BeginFrame(l_FrameIndex);
+
+		const VkSemaphore l_RenderFinishedSemaphore = m_Sync.GetRenderFinishedSemaphore(l_ImageIndex);
+
+		FrameContext l_FrameContext{};
+		l_FrameContext.FrameIndex = l_FrameIndex;
+		l_FrameContext.ImageIndex = l_ImageIndex;
+		l_FrameContext.CommandBuffer = l_CommandBuffer;
+		l_FrameContext.ImageAvailableSemaphore = l_ImageAvailableSemaphore;
+		l_FrameContext.RenderFinishedSemaphore = l_RenderFinishedSemaphore;
+		l_FrameContext.InFlightFence = l_FrameFence;
+
+		m_FrameContext = l_FrameContext;
+		m_FrameBegun = true;
 
 		VkClearValue l_ClearValues[2]{};
 
@@ -163,7 +178,7 @@ namespace Trinity
 		VkRenderPassBeginInfo l_RPBegin{};
 		l_RPBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		l_RPBegin.renderPass = m_RenderPass.GetRenderPass();
-		l_RPBegin.framebuffer = m_Framebuffers.GetFramebuffer(m_CurrentImageIndex);
+		l_RPBegin.framebuffer = m_Framebuffers.GetFramebuffer(l_ImageIndex);
 		l_RPBegin.renderArea.offset = { 0, 0 };
 		l_RPBegin.renderArea.extent = m_Swapchain.GetExtent();
 		l_RPBegin.clearValueCount = 2;
@@ -195,26 +210,24 @@ namespace Trinity
 		}
 
 		vkCmdDraw(l_CommandBuffer, 3, 1, 0, 0);
-
-		m_FrameBegun = true;
 	}
 
 	void VulkanRenderer::EndFrame()
 	{
-		if (!m_FrameBegun)
+		if (!m_FrameBegun || !m_FrameContext.has_value())
 		{
 			return;
 		}
 
-		const uint32_t l_FrameIndex = m_FrameResources.GetCurrentFrameIndex();
-		VkCommandBuffer l_CommandBuffer = m_Command.GetCommandBuffer(l_FrameIndex);
+		const FrameContext& l_FrameContext = m_FrameContext.value();
+		VkCommandBuffer l_CommandBuffer = l_FrameContext.CommandBuffer;
 
 		vkCmdEndRenderPass(l_CommandBuffer);
-		m_Command.EndFrame(l_FrameIndex);
+		m_Command.EndFrame(l_FrameContext.FrameIndex);
 
-		const VkSemaphore l_ImageAvailableSemaphore = m_Sync.GetImageAvailableSemaphore(l_FrameIndex);
-		const VkSemaphore l_RenderFinishedSemaphore = m_Sync.GetRenderFinishedSemaphore(m_CurrentImageIndex);
-		const VkFence l_InFlightFence = m_Sync.GetInFlightFence(l_FrameIndex);
+		const VkSemaphore l_ImageAvailableSemaphore = l_FrameContext.ImageAvailableSemaphore;
+		const VkSemaphore l_RenderFinishedSemaphore = l_FrameContext.RenderFinishedSemaphore;
+		const VkFence l_InFlightFence = l_FrameContext.InFlightFence;
 
 		VkSemaphore l_WaitSemaphores[] = { l_ImageAvailableSemaphore };
 
@@ -237,7 +250,7 @@ namespace Trinity
 
 		Utilities::VulkanUtilities::VKCheck(vkQueueSubmit(m_Context.Queues.GraphicsQueue, 1, &l_SubmitInfo, l_InFlightFence), "Failed vkQueueSubmit");
 
-		VkResult l_PresentResult = m_Swapchain.Present(m_Context.Queues.PresentQueue, m_CurrentImageIndex, l_RenderFinishedSemaphore);
+		VkResult l_PresentResult = m_Swapchain.Present(m_Context.Queues.PresentQueue, l_FrameContext.ImageIndex, l_RenderFinishedSemaphore);
 
 		if (l_PresentResult == VK_ERROR_OUT_OF_DATE_KHR || l_PresentResult == VK_SUBOPTIMAL_KHR)
 		{
@@ -252,6 +265,7 @@ namespace Trinity
 
 		m_FrameResources.AdvanceFrame();
 		m_FrameBegun = false;
+		m_FrameContext.reset();
 	}
 
 	void VulkanRenderer::RecreateSwapchain(uint32_t preferredWidth, uint32_t preferredHeight)
@@ -278,7 +292,8 @@ namespace Trinity
 
 		m_FrameResources.Reset();
 
-		m_CurrentImageIndex = 0;
+
+		m_FrameContext.reset();
 		m_FrameBegun = false;
 	}
 }

@@ -15,12 +15,25 @@
 #include "Trinity/Renderer/Vulkan/VulkanCommand.h"
 #include "Trinity/Renderer/Vulkan/VulkanSync.h"
 
+#include <optional>
+
 namespace Trinity
 {
 	class Window;
 
 	class VulkanRenderer : public Renderer
 	{
+	private:
+		struct FrameContext
+		{
+			uint32_t FrameIndex = 0;
+			uint32_t ImageIndex = 0;
+			VkCommandBuffer CommandBuffer = VK_NULL_HANDLE;
+			VkSemaphore ImageAvailableSemaphore = VK_NULL_HANDLE;
+			VkSemaphore RenderFinishedSemaphore = VK_NULL_HANDLE;
+			VkFence InFlightFence = VK_NULL_HANDLE;
+		};
+
 	public:
 		VulkanRenderer();
 		~VulkanRenderer();
@@ -55,7 +68,7 @@ namespace Trinity
 		VulkanSync m_Sync;
 
 		uint32_t m_FramesInFlight = 2;
-		uint32_t m_CurrentImageIndex = 0;
+		std::optional<FrameContext> m_FrameContext;
 		bool m_FrameBegun = false;
 
 		bool m_ResizePending = false;
