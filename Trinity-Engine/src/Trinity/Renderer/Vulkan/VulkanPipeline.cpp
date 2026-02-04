@@ -1,6 +1,6 @@
 #include "Trinity/Renderer/Vulkan/VulkanPipeline.h"
 
-#include "Trinity/Renderer/Vulkan/VulkanContext.h"
+#include "Trinity/Renderer/Vulkan/VulkanDevice.h"
 #include "Trinity/Renderer/Vulkan/VulkanRenderPass.h"
 #include "Trinity/Renderer/Vulkan/VulkanDescriptors.h"
 #include "Trinity/Utilities/Utilities.h"
@@ -130,6 +130,8 @@ namespace Trinity
 			if (std::filesystem::exists(m_PipelineCachePath, l_Error))
 			{
 				l_InitialData = Utilities::FileManagement::LoadFromFile(m_PipelineCachePath);
+
+				TR_CORE_TRACE("Pipeline loaded from cache: {}", m_PipelineCachePath);
 			}
 		}
 
