@@ -24,7 +24,7 @@ namespace Trinity
 		void* Map();
 		void Unmap();
 
-		void CopyFromStaging(const VulkanCommand& command, const VulkanBuffer& stagingBuffer, VkQueue queue);
+		void CopyFromStaging(const VulkanCommand& command, const VulkanBuffer& stagingBuffer);
 
 		VkBuffer GetBuffer() const { return m_Buffer; }
 		VkDeviceSize GetSize() const { return m_Size; }

@@ -73,7 +73,7 @@ namespace Trinity
 			{ { 0.0f, 0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 0.5f, 1.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } }
 		};
 		std::vector<uint32_t> l_Indices = { 0, 1, 2 };
-		m_Mesh.Upload(m_Device, m_Command, m_Context.Queues.GraphicsQueue, l_Vertices, l_Indices);
+		m_Mesh.Upload(m_Device, m_Command, l_Vertices, l_Indices);
 
 		TR_CORE_TRACE("Vulkan renderer initialized");
 	}

@@ -39,6 +39,7 @@ namespace Trinity
 
 		// One-off command buffer helpers (uploads during init, staging copies, etc.)
 		VkCommandPool GetUploadCommandPool() const { return m_UploadCommandPool; }
+		VkQueue GetUploadQueue() const { return m_UploadQueue; }
 
 		VkCommandBuffer BeginSingleTime(VkCommandPool commandPool) const;
 		void EndSingleTime(VkCommandBuffer commandBuffer, VkCommandPool commandPool, VkQueue queue) const;
@@ -56,6 +57,7 @@ namespace Trinity
 
 		uint32_t m_GraphicsQueueFamilyIndex = UINT32_MAX;
 		uint32_t m_TransferQueueFamilyIndex = UINT32_MAX;
+		VkQueue m_UploadQueue = VK_NULL_HANDLE;
 
 		std::vector<PerFrameCommand> m_Frames;
 

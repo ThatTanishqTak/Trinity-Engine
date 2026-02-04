@@ -124,7 +124,7 @@ namespace Trinity
 		vkUnmapMemory(m_Device, m_Memory);
 	}
 
-	void VulkanBuffer::CopyFromStaging(const VulkanCommand& command, const VulkanBuffer& stagingBuffer, VkQueue queue)
+	void VulkanBuffer::CopyFromStaging(const VulkanCommand& command, const VulkanBuffer& stagingBuffer)
 	{
 		if (m_Device == VK_NULL_HANDLE || m_Buffer == VK_NULL_HANDLE)
 		{
@@ -140,6 +140,14 @@ namespace Trinity
 			std::abort();
 		}
 
+		VkQueue l_Queue = command.GetUploadQueue();
+		if (l_Queue == VK_NULL_HANDLE)
+		{
+			TR_CORE_CRITICAL("VulkanBuffer::CopyFromStaging called with invalid upload queue");
+
+			std::abort();
+		}
+
 		VkCommandBuffer l_CommandBuffer = command.BeginSingleTime(command.GetUploadCommandPool());
 
 		VkBufferCopy l_Region{};
@@ -149,6 +157,6 @@ namespace Trinity
 
 		vkCmdCopyBuffer(l_CommandBuffer, stagingBuffer.m_Buffer, m_Buffer, 1, &l_Region);
 
-		command.EndSingleTime(l_CommandBuffer, command.GetUploadCommandPool(), queue);
+		command.EndSingleTime(l_CommandBuffer, command.GetUploadCommandPool(), l_Queue);
 	}
 }

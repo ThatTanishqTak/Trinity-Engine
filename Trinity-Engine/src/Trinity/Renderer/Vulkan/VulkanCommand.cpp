@@ -27,6 +27,7 @@ namespace Trinity
 		m_Allocator = context.Allocator;
 		m_GraphicsQueueFamilyIndex = context.Queues.GraphicsFamilyIndex;
 		m_TransferQueueFamilyIndex = context.Queues.TransferFamilyIndex;
+		m_UploadQueue = context.Queues.TransferQueue;
 
 		if (m_Device == VK_NULL_HANDLE || m_GraphicsQueueFamilyIndex == UINT32_MAX)
 		{
@@ -39,6 +40,18 @@ namespace Trinity
 		if (m_TransferQueueFamilyIndex == UINT32_MAX)
 		{
 			m_TransferQueueFamilyIndex = m_GraphicsQueueFamilyIndex;
+		}
+
+		if (m_UploadQueue == VK_NULL_HANDLE)
+		{
+			m_UploadQueue = context.Queues.GraphicsQueue;
+		}
+
+		if (m_UploadQueue == VK_NULL_HANDLE)
+		{
+			TR_CORE_CRITICAL("VulkanCommand::Initialize called with invalid upload queue");
+
+			std::abort();
 		}
 
 		CreatePerFrame(framesInFlight);
@@ -61,6 +74,7 @@ namespace Trinity
 		m_Allocator = nullptr;
 		m_GraphicsQueueFamilyIndex = UINT32_MAX;
 		m_TransferQueueFamilyIndex = UINT32_MAX;
+		m_UploadQueue = VK_NULL_HANDLE;
 	}
 
 	VkCommandBuffer VulkanCommand::BeginFrame(uint32_t frameIndex, VkCommandBufferUsageFlags usageFlags)
@@ -196,15 +210,15 @@ namespace Trinity
 
 	void VulkanCommand::DestroyPerFrame()
 	{
-		for (PerFrameCommand& l_Frame : m_Frames)
+		for (PerFrameCommand& it_Frame : m_Frames)
 		{
-			if (l_Frame.CommandPool != VK_NULL_HANDLE)
+			if (it_Frame.CommandPool != VK_NULL_HANDLE)
 			{
 				// Command buffers are implicitly freed when destroying the pool.
-				vkDestroyCommandPool(m_Device, l_Frame.CommandPool, m_Allocator);
+				vkDestroyCommandPool(m_Device, it_Frame.CommandPool, m_Allocator);
 			}
 
-			l_Frame = {};
+			it_Frame = {};
 		}
 
 		m_Frames.clear();

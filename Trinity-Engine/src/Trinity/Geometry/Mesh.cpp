@@ -9,7 +9,7 @@ namespace Trinity
 {
 	namespace Geometry
 	{
-		void Mesh::Upload(const VulkanDevice& deviceRef, const VulkanCommand& command, VkQueue queue, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices)
+		void Mesh::Upload(const VulkanDevice& deviceRef, const VulkanCommand& command, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices)
 		{
 			IndexCount = static_cast<uint32_t>(indices.size());
 
@@ -42,8 +42,8 @@ namespace Trinity
 			VertexBuffer.Create(deviceRef, l_VertexSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 			IndexBuffer.Create(deviceRef, l_IndexSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-			VertexBuffer.CopyFromStaging(command, l_VertexStagingBuffer, queue);
-			IndexBuffer.CopyFromStaging(command, l_IndexStagingBuffer, queue);
+			VertexBuffer.CopyFromStaging(command, l_VertexStagingBuffer);
+			IndexBuffer.CopyFromStaging(command, l_IndexStagingBuffer);
 
 			l_VertexStagingBuffer.Destroy();
 			l_IndexStagingBuffer.Destroy();
