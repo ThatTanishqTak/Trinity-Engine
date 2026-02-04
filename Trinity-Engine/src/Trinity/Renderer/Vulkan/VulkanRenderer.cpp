@@ -58,6 +58,8 @@ namespace Trinity
 		l_PipelineDesc.DepthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 		l_PipelineDesc.CullMode = VK_CULL_MODE_BACK_BIT;
 		l_PipelineDesc.FrontFace = VK_FRONT_FACE_CLOCKWISE;
+		l_PipelineDesc.VertexBindings.clear();
+		l_PipelineDesc.VertexAttributes.clear();
 		m_Pipeline.SetGraphicsDescription(l_PipelineDesc);
 
 		m_Pipeline.Initialize(m_Context, m_RenderPass, m_Descriptors, "Assets/Shaders/Simple.vert.spv", "Assets/Shaders/Simple.frag.spv", true);
