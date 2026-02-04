@@ -1,9 +1,3 @@
 #pragma once
 
-namespace Trinity
-{
-	namespace Geometry
-	{
-
-	}
-}
+#include "Trinity/Geometry/Mesh.h"
