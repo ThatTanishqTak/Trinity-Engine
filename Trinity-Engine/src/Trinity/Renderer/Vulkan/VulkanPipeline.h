@@ -1,9 +1,11 @@
 #pragma once
 
+#include "Trinity/Geometry/Mesh.h"
 #include "Trinity/Renderer/Vulkan/VulkanContext.h"
 
 #include <vulkan/vulkan.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <unordered_map>
@@ -30,6 +32,43 @@ namespace Trinity
 			VkCompareOp DepthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 
 			bool EnableBlending = false;
+
+			std::vector<VkVertexInputBindingDescription> VertexBindings =
+			{
+				{
+					.binding = 0,
+					.stride = sizeof(Geometry::Vertex),
+					.inputRate = VK_VERTEX_INPUT_RATE_VERTEX
+				}
+			};
+
+			std::vector<VkVertexInputAttributeDescription> VertexAttributes =
+			{
+				{
+					.location = 0,
+					.binding = 0,
+					.format = VK_FORMAT_R32G32B32_SFLOAT,
+					.offset = offsetof(Geometry::Vertex, Position)
+				},
+				{
+					.location = 1,
+					.binding = 0,
+					.format = VK_FORMAT_R32G32B32_SFLOAT,
+					.offset = offsetof(Geometry::Vertex, Normal)
+				},
+				{
+					.location = 2,
+					.binding = 0,
+					.format = VK_FORMAT_R32G32_SFLOAT,
+					.offset = offsetof(Geometry::Vertex, UV)
+				},
+				{
+					.location = 3,
+					.binding = 0,
+					.format = VK_FORMAT_R32G32B32A32_SFLOAT,
+					.offset = offsetof(Geometry::Vertex, Tangent)
+				}
+			};
 
 			std::vector<VkDynamicState> DynamicStates =
 			{

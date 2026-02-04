@@ -237,9 +237,12 @@ namespace Trinity
 
 		VkPipelineShaderStageCreateInfo l_ShaderStages[] = { l_VSStage, l_FSStage };
 
-		// No vertex buffers: "gl_VertexIndex triangle" pipeline.
 		VkPipelineVertexInputStateCreateInfo l_VertexInput{};
 		l_VertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+		l_VertexInput.vertexBindingDescriptionCount = static_cast<uint32_t>(m_GraphicsDescription.VertexBindings.size());
+		l_VertexInput.pVertexBindingDescriptions = m_GraphicsDescription.VertexBindings.empty() ? nullptr : m_GraphicsDescription.VertexBindings.data();
+		l_VertexInput.vertexAttributeDescriptionCount = static_cast<uint32_t>(m_GraphicsDescription.VertexAttributes.size());
+		l_VertexInput.pVertexAttributeDescriptions = m_GraphicsDescription.VertexAttributes.empty() ? nullptr : m_GraphicsDescription.VertexAttributes.data();
 
 		VkPipelineInputAssemblyStateCreateInfo l_InputAssembly{};
 		l_InputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
