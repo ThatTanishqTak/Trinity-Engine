@@ -282,9 +282,9 @@ namespace Trinity
 
 		VkPipelineDepthStencilStateCreateInfo l_DepthStencil{};
 		l_DepthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-		l_DepthStencil.depthTestEnable = m_GraphicsDescription.EnableDepthTest ? VK_TRUE : VK_FALSE;
-		l_DepthStencil.depthWriteEnable = m_GraphicsDescription.EnableDepthWrite ? VK_TRUE : VK_FALSE;
-		l_DepthStencil.depthCompareOp = m_GraphicsDescription.DepthCompareOp;
+		l_DepthStencil.depthTestEnable = VK_TRUE;
+		l_DepthStencil.depthWriteEnable = VK_TRUE;
+		l_DepthStencil.depthCompareOp = m_GraphicsDescription.DepthCompareOp == VK_COMPARE_OP_LESS ? VK_COMPARE_OP_LESS : VK_COMPARE_OP_LESS_OR_EQUAL;
 		l_DepthStencil.depthBoundsTestEnable = VK_FALSE;
 		l_DepthStencil.stencilTestEnable = VK_FALSE;
 
