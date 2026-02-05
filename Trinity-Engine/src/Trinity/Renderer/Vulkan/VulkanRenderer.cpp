@@ -2,13 +2,11 @@
 
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 
 #include "Trinity/Platform/Window.h"
 #include "Trinity/Utilities/Utilities.h"
 
 #include <cstring>
-#include <cstdlib>
 
 namespace Trinity
 {
@@ -16,6 +14,11 @@ namespace Trinity
 	{
 		glm::mat4 Proj = glm::mat4(1.0f);
 		glm::mat4 ViewProj = glm::mat4(1.0f);
+	};
+
+	struct ObjectPushConstants
+	{
+		glm::mat4 Model = glm::mat4(1.0f);
 	};
 
 	VulkanRenderer::VulkanRenderer() : Renderer(RendererAPI::VULKAN)
@@ -38,37 +41,28 @@ namespace Trinity
 		if (m_Window == nullptr)
 		{
 			TR_CORE_CRITICAL("VulkanRenderer::Initialize called without a Window");
-
-			std::abort();
+			TR_ABORT();
 		}
 
 		TR_CORE_TRACE("Initializing vulkan renderer");
 
-		// Core Vulkan
 		m_Instance.Initialize();
 		m_Surface.Initialize(m_Instance, *m_Window);
 		m_Device.Initialize(m_Instance.GetInstance(), m_Surface.GetSurface(), m_Instance.GetAllocator());
-
-		// Context (single source of truth)
 		m_Context = VulkanContext::Initialize(m_Instance, m_Surface, m_Device);
-
-		// Swapchain chain
 		m_Swapchain.Initialize(m_Context, m_Window->IsVSync());
 		m_RenderPass.Initialize(m_Context, m_Swapchain);
 		m_Framebuffers.Initialize(m_Context, m_Swapchain, m_RenderPass);
-
-		// Per-frame bookkeeping
 		m_FrameResources.Initialize(m_FramesInFlight);
-
-		// Descriptors + pipeline
 		m_Descriptors.Initialize(m_Context, m_FramesInFlight);
-
 		m_GlobalUniformBuffers.resize(m_FramesInFlight);
 		m_GlobalUniformMappings.resize(m_FramesInFlight);
+
 		for (uint32_t it_Frame = 0; it_Frame < m_FramesInFlight; ++it_Frame)
 		{
-			m_GlobalUniformBuffers[it_Frame].Create(m_Device, sizeof(GlobalUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+			m_GlobalUniformBuffers[it_Frame].Create(m_Device, sizeof(GlobalUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
 			m_GlobalUniformMappings[it_Frame] = m_GlobalUniformBuffers[it_Frame].Map();
 			m_Descriptors.WriteGlobalUBO(it_Frame, m_GlobalUniformBuffers[it_Frame].GetBuffer(), 0, sizeof(GlobalUBO));
 		}
@@ -82,19 +76,8 @@ namespace Trinity
 
 		m_Pipeline.SetGraphicsDescription(l_PipelineDesc);
 		m_Pipeline.Initialize(m_Context, m_RenderPass, m_Descriptors, "Assets/Shaders/Simple.vert.spv", "Assets/Shaders/Simple.frag.spv", true);
-
-		// Commands + sync
 		m_Command.Initialize(m_Context, m_FramesInFlight);
 		m_Sync.Initialize(m_Context, m_FramesInFlight, m_Swapchain.GetImageCount());
-
-		std::vector<Geometry::Vertex> l_Vertices =
-		{
-			{ { -0.5f, -0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },
-			{ { 0.5f, -0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },
-			{ { 0.0f, 0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 0.5f, 1.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } }
-		};
-		std::vector<uint32_t> l_Indices = { 0, 1, 2 };
-		m_Mesh.Upload(m_Device, m_Command, l_Vertices, l_Indices);
 
 		TR_CORE_TRACE("Vulkan renderer initialized");
 	}
@@ -106,9 +89,20 @@ namespace Trinity
 			vkDeviceWaitIdle(m_Context.Device);
 		}
 
+		// Destroy renderer-owned meshes
+		for (size_t it_Mesh = 0; it_Mesh < m_Meshes.size(); ++it_Mesh)
+		{
+			if (it_Mesh < m_MeshAlive.size() && m_MeshAlive[it_Mesh])
+			{
+				m_Meshes[it_Mesh].Destroy();
+			}
+		}
+		m_Meshes.clear();
+		m_MeshAlive.clear();
+
 		m_Sync.Shutdown();
 		m_Command.Shutdown();
-		m_Mesh.Destroy();
+
 		m_Pipeline.Shutdown();
 		m_Descriptors.Shutdown();
 		for (size_t it_Frame = 0; it_Frame < m_GlobalUniformBuffers.size(); ++it_Frame)
@@ -142,6 +136,7 @@ namespace Trinity
 	void VulkanRenderer::BeginFrame()
 	{
 		m_FrameBegun = false;
+		m_SceneBegun = false;
 		m_FrameContext.reset();
 
 		if (m_ResizePending)
@@ -152,7 +147,7 @@ namespace Trinity
 			const VkExtent2D l_Extent = m_Swapchain.GetExtent();
 			if (l_Extent.width == 0 || l_Extent.height == 0)
 			{
-				return; // minimized: skip rendering until we get a real size
+				return;
 			}
 		}
 
@@ -174,8 +169,7 @@ namespace Trinity
 		if (l_AcquireResult != VK_SUCCESS && l_AcquireResult != VK_SUBOPTIMAL_KHR)
 		{
 			TR_CORE_CRITICAL("vkAcquireNextImageKHR failed with {}", (int)l_AcquireResult);
-
-			std::abort();
+			TR_ABORT();
 		}
 
 		const VkFence l_FrameFence = m_Sync.GetInFlightFence(l_FrameIndex);
@@ -190,7 +184,6 @@ namespace Trinity
 		m_Sync.SetImageInFlightFence(l_ImageIndex, l_FrameFence);
 
 		VkCommandBuffer l_CommandBuffer = m_Command.BeginFrame(l_FrameIndex);
-
 		const VkSemaphore l_RenderFinishedSemaphore = m_Sync.GetRenderFinishedSemaphore(l_ImageIndex);
 
 		FrameContext l_FrameContext{};
@@ -204,24 +197,13 @@ namespace Trinity
 		m_FrameContext = l_FrameContext;
 		m_FrameBegun = true;
 
-		const VkExtent2D l_Extent = m_Swapchain.GetExtent();
-		const float l_Aspect = l_Extent.height == 0 ? 1.0f : static_cast<float>(l_Extent.width) / static_cast<float>(l_Extent.height);
-		GlobalUBO l_GlobalUBO{};
-		l_GlobalUBO.Proj = glm::perspective(glm::radians(45.0f), l_Aspect, 0.1f, 100.0f);
-		l_GlobalUBO.Proj[1][1] *= -1.0f;
-		const glm::mat4 l_View = glm::lookAt(glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-		l_GlobalUBO.ViewProj = l_GlobalUBO.Proj * l_View;
-		std::memcpy(m_GlobalUniformMappings[l_FrameIndex], &l_GlobalUBO, sizeof(GlobalUBO));
-
 		VkClearValue l_ClearValues[2]{};
 
-		// Color clear
 		l_ClearValues[0].color.float32[0] = 0.01f;
 		l_ClearValues[0].color.float32[1] = 0.01f;
 		l_ClearValues[0].color.float32[2] = 0.01f;
 		l_ClearValues[0].color.float32[3] = 1.0f;
 
-		// Depth clear
 		l_ClearValues[1].depthStencil.depth = 1.0f;
 		l_ClearValues[1].depthStencil.stencil = 0;
 
@@ -250,6 +232,27 @@ namespace Trinity
 
 		vkCmdSetViewport(l_CommandBuffer, 0, 1, &l_Viewport);
 		vkCmdSetScissor(l_CommandBuffer, 0, 1, &l_Scissor);
+	}
+
+	void VulkanRenderer::BeginScene(const glm::mat4& viewProjection)
+	{
+		if (!m_FrameBegun || !m_FrameContext.has_value())
+		{
+			return;
+		}
+
+		if (m_SceneBegun)
+		{
+			return;
+		}
+
+		const uint32_t l_FrameIndex = m_FrameContext->FrameIndex;
+
+		GlobalUBO l_GlobalUBO{};
+		l_GlobalUBO.ViewProj = viewProjection;
+		std::memcpy(m_GlobalUniformMappings[l_FrameIndex], &l_GlobalUBO, sizeof(GlobalUBO));
+
+		VkCommandBuffer l_CommandBuffer = m_FrameContext->CommandBuffer;
 
 		vkCmdBindPipeline(l_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline.GetPipeline());
 
@@ -259,11 +262,40 @@ namespace Trinity
 			vkCmdBindDescriptorSets(l_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline.GetPipelineLayout(), 0, 1, &l_GlobalSet, 0, nullptr);
 		}
 
-		VkBuffer l_VertexBuffer = m_Mesh.VertexBuffer.GetBuffer();
+		m_SceneBegun = true;
+	}
+
+	void VulkanRenderer::SubmitMesh(MeshHandle a_Mesh, const glm::mat4& transform)
+	{
+		if (!m_SceneBegun || !m_FrameContext.has_value())
+		{
+			return;
+		}
+
+		const Geometry::Mesh* l_Mesh = GetMesh(a_Mesh);
+		if (l_Mesh == nullptr || l_Mesh->IndexCount == 0)
+		{
+			return;
+		}
+
+		VkCommandBuffer l_CommandBuffer = m_FrameContext->CommandBuffer;
+
+		ObjectPushConstants l_Push{};
+		l_Push.Model = transform;
+
+		vkCmdPushConstants(l_CommandBuffer, m_Pipeline.GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, static_cast<uint32_t>(sizeof(ObjectPushConstants)), &l_Push);
+
+		VkBuffer l_VertexBuffer = l_Mesh->VertexBuffer.GetBuffer();
 		VkDeviceSize l_VertexOffsets[] = { 0 };
 		vkCmdBindVertexBuffers(l_CommandBuffer, 0, 1, &l_VertexBuffer, l_VertexOffsets);
-		vkCmdBindIndexBuffer(l_CommandBuffer, m_Mesh.IndexBuffer.GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
-		vkCmdDrawIndexed(l_CommandBuffer, m_Mesh.IndexCount, 1, 0, 0, 0);
+
+		vkCmdBindIndexBuffer(l_CommandBuffer, l_Mesh->IndexBuffer.GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
+		vkCmdDrawIndexed(l_CommandBuffer, l_Mesh->IndexCount, 1, 0, 0, 0);
+	}
+
+	void VulkanRenderer::EndScene()
+	{
+		m_SceneBegun = false;
 	}
 
 	void VulkanRenderer::EndFrame()
@@ -275,6 +307,11 @@ namespace Trinity
 
 		const FrameContext& l_FrameContext = m_FrameContext.value();
 		VkCommandBuffer l_CommandBuffer = l_FrameContext.CommandBuffer;
+
+		if (m_SceneBegun)
+		{
+			EndScene();
+		}
 
 		vkCmdEndRenderPass(l_CommandBuffer);
 		m_Command.EndFrame(l_FrameContext.FrameIndex);
@@ -313,13 +350,102 @@ namespace Trinity
 		else if (l_PresentResult != VK_SUCCESS)
 		{
 			TR_CORE_CRITICAL("vkQueuePresentKHR failed with {}", (int)l_PresentResult);
-
-			std::abort();
+			TR_ABORT();
 		}
 
 		m_FrameResources.AdvanceFrame();
 		m_FrameBegun = false;
 		m_FrameContext.reset();
+	}
+
+	MeshHandle VulkanRenderer::CreateMesh(const std::vector<Geometry::Vertex>& vertices, const std::vector<uint32_t>& indices)
+	{
+		if (m_Context.Device == VK_NULL_HANDLE)
+		{
+			return InvalidMeshHandle;
+		}
+
+		if (vertices.empty() || indices.empty())
+		{
+			return InvalidMeshHandle;
+		}
+
+		size_t l_Index = SIZE_MAX;
+
+		for (size_t it_Mesh = 0; it_Mesh < m_MeshAlive.size(); ++it_Mesh)
+		{
+			if (!m_MeshAlive[it_Mesh])
+			{
+				l_Index = it_Mesh;
+				break;
+			}
+		}
+
+		if (l_Index == SIZE_MAX)
+		{
+			l_Index = m_Meshes.size();
+			m_Meshes.emplace_back();
+			m_MeshAlive.push_back(false);
+		}
+
+		m_Meshes[l_Index].Upload(m_Device, m_Command, vertices, indices);
+		m_MeshAlive[l_Index] = true;
+
+		return static_cast<MeshHandle>(l_Index + 1);
+	}
+
+	void VulkanRenderer::DestroyMesh(MeshHandle handle)
+	{
+		if (handle == InvalidMeshHandle)
+		{
+			return;
+		}
+
+		const size_t l_Index = static_cast<size_t>(handle - 1);
+		if (l_Index >= m_Meshes.size() || l_Index >= m_MeshAlive.size())
+		{
+			return;
+		}
+
+		if (!m_MeshAlive[l_Index])
+		{
+			return;
+		}
+
+		m_Meshes[l_Index].Destroy();
+		m_MeshAlive[l_Index] = false;
+	}
+
+	Geometry::Mesh* VulkanRenderer::GetMeshMutable(MeshHandle handle)
+	{
+		if (handle == InvalidMeshHandle)
+		{
+			return nullptr;
+		}
+
+		const size_t l_Index = static_cast<size_t>(handle - 1);
+		if (l_Index >= m_Meshes.size() || l_Index >= m_MeshAlive.size() || !m_MeshAlive[l_Index])
+		{
+			return nullptr;
+		}
+
+		return &m_Meshes[l_Index];
+	}
+
+	const Geometry::Mesh* VulkanRenderer::GetMesh(MeshHandle handle) const
+	{
+		if (handle == InvalidMeshHandle)
+		{
+			return nullptr;
+		}
+
+		const size_t l_Index = static_cast<size_t>(handle - 1);
+		if (l_Index >= m_Meshes.size() || l_Index >= m_MeshAlive.size() || !m_MeshAlive[l_Index])
+		{
+			return nullptr;
+		}
+
+		return &m_Meshes[l_Index];
 	}
 
 	void VulkanRenderer::RecreateSwapchain(uint32_t preferredWidth, uint32_t preferredHeight)
@@ -337,7 +463,6 @@ namespace Trinity
 			return;
 		}
 
-		// Swapchain-dependent
 		m_Sync.RecreateForSwapchain(m_Swapchain.GetImageCount());
 
 		m_RenderPass.Recreate(m_Swapchain);
@@ -346,8 +471,8 @@ namespace Trinity
 
 		m_FrameResources.Reset();
 
-
 		m_FrameContext.reset();
 		m_FrameBegun = false;
+		m_SceneBegun = false;
 	}
 }

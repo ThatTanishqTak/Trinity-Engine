@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Trinity/Renderer/Renderer.h"
-
 #include "Trinity/Renderer/Vulkan/VulkanInstance.h"
 #include "Trinity/Renderer/Vulkan/VulkanSurface.h"
 #include "Trinity/Renderer/Vulkan/VulkanDevice.h"
@@ -14,7 +13,10 @@
 #include "Trinity/Renderer/Vulkan/VulkanPipeline.h"
 #include "Trinity/Renderer/Vulkan/VulkanCommand.h"
 #include "Trinity/Renderer/Vulkan/VulkanSync.h"
+
 #include "Trinity/Geometry/Mesh.h"
+
+#include <glm/mat4x4.hpp>
 
 #include <optional>
 #include <vector>
@@ -50,8 +52,18 @@ namespace Trinity
 		void BeginFrame() override;
 		void EndFrame() override;
 
+		void BeginScene(const glm::mat4& viewProjection) override;
+		void SubmitMesh(MeshHandle mesh, const glm::mat4& transform) override;
+		void EndScene() override;
+
+		MeshHandle CreateMesh(const std::vector<Geometry::Vertex>& verticies, const std::vector<uint32_t>& indices) override;
+		void DestroyMesh(MeshHandle handle) override;
+
 	private:
 		void RecreateSwapchain(uint32_t preferredWidth, uint32_t preferredHeight);
+
+		Geometry::Mesh* GetMeshMutable(MeshHandle handle);
+		const Geometry::Mesh* GetMesh(MeshHandle handle) const;
 
 	private:
 		Window* m_Window = nullptr;
@@ -68,13 +80,18 @@ namespace Trinity
 		VulkanPipeline m_Pipeline;
 		VulkanCommand m_Command;
 		VulkanSync m_Sync;
-		Geometry::Mesh m_Mesh;
+
+		// Renderer-owned meshes
+		std::vector<Geometry::Mesh> m_Meshes;
+		std::vector<bool> m_MeshAlive;
+
 		std::vector<VulkanBuffer> m_GlobalUniformBuffers;
 		std::vector<void*> m_GlobalUniformMappings;
 
 		uint32_t m_FramesInFlight = 2;
 		std::optional<FrameContext> m_FrameContext;
 		bool m_FrameBegun = false;
+		bool m_SceneBegun = false;
 
 		bool m_ResizePending = false;
 		uint32_t m_PendingWidth = 0;

@@ -4,7 +4,6 @@
 #include "Trinity/Utilities/Utilities.h"
 
 #include <memory>
-#include <cstdlib>
 
 namespace Trinity
 {
@@ -23,8 +22,7 @@ namespace Trinity
 		if (s_Renderer == nullptr)
 		{
 			TR_CORE_CRITICAL("RenderCommand::Initialize failed: RendererFactory returned nullptr");
-
-			std::abort();
+			TR_ABORT();
 		}
 
 		s_Renderer->SetWindow(window);
@@ -47,7 +45,6 @@ namespace Trinity
 		if (s_Renderer == nullptr)
 		{
 			TR_CORE_WARN("RenderCommand::Resize called before renderer initialization");
-
 			return;
 		}
 
@@ -74,13 +71,62 @@ namespace Trinity
 		s_Renderer->EndFrame();
 	}
 
+	void RenderCommand::BeginScene(const glm::mat4& viewProjection)
+	{
+		if (s_Renderer == nullptr)
+		{
+			return;
+		}
+
+		s_Renderer->BeginScene(viewProjection);
+	}
+
+	void RenderCommand::SubmitMesh(MeshHandle mesh, const glm::mat4& transform)
+	{
+		if (s_Renderer == nullptr)
+		{
+			return;
+		}
+
+		s_Renderer->SubmitMesh(mesh, transform);
+	}
+
+	void RenderCommand::EndScene()
+	{
+		if (s_Renderer == nullptr)
+		{
+			return;
+		}
+
+		s_Renderer->EndScene();
+	}
+
+	MeshHandle RenderCommand::CreateMesh(const std::vector<Geometry::Vertex>& vertices, const std::vector<uint32_t>& indices)
+	{
+		if (s_Renderer == nullptr)
+		{
+			return InvalidMeshHandle;
+		}
+
+		return s_Renderer->CreateMesh(vertices, indices);
+	}
+
+	void RenderCommand::DestroyMesh(MeshHandle handle)
+	{
+		if (s_Renderer == nullptr)
+		{
+			return;
+		}
+
+		s_Renderer->DestroyMesh(handle);
+	}
+
 	Renderer& RenderCommand::GetRenderer()
 	{
 		if (s_Renderer == nullptr)
 		{
 			TR_CORE_CRITICAL("RenderCommand::GetRenderer called before renderer initialization");
-
-			std::abort();
+			TR_ABORT();
 		}
 
 		return *s_Renderer;

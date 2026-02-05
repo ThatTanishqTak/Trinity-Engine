@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Trinity/Geometry/Mesh.h"
+#include "Trinity/Geometry/Vertex.h"
 #include "Trinity/Renderer/Vulkan/VulkanContext.h"
 
 #include <vulkan/vulkan.h>

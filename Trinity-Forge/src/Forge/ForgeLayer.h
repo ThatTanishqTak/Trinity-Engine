@@ -1,8 +1,7 @@
 #pragma once
 
 #include "Trinity/Layer/Layer.h"
-
-#include <memory>
+#include "Trinity/Renderer/MeshHandle.h"
 
 namespace Trinity
 {
@@ -24,4 +23,7 @@ public:
     void OnImGuiRender() override;
 
     void OnEvent(Trinity::Event& e) override;
+
+private:
+    Trinity::MeshHandle m_TriangleMesh = Trinity::InvalidMeshHandle;
 };

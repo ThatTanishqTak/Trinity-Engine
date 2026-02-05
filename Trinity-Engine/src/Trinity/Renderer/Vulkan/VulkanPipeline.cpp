@@ -182,12 +182,20 @@ namespace Trinity
 			l_SetLayouts.push_back(l_GlobalLayout);
 		}
 
+		// Push constant: model matrix (mat4 = 16 floats = 64 bytes)
+		static constexpr uint32_t s_ModelMatrixSize = sizeof(float) * 16;
+
+		VkPushConstantRange l_PushRange{};
+		l_PushRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+		l_PushRange.offset = 0;
+		l_PushRange.size = s_ModelMatrixSize;
+
 		VkPipelineLayoutCreateInfo l_Info{};
 		l_Info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		l_Info.setLayoutCount = static_cast<uint32_t>(l_SetLayouts.size());
 		l_Info.pSetLayouts = l_SetLayouts.empty() ? nullptr : l_SetLayouts.data();
-		l_Info.pushConstantRangeCount = 0;
-		l_Info.pPushConstantRanges = nullptr;
+		l_Info.pushConstantRangeCount = 1;
+		l_Info.pPushConstantRanges = &l_PushRange;
 
 		Utilities::VulkanUtilities::VKCheck(vkCreatePipelineLayout(m_Device, &l_Info, m_Allocator, &m_PipelineLayout), "Failed vkCreatePipelineLayout");
 	}
