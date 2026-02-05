@@ -1,13 +1,13 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 
 namespace Trinity
 {
     class Event;
-    class EventQueue;
 
     enum class NativeWindowType : uint8_t
     {
@@ -39,6 +39,8 @@ namespace Trinity
     class Window
     {
     public:
+        using EventCallbackFn = std::function<void(Event&)>;
+
         virtual ~Window() = default;
 
         Window(const Window&) = delete;
@@ -50,7 +52,7 @@ namespace Trinity
         virtual void OnUpdate() = 0;
         virtual void OnEvent(Event& e) = 0;
 
-        virtual EventQueue& GetEventQueue() = 0;
+        virtual void SetEventCallback(const EventCallbackFn& callback) = 0;
 
         virtual uint32_t GetWidth() const = 0;
         virtual uint32_t GetHeight() const = 0;
