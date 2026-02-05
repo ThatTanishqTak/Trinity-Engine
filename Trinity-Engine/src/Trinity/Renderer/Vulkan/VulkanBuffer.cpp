@@ -9,6 +9,37 @@
 
 namespace Trinity
 {
+	VulkanBuffer::VulkanBuffer(VulkanBuffer&& other) noexcept
+	{
+		m_Buffer = std::exchange(other.m_Buffer, VK_NULL_HANDLE);
+		m_Memory = std::exchange(other.m_Memory, VK_NULL_HANDLE);
+		m_Size = std::exchange(other.m_Size, 0);
+		m_Usage = std::exchange(other.m_Usage, 0);
+		m_MemoryProperties = std::exchange(other.m_MemoryProperties, 0);
+		m_Device = std::exchange(other.m_Device, VK_NULL_HANDLE);
+		m_Allocator = std::exchange(other.m_Allocator, nullptr);
+	}
+
+	VulkanBuffer& VulkanBuffer::operator=(VulkanBuffer&& other) noexcept
+	{
+		if (this == &other)
+		{
+			return *this;
+		}
+
+		Destroy();
+
+		m_Buffer = std::exchange(other.m_Buffer, VK_NULL_HANDLE);
+		m_Memory = std::exchange(other.m_Memory, VK_NULL_HANDLE);
+		m_Size = std::exchange(other.m_Size, 0);
+		m_Usage = std::exchange(other.m_Usage, 0);
+		m_MemoryProperties = std::exchange(other.m_MemoryProperties, 0);
+		m_Device = std::exchange(other.m_Device, VK_NULL_HANDLE);
+		m_Allocator = std::exchange(other.m_Allocator, nullptr);
+
+		return *this;
+	}
+
 	void VulkanBuffer::Create(const VulkanDevice& deviceRef, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memProps)
 	{
 		if (m_Buffer != VK_NULL_HANDLE || m_Memory != VK_NULL_HANDLE)

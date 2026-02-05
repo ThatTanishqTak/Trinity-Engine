@@ -15,8 +15,8 @@ namespace Trinity
 
 		VulkanBuffer(const VulkanBuffer&) = delete;
 		VulkanBuffer& operator=(const VulkanBuffer&) = delete;
-		VulkanBuffer(VulkanBuffer&&) = delete;
-		VulkanBuffer& operator=(VulkanBuffer&&) = delete;
+		VulkanBuffer(VulkanBuffer&& other) noexcept;
+		VulkanBuffer& operator=(VulkanBuffer&& other) noexcept;
 
 		void Create(const VulkanDevice& deviceRef, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memProps);
 		void Destroy();
