@@ -1,12 +1,23 @@
 #include "Trinity/Renderer/Vulkan/VulkanRenderer.h"
 
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
 #include "Trinity/Platform/Window.h"
 #include "Trinity/Utilities/Utilities.h"
 
+#include <cstring>
 #include <cstdlib>
 
 namespace Trinity
 {
+	struct GlobalUBO
+	{
+		glm::mat4 Proj = glm::mat4(1.0f);
+		glm::mat4 ViewProj = glm::mat4(1.0f);
+	};
+
 	VulkanRenderer::VulkanRenderer() : Renderer(RendererAPI::VULKAN)
 	{
 
@@ -52,6 +63,16 @@ namespace Trinity
 		// Descriptors + pipeline
 		m_Descriptors.Initialize(m_Context, m_FramesInFlight);
 
+		m_GlobalUniformBuffers.resize(m_FramesInFlight);
+		m_GlobalUniformMappings.resize(m_FramesInFlight);
+		for (uint32_t it_Frame = 0; it_Frame < m_FramesInFlight; ++it_Frame)
+		{
+			m_GlobalUniformBuffers[it_Frame].Create(m_Device, sizeof(GlobalUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+			m_GlobalUniformMappings[it_Frame] = m_GlobalUniformBuffers[it_Frame].Map();
+			m_Descriptors.WriteGlobalUBO(it_Frame, m_GlobalUniformBuffers[it_Frame].GetBuffer(), 0, sizeof(GlobalUBO));
+		}
+
 		VulkanPipeline::GraphicsDescription l_PipelineDesc{};
 		l_PipelineDesc.EnableDepthTest = true;
 		l_PipelineDesc.EnableDepthWrite = true;
@@ -92,6 +113,16 @@ namespace Trinity
 		m_Mesh.Destroy();
 		m_Pipeline.Shutdown();
 		m_Descriptors.Shutdown();
+		for (size_t it_Frame = 0; it_Frame < m_GlobalUniformBuffers.size(); ++it_Frame)
+		{
+			if (m_GlobalUniformMappings[it_Frame] != nullptr)
+			{
+				m_GlobalUniformBuffers[it_Frame].Unmap();
+			}
+			m_GlobalUniformBuffers[it_Frame].Destroy();
+		}
+		m_GlobalUniformMappings.clear();
+		m_GlobalUniformBuffers.clear();
 		m_FrameResources.Shutdown();
 		m_Framebuffers.Shutdown();
 		m_RenderPass.Shutdown();
@@ -174,6 +205,15 @@ namespace Trinity
 
 		m_FrameContext = l_FrameContext;
 		m_FrameBegun = true;
+
+		const VkExtent2D l_Extent = m_Swapchain.GetExtent();
+		const float l_Aspect = l_Extent.height == 0 ? 1.0f : static_cast<float>(l_Extent.width) / static_cast<float>(l_Extent.height);
+		GlobalUBO l_GlobalUBO{};
+		l_GlobalUBO.Proj = glm::perspective(glm::radians(45.0f), l_Aspect, 0.1f, 100.0f);
+		l_GlobalUBO.Proj[1][1] *= -1.0f;
+		const glm::mat4 l_View = glm::lookAt(glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		l_GlobalUBO.ViewProj = l_GlobalUBO.Proj * l_View;
+		std::memcpy(m_GlobalUniformMappings[l_FrameIndex], &l_GlobalUBO, sizeof(GlobalUBO));
 
 		VkClearValue l_ClearValues[2]{};
 

@@ -17,6 +17,7 @@
 #include "Trinity/Geometry/Mesh.h"
 
 #include <optional>
+#include <vector>
 
 namespace Trinity
 {
@@ -68,6 +69,8 @@ namespace Trinity
 		VulkanCommand m_Command;
 		VulkanSync m_Sync;
 		Geometry::Mesh m_Mesh;
+		std::vector<VulkanBuffer> m_GlobalUniformBuffers;
+		std::vector<void*> m_GlobalUniformMappings;
 
 		uint32_t m_FramesInFlight = 2;
 		std::optional<FrameContext> m_FrameContext;
