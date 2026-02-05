@@ -45,6 +45,7 @@ namespace Trinity
 		if (s_Renderer == nullptr)
 		{
 			TR_CORE_WARN("RenderCommand::Resize called before renderer initialization");
+
 			return;
 		}
 
@@ -99,26 +100,6 @@ namespace Trinity
 		}
 
 		s_Renderer->EndScene();
-	}
-
-	MeshHandle RenderCommand::CreateMesh(const std::vector<Geometry::Vertex>& vertices, const std::vector<uint32_t>& indices)
-	{
-		if (s_Renderer == nullptr)
-		{
-			return InvalidMeshHandle;
-		}
-
-		return s_Renderer->CreateMesh(vertices, indices);
-	}
-
-	void RenderCommand::DestroyMesh(MeshHandle handle)
-	{
-		if (s_Renderer == nullptr)
-		{
-			return;
-		}
-
-		s_Renderer->DestroyMesh(handle);
 	}
 
 	Renderer& RenderCommand::GetRenderer()

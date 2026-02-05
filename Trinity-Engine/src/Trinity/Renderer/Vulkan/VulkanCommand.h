@@ -18,6 +18,21 @@ namespace Trinity
 			VkCommandBuffer PrimaryCommandBuffer = VK_NULL_HANDLE;
 		};
 
+		struct UploadBarrier
+		{
+			VkBuffer Buffer = VK_NULL_HANDLE;
+			VkDeviceSize Offset = 0;
+			VkDeviceSize Size = 0;
+			VkAccessFlags DstAccessMask = 0;
+			VkPipelineStageFlags DstStageMask = 0;
+		};
+
+		struct UploadWait
+		{
+			VkSemaphore Semaphore = VK_NULL_HANDLE;
+			VkPipelineStageFlags StageMask = 0;
+		};
+
 	public:
 		VulkanCommand() = default;
 		~VulkanCommand() = default;
@@ -43,8 +58,11 @@ namespace Trinity
 		uint32_t GetGraphicsQueueFamilyIndex() const { return m_GraphicsQueueFamilyIndex; }
 		uint32_t GetTransferQueueFamilyIndex() const { return m_TransferQueueFamilyIndex; }
 
-		VkCommandBuffer BeginSingleTime(VkCommandPool commandPool) const;
-		void EndSingleTime(VkCommandBuffer commandBuffer, VkCommandPool commandPool, VkQueue queue) const;
+		VkCommandBuffer BeginSingleTime(VkCommandPool commandPool);
+		void EndSingleTime(VkCommandBuffer commandBuffer, VkCommandPool commandPool, VkQueue queue, VkPipelineStageFlags waitStageMask);
+		void EnqueueUploadBarrier(const UploadBarrier& barrier);
+		void RecordUploadAcquireBarriers(VkCommandBuffer commandBuffer);
+		void ConsumeUploadWaits(std::vector<UploadWait>& waits);
 
 	private:
 		void CreatePerFrame(uint32_t framesInFlight);
@@ -65,5 +83,9 @@ namespace Trinity
 
 		// Transient pool for one-time command buffers (uploads, staging copies, etc.)
 		VkCommandPool m_UploadCommandPool = VK_NULL_HANDLE;
+		VkFence m_UploadFence = VK_NULL_HANDLE;
+		VkCommandBuffer m_UploadCommandBufferInFlight = VK_NULL_HANDLE;
+		std::vector<UploadBarrier> m_UploadBarriers;
+		std::vector<UploadWait> m_UploadWaits;
 	};
 }

@@ -140,7 +140,7 @@ namespace Trinity
 #define TR_DEBUGBREAK() ((void)0)
 #endif
 
-#define TR_ABORT() do { TR_DEBUGBREAK(); std::abort(); } while (0)
+#define TR_ABORT() do { TR_DEBUGBREAK(); } while (0)
 
 #ifdef TRINITY_DEBUG
 #define TR_ENABLE_ASSERTS 1

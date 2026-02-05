@@ -9,7 +9,7 @@ namespace Trinity
 {
 	namespace Geometry
 	{
-		void Mesh::Upload(const VulkanDevice& deviceRef, const VulkanCommand& command, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices)
+		void Mesh::Upload(const VulkanDevice& deviceRef, VulkanCommand& command, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices)
 		{
 			IndexCount = static_cast<uint32_t>(indices.size());
 

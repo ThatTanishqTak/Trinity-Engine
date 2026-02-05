@@ -27,9 +27,7 @@ namespace Trinity
 		static void SubmitMesh(MeshHandle mesh, const glm::mat4& transform);
 		static void EndScene();
 
-		// Phase 1: mesh API
-		static MeshHandle CreateMesh(const std::vector<Geometry::Vertex>& vertices, const std::vector<uint32_t>& indices);
-		static void DestroyMesh(MeshHandle handle);
+		//static void DrawCube(glm::vec3 pos, glm::vec3 size, glm::vec4 tint = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 
 		static Renderer& GetRenderer();
 	};

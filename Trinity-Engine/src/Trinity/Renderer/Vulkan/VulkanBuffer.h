@@ -21,10 +21,10 @@ namespace Trinity
 		void Create(const VulkanDevice& deviceRef, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memProps);
 		void Destroy();
 
-		void* Map();
-		void Unmap();
+		void* Map() const;
+		void Unmap() const;
 
-		void CopyFromStaging(const VulkanCommand& command, const VulkanBuffer& stagingBuffer);
+		void CopyFromStaging(VulkanCommand& command, const VulkanBuffer& stagingBuffer);
 
 		VkBuffer GetBuffer() const { return m_Buffer; }
 		VkDeviceSize GetSize() const { return m_Size; }

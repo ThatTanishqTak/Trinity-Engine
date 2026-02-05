@@ -19,7 +19,7 @@ namespace Trinity
 			VulkanBuffer IndexBuffer{};
 			uint32_t IndexCount = 0;
 
-			void Upload(const VulkanDevice& deviceRef, const VulkanCommand& command, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices);
+			void Upload(const VulkanDevice& deviceRef, VulkanCommand& command, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices);
 
 			void Destroy();
 		};

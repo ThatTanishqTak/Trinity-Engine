@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Trinity/Layer/Layer.h"
-#include "Trinity/Renderer/MeshHandle.h"
 
 namespace Trinity
 {
@@ -25,5 +24,5 @@ public:
     void OnEvent(Trinity::Event& e) override;
 
 private:
-    Trinity::MeshHandle m_TriangleMesh = Trinity::InvalidMeshHandle;
+
 };

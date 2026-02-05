@@ -114,7 +114,7 @@ namespace Trinity
 		m_Allocator = nullptr;
 	}
 
-	void* VulkanBuffer::Map()
+	void* VulkanBuffer::Map() const
 	{
 		if ((m_MemoryProperties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) == 0)
 		{
@@ -136,7 +136,7 @@ namespace Trinity
 		return l_Data;
 	}
 
-	void VulkanBuffer::Unmap()
+	void VulkanBuffer::Unmap() const
 	{
 		if ((m_MemoryProperties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) == 0)
 		{
@@ -155,7 +155,7 @@ namespace Trinity
 		vkUnmapMemory(m_Device, m_Memory);
 	}
 
-	void VulkanBuffer::CopyFromStaging(const VulkanCommand& command, const VulkanBuffer& stagingBuffer)
+	void VulkanBuffer::CopyFromStaging(VulkanCommand& command, const VulkanBuffer& stagingBuffer)
 	{
 		if (m_Device == VK_NULL_HANDLE || m_Buffer == VK_NULL_HANDLE)
 		{
@@ -190,21 +190,52 @@ namespace Trinity
 
 		uint32_t l_TransferQueueFamilyIndex = command.GetTransferQueueFamilyIndex();
 		uint32_t l_GraphicsQueueFamilyIndex = command.GetGraphicsQueueFamilyIndex();
+
+		VkAccessFlags l_DstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+		VkPipelineStageFlags l_DstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+
+		if ((m_Usage & VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) != 0)
+		{
+			l_DstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+			l_DstStageMask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+		}
+		else if ((m_Usage & VK_BUFFER_USAGE_INDEX_BUFFER_BIT) != 0)
+		{
+			l_DstAccessMask = VK_ACCESS_INDEX_READ_BIT;
+			l_DstStageMask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+		}
+		else if ((m_Usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) != 0)
+		{
+			l_DstAccessMask = VK_ACCESS_UNIFORM_READ_BIT;
+			l_DstStageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		}
+
 		if (l_TransferQueueFamilyIndex != l_GraphicsQueueFamilyIndex)
 		{
 			VkBufferMemoryBarrier l_BufferBarrier{};
 			l_BufferBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
 			l_BufferBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-			l_BufferBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+			l_BufferBarrier.dstAccessMask = 0;
 			l_BufferBarrier.srcQueueFamilyIndex = l_TransferQueueFamilyIndex;
 			l_BufferBarrier.dstQueueFamilyIndex = l_GraphicsQueueFamilyIndex;
 			l_BufferBarrier.buffer = m_Buffer;
 			l_BufferBarrier.offset = 0;
 			l_BufferBarrier.size = VK_WHOLE_SIZE;
 
-			vkCmdPipelineBarrier(l_CommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 1, &l_BufferBarrier, 0, nullptr);
+			vkCmdPipelineBarrier(l_CommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 1, &l_BufferBarrier, 0, nullptr);
 		}
 
-		command.EndSingleTime(l_CommandBuffer, command.GetUploadCommandPool(), l_Queue);
+		command.EndSingleTime(l_CommandBuffer, command.GetUploadCommandPool(), l_Queue, l_DstStageMask);
+
+		if (l_TransferQueueFamilyIndex != l_GraphicsQueueFamilyIndex)
+		{
+			VulkanCommand::UploadBarrier l_Barrier{};
+			l_Barrier.Buffer = m_Buffer;
+			l_Barrier.Offset = 0;
+			l_Barrier.Size = VK_WHOLE_SIZE;
+			l_Barrier.DstAccessMask = l_DstAccessMask;
+			l_Barrier.DstStageMask = l_DstStageMask;
+			command.EnqueueUploadBarrier(l_Barrier);
+		}
 	}
 }

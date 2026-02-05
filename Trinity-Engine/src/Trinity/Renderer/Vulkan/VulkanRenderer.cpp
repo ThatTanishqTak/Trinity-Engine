@@ -7,6 +7,7 @@
 #include "Trinity/Utilities/Utilities.h"
 
 #include <cstring>
+#include <vector>
 
 namespace Trinity
 {
@@ -186,6 +187,7 @@ namespace Trinity
 		m_Sync.SetImageInFlightFence(l_ImageIndex, l_FrameFence);
 
 		VkCommandBuffer l_CommandBuffer = m_Command.BeginFrame(l_FrameIndex);
+		m_Command.RecordUploadAcquireBarriers(l_CommandBuffer);
 		const VkSemaphore l_RenderFinishedSemaphore = m_Sync.GetRenderFinishedSemaphore(l_ImageIndex);
 
 		FrameContext l_FrameContext{};
@@ -322,26 +324,50 @@ namespace Trinity
 		const VkSemaphore l_RenderFinishedSemaphore = l_FrameContext.RenderFinishedSemaphore;
 		const VkFence l_InFlightFence = l_FrameContext.InFlightFence;
 
-		VkSemaphore l_WaitSemaphores[] = { l_ImageAvailableSemaphore };
+		std::vector<VulkanCommand::UploadWait> l_UploadWaits;
+		m_Command.ConsumeUploadWaits(l_UploadWaits);
 
-		VkPipelineStageFlags l_WaitStages[] =
+		std::vector<VkSemaphore> l_WaitSemaphores;
+		std::vector<VkPipelineStageFlags> l_WaitStages;
+		l_WaitSemaphores.reserve(1 + l_UploadWaits.size());
+		l_WaitStages.reserve(1 + l_UploadWaits.size());
+
+		l_WaitSemaphores.push_back(l_ImageAvailableSemaphore);
+		l_WaitStages.push_back(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
+
+		for (const VulkanCommand::UploadWait& it_Wait : l_UploadWaits)
 		{
-			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-		};
+			if (it_Wait.Semaphore == VK_NULL_HANDLE)
+			{
+				continue;
+			}
+
+			l_WaitSemaphores.push_back(it_Wait.Semaphore);
+			l_WaitStages.push_back(it_Wait.StageMask);
+		}
 
 		VkSemaphore l_SignalSemaphores[] = { l_RenderFinishedSemaphore };
 
 		VkSubmitInfo l_SubmitInfo{};
 		l_SubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		l_SubmitInfo.waitSemaphoreCount = 1;
-		l_SubmitInfo.pWaitSemaphores = l_WaitSemaphores;
-		l_SubmitInfo.pWaitDstStageMask = l_WaitStages;
+		l_SubmitInfo.waitSemaphoreCount = static_cast<uint32_t>(l_WaitSemaphores.size());
+		l_SubmitInfo.pWaitSemaphores = l_WaitSemaphores.data();
+		l_SubmitInfo.pWaitDstStageMask = l_WaitStages.data();
 		l_SubmitInfo.commandBufferCount = 1;
 		l_SubmitInfo.pCommandBuffers = &l_CommandBuffer;
 		l_SubmitInfo.signalSemaphoreCount = 1;
 		l_SubmitInfo.pSignalSemaphores = l_SignalSemaphores;
 
 		Utilities::VulkanUtilities::VKCheck(vkQueueSubmit(m_Context.Queues.GraphicsQueue, 1, &l_SubmitInfo, l_InFlightFence), "Failed vkQueueSubmit");
+
+		for (VulkanCommand::UploadWait& it_Wait : l_UploadWaits)
+		{
+			if (it_Wait.Semaphore != VK_NULL_HANDLE)
+			{
+				vkDestroySemaphore(m_Context.Device, it_Wait.Semaphore, m_Context.Allocator);
+				it_Wait.Semaphore = VK_NULL_HANDLE;
+			}
+		}
 
 		VkResult l_PresentResult = m_Swapchain.Present(m_Context.Queues.PresentQueue, l_FrameContext.ImageIndex, l_RenderFinishedSemaphore);
 
