@@ -6,6 +6,7 @@
 #include "Trinity/Events/KeyEvent.h"
 #include "Trinity/Events/MouseEvent.h"
 
+#include <memory>
 #include <cstdlib>
 
 namespace Trinity
@@ -99,17 +100,17 @@ namespace Trinity
             return false;
         });
 
-        l_Dispatcher.Dispatch<WindowCloseEvent>([this](WindowCloseEvent&)
+        l_Dispatcher.Dispatch<WindowCloseEvent>([this](WindowCloseEvent& event)
         {
+            if (event.Handled)
+            {
+                return false;
+            }
+
             m_ShouldClose = true;
 
             return false;
         });
-    }
-
-    void WindowsWindow::SetEventCallback(const EventCallbackFn& callback)
-    {
-        m_Data.EventCallback = callback;
     }
 
     void WindowsWindow::SetVSync(bool enabled)
@@ -127,14 +128,6 @@ namespace Trinity
         l_Handle.Display = nullptr;
 
         return l_Handle;
-    }
-
-    void WindowsWindow::DispatchEvent(Event& e)
-    {
-        if (m_Data.EventCallback)
-        {
-            m_Data.EventCallback(e);
-        }
     }
 
     void WindowsWindow::RegisterWindowClassIfNeeded()
@@ -257,16 +250,7 @@ namespace Trinity
         {
             case WM_CLOSE:
             {
-                WindowCloseEvent l_Event;
-                DispatchEvent(l_Event);
-
-                if (l_Event.Handled)
-                {
-                    return 0;
-                }
-
-                m_ShouldClose = true;
-                DestroyWindow(m_WindowHandle);
+                m_EventQueue.PushEvent(std::make_unique<WindowCloseEvent>());
 
                 return 0;
             }
@@ -284,24 +268,21 @@ namespace Trinity
                 const uint32_t l_Height = static_cast<uint32_t>(HIWORD(lParam));
                 m_Data.Minimized = (wParam == SIZE_MINIMIZED) || (l_Width == 0 || l_Height == 0);
 
-                WindowResizeEvent l_Event(l_Width, l_Height);
-                DispatchEvent(l_Event);
+                m_EventQueue.PushEvent(std::make_unique<WindowResizeEvent>(l_Width, l_Height));
 
                 return 0;
             }
 
             case WM_SETFOCUS:
             {
-                WindowFocusEvent l_Event;
-                DispatchEvent(l_Event);
+                m_EventQueue.PushEvent(std::make_unique<WindowFocusEvent>());
 
                 return 0;
             }
 
             case WM_KILLFOCUS:
             {
-                WindowLostFocusEvent l_Event;
-                DispatchEvent(l_Event);
+                m_EventQueue.PushEvent(std::make_unique<WindowLostFocusEvent>());
 
                 return 0;
             }
@@ -311,8 +292,7 @@ namespace Trinity
                 const int l_X = static_cast<int>(static_cast<short>(LOWORD(lParam)));
                 const int l_Y = static_cast<int>(static_cast<short>(HIWORD(lParam)));
 
-                WindowMovedEvent l_Event(l_X, l_Y);
-                DispatchEvent(l_Event);
+                m_EventQueue.PushEvent(std::make_unique<WindowMovedEvent>(l_X, l_Y));
 
                 return 0;
             }
@@ -322,8 +302,7 @@ namespace Trinity
                 const float l_X = static_cast<float>(static_cast<short>(LOWORD(lParam)));
                 const float l_Y = static_cast<float>(static_cast<short>(HIWORD(lParam)));
 
-                MouseMovedEvent l_Event(l_X, l_Y);
-                DispatchEvent(l_Event);
+                m_EventQueue.PushEvent(std::make_unique<MouseMovedEvent>(l_X, l_Y));
 
                 return 0;
             }
@@ -333,8 +312,7 @@ namespace Trinity
                 const int l_Delta = GET_WHEEL_DELTA_WPARAM(wParam);
                 const float l_Steps = static_cast<float>(l_Delta) / static_cast<float>(WHEEL_DELTA);
 
-                MouseScrolledEvent l_Event(0.0f, l_Steps);
-                DispatchEvent(l_Event);
+                m_EventQueue.PushEvent(std::make_unique<MouseScrolledEvent>(0.0f, l_Steps));
 
                 return 0;
             }
@@ -345,8 +323,7 @@ namespace Trinity
             case WM_XBUTTONDOWN:
             {
                 const Code::MouseCode l_Button = TranslateMouseButton(msg, wParam);
-                MouseButtonPressedEvent l_Event(l_Button);
-                DispatchEvent(l_Event);
+                m_EventQueue.PushEvent(std::make_unique<MouseButtonPressedEvent>(l_Button));
 
                 return 0;
             }
@@ -357,8 +334,7 @@ namespace Trinity
             case WM_XBUTTONUP:
             {
                 const Code::MouseCode l_Button = TranslateMouseButton(msg, wParam);
-                MouseButtonReleasedEvent l_Event(l_Button);
-                DispatchEvent(l_Event);
+                m_EventQueue.PushEvent(std::make_unique<MouseButtonReleasedEvent>(l_Button));
 
                 return 0;
             }
@@ -366,8 +342,7 @@ namespace Trinity
             case WM_CHAR:
             {
                 const uint32_t l_Codepoint = static_cast<uint32_t>(wParam);
-                KeyTypedEvent l_Event(l_Codepoint);
-                DispatchEvent(l_Event);
+                m_EventQueue.PushEvent(std::make_unique<KeyTypedEvent>(l_Codepoint));
 
                 return 0;
             }
@@ -375,12 +350,10 @@ namespace Trinity
             case WM_KEYDOWN:
             case WM_SYSKEYDOWN:
             {
-                const bool l_WasDown = (lParam & (1 << 30)) != 0;
-                const int l_RepeatCount = l_WasDown ? 1 : 0;
+                const int l_RepeatCount = static_cast<int>(LOWORD(lParam));
 
                 const Code::KeyCode l_Key = TranslateKeyCode(wParam, lParam);
-                KeyPressedEvent l_Event(l_Key, l_RepeatCount);
-                DispatchEvent(l_Event);
+                m_EventQueue.PushEvent(std::make_unique<KeyPressedEvent>(l_Key, l_RepeatCount));
 
                 return 0;
             }
@@ -389,8 +362,7 @@ namespace Trinity
             case WM_SYSKEYUP:
             {
                 const Code::KeyCode l_Key = TranslateKeyCode(wParam, lParam);
-                KeyReleasedEvent l_Event(l_Key);
-                DispatchEvent(l_Event);
+                m_EventQueue.PushEvent(std::make_unique<KeyReleasedEvent>(l_Key));
 
                 return 0;
             }
