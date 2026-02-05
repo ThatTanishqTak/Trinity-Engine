@@ -6,6 +6,7 @@
 #include "Trinity/Platform/Window.h"
 
 #include "Trinity/Events/Event.h"
+#include "Trinity/Events/EventQueue.h"
 #include "Trinity/Events/ApplicationEvent.h"
 #include "Trinity/Events/KeyEvent.h"
 #include "Trinity/Events/MouseEvent.h"
@@ -15,6 +16,7 @@
 
 #include <chrono>
 #include <cstdlib>
+#include <memory>
 #include <thread>
 #include <utility>
 
@@ -38,10 +40,6 @@ namespace Trinity
 
         m_Window = Window::Create();
         m_Window->Initialize();
-        m_Window->SetEventCallback([this](Event& e)
-        {
-            OnEvent(e);
-        });
 
         RenderCommand::Initialize(*m_Window, RendererAPI::VULKAN);
 
@@ -89,7 +87,6 @@ namespace Trinity
     void Application::OnEvent(Event& e)
     {
         Input::OnEvent(e);
-        m_Window->OnEvent(e);
 
         if (e.GetEventType() == EventType::WindowResize)
         {
@@ -107,6 +104,8 @@ namespace Trinity
                 break;
             }
         }
+
+        m_Window->OnEvent(e);
     }
 
     void Application::Run()
@@ -121,6 +120,13 @@ namespace Trinity
             if (!s_Running)
             {
                 break;
+            }
+
+            auto& l_EventQueue = m_Window->GetEventQueue();
+            std::unique_ptr<Event> l_Event;
+            while (l_EventQueue.TryPopEvent(l_Event))
+            {
+                OnEvent(*l_Event);
             }
 
             if (m_Window->ShouldClose())

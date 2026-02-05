@@ -26,8 +26,8 @@ namespace Trinity
 		m_Device = context.Device;
 		m_Allocator = context.Allocator;
 		m_GraphicsQueueFamilyIndex = context.Queues.GraphicsFamilyIndex;
-		m_TransferQueueFamilyIndex = context.Queues.TransferFamilyIndex;
-		m_UploadQueue = context.Queues.TransferQueue;
+		m_TransferQueueFamilyIndex = m_GraphicsQueueFamilyIndex;
+		m_UploadQueue = context.Queues.GraphicsQueue;
 
 		if (m_Device == VK_NULL_HANDLE || m_GraphicsQueueFamilyIndex == UINT32_MAX)
 		{

@@ -129,3 +129,70 @@ namespace Trinity
 #define TR_COLOR_RED glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
 #define TR_COLOR_GREEN glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
 #define TR_COLOR_BLUE glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);
+
+// -------------------- Diagnostics --------------------
+
+#if defined(_MSC_VER)
+#define TR_DEBUGBREAK() __debugbreak()
+#elif defined(__clang__) || defined(__GNUC__)
+#define TR_DEBUGBREAK() raise(SIGTRAP)
+#else
+#define TR_DEBUGBREAK() ((void)0)
+#endif
+
+#define TR_ABORT() do { TR_DEBUGBREAK(); std::abort(); } while (0)
+
+#ifdef TRINITY_DEBUG
+#define TR_ENABLE_ASSERTS 1
+#else
+#define TR_ENABLE_ASSERTS 0
+#endif
+
+#if TR_ENABLE_ASSERTS
+
+#define TR_CORE_ASSERT(condition, ...) \
+        do { \
+            if (!(condition)) { \
+                TR_CORE_CRITICAL("Assertion failed: {} ({}:{})", #condition, __FILE__, __LINE__); \
+                TR_CORE_CRITICAL(__VA_ARGS__); \
+                TR_ABORT(); \
+            } \
+        } while (0)
+
+#define TR_ASSERT(condition, ...) \
+        do { \
+            if (!(condition)) { \
+                TR_CRITICAL("Assertion failed: {} ({}:{})", #condition, __FILE__, __LINE__); \
+                TR_CRITICAL(__VA_ARGS__); \
+                TR_ABORT(); \
+            } \
+        } while (0)
+
+#define TR_CORE_VERIFY(condition, ...) TR_CORE_ASSERT(condition, __VA_ARGS__)
+#define TR_VERIFY(condition, ...) TR_ASSERT(condition, __VA_ARGS__)
+
+#else
+
+#define TR_CORE_ASSERT(condition, ...) ((void)0)
+#define TR_ASSERT(condition, ...) ((void)0)
+
+#define TR_CORE_VERIFY(condition, ...) \
+        do { \
+            if (!(condition)) { \
+                TR_CORE_ERROR("Verify failed: {} ({}:{})", #condition, __FILE__, __LINE__); \
+                TR_CORE_ERROR(__VA_ARGS__); \
+            } \
+        } while (0)
+
+#define TR_VERIFY(condition, ...) \
+        do { \
+            if (!(condition)) { \
+                TR_ERROR("Verify failed: {} ({}:{})", #condition, __FILE__, __LINE__); \
+                TR_ERROR(__VA_ARGS__); \
+            } \
+        } while (0)
+
+#endif
+
+#define TR_CORE_FATAL(...) do { TR_CORE_CRITICAL(__VA_ARGS__); TR_ABORT(); } while (0)
+#define TR_FATAL(...) do { TR_CRITICAL(__VA_ARGS__); TR_ABORT(); } while (0)

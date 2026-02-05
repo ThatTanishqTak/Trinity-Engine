@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Trinity/Events/EventQueue.h"
 #include "Trinity/Platform/Window.h"
 #include "Trinity/Input/InputCodes.h"
 
@@ -25,7 +26,7 @@ namespace Trinity
         void OnUpdate() override;
         void OnEvent(Event& e) override;
 
-        void SetEventCallback(const EventCallbackFn& callback) override;
+        EventQueue& GetEventQueue() override { return m_EventQueue; }
 
         uint32_t GetWidth() const override { return m_Data.Width; }
         uint32_t GetHeight() const override { return m_Data.Height; }
@@ -48,7 +49,6 @@ namespace Trinity
             bool Resizable = true;
             bool Minimized = false;
 
-            EventCallbackFn EventCallback;
         };
 
     private:
@@ -59,8 +59,6 @@ namespace Trinity
         static Code::KeyCode TranslateKeyCode(WPARAM wParam, LPARAM lParam);
         static Code::MouseCode TranslateMouseButton(UINT msg, WPARAM wParam);
 
-        void DispatchEvent(Event& e);
-
         void RegisterWindowClassIfNeeded();
         void CreateNativeWindow();
         void DestroyNativeWindow();
@@ -70,6 +68,7 @@ namespace Trinity
         HWND m_WindowHandle = nullptr;
 
         WindowData m_Data{};
+        EventQueue m_EventQueue{};
         bool m_Initialized = false;
         bool m_ShouldClose = false;
     };
