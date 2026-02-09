@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Trinity/Renderer/Vulkan/VulkanContext.h"
-
 #include <vulkan/vulkan.h>
 
 #include <cstdint>
@@ -9,83 +7,37 @@
 
 namespace Trinity
 {
+	class VulkanContext;
+	class VulkanDevice;
+
 	class VulkanCommand
 	{
 	public:
-		struct PerFrameCommand
-		{
-			VkCommandPool CommandPool = VK_NULL_HANDLE;
-			VkCommandBuffer PrimaryCommandBuffer = VK_NULL_HANDLE;
-		};
-
-		struct UploadBarrier
-		{
-			VkBuffer Buffer = VK_NULL_HANDLE;
-			VkDeviceSize Offset = 0;
-			VkDeviceSize Size = 0;
-			VkAccessFlags DstAccessMask = 0;
-			VkPipelineStageFlags DstStageMask = 0;
-		};
-
-		struct UploadWait
-		{
-			VkSemaphore Semaphore = VK_NULL_HANDLE;
-			VkPipelineStageFlags StageMask = 0;
-		};
-
-	public:
-		VulkanCommand() = default;
-		~VulkanCommand() = default;
-
-		VulkanCommand(const VulkanCommand&) = delete;
-		VulkanCommand& operator=(const VulkanCommand&) = delete;
-		VulkanCommand(VulkanCommand&&) = delete;
-		VulkanCommand& operator=(VulkanCommand&&) = delete;
-
-		void Initialize(const VulkanContext& context, uint32_t framesInFlight);
+		void Initialize(const VulkanContext& context, const VulkanDevice& device, uint32_t framesInFlight);
 		void Shutdown();
 
-		// Per-frame recording helpers
-		VkCommandBuffer BeginFrame(uint32_t frameIndex, VkCommandBufferUsageFlags usageFlags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-		void EndFrame(uint32_t frameIndex);
+		uint32_t GetFramesInFlight() const { return m_FramesInFlight; }
 
 		VkCommandPool GetCommandPool(uint32_t frameIndex) const;
 		VkCommandBuffer GetCommandBuffer(uint32_t frameIndex) const;
 
-		// One-off command buffer helpers (uploads during init, staging copies, etc.)
-		VkCommandPool GetUploadCommandPool() const { return m_UploadCommandPool; }
-		VkQueue GetUploadQueue() const { return m_UploadQueue; }
-		uint32_t GetGraphicsQueueFamilyIndex() const { return m_GraphicsQueueFamilyIndex; }
-		uint32_t GetTransferQueueFamilyIndex() const { return m_TransferQueueFamilyIndex; }
+		void Reset(uint32_t frameIndex) const;
 
-		VkCommandBuffer BeginSingleTime(VkCommandPool commandPool);
-		void EndSingleTime(VkCommandBuffer commandBuffer, VkCommandPool commandPool, VkQueue queue, VkPipelineStageFlags waitStageMask);
-		void EnqueueUploadBarrier(const UploadBarrier& barrier);
-		void RecordUploadAcquireBarriers(VkCommandBuffer commandBuffer);
-		void ConsumeUploadWaits(std::vector<UploadWait>& waits);
+		void Begin(uint32_t frameIndex) const;
+		void End(uint32_t frameIndex) const;
 
 	private:
-		void CreatePerFrame(uint32_t framesInFlight);
-		void DestroyPerFrame();
-
-		void CreateUploadPool();
-		void DestroyUploadPool();
+		void DestroyCommandObjects();
+		void ValidateFrameIndex(uint32_t frameIndex) const;
 
 	private:
-		VkDevice m_Device = VK_NULL_HANDLE;
 		VkAllocationCallbacks* m_Allocator = nullptr;
+		VkDevice m_Device = VK_NULL_HANDLE;
 
-		uint32_t m_GraphicsQueueFamilyIndex = UINT32_MAX;
-		uint32_t m_TransferQueueFamilyIndex = UINT32_MAX;
-		VkQueue m_UploadQueue = VK_NULL_HANDLE;
+		uint32_t m_GraphicsQueueFamilyIndex = 0;
+		uint32_t m_FramesInFlight = 0;
 
-		std::vector<PerFrameCommand> m_Frames;
-
-		// Transient pool for one-time command buffers (uploads, staging copies, etc.)
-		VkCommandPool m_UploadCommandPool = VK_NULL_HANDLE;
-		VkFence m_UploadFence = VK_NULL_HANDLE;
-		VkCommandBuffer m_UploadCommandBufferInFlight = VK_NULL_HANDLE;
-		std::vector<UploadBarrier> m_UploadBarriers;
-		std::vector<UploadWait> m_UploadWaits;
+		std::vector<VkCommandPool> m_CommandPools{};
+		std::vector<VkCommandBuffer> m_CommandBuffers{};
 	};
 }

@@ -1,7 +1,8 @@
 #include "Trinity/Application/Application.h"
 #include "Trinity/Layer/Layer.h"
 
-#include "Trinity/Utilities/Utilities.h"
+#include "Trinity/Utilities/Log.h"
+#include "Trinity/Utilities/Time.h"
 
 #include "Trinity/Platform/Window.h"
 
@@ -25,7 +26,7 @@ namespace Trinity
     Application* Application::s_Instance = nullptr;
     bool Application::s_Running = true;
 
-    Application::Application()
+    Application::Application(ApplicationSpecification& specification) : m_Specification(specification)
     {
         TR_CORE_INFO("------- INITIALIZING APPLICATION -------");
 
@@ -38,8 +39,13 @@ namespace Trinity
 
         s_Instance = this;
 
+        WindowProperties l_WindowProperties;
+        l_WindowProperties.Title = m_Specification.Title;
+        l_WindowProperties.Width = m_Specification.Width;
+        l_WindowProperties.Height = m_Specification.Height;
+
         m_Window = Window::Create();
-        m_Window->Initialize();
+        m_Window->Initialize(l_WindowProperties);
 
         RenderCommand::Initialize(*m_Window, RendererAPI::VULKAN);
 

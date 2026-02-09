@@ -5,7 +5,7 @@
 #include "Trinity/Events/KeyEvent.h"
 #include "Trinity/Events/MouseEvent.h"
 
-#include "Trinity/Utilities/Utilities.h"
+#include "Trinity/Utilities/Log.h"
 
 namespace Trinity
 {

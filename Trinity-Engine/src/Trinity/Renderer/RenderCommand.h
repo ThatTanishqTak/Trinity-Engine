@@ -2,10 +2,8 @@
 
 #include "Trinity/Renderer/Renderer.h"
 
-#include <glm/mat4x4.hpp>
-
+#include <string>
 #include <cstdint>
-#include <vector>
 
 namespace Trinity
 {
@@ -22,13 +20,9 @@ namespace Trinity
 		static void BeginFrame();
 		static void EndFrame();
 
-		// Phase 1: scene API
-		static void BeginScene(const glm::mat4& viewProjection);
-		static void SubmitMesh(MeshHandle mesh, const glm::mat4& transform);
-		static void EndScene();
-
 		//static void DrawCube(glm::vec3 pos, glm::vec3 size, glm::vec4 tint = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
 
 		static Renderer& GetRenderer();
+		static std::string ApiToString(RendererAPI api);
 	};
 }

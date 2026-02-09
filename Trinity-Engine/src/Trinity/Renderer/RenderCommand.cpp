@@ -1,7 +1,7 @@
 #include "Trinity/Renderer/RenderCommand.h"
-
 #include "Trinity/Renderer/RendererFactory.h"
-#include "Trinity/Utilities/Utilities.h"
+
+#include "Trinity/Utilities/Log.h"
 
 #include <memory>
 
@@ -22,11 +22,16 @@ namespace Trinity
 		if (s_Renderer == nullptr)
 		{
 			TR_CORE_CRITICAL("RenderCommand::Initialize failed: RendererFactory returned nullptr");
-			TR_ABORT();
 		}
+		TR_CORE_TRACE("Selected API: {}", ApiToString(api));
 
 		s_Renderer->SetWindow(window);
+
+		TR_CORE_INFO("------- INITIALIZING RENDERER -------");
+
 		s_Renderer->Initialize();
+		
+		TR_CORE_INFO("------- RENDERER INITIALIZED -------");
 	}
 
 	void RenderCommand::Shutdown()
@@ -36,8 +41,12 @@ namespace Trinity
 			return;
 		}
 
+		TR_CORE_INFO("------- SHUTTING DOWN RENDERER -------");
+
 		s_Renderer->Shutdown();
 		s_Renderer.reset();
+
+		TR_CORE_INFO("------- RENDERER SHUTDOWN COMPLETE -------");
 	}
 
 	void RenderCommand::Resize(uint32_t width, uint32_t height)
@@ -72,44 +81,28 @@ namespace Trinity
 		s_Renderer->EndFrame();
 	}
 
-	void RenderCommand::BeginScene(const glm::mat4& viewProjection)
-	{
-		if (s_Renderer == nullptr)
-		{
-			return;
-		}
-
-		s_Renderer->BeginScene(viewProjection);
-	}
-
-	void RenderCommand::SubmitMesh(MeshHandle mesh, const glm::mat4& transform)
-	{
-		if (s_Renderer == nullptr)
-		{
-			return;
-		}
-
-		s_Renderer->SubmitMesh(mesh, transform);
-	}
-
-	void RenderCommand::EndScene()
-	{
-		if (s_Renderer == nullptr)
-		{
-			return;
-		}
-
-		s_Renderer->EndScene();
-	}
-
 	Renderer& RenderCommand::GetRenderer()
 	{
 		if (s_Renderer == nullptr)
 		{
 			TR_CORE_CRITICAL("RenderCommand::GetRenderer called before renderer initialization");
-			TR_ABORT();
 		}
 
 		return *s_Renderer;
+	}
+
+	std::string RenderCommand::ApiToString(RendererAPI api)
+	{
+		switch (api)
+		{
+			case RendererAPI::VULKAN:
+				return "Vulkan";
+			case RendererAPI::MOLTENVK:
+				return "MoltenVK";
+			case RendererAPI::DIRECTX:
+				return "DirectX";
+			default:
+				return "Unknown API";
+		}
 	}
 }

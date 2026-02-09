@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Trinity/Renderer/Vulkan/VulkanContext.h"
-
 #include <vulkan/vulkan.h>
 
 #include <cstdint>
@@ -9,73 +7,72 @@
 
 namespace Trinity
 {
+	class VulkanContext;
 	class VulkanDevice;
 
 	class VulkanSwapchain
 	{
 	public:
-		VulkanSwapchain() = default;
-		~VulkanSwapchain() = default;
-
-		VulkanSwapchain(const VulkanSwapchain&) = delete;
-		VulkanSwapchain& operator=(const VulkanSwapchain&) = delete;
-		VulkanSwapchain(VulkanSwapchain&&) = delete;
-		VulkanSwapchain& operator=(VulkanSwapchain&&) = delete;
-
-		void Initialize(const VulkanContext& context, bool vsync, uint32_t preferredWidth = 0, uint32_t preferredHeight = 0);
+		void Initialize(const VulkanContext& context, const VulkanDevice& device, uint32_t width, uint32_t height);
 		void Shutdown();
 
-		bool Recreate(uint32_t preferredWidth = 0, uint32_t preferredHeight = 0);
+		void Recreate(uint32_t width, uint32_t height);
 
-		VkResult AcquireNextImage(VkSemaphore imageAvailableSemaphore, uint32_t& outImageIndex);
-		VkResult Present(VkQueue presentQueue, uint32_t imageIndex, VkSemaphore renderFinishedSemaphore);
-
-		VkSwapchainKHR GetSwapchain() const { return m_SwapchainHandle; }
-		VkFormat GetImageFormat() const { return m_ImageFormat; }
+		VkSwapchainKHR GetHandle() const { return m_Swapchain; }
 		VkExtent2D GetExtent() const { return m_Extent; }
-		uint32_t GetImageCount() const { return static_cast<uint32_t>(m_Images.size()); }
+		VkFormat GetImageFormat() const { return m_SurfaceFormat.format; }
+		VkPresentModeKHR GetPresentMode() const { return m_PresentMode; }
 
 		const std::vector<VkImage>& GetImages() const { return m_Images; }
 		const std::vector<VkImageView>& GetImageViews() const { return m_ImageViews; }
 
-		VkImage GetImage(uint32_t index) const;
-		VkImageView GetImageView(uint32_t index) const;
+		uint32_t GetImageCount() const { return static_cast<uint32_t>(m_Images.size()); }
 
-		VkImageUsageFlags GetImageUsageFlags() const { return m_ImageUsageFlags; }
-		bool IsVSyncEnabled() const { return m_VSync; }
+		VkResult AcquireNextImageIndex(VkSemaphore imageAvailableSemaphore, uint32_t& outImageIndex, uint64_t timeout = UINT64_MAX) const;
+		VkResult Present(VkQueue presentQueue, VkSemaphore waitSemaphore, uint32_t imageIndex);
+
+		const VkPresentInfoKHR& GetPresentInfo(VkSemaphore waitSemaphore, uint32_t imageIndex) const;
 
 	private:
-		void InitializeInternal(VkDevice device, VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, VkAllocationCallbacks* allocator,
-			uint32_t graphicsQueueFamilyIndex, uint32_t presentQueueFamilyIndex, bool vsync, uint32_t preferredWidth, uint32_t preferredHeight);
+		struct SwapchainSupportDetails
+		{
+			VkSurfaceCapabilitiesKHR Capabilities{};
+			std::vector<VkSurfaceFormatKHR> Formats{};
+			std::vector<VkPresentModeKHR> PresentModes{};
+		};
 
-		void CreateSwapchain(uint32_t preferredWidth, uint32_t preferredHeight, VkSwapchainKHR oldSwapchain);
-		void CreateImageViews();
+	private:
+		void CreateSwapchain(uint32_t width, uint32_t height, VkSwapchainKHR oldSwapchain);
+		void DestroySwapchainResources(VkSwapchainKHR swapchainToDestroy, const std::vector<VkImageView>& viewsToDestroy);
 
-		void DestroyImageViews(const std::vector<VkImageView>& imageViews);
-		void DestroySwapchain(VkSwapchainKHR swapchainHandle);
+		SwapchainSupportDetails QuerySwapchainSupport() const;
 
 		VkSurfaceFormatKHR ChooseSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats) const;
 		VkPresentModeKHR ChoosePresentMode(const std::vector<VkPresentModeKHR>& presentModes) const;
-		VkExtent2D ChooseExtent(const VkSurfaceCapabilitiesKHR& capabilities, uint32_t preferredWidth, uint32_t preferredHeight) const;
-		VkCompositeAlphaFlagBitsKHR ChooseCompositeAlpha(const VkSurfaceCapabilitiesKHR& capabilities) const;
+		VkExtent2D ChooseExtent(const VkSurfaceCapabilitiesKHR& capabilities, uint32_t width, uint32_t height) const;
 
 	private:
-		VkDevice m_Device = VK_NULL_HANDLE;
-		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
-		VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
 		VkAllocationCallbacks* m_Allocator = nullptr;
 
-		VkSwapchainKHR m_SwapchainHandle = VK_NULL_HANDLE;
+		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
+		VkDevice m_Device = VK_NULL_HANDLE;
+		VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
+
+		uint32_t m_GraphicsQueueFamilyIndex = 0;
+		uint32_t m_PresentQueueFamilyIndex = 0;
+
+		VkSwapchainKHR m_Swapchain = VK_NULL_HANDLE;
+		VkSurfaceFormatKHR m_SurfaceFormat{};
+		VkPresentModeKHR m_PresentMode = VK_PRESENT_MODE_FIFO_KHR;
+		VkExtent2D m_Extent{};
 
 		std::vector<VkImage> m_Images;
 		std::vector<VkImageView> m_ImageViews;
 
-		VkFormat m_ImageFormat = VK_FORMAT_UNDEFINED;
-		VkExtent2D m_Extent{};
-
-		VkImageUsageFlags m_ImageUsageFlags = 0;
-		bool m_VSync = true;
-		uint32_t m_GraphicsQueueFamilyIndex = UINT32_MAX;
-		uint32_t m_PresentQueueFamilyIndex = UINT32_MAX;
+		mutable VkPresentInfoKHR m_PresentInfoCached{};
+		mutable VkSwapchainKHR m_PresentSwapchainsCached[1]{};
+		mutable uint32_t m_PresentImageIndicesCached[1]{};
+		mutable VkSemaphore m_PresentWaitSemaphoresCached[1]{};
+		mutable VkResult m_PresentResultsCached[1]{};
 	};
 }

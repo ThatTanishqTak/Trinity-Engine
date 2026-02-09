@@ -1,6 +1,5 @@
 #include "ForgeLayer.h"
 
-#include "Trinity/Utilities/Utilities.h"
 #include "Trinity/Input/Input.h"
 
 #include "Trinity/Application/Application.h"

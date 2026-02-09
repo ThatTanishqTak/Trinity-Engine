@@ -1,22 +1,21 @@
 #version 450
 
-layout(location = 0) in vec3 a_Position;
-layout(location = 1) in vec3 a_Normal;
-layout(location = 2) in vec2 a_UV;
-layout(location = 3) in vec4 a_Tangent;
+layout(location = 0) out vec3 v_Color;
 
-layout(set = 0, binding = 0) uniform GlobalUBO
-{
-    mat4 Proj;
-    mat4 ViewProj;
-} u_Global;
+vec2 positions[3] = vec2[](
+    vec2( 0.0, -0.5),
+    vec2( 0.5,  0.5),
+    vec2(-0.5,  0.5)
+);
 
-layout(push_constant) uniform ObjectPush
-{
-    mat4 Model;
-} u_Object;
+vec3 colors[3] = vec3[](
+    vec3(1.0, 0.0, 0.0),
+    vec3(0.0, 1.0, 0.0),
+    vec3(0.0, 0.0, 1.0)
+);
 
 void main()
 {
-    gl_Position = u_Global.ViewProj * u_Object.Model * vec4(a_Position, 1.0);
+    gl_Position = vec4(positions[gl_VertexIndex], 0.0, 1.0);
+    v_Color = colors[gl_VertexIndex];
 }

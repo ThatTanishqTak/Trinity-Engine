@@ -1,6 +1,6 @@
 #include "Trinity/Platform/Windows/WindowsWindow.h"
 
-#include "Trinity/Utilities/Utilities.h"
+#include "Trinity/Utilities/Log.h"
 #include "Trinity/Events/Event.h"
 #include "Trinity/Events/ApplicationEvent.h"
 #include "Trinity/Events/KeyEvent.h"
@@ -34,6 +34,8 @@ namespace Trinity
             return;
         }
 
+        TR_CORE_TRACE("Creating Win32 Window");
+
         m_InstanceHandle = GetModuleHandleA(nullptr);
 
         m_Data.Title = properties.Title;
@@ -49,11 +51,15 @@ namespace Trinity
         m_ShouldClose = false;
         m_Initialized = true;
 
-        TR_CORE_INFO("Win32 window created: '{}' ({}x{})", m_Data.Title, m_Data.Width, m_Data.Height);
+        TR_CORE_TRACE("Title: {}", m_Data.Title);
+        TR_CORE_TRACE("Resolution: {}x{}", m_Data.Width, m_Data.Height);
+        TR_CORE_TRACE("Win32 Window Created");
     }
 
     void WindowsWindow::Shutdown()
     {
+        TR_CORE_TRACE("Shuting Down Win32 Window");
+
         if (!m_Initialized)
         {
             return;
@@ -62,7 +68,7 @@ namespace Trinity
         DestroyNativeWindow();
         m_Initialized = false;
 
-        TR_CORE_INFO("Win32 window destroyed");
+        TR_CORE_TRACE("Win32 Window Shutdown Complete");
     }
 
     void WindowsWindow::OnUpdate()

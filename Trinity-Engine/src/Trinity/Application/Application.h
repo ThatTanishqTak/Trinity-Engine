@@ -3,17 +3,26 @@
 #include "Trinity/Layer/LayerStack.h"
 #include "Trinity/Renderer/RenderCommand.h"
 
+#include <cstdint>
 #include <memory>
+#include <string>
 
 namespace Trinity
 {
     class Window;
     class Event;
 
+    struct ApplicationSpecification
+    {
+        std::string Title = "Trinity-Application";
+        uint32_t Width = 1280;
+        uint32_t Height = 720;
+    };
+
     class Application
     {
     public:
-        Application();
+        Application(ApplicationSpecification& specification);
         virtual ~Application();
 
         void Run();
@@ -33,6 +42,7 @@ namespace Trinity
 
         LayerStack m_LayerStack;
         std::unique_ptr<Window> m_Window;
+        ApplicationSpecification m_Specification;
 
         static Application* s_Instance;
     };

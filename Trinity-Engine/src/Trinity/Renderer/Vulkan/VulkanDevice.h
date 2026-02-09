@@ -2,101 +2,71 @@
 
 #include <vulkan/vulkan.h>
 
-#include <cstdint>
 #include <optional>
 #include <vector>
 
 namespace Trinity
 {
-	class VulkanDevice
-	{
-	public:
-		VulkanDevice() = default;
-		~VulkanDevice() = default;
+    class VulkanContext;
 
-		VulkanDevice(const VulkanDevice&) = delete;
-		VulkanDevice& operator=(const VulkanDevice&) = delete;
-		VulkanDevice(VulkanDevice&&) = delete;
-		VulkanDevice& operator=(VulkanDevice&&) = delete;
+    class VulkanDevice
+    {
+    public:
+        void Initialize(const VulkanContext& context);
+        void Shutdown();
 
-		// Must be called after a VkInstance and VkSurfaceKHR exist.
-		void Initialize(VkInstance instance, VkSurfaceKHR surface, VkAllocationCallbacks* allocator = nullptr);
-		void Shutdown();
+        VkPhysicalDevice GetPhysicalDevice() const { return m_PhysicalDevice; }
+        VkDevice GetDevice() const { return m_Device; }
 
-		VkPhysicalDevice GetPhysicalDevice() const { return m_PhysicalDevice; }
-		VkDevice GetDevice() const { return m_Device; }
+        VkQueue GetGraphicsQueue() const { return m_GraphicsQueue; }
+        VkQueue GetPresentQueue() const { return m_PresentQueue; }
+        VkQueue GetComputeQueue() const { return m_ComputeQueue; }
+        VkQueue GetTransferQueue() const { return m_TransferQueue; }
 
-		VkQueue GetGraphicsQueue() const { return m_GraphicsQueue; }
-		VkQueue GetPresentQueue() const { return m_PresentQueue; }
-		VkQueue GetTransferQueue() const { return m_TransferQueue; }
-		VkQueue GetComputeQueue() const { return m_ComputeQueue; }
+        uint32_t GetGraphicsQueueFamilyIndex() const { return m_GraphicsQueueFamilyIndex.value(); }
+        uint32_t GetPresentQueueFamilyIndex() const { return m_PresentQueueFamilyIndex.value(); }
+        uint32_t GetComputeQueueFamilyIndex() const { return m_ComputeQueueFamilyIndex.value(); }
+        uint32_t GetTransferQueueFamilyIndex() const { return m_TransferQueueFamilyIndex.value(); }
 
-		uint32_t GetGraphicsQueueFamilyIndex() const;
-		uint32_t GetPresentQueueFamilyIndex() const;
-		uint32_t GetTransferQueueFamilyIndex() const;
-		uint32_t GetComputeQueueFamilyIndex() const;
+    private:
+        struct QueueFamilyIndices
+        {
+            std::optional<uint32_t> Graphics;
+            std::optional<uint32_t> Present;
+            std::optional<uint32_t> Compute;
+            std::optional<uint32_t> Transfer;
 
-		const VkPhysicalDeviceProperties& GetProperties() const { return m_Properties; }
-		const VkPhysicalDeviceFeatures& GetFeatures() const { return m_Features; }
-		const VkPhysicalDeviceMemoryProperties& GetMemoryProperties() const { return m_MemoryProperties; }
+            bool IsComplete() const { return Graphics.has_value() && Present.has_value(); }
+        };
 
-		// Convenience helpers for resource allocation.
-		uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
-		VkFormat FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
-		VkFormat FindDepthFormat() const;
+        void PickPhysicalDevice(const VulkanContext& context);
+        void CreateLogicalDevice(const VulkanContext& context);
 
-	public:
-		struct QueueFamilyIndices
-		{
-			std::optional<uint32_t> GraphicsFamily;
-			std::optional<uint32_t> PresentFamily;
-			std::optional<uint32_t> TransferFamily;
-			std::optional<uint32_t> ComputeFamily;
+        void ReleasePhysicalDevice();
+        void DestroyLogicalDevice();
 
-			bool IsComplete() const
-			{
-				return GraphicsFamily.has_value() && PresentFamily.has_value();
-			}
-		};
+        QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface) const;
+        bool HasSwapchainSupport(VkPhysicalDevice device, VkSurfaceKHR surface) const;
+        bool AreAllExtensionsSupported(VkPhysicalDevice device, const std::vector<const char*>& required) const;
 
-		struct SwapchainSupportDetails
-		{
-			VkSurfaceCapabilitiesKHR Capabilities{};
-			std::vector<VkSurfaceFormatKHR> Formats;
-			std::vector<VkPresentModeKHR> PresentModes;
-		};
+    private:
+        VkAllocationCallbacks* m_Allocator = nullptr;
 
-		QueueFamilyIndices GetQueueFamilyIndices() const { return m_QueueFamilyIndices; }
-		SwapchainSupportDetails QuerySwapchainSupport(VkPhysicalDevice physicalDevice) const;
+        VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
+        VkPhysicalDeviceProperties m_PhysicalDeviceProperties{};
+        VkPhysicalDeviceFeatures m_PhysicalDeviceFeatures{};
+        VkPhysicalDeviceVulkan13Features m_Vulkan13Features{};
 
-	private:
-		void PickPhysicalDevice();
-		void CreateLogicalDevice();
+        VkDevice m_Device = VK_NULL_HANDLE;
 
-		bool IsDeviceSuitable(VkPhysicalDevice physicalDevice) const;
-		bool CheckDeviceExtensionSupport(VkPhysicalDevice physicalDevice) const;
-		int ScorePhysicalDevice(VkPhysicalDevice physicalDevice) const;
-		QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice physicalDevice) const;
+        VkQueue m_GraphicsQueue = VK_NULL_HANDLE;
+        VkQueue m_PresentQueue = VK_NULL_HANDLE;
+        VkQueue m_ComputeQueue = VK_NULL_HANDLE;
+        VkQueue m_TransferQueue = VK_NULL_HANDLE;
 
-	private:
-		VkInstance m_Instance = VK_NULL_HANDLE;
-		VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
-		VkAllocationCallbacks* m_Allocator = nullptr;
-
-		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
-		VkDevice m_Device = VK_NULL_HANDLE;
-
-		VkQueue m_GraphicsQueue = VK_NULL_HANDLE;
-		VkQueue m_PresentQueue = VK_NULL_HANDLE;
-		VkQueue m_TransferQueue = VK_NULL_HANDLE;
-		VkQueue m_ComputeQueue = VK_NULL_HANDLE;
-
-		QueueFamilyIndices m_QueueFamilyIndices;
-
-		VkPhysicalDeviceProperties m_Properties{};
-		VkPhysicalDeviceFeatures m_Features{};
-		VkPhysicalDeviceMemoryProperties m_MemoryProperties{};
-
-		std::vector<const char*> m_DeviceExtensions;
-	};
+        std::optional<uint32_t> m_GraphicsQueueFamilyIndex;
+        std::optional<uint32_t> m_PresentQueueFamilyIndex;
+        std::optional<uint32_t> m_ComputeQueueFamilyIndex;
+        std::optional<uint32_t> m_TransferQueueFamilyIndex;
+    };
 }

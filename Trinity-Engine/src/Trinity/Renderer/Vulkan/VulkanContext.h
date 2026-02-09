@@ -2,42 +2,53 @@
 
 #include <vulkan/vulkan.h>
 
-#include <cstdint>
+#ifdef _WIN32
+#include <Windows.h>
+#include <vulkan/vulkan_win32.h>
+#endif
+
+#include <vector>
 
 namespace Trinity
 {
-	class VulkanInstance;
-	class VulkanSurface;
-	class VulkanDevice;
-
-	struct VulkanQueues
+	class VulkanContext
 	{
-		VkQueue GraphicsQueue = VK_NULL_HANDLE;
-		VkQueue PresentQueue = VK_NULL_HANDLE;
-		VkQueue TransferQueue = VK_NULL_HANDLE;
-		VkQueue ComputeQueue = VK_NULL_HANDLE;
+	public:
+		void Initialize(HWND windowHandle, HINSTANCE windowInstance);
+		void Shutdown();
 
-		uint32_t GraphicsFamilyIndex = UINT32_MAX;
-		uint32_t PresentFamilyIndex = UINT32_MAX;
-		uint32_t TransferFamilyIndex = UINT32_MAX;
-		uint32_t ComputeFamilyIndex = UINT32_MAX;
-	};
+		VkInstance GetInstance() const { return m_Instance; }
+		VkAllocationCallbacks* GetAllocator() const { return m_Allocator; }
+		VkSurfaceKHR GetSurface() const { return m_Surface; }
 
-	struct VulkanContext
-	{
-		VkInstance Instance = VK_NULL_HANDLE;
-		VkSurfaceKHR Surface = VK_NULL_HANDLE;
+	private:
+		void CreateInstance();
+		void CreateSurface(HWND windowHandle, HINSTANCE windowInstance);
 
-		VkPhysicalDevice PhysicalDevice = VK_NULL_HANDLE;
-		VkDevice Device = VK_NULL_HANDLE;
+		void DestroySurface();
+		void DestroyInstance();
 
-		VkAllocationCallbacks* Allocator = nullptr;
+		std::vector<const char*> GetRequiredExtensions() const;
+		std::vector<const char*> GetRequiredLayers() const;
 
-		VulkanQueues Queues{};
+		void SetupDebugMessenger();
+		void DestroyDebugMessenger();
 
-		// Optional: gives access to helper functions like FindMemoryType().
-		const VulkanDevice* DeviceRef = nullptr;
+		bool IsInstanceExtensionSupported(const char* extensionName) const;
+		bool IsInstanceLayerSupported(const char* layerName) const;
 
-		static VulkanContext Initialize(VulkanInstance& instance, VulkanSurface& surface, const VulkanDevice& device);
+	private:
+		VkInstance m_Instance = VK_NULL_HANDLE;
+		VkAllocationCallbacks* m_Allocator = nullptr;
+		VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
+
+		HWND m_WindowHandle = nullptr;
+		HINSTANCE m_WindowInstance = nullptr;
+
+#ifdef _DEBUG
+		VkDebugUtilsMessengerEXT m_DebugMessenger = VK_NULL_HANDLE;
+#endif
+		std::vector<const char*> m_RequiredExtensions{};
+		std::vector<const char*> m_RequiredLayers{};
 	};
 }

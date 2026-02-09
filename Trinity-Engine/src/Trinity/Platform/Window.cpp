@@ -1,5 +1,5 @@
 #include "Trinity/Platform/Window.h"
-#include "Trinity/Utilities/Utilities.h"
+#include "Trinity/Utilities/Log.h"
 
 #ifdef _WIN32
 #include "Trinity/Platform/Windows/WindowsWindow.h"

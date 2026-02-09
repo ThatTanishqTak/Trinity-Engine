@@ -1,29 +1,35 @@
 #include "Trinity/Renderer/Vulkan/VulkanPipeline.h"
 
+#include "Trinity/Renderer/Vulkan/VulkanContext.h"
 #include "Trinity/Renderer/Vulkan/VulkanDevice.h"
-#include "Trinity/Renderer/Vulkan/VulkanRenderPass.h"
-#include "Trinity/Renderer/Vulkan/VulkanDescriptors.h"
-#include "Trinity/Utilities/Utilities.h"
+
+#include "Trinity/Utilities/FileManagement.h"
+#include "Trinity/Utilities/Log.h"
+#include "Trinity/Utilities/VulkanUtilities.h"
 
 #include <cstdlib>
-#include <cstring>
-#include <sstream>
-#include <iomanip>
+#include <vector>
 
 namespace Trinity
 {
-	void VulkanPipeline::Initialize(const VulkanContext& context, const VulkanRenderPass& renderPass, const VulkanDescriptors& descriptors,
-		const std::string& vertexSPVPath, const std::string& fragmentSpvPath, bool enablePipelineCache)
+	void VulkanPipeline::Initialize(const VulkanContext& context, const VulkanDevice& device, VkFormat colorFormat,
+		const std::string& vertexShaderSpvPath, const std::string& fragmentShaderSpvPath)
 	{
+		TR_CORE_TRACE("Initializing Vulkan Pipeline");
+
 		if (m_Device != VK_NULL_HANDLE)
 		{
-			TR_CORE_CRITICAL("VulkanPipeline::Initialize called twice (Shutdown first)");
+			TR_CORE_WARN("VulkanPipeline::Initialize called while already initialized. Reinitializing.");
 
-			std::abort();
+			Shutdown();
 		}
 
-		m_Device = context.Device;
-		m_Allocator = context.Allocator;
+		m_Device = device.GetDevice();
+		m_Allocator = context.GetAllocator();
+		m_ColorFormat = colorFormat;
+
+		m_VertexShaderPath = vertexShaderSpvPath;
+		m_FragmentShaderPath = fragmentShaderSpvPath;
 
 		if (m_Device == VK_NULL_HANDLE)
 		{
@@ -32,257 +38,114 @@ namespace Trinity
 			std::abort();
 		}
 
-		m_VertexSPVPath = vertexSPVPath;
-		m_FragmentSPVPath = fragmentSpvPath;
-		m_EnablePipelineCache = enablePipelineCache;
-		if (m_EnablePipelineCache)
+		if (m_ColorFormat == VK_FORMAT_UNDEFINED)
 		{
-			m_PipelineCachePath = BuildPipelineCachePath(context, m_VertexSPVPath, m_FragmentSPVPath);
-		}
-
-		m_RenderPass = renderPass.GetRenderPass();
-		if (m_RenderPass == VK_NULL_HANDLE)
-		{
-			TR_CORE_CRITICAL("VulkanPipeline::Initialize called with invalid VkRenderPass");
+			TR_CORE_CRITICAL("VulkanPipeline::Initialize called with VK_FORMAT_UNDEFINED");
 
 			std::abort();
 		}
 
-		if (enablePipelineCache)
-		{
-			CreatePipelineCache();
-		}
+		CreatePipeline();
 
-		CreatePipelineLayout(descriptors);
-		CreateGraphicsPipeline(m_RenderPass);
-
-		TR_CORE_TRACE("VulkanPipeline initialized");
+		TR_CORE_TRACE("Vulkan Pipeline Initialized (ColorFormat: {})", static_cast<int>(m_ColorFormat));
 	}
 
 	void VulkanPipeline::Shutdown()
 	{
-		if (m_Device == VK_NULL_HANDLE)
-		{
-			m_ShaderModules.clear();
+		DestroyPipeline();
 
-			return;
-		}
+		m_VertexShaderPath.clear();
+		m_FragmentShaderPath.clear();
 
-		DestroyGraphicsPipeline();
-		DestroyPipelineLayout();
-		DestroyPipelineCache();
-
-		for (auto& it_Pair : m_ShaderModules)
-		{
-			if (it_Pair.second != VK_NULL_HANDLE)
-			{
-				vkDestroyShaderModule(m_Device, it_Pair.second, m_Allocator);
-			}
-		}
-		m_ShaderModules.clear();
-
-		m_RenderPass = VK_NULL_HANDLE;
-		m_VertexSPVPath.clear();
-		m_FragmentSPVPath.clear();
-		m_PipelineCachePath.clear();
-		m_EnablePipelineCache = true;
-
+		m_ColorFormat = VK_FORMAT_UNDEFINED;
 		m_Device = VK_NULL_HANDLE;
 		m_Allocator = nullptr;
 	}
 
-	void VulkanPipeline::Recreate(const VulkanRenderPass& renderPass)
+	void VulkanPipeline::Recreate(VkFormat colorFormat)
 	{
 		if (m_Device == VK_NULL_HANDLE)
 		{
-			TR_CORE_CRITICAL("VulkanPipeline::Recreate called before Initialize");
+			return;
+		}
+
+		if (colorFormat == VK_FORMAT_UNDEFINED)
+		{
+			TR_CORE_CRITICAL("VulkanPipeline::Recreate called with VK_FORMAT_UNDEFINED");
 
 			std::abort();
 		}
 
-		VkRenderPass l_NewRenderPass = renderPass.GetRenderPass();
-		if (l_NewRenderPass == VK_NULL_HANDLE)
-		{
-			TR_CORE_CRITICAL("VulkanPipeline::Recreate called with invalid VkRenderPass");
-
-			std::abort();
-		}
-
-		if (l_NewRenderPass != m_RenderPass)
-		{
-			DestroyGraphicsPipeline();
-			m_RenderPass = l_NewRenderPass;
-			CreateGraphicsPipeline(m_RenderPass);
-
-			TR_CORE_TRACE("VulkanPipeline rebuilt (render pass changed)");
-		}
-	}
-
-	void VulkanPipeline::CreatePipelineCache()
-	{
-		if (!m_EnablePipelineCache || m_PipelineCache != VK_NULL_HANDLE)
+		if (m_ColorFormat == colorFormat && m_Pipeline != VK_NULL_HANDLE)
 		{
 			return;
 		}
 
-		std::vector<char> l_InitialData;
-		if (!m_PipelineCachePath.empty())
-		{
-			std::error_code l_Error;
-			if (std::filesystem::exists(m_PipelineCachePath, l_Error))
-			{
-				l_InitialData = Utilities::FileManagement::LoadFromFile(m_PipelineCachePath);
+		m_ColorFormat = colorFormat;
 
-				TR_CORE_TRACE("Pipeline loaded from cache: {}", m_PipelineCachePath);
-			}
-		}
+		DestroyPipeline();
+		CreatePipeline();
 
-		VkPipelineCacheCreateInfo l_Info{};
-		l_Info.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-		l_Info.initialDataSize = l_InitialData.size();
-		l_Info.pInitialData = l_InitialData.empty() ? nullptr : l_InitialData.data();
-
-		Utilities::VulkanUtilities::VKCheck(vkCreatePipelineCache(m_Device, &l_Info, m_Allocator, &m_PipelineCache), "Failed vkCreatePipelineCache");
+		TR_CORE_TRACE("VulkanPipeline recreated (ColorFormat: {})", static_cast<int>(m_ColorFormat));
 	}
 
-	void VulkanPipeline::DestroyPipelineCache()
+	void VulkanPipeline::Bind(VkCommandBuffer commandBuffer) const
 	{
-		if (m_PipelineCache != VK_NULL_HANDLE)
+		if (m_Pipeline == VK_NULL_HANDLE)
 		{
-			if (m_EnablePipelineCache && !m_PipelineCachePath.empty())
-			{
-				size_t l_Size = 0;
-				Utilities::VulkanUtilities::VKCheck(vkGetPipelineCacheData(m_Device, m_PipelineCache, &l_Size, nullptr), "Failed vkGetPipelineCacheData");
-				std::vector<char> l_Data(l_Size);
-				if (l_Size > 0)
-				{
-					Utilities::VulkanUtilities::VKCheck(vkGetPipelineCacheData(m_Device, m_PipelineCache, &l_Size, l_Data.data()), "Failed vkGetPipelineCacheData");
-				}
-
-				Utilities::FileManagement::SaveToFile(m_PipelineCachePath, l_Data);
-			}
-
-			vkDestroyPipelineCache(m_Device, m_PipelineCache, m_Allocator);
-			m_PipelineCache = VK_NULL_HANDLE;
-		}
-	}
-
-	void VulkanPipeline::CreatePipelineLayout(const VulkanDescriptors& descriptors)
-	{
-		if (m_PipelineLayout != VK_NULL_HANDLE)
-		{
-			return;
-		}
-
-		VkDescriptorSetLayout l_GlobalLayout = descriptors.GetGlobalSetLayout();
-
-		std::vector<VkDescriptorSetLayout> l_SetLayouts;
-		if (l_GlobalLayout != VK_NULL_HANDLE)
-		{
-			l_SetLayouts.push_back(l_GlobalLayout);
-		}
-
-		// Push constant: model matrix (mat4 = 16 floats = 64 bytes)
-		static constexpr uint32_t s_ModelMatrixSize = sizeof(float) * 16;
-
-		VkPushConstantRange l_PushRange{};
-		l_PushRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-		l_PushRange.offset = 0;
-		l_PushRange.size = s_ModelMatrixSize;
-
-		VkPipelineLayoutCreateInfo l_Info{};
-		l_Info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		l_Info.setLayoutCount = static_cast<uint32_t>(l_SetLayouts.size());
-		l_Info.pSetLayouts = l_SetLayouts.empty() ? nullptr : l_SetLayouts.data();
-		l_Info.pushConstantRangeCount = 1;
-		l_Info.pPushConstantRanges = &l_PushRange;
-
-		Utilities::VulkanUtilities::VKCheck(vkCreatePipelineLayout(m_Device, &l_Info, m_Allocator, &m_PipelineLayout), "Failed vkCreatePipelineLayout");
-	}
-
-	void VulkanPipeline::DestroyPipelineLayout()
-	{
-		if (m_PipelineLayout != VK_NULL_HANDLE)
-		{
-			vkDestroyPipelineLayout(m_Device, m_PipelineLayout, m_Allocator);
-			m_PipelineLayout = VK_NULL_HANDLE;
-		}
-	}
-
-	void VulkanPipeline::CreateGraphicsPipeline(VkRenderPass renderPass)
-	{
-		if (m_Pipeline != VK_NULL_HANDLE)
-		{
-			return;
-		}
-
-		if (m_PipelineLayout == VK_NULL_HANDLE)
-		{
-			TR_CORE_CRITICAL("VulkanPipeline::CreateGraphicsPipeline called with no pipeline layout");
+			TR_CORE_CRITICAL("VulkanPipeline::Bind called with null pipeline");
 
 			std::abort();
 		}
 
-		if (m_VertexSPVPath.empty() || m_FragmentSPVPath.empty())
-		{
-			TR_CORE_CRITICAL("VulkanPipeline shader paths not set (vert='{}', frag='{}')", m_VertexSPVPath, m_FragmentSPVPath);
+		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline);
+	}
 
-			std::abort();
+	void VulkanPipeline::CreatePipeline()
+	{
+		if (m_Pipeline != VK_NULL_HANDLE || m_PipelineLayout != VK_NULL_HANDLE)
+		{
+			DestroyPipeline();
 		}
 
-		VkShaderModule l_VS = GetOrCreateShaderModule(m_VertexSPVPath);
-		VkShaderModule l_FS = GetOrCreateShaderModule(m_FragmentSPVPath);
+		const VkShaderModule l_VertexModule = CreateShaderModule(m_VertexShaderPath);
+		const VkShaderModule l_FragmentModule = CreateShaderModule(m_FragmentShaderPath);
 
-		VkPipelineShaderStageCreateInfo l_VSStage{};
-		l_VSStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		l_VSStage.stage = VK_SHADER_STAGE_VERTEX_BIT;
-		l_VSStage.module = l_VS;
-		l_VSStage.pName = "main";
+		VkPipelineShaderStageCreateInfo l_VertexStage{};
+		l_VertexStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		l_VertexStage.stage = VK_SHADER_STAGE_VERTEX_BIT;
+		l_VertexStage.module = l_VertexModule;
+		l_VertexStage.pName = "main";
 
-		VkPipelineShaderStageCreateInfo l_FSStage{};
-		l_FSStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		l_FSStage.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-		l_FSStage.module = l_FS;
-		l_FSStage.pName = "main";
+		VkPipelineShaderStageCreateInfo l_FragmentStage{};
+		l_FragmentStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		l_FragmentStage.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+		l_FragmentStage.module = l_FragmentModule;
+		l_FragmentStage.pName = "main";
 
-		VkPipelineShaderStageCreateInfo l_ShaderStages[] = { l_VSStage, l_FSStage };
+		const VkPipelineShaderStageCreateInfo l_ShaderStages[] = { l_VertexStage, l_FragmentStage };
 
+		// No vertex buffers for now (triangle via gl_VertexIndex).
 		VkPipelineVertexInputStateCreateInfo l_VertexInput{};
 		l_VertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-		l_VertexInput.vertexBindingDescriptionCount = static_cast<uint32_t>(m_GraphicsDescription.VertexBindings.size());
-		l_VertexInput.pVertexBindingDescriptions = m_GraphicsDescription.VertexBindings.empty() ? nullptr : m_GraphicsDescription.VertexBindings.data();
-		l_VertexInput.vertexAttributeDescriptionCount = static_cast<uint32_t>(m_GraphicsDescription.VertexAttributes.size());
-		l_VertexInput.pVertexAttributeDescriptions = m_GraphicsDescription.VertexAttributes.empty() ? nullptr : m_GraphicsDescription.VertexAttributes.data();
 
 		VkPipelineInputAssemblyStateCreateInfo l_InputAssembly{};
 		l_InputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-		l_InputAssembly.topology = m_GraphicsDescription.Topology;
+		l_InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 		l_InputAssembly.primitiveRestartEnable = VK_FALSE;
-
-		// Dummy viewport/scissor (dynamic state overrides these)
-		VkViewport l_DummyViewport{};
-		l_DummyViewport.width = 1.0f;
-		l_DummyViewport.height = 1.0f;
-		l_DummyViewport.minDepth = 0.0f;
-		l_DummyViewport.maxDepth = 1.0f;
-
-		VkRect2D l_DummyScissor{};
-		l_DummyScissor.extent = { 1, 1 };
 
 		VkPipelineViewportStateCreateInfo l_ViewportState{};
 		l_ViewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 		l_ViewportState.viewportCount = 1;
-		l_ViewportState.pViewports = &l_DummyViewport;
 		l_ViewportState.scissorCount = 1;
-		l_ViewportState.pScissors = &l_DummyScissor;
 
 		VkPipelineRasterizationStateCreateInfo l_Raster{};
 		l_Raster.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 		l_Raster.depthClampEnable = VK_FALSE;
 		l_Raster.rasterizerDiscardEnable = VK_FALSE;
-		l_Raster.polygonMode = m_GraphicsDescription.PolygonMode;
-		l_Raster.cullMode = m_GraphicsDescription.CullMode;
-		l_Raster.frontFace = m_GraphicsDescription.FrontFace;
+		l_Raster.polygonMode = VK_POLYGON_MODE_FILL;
+		l_Raster.cullMode = VK_CULL_MODE_BACK_BIT;
+		l_Raster.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 		l_Raster.depthBiasEnable = VK_FALSE;
 		l_Raster.lineWidth = 1.0f;
 
@@ -292,45 +155,51 @@ namespace Trinity
 
 		VkPipelineDepthStencilStateCreateInfo l_DepthStencil{};
 		l_DepthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-		l_DepthStencil.depthTestEnable = m_GraphicsDescription.EnableDepthTest ? VK_TRUE : VK_FALSE;
-		l_DepthStencil.depthWriteEnable = m_GraphicsDescription.EnableDepthWrite ? VK_TRUE : VK_FALSE;
-		l_DepthStencil.depthCompareOp = m_GraphicsDescription.DepthCompareOp;
+		l_DepthStencil.depthTestEnable = VK_FALSE;
+		l_DepthStencil.depthWriteEnable = VK_FALSE;
 		l_DepthStencil.depthBoundsTestEnable = VK_FALSE;
 		l_DepthStencil.stencilTestEnable = VK_FALSE;
 
-		VkPipelineColorBlendAttachmentState l_ColorBlendAttachment{};
-		l_ColorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-
-		if (m_GraphicsDescription.EnableBlending)
-		{
-			l_ColorBlendAttachment.blendEnable = VK_TRUE;
-			l_ColorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-			l_ColorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-			l_ColorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-			l_ColorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-			l_ColorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-			l_ColorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
-		}
-		else
-		{
-			l_ColorBlendAttachment.blendEnable = VK_FALSE;
-		}
+		VkPipelineColorBlendAttachmentState l_ColorAttachment{};
+		l_ColorAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+		l_ColorAttachment.blendEnable = VK_FALSE;
 
 		VkPipelineColorBlendStateCreateInfo l_ColorBlend{};
 		l_ColorBlend.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 		l_ColorBlend.logicOpEnable = VK_FALSE;
 		l_ColorBlend.attachmentCount = 1;
-		l_ColorBlend.pAttachments = &l_ColorBlendAttachment;
+		l_ColorBlend.pAttachments = &l_ColorAttachment;
 
-		VkPipelineDynamicStateCreateInfo l_Dynamic{};
-		l_Dynamic.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-		l_Dynamic.dynamicStateCount = static_cast<uint32_t>(m_GraphicsDescription.DynamicStates.size());
-		l_Dynamic.pDynamicStates = m_GraphicsDescription.DynamicStates.empty() ? nullptr : m_GraphicsDescription.DynamicStates.data();
+		const VkDynamicState l_DynamicStates[] =
+		{
+			VK_DYNAMIC_STATE_VIEWPORT,
+			VK_DYNAMIC_STATE_SCISSOR,
+		};
+
+		VkPipelineDynamicStateCreateInfo l_DynamicState{};
+		l_DynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+		l_DynamicState.dynamicStateCount = static_cast<uint32_t>(std::size(l_DynamicStates));
+		l_DynamicState.pDynamicStates = l_DynamicStates;
+
+		VkPipelineLayoutCreateInfo l_LayoutInfo{};
+		l_LayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+
+		Utilities::VulkanUtilities::VKCheck(vkCreatePipelineLayout(m_Device, &l_LayoutInfo, m_Allocator, &m_PipelineLayout), "Failed vkCreatePipelineLayout");
+
+		// Dynamic Rendering: specify attachment formats here.
+		VkPipelineRenderingCreateInfo l_RenderingInfo{};
+		l_RenderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+		l_RenderingInfo.colorAttachmentCount = 1;
+		l_RenderingInfo.pColorAttachmentFormats = &m_ColorFormat;
+		l_RenderingInfo.depthAttachmentFormat = VK_FORMAT_UNDEFINED;
+		l_RenderingInfo.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
 
 		VkGraphicsPipelineCreateInfo l_PipelineInfo{};
 		l_PipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-		l_PipelineInfo.stageCount = static_cast<uint32_t>(sizeof(l_ShaderStages) / sizeof(l_ShaderStages[0]));
+		l_PipelineInfo.pNext = &l_RenderingInfo;
+		l_PipelineInfo.stageCount = 2;
 		l_PipelineInfo.pStages = l_ShaderStages;
+
 		l_PipelineInfo.pVertexInputState = &l_VertexInput;
 		l_PipelineInfo.pInputAssemblyState = &l_InputAssembly;
 		l_PipelineInfo.pViewportState = &l_ViewportState;
@@ -338,90 +207,57 @@ namespace Trinity
 		l_PipelineInfo.pMultisampleState = &l_Multisample;
 		l_PipelineInfo.pDepthStencilState = &l_DepthStencil;
 		l_PipelineInfo.pColorBlendState = &l_ColorBlend;
-		l_PipelineInfo.pDynamicState = &l_Dynamic;
+		l_PipelineInfo.pDynamicState = &l_DynamicState;
+
 		l_PipelineInfo.layout = m_PipelineLayout;
-		l_PipelineInfo.renderPass = renderPass;
+		l_PipelineInfo.renderPass = VK_NULL_HANDLE;
 		l_PipelineInfo.subpass = 0;
 
-		Utilities::VulkanUtilities::VKCheck(vkCreateGraphicsPipelines(m_Device, m_PipelineCache, 1, &l_PipelineInfo, m_Allocator, &m_Pipeline), "Failed vkCreateGraphicsPipelines");
+		Utilities::VulkanUtilities::VKCheck(vkCreateGraphicsPipelines(m_Device, VK_NULL_HANDLE, 1, &l_PipelineInfo, m_Allocator, &m_Pipeline), "Failed vkCreateGraphicsPipelines");
+
+		vkDestroyShaderModule(m_Device, l_VertexModule, m_Allocator);
+		vkDestroyShaderModule(m_Device, l_FragmentModule, m_Allocator);
 	}
 
-	void VulkanPipeline::DestroyGraphicsPipeline()
+	void VulkanPipeline::DestroyPipeline()
 	{
+		if (m_Device == VK_NULL_HANDLE)
+		{
+			return;
+		}
+
 		if (m_Pipeline != VK_NULL_HANDLE)
 		{
 			vkDestroyPipeline(m_Device, m_Pipeline, m_Allocator);
 			m_Pipeline = VK_NULL_HANDLE;
 		}
+
+		if (m_PipelineLayout != VK_NULL_HANDLE)
+		{
+			vkDestroyPipelineLayout(m_Device, m_PipelineLayout, m_Allocator);
+			m_PipelineLayout = VK_NULL_HANDLE;
+		}
 	}
 
-	VkShaderModule VulkanPipeline::GetOrCreateShaderModule(const std::string& SPVPath)
+	VkShaderModule VulkanPipeline::CreateShaderModule(const std::string& path) const
 	{
-		auto a_Module = m_ShaderModules.find(SPVPath);
-		if (a_Module != m_ShaderModules.end())
-		{
-			return a_Module->second;
-		}
+		const std::vector<char> l_Code = Utilities::FileManagement::LoadFromFile(path);
 
-		const std::vector<char> l_Bytes = Utilities::FileManagement::LoadFromFile(SPVPath);
-
-		if (l_Bytes.empty())
+		if (l_Code.empty() || (l_Code.size() % 4) != 0)
 		{
-			TR_CORE_CRITICAL("Shader '{}' loaded empty", SPVPath);
+			TR_CORE_CRITICAL("Invalid SPIR-V file (size not multiple of 4): {}", path.c_str());
 
 			std::abort();
 		}
 
-		if ((l_Bytes.size() % 4) != 0)
-		{
-			TR_CORE_CRITICAL("Shader '{}' size {} is not a multiple of 4 (invalid SPIR-V)", SPVPath, (uint32_t)l_Bytes.size());
-
-			std::abort();
-		}
-
-		std::vector<uint32_t> l_Code(l_Bytes.size() / 4);
-		std::memcpy(l_Code.data(), l_Bytes.data(), l_Bytes.size());
-
-		VkShaderModuleCreateInfo l_Info{};
-		l_Info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-		l_Info.codeSize = l_Bytes.size();
-		l_Info.pCode = l_Code.data();
+		VkShaderModuleCreateInfo l_CreateInfo{};
+		l_CreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+		l_CreateInfo.codeSize = l_Code.size();
+		l_CreateInfo.pCode = reinterpret_cast<const uint32_t*>(l_Code.data());
 
 		VkShaderModule l_Module = VK_NULL_HANDLE;
-		Utilities::VulkanUtilities::VKCheck(vkCreateShaderModule(m_Device, &l_Info, m_Allocator, &l_Module), "Failed vkCreateShaderModule");
-
-		m_ShaderModules[SPVPath] = l_Module;
-		TR_CORE_TRACE("Created shader module '{}'", SPVPath);
+		Utilities::VulkanUtilities::VKCheck(vkCreateShaderModule(m_Device, &l_CreateInfo, m_Allocator, &l_Module), "Failed vkCreateShaderModule");
 
 		return l_Module;
-	}
-
-	std::string VulkanPipeline::BuildPipelineCachePath(const VulkanContext& context, const std::string& vertexPath, const std::string& fragmentPath)
-	{
-		VkPhysicalDeviceProperties l_Properties{};
-		if (context.DeviceRef != nullptr)
-		{
-			l_Properties = context.DeviceRef->GetProperties();
-		}
-		else if (context.PhysicalDevice != VK_NULL_HANDLE)
-		{
-			vkGetPhysicalDeviceProperties(context.PhysicalDevice, &l_Properties);
-		}
-
-		std::ostringstream l_Stream;
-		for (size_t it_Byte = 0; it_Byte < VK_UUID_SIZE; ++it_Byte)
-		{
-			l_Stream << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(l_Properties.pipelineCacheUUID[it_Byte]);
-		}
-
-		std::hash<std::string> l_Hasher;
-		const size_t l_ShaderHash = l_Hasher(vertexPath + "|" + fragmentPath);
-
-		const std::string l_FileName = std::to_string(l_Properties.vendorID) + "_" + std::to_string(l_Properties.deviceID) + "_" +
-			std::to_string(l_Properties.driverVersion) + "_" + l_Stream.str() + "_" + std::to_string(l_ShaderHash) + ".bin";
-
-		const std::filesystem::path l_CachePath = std::filesystem::path("PipelineCache") / l_FileName;
-
-		return l_CachePath.string();
 	}
 }

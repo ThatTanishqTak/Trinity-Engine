@@ -10,6 +10,5 @@ namespace Trinity
 	{
 	public:
 		static std::unique_ptr<Renderer> Create(RendererAPI api);
-		static std::unique_ptr<Renderer> CreateDefault();
 	};
 }

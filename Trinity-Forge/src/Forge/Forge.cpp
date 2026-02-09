@@ -6,7 +6,7 @@
 class ForgeApp : public Trinity::Application
 {
 public:
-    ForgeApp()
+    ForgeApp(Trinity::ApplicationSpecification& specification) : Trinity::Application(specification)
     {
         PushLayer(std::make_unique<ForgeLayer>());
     }
@@ -16,16 +16,17 @@ public:
 
 namespace Trinity
 {
-    Application* CreateApplication(/*ApplicationProperties properties*/)
+    Application* CreateApplication(ApplicationSpecification& specification)
     {
         TR_INFO("------- CREATING APPLICATION -------");
 
-        //properties.Title = "Physics Engine";
-        //properties.Width = 1920;
-        //properties.Height = 1080;
+        ApplicationSpecification l_Specification = specification;
+        l_Specification.Title = "Forge";
+        l_Specification.Width = 1280;
+        l_Specification.Height = 720;
 
         TR_INFO("------- APPLICATION CREATED -------");
 
-        return new ForgeApp(/*properties*/);
+        return new ForgeApp(l_Specification);
     }
 }
