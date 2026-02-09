@@ -267,7 +267,6 @@ namespace Trinity
         m_PhysicalDeviceProperties = {};
         m_PhysicalDeviceFeatures = {};
         m_Vulkan13Features = {};
-
         m_Allocator = nullptr;
 
         TR_CORE_TRACE("Physical Device Released");
@@ -287,7 +286,6 @@ namespace Trinity
         m_PresentQueue = VK_NULL_HANDLE;
         m_ComputeQueue = VK_NULL_HANDLE;
         m_TransferQueue = VK_NULL_HANDLE;
-
         m_GraphicsQueueFamilyIndex.reset();
         m_PresentQueueFamilyIndex.reset();
         m_ComputeQueueFamilyIndex.reset();
@@ -303,6 +301,7 @@ namespace Trinity
         if (surface == VK_NULL_HANDLE)
         {
             TR_CORE_CRITICAL("No valid surface provided to FindQueueFamilies");
+
             std::abort();
         }
 
@@ -375,10 +374,7 @@ namespace Trinity
     bool VulkanDevice::HasSwapchainSupport(VkPhysicalDevice device, VkSurfaceKHR surface) const
     {
         uint32_t l_FormatCount = 0;
-        Utilities::VulkanUtilities::VKCheck(
-            vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &l_FormatCount, nullptr),
-            "Failed vkGetPhysicalDeviceSurfaceFormatsKHR"
-        );
+        Utilities::VulkanUtilities::VKCheck(vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &l_FormatCount, nullptr), "Failed vkGetPhysicalDeviceSurfaceFormatsKHR");
 
         uint32_t l_PresentModeCount = 0;
         Utilities::VulkanUtilities::VKCheck(vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &l_PresentModeCount, nullptr), "Failed vkGetPhysicalDeviceSurfacePresentModesKHR");

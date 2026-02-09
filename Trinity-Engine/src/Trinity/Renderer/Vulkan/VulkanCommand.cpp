@@ -40,7 +40,6 @@ namespace Trinity
 		m_Allocator = context.GetAllocator();
 		m_GraphicsQueueFamilyIndex = device.GetGraphicsQueueFamilyIndex();
 		m_FramesInFlight = framesInFlight;
-
 		m_CommandPools.resize(m_FramesInFlight, VK_NULL_HANDLE);
 		m_CommandBuffers.resize(m_FramesInFlight, VK_NULL_HANDLE);
 
@@ -73,13 +72,10 @@ namespace Trinity
 
 		m_CommandPools.clear();
 		m_CommandBuffers.clear();
-
 		m_CommandPools.shrink_to_fit();
 		m_CommandBuffers.shrink_to_fit();
-
 		m_Allocator = nullptr;
 		m_Device = VK_NULL_HANDLE;
-
 		m_GraphicsQueueFamilyIndex = 0;
 		m_FramesInFlight = 0;
 
@@ -119,8 +115,8 @@ namespace Trinity
 	{
 		ValidateFrameIndex(frameIndex);
 
-		const VkCommandBuffer l_Cmd = m_CommandBuffers[frameIndex];
-		if (l_Cmd == VK_NULL_HANDLE)
+		const VkCommandBuffer l_CommandBuffer = m_CommandBuffers[frameIndex];
+		if (l_CommandBuffer == VK_NULL_HANDLE)
 		{
 			TR_CORE_CRITICAL("VulkanCommand::Begin called with null command buffer");
 
@@ -131,22 +127,22 @@ namespace Trinity
 		l_BeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		l_BeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-		Utilities::VulkanUtilities::VKCheck(vkBeginCommandBuffer(l_Cmd, &l_BeginInfo), "Failed vkBeginCommandBuffer");
+		Utilities::VulkanUtilities::VKCheck(vkBeginCommandBuffer(l_CommandBuffer, &l_BeginInfo), "Failed vkBeginCommandBuffer");
 	}
 
 	void VulkanCommand::End(uint32_t frameIndex) const
 	{
 		ValidateFrameIndex(frameIndex);
 
-		const VkCommandBuffer l_Cmd = m_CommandBuffers[frameIndex];
-		if (l_Cmd == VK_NULL_HANDLE)
+		const VkCommandBuffer l_CommandBuffer = m_CommandBuffers[frameIndex];
+		if (l_CommandBuffer == VK_NULL_HANDLE)
 		{
 			TR_CORE_CRITICAL("VulkanCommand::End called with null command buffer");
 
 			std::abort();
 		}
 
-		Utilities::VulkanUtilities::VKCheck(vkEndCommandBuffer(l_Cmd), "Failed vkEndCommandBuffer");
+		Utilities::VulkanUtilities::VKCheck(vkEndCommandBuffer(l_CommandBuffer), "Failed vkEndCommandBuffer");
 	}
 
 	void VulkanCommand::DestroyCommandObjects()
@@ -156,7 +152,6 @@ namespace Trinity
 			return;
 		}
 
-		// Command buffers are freed when the pool is destroyed.
 		for (VkCommandPool it_Pool : m_CommandPools)
 		{
 			if (it_Pool != VK_NULL_HANDLE)

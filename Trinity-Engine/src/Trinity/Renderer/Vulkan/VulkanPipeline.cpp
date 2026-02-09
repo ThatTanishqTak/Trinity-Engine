@@ -27,7 +27,6 @@ namespace Trinity
 		m_Device = device.GetDevice();
 		m_Allocator = context.GetAllocator();
 		m_ColorFormat = colorFormat;
-
 		m_VertexShaderPath = vertexShaderSpvPath;
 		m_FragmentShaderPath = fragmentShaderSpvPath;
 
@@ -125,7 +124,6 @@ namespace Trinity
 
 		const VkPipelineShaderStageCreateInfo l_ShaderStages[] = { l_VertexStage, l_FragmentStage };
 
-		// No vertex buffers for now (triangle via gl_VertexIndex).
 		VkPipelineVertexInputStateCreateInfo l_VertexInput{};
 		l_VertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
@@ -186,7 +184,6 @@ namespace Trinity
 
 		Utilities::VulkanUtilities::VKCheck(vkCreatePipelineLayout(m_Device, &l_LayoutInfo, m_Allocator, &m_PipelineLayout), "Failed vkCreatePipelineLayout");
 
-		// Dynamic Rendering: specify attachment formats here.
 		VkPipelineRenderingCreateInfo l_RenderingInfo{};
 		l_RenderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
 		l_RenderingInfo.colorAttachmentCount = 1;
@@ -199,7 +196,6 @@ namespace Trinity
 		l_PipelineInfo.pNext = &l_RenderingInfo;
 		l_PipelineInfo.stageCount = 2;
 		l_PipelineInfo.pStages = l_ShaderStages;
-
 		l_PipelineInfo.pVertexInputState = &l_VertexInput;
 		l_PipelineInfo.pInputAssemblyState = &l_InputAssembly;
 		l_PipelineInfo.pViewportState = &l_ViewportState;
@@ -208,7 +204,6 @@ namespace Trinity
 		l_PipelineInfo.pDepthStencilState = &l_DepthStencil;
 		l_PipelineInfo.pColorBlendState = &l_ColorBlend;
 		l_PipelineInfo.pDynamicState = &l_DynamicState;
-
 		l_PipelineInfo.layout = m_PipelineLayout;
 		l_PipelineInfo.renderPass = VK_NULL_HANDLE;
 		l_PipelineInfo.subpass = 0;

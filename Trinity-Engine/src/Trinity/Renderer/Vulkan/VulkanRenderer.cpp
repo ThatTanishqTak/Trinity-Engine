@@ -10,10 +10,12 @@ namespace Trinity
 {
 	VulkanRenderer::VulkanRenderer() : Renderer(RendererAPI::VULKAN)
 	{
+
 	}
 
 	VulkanRenderer::~VulkanRenderer()
 	{
+
 	}
 
 	void VulkanRenderer::SetWindow(Window& window)
@@ -78,10 +80,7 @@ namespace Trinity
 
 		m_Swapchain.Recreate(width, height);
 		m_Sync.OnSwapchainRecreated(m_Swapchain.GetImageCount());
-
-		// Format can (rarely) change. Rebuild pipeline if needed.
 		m_Pipeline.Recreate(m_Swapchain.GetImageFormat());
-
 		m_SwapchainImageLayouts.assign(m_Swapchain.GetImageCount(), VK_IMAGE_LAYOUT_UNDEFINED);
 	}
 
@@ -129,9 +128,9 @@ namespace Trinity
 
 		m_Command.Begin(m_CurrentFrameIndex);
 
-		const VkCommandBuffer l_Cmd = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
+		const VkCommandBuffer l_CommandBuffer = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
 
-		TransitionSwapchainImage(l_Cmd, m_CurrentImageIndex, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+		TransitionSwapchainImage(l_CommandBuffer, m_CurrentImageIndex, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
 		VkClearValue l_ClearValue{};
 		l_ClearValue.color.float32[0] = 0.05f;
@@ -155,9 +154,8 @@ namespace Trinity
 		l_RenderingInfo.colorAttachmentCount = 1;
 		l_RenderingInfo.pColorAttachments = &l_ColorAttachment;
 
-		vkCmdBeginRendering(l_Cmd, &l_RenderingInfo);
+		vkCmdBeginRendering(l_CommandBuffer, &l_RenderingInfo);
 
-		// Dynamic viewport/scissor
 		const VkExtent2D l_Extent = m_Swapchain.GetExtent();
 
 		VkViewport l_Viewport{};
@@ -172,12 +170,12 @@ namespace Trinity
 		l_Scissor.offset = { 0, 0 };
 		l_Scissor.extent = l_Extent;
 
-		vkCmdSetViewport(l_Cmd, 0, 1, &l_Viewport);
-		vkCmdSetScissor(l_Cmd, 0, 1, &l_Scissor);
+		vkCmdSetViewport(l_CommandBuffer, 0, 1, &l_Viewport);
+		vkCmdSetScissor(l_CommandBuffer, 0, 1, &l_Scissor);
 
 		// Bind + draw triangle
-		m_Pipeline.Bind(l_Cmd);
-		vkCmdDraw(l_Cmd, 3, 1, 0, 0);
+		m_Pipeline.Bind(l_CommandBuffer);
+		vkCmdDraw(l_CommandBuffer, 3, 1, 0, 0);
 
 		m_FrameBegun = true;
 	}
@@ -189,16 +187,16 @@ namespace Trinity
 			return;
 		}
 
-		const VkCommandBuffer l_Cmd = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
+		const VkCommandBuffer l_CommandBuffer = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
 
-		vkCmdEndRendering(l_Cmd);
+		vkCmdEndRendering(l_CommandBuffer);
 
-		TransitionSwapchainImage(l_Cmd, m_CurrentImageIndex, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+		TransitionSwapchainImage(l_CommandBuffer, m_CurrentImageIndex, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
 		m_Command.End(m_CurrentFrameIndex);
 
 		const VkSemaphore l_ImageAvailable = m_Sync.GetImageAvailableSemaphore(m_CurrentFrameIndex);
-		const VkSemaphore l_RenderFinished = m_Sync.GetRenderFinishedSemaphore(m_CurrentFrameIndex);
+		const VkSemaphore l_RenderFinished = m_Sync.GetRenderFinishedSemaphore(m_CurrentImageIndex);
 		const VkFence l_InFlightFence = m_Sync.GetInFlightFence(m_CurrentFrameIndex);
 
 		VkPipelineStageFlags l_WaitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -209,7 +207,7 @@ namespace Trinity
 		l_SubmitInfo.pWaitSemaphores = &l_ImageAvailable;
 		l_SubmitInfo.pWaitDstStageMask = &l_WaitStage;
 		l_SubmitInfo.commandBufferCount = 1;
-		l_SubmitInfo.pCommandBuffers = &l_Cmd;
+		l_SubmitInfo.pCommandBuffers = &l_CommandBuffer;
 		l_SubmitInfo.signalSemaphoreCount = 1;
 		l_SubmitInfo.pSignalSemaphores = &l_RenderFinished;
 

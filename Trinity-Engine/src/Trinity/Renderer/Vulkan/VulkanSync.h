@@ -22,7 +22,7 @@ namespace Trinity
 		uint32_t GetSwapchainImageCount() const { return m_SwapchainImageCount; }
 
 		VkSemaphore GetImageAvailableSemaphore(uint32_t frameIndex) const;
-		VkSemaphore GetRenderFinishedSemaphore(uint32_t frameIndex) const;
+		VkSemaphore GetRenderFinishedSemaphore(uint32_t imageIndex) const;
 		VkFence GetInFlightFence(uint32_t frameIndex) const;
 
 		void WaitForFrameFence(uint32_t frameIndex, uint64_t timeout = UINT64_MAX) const;
@@ -34,6 +34,10 @@ namespace Trinity
 
 	private:
 		void DestroySyncObjects();
+
+		void DestroyRenderFinishedSemaphores();
+		void CreateRenderFinishedSemaphores(uint32_t swapchainImageCount);
+
 		void ValidateFrameIndex(uint32_t frameIndex) const;
 		void ValidateImageIndex(uint32_t imageIndex) const;
 
@@ -47,7 +51,6 @@ namespace Trinity
 		std::vector<VkSemaphore> m_ImageAvailableSemaphores{};
 		std::vector<VkSemaphore> m_RenderFinishedSemaphores{};
 		std::vector<VkFence> m_InFlightFences{};
-
 		std::vector<VkFence> m_ImagesInFlight{};
 	};
 }

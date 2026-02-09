@@ -45,11 +45,10 @@ namespace Trinity
 		m_Allocator = context.GetAllocator();
 		m_FramesInFlight = framesInFlight;
 		m_SwapchainImageCount = swapchainImageCount;
-
 		m_ImageAvailableSemaphores.resize(m_FramesInFlight, VK_NULL_HANDLE);
-		m_RenderFinishedSemaphores.resize(m_FramesInFlight, VK_NULL_HANDLE);
 		m_InFlightFences.resize(m_FramesInFlight, VK_NULL_HANDLE);
 		m_ImagesInFlight.resize(m_SwapchainImageCount, VK_NULL_HANDLE);
+		m_RenderFinishedSemaphores.resize(m_SwapchainImageCount, VK_NULL_HANDLE);
 
 		VkSemaphoreCreateInfo l_SemaphoreInfo{};
 		l_SemaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -61,9 +60,10 @@ namespace Trinity
 		for (uint32_t l_FrameIndex = 0; l_FrameIndex < m_FramesInFlight; ++l_FrameIndex)
 		{
 			Utilities::VulkanUtilities::VKCheck(vkCreateSemaphore(m_Device, &l_SemaphoreInfo, m_Allocator, &m_ImageAvailableSemaphores[l_FrameIndex]), "Failed vkCreateSemaphore");
-			Utilities::VulkanUtilities::VKCheck(vkCreateSemaphore(m_Device, &l_SemaphoreInfo, m_Allocator, &m_RenderFinishedSemaphores[l_FrameIndex]), "Failed vkCreateSemaphore");
 			Utilities::VulkanUtilities::VKCheck(vkCreateFence(m_Device, &l_FenceInfo, m_Allocator, &m_InFlightFences[l_FrameIndex]), "Failed vkCreateFence");
 		}
+
+		CreateRenderFinishedSemaphores(m_SwapchainImageCount);
 
 		TR_CORE_TRACE("VulkanSync initialized (FramesInFlight: {}, SwapchainImages: {})", m_FramesInFlight, m_SwapchainImageCount);
 	}
@@ -74,10 +74,8 @@ namespace Trinity
 
 		m_ImagesInFlight.clear();
 		m_ImagesInFlight.shrink_to_fit();
-
 		m_FramesInFlight = 0;
 		m_SwapchainImageCount = 0;
-
 		m_Device = VK_NULL_HANDLE;
 		m_Allocator = nullptr;
 	}
@@ -87,13 +85,26 @@ namespace Trinity
 		if (swapchainImageCount == 0)
 		{
 			TR_CORE_CRITICAL("VulkanSync::OnSwapchainRecreated called with swapchainImageCount = 0");
+
+			std::abort();
+		}
+
+		if (m_Device == VK_NULL_HANDLE)
+		{
+			TR_CORE_CRITICAL("VulkanSync::OnSwapchainRecreated called before Initialize");
+
 			std::abort();
 		}
 
 		m_SwapchainImageCount = swapchainImageCount;
+
+		DestroyRenderFinishedSemaphores();
+		m_RenderFinishedSemaphores.resize(m_SwapchainImageCount, VK_NULL_HANDLE);
+		CreateRenderFinishedSemaphores(m_SwapchainImageCount);
+
 		m_ImagesInFlight.assign(m_SwapchainImageCount, VK_NULL_HANDLE);
 
-		TR_CORE_TRACE("VulkanSync updated swapchain image tracking (SwapchainImages: {})", m_SwapchainImageCount);
+		TR_CORE_TRACE("VulkanSync updated for swapchain recreation (SwapchainImages: {})", m_SwapchainImageCount);
 	}
 
 	VkSemaphore VulkanSync::GetImageAvailableSemaphore(uint32_t frameIndex) const
@@ -102,10 +113,10 @@ namespace Trinity
 		return m_ImageAvailableSemaphores[frameIndex];
 	}
 
-	VkSemaphore VulkanSync::GetRenderFinishedSemaphore(uint32_t frameIndex) const
+	VkSemaphore VulkanSync::GetRenderFinishedSemaphore(uint32_t imageIndex) const
 	{
-		ValidateFrameIndex(frameIndex);
-		return m_RenderFinishedSemaphores[frameIndex];
+		ValidateImageIndex(imageIndex);
+		return m_RenderFinishedSemaphores[imageIndex];
 	}
 
 	VkFence VulkanSync::GetInFlightFence(uint32_t frameIndex) const
@@ -165,6 +176,41 @@ namespace Trinity
 		}
 	}
 
+	void VulkanSync::DestroyRenderFinishedSemaphores()
+	{
+		if (m_Device == VK_NULL_HANDLE)
+		{
+			return;
+		}
+
+		for (VkSemaphore it_Semaphore : m_RenderFinishedSemaphores)
+		{
+			if (it_Semaphore != VK_NULL_HANDLE)
+			{
+				vkDestroySemaphore(m_Device, it_Semaphore, m_Allocator);
+			}
+		}
+
+		m_RenderFinishedSemaphores.clear();
+	}
+
+	void VulkanSync::CreateRenderFinishedSemaphores(uint32_t swapchainImageCount)
+	{
+		if (swapchainImageCount == 0)
+		{
+			TR_CORE_CRITICAL("VulkanSync::CreateRenderFinishedSemaphores called with swapchainImageCount = 0");
+			std::abort();
+		}
+
+		VkSemaphoreCreateInfo l_SemaphoreInfo{};
+		l_SemaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+		for (uint32_t l_ImageIndex = 0; l_ImageIndex < swapchainImageCount; ++l_ImageIndex)
+		{
+			Utilities::VulkanUtilities::VKCheck(vkCreateSemaphore(m_Device, &l_SemaphoreInfo, m_Allocator, &m_RenderFinishedSemaphores[l_ImageIndex]), "Failed vkCreateSemaphore");
+		}
+	}
+
 	void VulkanSync::DestroySyncObjects()
 	{
 		if (m_Device == VK_NULL_HANDLE)
@@ -180,13 +226,7 @@ namespace Trinity
 			}
 		}
 
-		for (VkSemaphore it_Semaphore : m_RenderFinishedSemaphores)
-		{
-			if (it_Semaphore != VK_NULL_HANDLE)
-			{
-				vkDestroySemaphore(m_Device, it_Semaphore, m_Allocator);
-			}
-		}
+		DestroyRenderFinishedSemaphores();
 
 		for (VkSemaphore it_Semaphore : m_ImageAvailableSemaphores)
 		{
@@ -197,12 +237,11 @@ namespace Trinity
 		}
 
 		m_ImageAvailableSemaphores.clear();
-		m_RenderFinishedSemaphores.clear();
 		m_InFlightFences.clear();
 
 		m_ImageAvailableSemaphores.shrink_to_fit();
-		m_RenderFinishedSemaphores.shrink_to_fit();
 		m_InFlightFences.shrink_to_fit();
+		m_RenderFinishedSemaphores.shrink_to_fit();
 	}
 
 	void VulkanSync::ValidateFrameIndex(uint32_t frameIndex) const
