@@ -142,7 +142,7 @@ namespace Trinity
 		l_Raster.depthClampEnable = VK_FALSE;
 		l_Raster.rasterizerDiscardEnable = VK_FALSE;
 		l_Raster.polygonMode = VK_POLYGON_MODE_FILL;
-		l_Raster.cullMode = VK_CULL_MODE_BACK_BIT;
+		l_Raster.cullMode = VK_CULL_MODE_NONE;
 		l_Raster.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 		l_Raster.depthBiasEnable = VK_FALSE;
 		l_Raster.lineWidth = 1.0f;

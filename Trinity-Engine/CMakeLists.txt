@@ -56,7 +56,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     stb::stb
 )
 
-# Useful compile definitions / options
 target_compile_definitions(${PROJECT_NAME} PUBLIC
     $<$<CONFIG:Debug>:TRINITY_DEBUG>
     $<$<CONFIG:Release>:TRINITY_RELEASE>

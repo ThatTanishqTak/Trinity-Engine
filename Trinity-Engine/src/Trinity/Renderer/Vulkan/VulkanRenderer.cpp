@@ -221,6 +221,7 @@ namespace Trinity
 		else if (l_PresentResult != VK_SUCCESS)
 		{
 			TR_CORE_CRITICAL("vkQueuePresentKHR failed (VkResult = {})", static_cast<int>(l_PresentResult));
+
 			std::abort();
 		}
 

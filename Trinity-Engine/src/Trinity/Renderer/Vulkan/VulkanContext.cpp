@@ -57,6 +57,27 @@ namespace Trinity
     {
         TR_CORE_TRACE("Creating Vulkan Instance");
 
+        // Hard requirement: Vulkan 1.3 loader/runtime.
+        uint32_t l_LoaderVersion = VK_API_VERSION_1_0;
+        auto l_EnumerateInstanceVersion = reinterpret_cast<PFN_vkEnumerateInstanceVersion>(vkGetInstanceProcAddr(nullptr, "vkEnumerateInstanceVersion"));
+
+        if (!l_EnumerateInstanceVersion)
+        {
+            TR_CORE_CRITICAL("Vulkan loader/runtime is too old (vkEnumerateInstanceVersion missing). Vulkan 1.3 is required.");
+
+            std::abort();
+        }
+
+        Utilities::VulkanUtilities::VKCheck(l_EnumerateInstanceVersion(&l_LoaderVersion), "Failed vkEnumerateInstanceVersion");
+
+        if (l_LoaderVersion < VK_API_VERSION_1_3)
+        {
+            TR_CORE_CRITICAL("Vulkan 1.3 is required (found loader/runtime API {}.{}.{})", VK_VERSION_MAJOR(l_LoaderVersion), VK_VERSION_MINOR(l_LoaderVersion),
+                VK_VERSION_PATCH(l_LoaderVersion));
+
+            std::abort();
+        }
+
         m_RequiredExtensions = GetRequiredExtensions();
         m_RequiredLayers = GetRequiredLayers();
 

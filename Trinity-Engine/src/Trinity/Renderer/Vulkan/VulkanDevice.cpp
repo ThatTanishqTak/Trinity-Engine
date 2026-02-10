@@ -60,6 +60,7 @@ namespace Trinity
         VkPhysicalDevice l_BestDevice = VK_NULL_HANDLE;
         VkPhysicalDeviceProperties l_BestProps{};
         VkPhysicalDeviceFeatures l_BestFeatures{};
+        VkPhysicalDeviceVulkan13Features l_BestVulkan13Features{};
         int l_BestScore = -1;
 
         const std::vector<const char*> l_RequiredExtensions =
@@ -77,8 +78,22 @@ namespace Trinity
                 continue;
             }
 
-            VkPhysicalDeviceFeatures l_Features{};
-            vkGetPhysicalDeviceFeatures(it_Device, &l_Features);
+            // Hard requirements: Vulkan 1.3 core features we use unconditionally.
+            VkPhysicalDeviceFeatures2 l_Features2{};
+            l_Features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+
+            VkPhysicalDeviceVulkan13Features l_Vulkan13Features{};
+            l_Vulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+            l_Features2.pNext = &l_Vulkan13Features;
+
+            vkGetPhysicalDeviceFeatures2(it_Device, &l_Features2);
+
+            if (!l_Vulkan13Features.dynamicRendering || !l_Vulkan13Features.synchronization2 || !l_Vulkan13Features.maintenance4)
+            {
+                continue;
+            }
+
+            const VkPhysicalDeviceFeatures& l_Features = l_Features2.features;
 
             const QueueFamilyIndices l_Indices = FindQueueFamilies(it_Device, context.GetSurface());
             if (!l_Indices.IsComplete())
@@ -140,12 +155,13 @@ namespace Trinity
                 l_BestDevice = it_Device;
                 l_BestProps = l_Properties;
                 l_BestFeatures = l_Features;
+                l_BestVulkan13Features = l_Vulkan13Features;
             }
         }
 
         if (l_BestDevice == VK_NULL_HANDLE)
         {
-            TR_CORE_CRITICAL("No suitable Vulkan 1.3 physical device found");
+            TR_CORE_CRITICAL("No suitable Vulkan 1.3 physical device found (requires dynamicRendering, synchronization2, maintenance4)");
 
             std::abort();
         }
@@ -153,20 +169,7 @@ namespace Trinity
         m_PhysicalDevice = l_BestDevice;
         m_PhysicalDeviceProperties = l_BestProps;
         m_PhysicalDeviceFeatures = l_BestFeatures;
-
-        // Query supported Vulkan 1.3 features only (plus base features via Features2).
-        VkPhysicalDeviceFeatures2 l_Features2{};
-        l_Features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-
-        VkPhysicalDeviceVulkan13Features l_Vulkan13Features{};
-        l_Vulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-
-        l_Features2.pNext = &l_Vulkan13Features;
-
-        vkGetPhysicalDeviceFeatures2(m_PhysicalDevice, &l_Features2);
-
-        m_PhysicalDeviceFeatures = l_Features2.features;
-        m_Vulkan13Features = l_Vulkan13Features;
+        m_Vulkan13Features = l_BestVulkan13Features;
 
         TR_CORE_TRACE("Selected Physical Device: {} (API {}.{}.{})", m_PhysicalDeviceProperties.deviceName, VK_VERSION_MAJOR(m_PhysicalDeviceProperties.apiVersion),
             VK_VERSION_MINOR(m_PhysicalDeviceProperties.apiVersion), VK_VERSION_PATCH(m_PhysicalDeviceProperties.apiVersion));
@@ -229,9 +232,17 @@ namespace Trinity
             l_EnabledFeatures2.features.samplerAnisotropy = VK_TRUE;
         }
 
-        l_EnabledVulkan13Features.dynamicRendering = m_Vulkan13Features.dynamicRendering;
-        l_EnabledVulkan13Features.synchronization2 = m_Vulkan13Features.synchronization2;
-        l_EnabledVulkan13Features.maintenance4 = m_Vulkan13Features.maintenance4;
+        // Hard requirements: Vulkan 1.3 core features we rely on everywhere (no fallbacks).
+        if (!m_Vulkan13Features.dynamicRendering || !m_Vulkan13Features.synchronization2 || !m_Vulkan13Features.maintenance4)
+        {
+            TR_CORE_CRITICAL("Selected physical device does not support required Vulkan 1.3 features (dynamicRendering, synchronization2, maintenance4)");
+
+            std::abort();
+        }
+
+        l_EnabledVulkan13Features.dynamicRendering = VK_TRUE;
+        l_EnabledVulkan13Features.synchronization2 = VK_TRUE;
+        l_EnabledVulkan13Features.maintenance4 = VK_TRUE;
 
         const std::vector<const char*> l_DeviceExtensions =
         {
