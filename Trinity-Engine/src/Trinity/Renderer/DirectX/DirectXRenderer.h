@@ -18,6 +18,8 @@ namespace Trinity
 
 		void Resize(uint32_t width, uint32_t height) override;
 
+		void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color) override;
+
 		void BeginFrame() override;
 		void EndFrame() override;
 

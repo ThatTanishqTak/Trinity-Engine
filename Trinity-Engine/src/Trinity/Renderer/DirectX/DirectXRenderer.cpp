@@ -45,6 +45,11 @@ namespace Trinity
 		(void)height;
 	}
 
+	void DirectXRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color)
+	{
+
+	}
+
 	void DirectXRenderer::BeginFrame()
 	{
 

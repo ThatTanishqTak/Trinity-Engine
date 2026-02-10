@@ -13,81 +13,73 @@ namespace Trinity
 	{
 		if (s_Renderer != nullptr)
 		{
-			TR_CORE_WARN("RenderCommand::Initialize called while renderer already exists. Reinitializing");
+			TR_CORE_WARN("RenderCommand::Initialize called while renderer already exists. Reinitializing.");
 			s_Renderer->Shutdown();
 			s_Renderer.reset();
 		}
 
 		s_Renderer = RendererFactory::Create(api);
-		if (s_Renderer == nullptr)
+		if (!s_Renderer)
 		{
-			TR_CORE_CRITICAL("RenderCommand::Initialize failed: RendererFactory returned nullptr");
+			TR_CORE_CRITICAL("RenderCommand::Initialize: RendererFactory returned nullptr");
 		}
+
 		TR_CORE_TRACE("Selected API: {}", ApiToString(api));
 
 		s_Renderer->SetWindow(window);
-
-		TR_CORE_INFO("------- INITIALIZING RENDERER -------");
-
 		s_Renderer->Initialize();
-		
-		TR_CORE_INFO("------- RENDERER INITIALIZED -------");
 	}
 
 	void RenderCommand::Shutdown()
 	{
-		if (s_Renderer == nullptr)
+		if (!s_Renderer)
 		{
 			return;
 		}
 
-		TR_CORE_INFO("------- SHUTTING DOWN RENDERER -------");
-
 		s_Renderer->Shutdown();
 		s_Renderer.reset();
-
-		TR_CORE_INFO("------- RENDERER SHUTDOWN COMPLETE -------");
 	}
 
 	void RenderCommand::Resize(uint32_t width, uint32_t height)
 	{
-		if (s_Renderer == nullptr)
+		if (s_Renderer)
 		{
-			TR_CORE_WARN("RenderCommand::Resize called before renderer initialization");
-
-			return;
+			s_Renderer->Resize(width, height);
 		}
-
-		s_Renderer->Resize(width, height);
 	}
 
 	void RenderCommand::BeginFrame()
 	{
-		if (s_Renderer == nullptr)
+		if (s_Renderer)
 		{
-			return;
+			s_Renderer->BeginFrame();
 		}
-
-		s_Renderer->BeginFrame();
 	}
 
 	void RenderCommand::EndFrame()
 	{
-		if (s_Renderer == nullptr)
+		if (s_Renderer)
 		{
-			return;
+			s_Renderer->EndFrame();
 		}
+	}
 
-		s_Renderer->EndFrame();
+	void RenderCommand::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color)
+	{
+		if (s_Renderer)
+		{
+			s_Renderer->DrawMesh(primitive, position, color);
+		}
 	}
 
 	Renderer& RenderCommand::GetRenderer()
 	{
-		if (s_Renderer == nullptr)
+		if (!s_Renderer)
 		{
 			TR_CORE_CRITICAL("RenderCommand::GetRenderer called before renderer initialization");
 		}
-
+		
 		return *s_Renderer;
 	}
 
@@ -99,10 +91,10 @@ namespace Trinity
 				return "Vulkan";
 			case RendererAPI::MOLTENVK:
 				return "MoltenVK";
-			case RendererAPI::DIRECTX:
+			case RendererAPI::DIRECTX: 
 				return "DirectX";
 			default:
-				return "Unknown API";
+				return "Unknown";
 		}
 	}
 }

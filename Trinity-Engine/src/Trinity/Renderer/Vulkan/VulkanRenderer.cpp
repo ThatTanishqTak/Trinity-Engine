@@ -4,10 +4,17 @@
 #include "Trinity/Utilities/Log.h"
 #include "Trinity/Utilities/VulkanUtilities.h"
 
+#include <glm/gtc/matrix_transform.hpp>
 #include <cstdlib>
 
 namespace Trinity
 {
+	struct PushConstants
+	{
+		glm::mat4 MVP;
+		glm::vec4 Color;
+	};
+
 	VulkanRenderer::VulkanRenderer() : Renderer(RendererAPI::VULKAN)
 	{
 
@@ -25,8 +32,6 @@ namespace Trinity
 
 	void VulkanRenderer::Initialize()
 	{
-		TR_CORE_TRACE("Initializing Vulkan");
-
 		if (!m_Window)
 		{
 			TR_CORE_CRITICAL("VulkanRenderer::Initialize called without a window");
@@ -41,17 +46,20 @@ namespace Trinity
 		m_Command.Initialize(m_Context, m_Device, m_FramesInFlight);
 		m_Pipeline.Initialize(m_Context, m_Device, m_Swapchain.GetImageFormat(), m_VertexShaderPath, m_FragmentShaderPath);
 		m_SwapchainImageLayouts.assign(m_Swapchain.GetImageCount(), VK_IMAGE_LAYOUT_UNDEFINED);
-
-		TR_CORE_TRACE("Vulkan Initialized");
 	}
 
 	void VulkanRenderer::Shutdown()
 	{
-		TR_CORE_TRACE("Shutting Down Vulkan");
-
 		if (m_Device.GetDevice() != VK_NULL_HANDLE)
 		{
 			vkDeviceWaitIdle(m_Device.GetDevice());
+		}
+
+		// Free primitive buffers
+		for (auto& it_Primitive : m_Primitives)
+		{
+			it_Primitive.VulkanVB.reset();
+			it_Primitive.VulkanIB.reset();
 		}
 
 		m_Pipeline.Shutdown();
@@ -60,8 +68,6 @@ namespace Trinity
 		m_Swapchain.Shutdown();
 		m_Device.Shutdown();
 		m_Context.Shutdown();
-
-		TR_CORE_TRACE("Vulkan Shutdown Complete");
 	}
 
 	void VulkanRenderer::Resize(uint32_t width, uint32_t height)
@@ -99,17 +105,17 @@ namespace Trinity
 
 		const VkSemaphore l_ImageAvailable = m_Sync.GetImageAvailableSemaphore(m_CurrentFrameIndex);
 
-		VkResult l_AcquireResult = m_Swapchain.AcquireNextImageIndex(l_ImageAvailable, m_CurrentImageIndex);
-		if (l_AcquireResult == VK_ERROR_OUT_OF_DATE_KHR)
+		VkResult l_Acquire = m_Swapchain.AcquireNextImageIndex(l_ImageAvailable, m_CurrentImageIndex);
+		if (l_Acquire == VK_ERROR_OUT_OF_DATE_KHR)
 		{
 			RecreateSwapchain(m_Window->GetWidth(), m_Window->GetHeight());
 
 			return;
 		}
 
-		if (l_AcquireResult != VK_SUCCESS && l_AcquireResult != VK_SUBOPTIMAL_KHR)
+		if (l_Acquire != VK_SUCCESS && l_Acquire != VK_SUBOPTIMAL_KHR)
 		{
-			TR_CORE_CRITICAL("vkAcquireNextImageKHR failed (VkResult = {})", static_cast<int>(l_AcquireResult));
+			TR_CORE_CRITICAL("vkAcquireNextImageKHR failed (VkResult = {})", (int)l_Acquire);
 
 			std::abort();
 		}
@@ -132,19 +138,19 @@ namespace Trinity
 
 		TransitionSwapchainImage(l_CommandBuffer, m_CurrentImageIndex, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-		VkClearValue l_ClearValue{};
-		l_ClearValue.color.float32[0] = 0.05f;
-		l_ClearValue.color.float32[1] = 0.05f;
-		l_ClearValue.color.float32[2] = 0.05f;
-		l_ClearValue.color.float32[3] = 1.0f;
+		VkClearValue l_ClearColor{};
+		l_ClearColor.color.float32[0] = 0.05f;
+		l_ClearColor.color.float32[1] = 0.05f;
+		l_ClearColor.color.float32[2] = 0.05f;
+		l_ClearColor.color.float32[3] = 1.0f;
 
-		VkRenderingAttachmentInfo l_ColorAttachment{};
-		l_ColorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-		l_ColorAttachment.imageView = m_Swapchain.GetImageViews()[m_CurrentImageIndex];
-		l_ColorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		l_ColorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		l_ColorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		l_ColorAttachment.clearValue = l_ClearValue;
+		VkRenderingAttachmentInfo l_ColorAttachmentInfo{};
+		l_ColorAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+		l_ColorAttachmentInfo.imageView = m_Swapchain.GetImageViews()[m_CurrentImageIndex];
+		l_ColorAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		l_ColorAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		l_ColorAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		l_ColorAttachmentInfo.clearValue = l_ClearColor;
 
 		VkRenderingInfo l_RenderingInfo{};
 		l_RenderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
@@ -152,7 +158,7 @@ namespace Trinity
 		l_RenderingInfo.renderArea.extent = m_Swapchain.GetExtent();
 		l_RenderingInfo.layerCount = 1;
 		l_RenderingInfo.colorAttachmentCount = 1;
-		l_RenderingInfo.pColorAttachments = &l_ColorAttachment;
+		l_RenderingInfo.pColorAttachments = &l_ColorAttachmentInfo;
 
 		vkCmdBeginRendering(l_CommandBuffer, &l_RenderingInfo);
 
@@ -161,8 +167,8 @@ namespace Trinity
 		VkViewport l_Viewport{};
 		l_Viewport.x = 0.0f;
 		l_Viewport.y = 0.0f;
-		l_Viewport.width = static_cast<float>(l_Extent.width);
-		l_Viewport.height = static_cast<float>(l_Extent.height);
+		l_Viewport.width = (float)l_Extent.width;
+		l_Viewport.height = (float)l_Extent.height;
 		l_Viewport.minDepth = 0.0f;
 		l_Viewport.maxDepth = 1.0f;
 
@@ -173,9 +179,7 @@ namespace Trinity
 		vkCmdSetViewport(l_CommandBuffer, 0, 1, &l_Viewport);
 		vkCmdSetScissor(l_CommandBuffer, 0, 1, &l_Scissor);
 
-		// Bind + draw triangle
 		m_Pipeline.Bind(l_CommandBuffer);
-		vkCmdDraw(l_CommandBuffer, 3, 1, 0, 0);
 
 		m_FrameBegun = true;
 	}
@@ -201,32 +205,89 @@ namespace Trinity
 
 		VkPipelineStageFlags l_WaitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
-		VkSubmitInfo l_SubmitInfo{};
-		l_SubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		l_SubmitInfo.waitSemaphoreCount = 1;
-		l_SubmitInfo.pWaitSemaphores = &l_ImageAvailable;
-		l_SubmitInfo.pWaitDstStageMask = &l_WaitStage;
-		l_SubmitInfo.commandBufferCount = 1;
-		l_SubmitInfo.pCommandBuffers = &l_CommandBuffer;
-		l_SubmitInfo.signalSemaphoreCount = 1;
-		l_SubmitInfo.pSignalSemaphores = &l_RenderFinished;
+		VkSubmitInfo l_Submit{};
+		l_Submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		l_Submit.waitSemaphoreCount = 1;
+		l_Submit.pWaitSemaphores = &l_ImageAvailable;
+		l_Submit.pWaitDstStageMask = &l_WaitStage;
+		l_Submit.commandBufferCount = 1;
+		l_Submit.pCommandBuffers = &l_CommandBuffer;
+		l_Submit.signalSemaphoreCount = 1;
+		l_Submit.pSignalSemaphores = &l_RenderFinished;
 
-		Utilities::VulkanUtilities::VKCheck(vkQueueSubmit(m_Device.GetGraphicsQueue(), 1, &l_SubmitInfo, l_InFlightFence), "Failed vkQueueSubmit");
+		Utilities::VulkanUtilities::VKCheck(vkQueueSubmit(m_Device.GetGraphicsQueue(), 1, &l_Submit, l_InFlightFence), "Failed vkQueueSubmit");
 
-		VkResult l_PresentResult = m_Swapchain.Present(m_Device.GetPresentQueue(), l_RenderFinished, m_CurrentImageIndex);
-		if (l_PresentResult == VK_ERROR_OUT_OF_DATE_KHR || l_PresentResult == VK_SUBOPTIMAL_KHR)
+		VkResult l_Present = m_Swapchain.Present(m_Device.GetPresentQueue(), l_RenderFinished, m_CurrentImageIndex);
+		if (l_Present == VK_ERROR_OUT_OF_DATE_KHR || l_Present == VK_SUBOPTIMAL_KHR)
 		{
 			RecreateSwapchain(m_Window->GetWidth(), m_Window->GetHeight());
 		}
-		else if (l_PresentResult != VK_SUCCESS)
+		else if (l_Present != VK_SUCCESS)
 		{
-			TR_CORE_CRITICAL("vkQueuePresentKHR failed (VkResult = {})", static_cast<int>(l_PresentResult));
+			TR_CORE_CRITICAL("vkQueuePresentKHR failed (VkResult = {})", (int)l_Present);
 
 			std::abort();
 		}
 
 		m_CurrentFrameIndex = (m_CurrentFrameIndex + 1) % m_FramesInFlight;
 		m_FrameBegun = false;
+	}
+
+	void VulkanRenderer::EnsurePrimitiveUploaded(Geometry::PrimitiveType primitive)
+	{
+		const size_t l_Index = (size_t)primitive;
+		if (l_Index >= m_Primitives.size())
+		{
+			TR_CORE_CRITICAL("PrimitiveType out of range");
+
+			std::abort();
+		}
+
+		auto& a_GPUPrimitive = m_Primitives[l_Index];
+		if (a_GPUPrimitive.VulkanVB && a_GPUPrimitive.VulkanIB)
+		{
+			return;
+		}
+
+		const auto& a_Mesh = Geometry::GetPrimitive(primitive);
+
+		a_GPUPrimitive.VulkanVB = std::make_unique<VulkanVertexBuffer>(m_Context, m_Device, (uint64_t)(a_Mesh.Vertices.size() * sizeof(Geometry::Vertex)),
+			(uint32_t)sizeof(Geometry::Vertex), BufferMemoryUsage::GPUOnly, a_Mesh.Vertices.data());
+
+		a_GPUPrimitive.VulkanIB = std::make_unique<VulkanIndexBuffer>(m_Context, m_Device, (uint64_t)(a_Mesh.Indices.size() * sizeof(uint32_t)),
+			(uint32_t)a_Mesh.Indices.size(), IndexType::UInt32, BufferMemoryUsage::GPUOnly, a_Mesh.Indices.data());
+	}
+
+	void VulkanRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color)
+	{
+		if (!m_FrameBegun)
+		{
+			TR_CORE_CRITICAL("DrawMesh called outside BeginFrame/EndFrame");
+
+			std::abort();
+		}
+
+		EnsurePrimitiveUploaded(primitive);
+
+		const size_t l_Index = (size_t)primitive;
+		auto& a_GPUPrimitive = m_Primitives[l_Index];
+
+		const VkCommandBuffer l_CommandBuffer = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
+
+		VkBuffer l_VertexBuffer = a_GPUPrimitive.VulkanVB->GetVkBuffer();
+		VkDeviceSize l_Offsets[] = { 0 };
+		vkCmdBindVertexBuffers(l_CommandBuffer, 0, 1, &l_VertexBuffer, l_Offsets);
+
+		VkBuffer l_IndexBuffer = a_GPUPrimitive.VulkanIB->GetVkBuffer();
+		vkCmdBindIndexBuffer(l_CommandBuffer, l_IndexBuffer, 0, ToVkIndexType(a_GPUPrimitive.VulkanIB->GetIndexType()));
+
+		PushConstants pc{};
+		pc.MVP = glm::translate(glm::mat4(1.0f), position);
+		pc.Color = color;
+
+		vkCmdPushConstants(l_CommandBuffer, m_Pipeline.GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &pc);
+
+		vkCmdDrawIndexed(l_CommandBuffer, a_GPUPrimitive.VulkanIB->GetIndexCount(), 1, 0, 0, 0);
 	}
 
 	void VulkanRenderer::TransitionSwapchainImage(VkCommandBuffer commandBuffer, uint32_t imageIndex, VkImageLayout newLayout)
@@ -244,47 +305,47 @@ namespace Trinity
 			return;
 		}
 
-		VkImageMemoryBarrier2 l_Barrier{};
-		l_Barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-		l_Barrier.oldLayout = l_OldLayout;
-		l_Barrier.newLayout = newLayout;
-		l_Barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		l_Barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		l_Barrier.image = m_Swapchain.GetImages()[imageIndex];
-		l_Barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		l_Barrier.subresourceRange.baseMipLevel = 0;
-		l_Barrier.subresourceRange.levelCount = 1;
-		l_Barrier.subresourceRange.baseArrayLayer = 0;
-		l_Barrier.subresourceRange.layerCount = 1;
+		VkImageMemoryBarrier2 l_MemoryBarrier{};
+		l_MemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+		l_MemoryBarrier.oldLayout = l_OldLayout;
+		l_MemoryBarrier.newLayout = newLayout;
+		l_MemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		l_MemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		l_MemoryBarrier.image = m_Swapchain.GetImages()[imageIndex];
+		l_MemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		l_MemoryBarrier.subresourceRange.baseMipLevel = 0;
+		l_MemoryBarrier.subresourceRange.levelCount = 1;
+		l_MemoryBarrier.subresourceRange.baseArrayLayer = 0;
+		l_MemoryBarrier.subresourceRange.layerCount = 1;
 
 		if (newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
 		{
-			l_Barrier.srcStageMask = VK_PIPELINE_STAGE_2_NONE;
-			l_Barrier.srcAccessMask = VK_ACCESS_2_NONE;
-			l_Barrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-			l_Barrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+			l_MemoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_NONE;
+			l_MemoryBarrier.srcAccessMask = VK_ACCESS_2_NONE;
+			l_MemoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+			l_MemoryBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
 		}
 		else if (newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
 		{
-			l_Barrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-			l_Barrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-			l_Barrier.dstStageMask = VK_PIPELINE_STAGE_2_NONE;
-			l_Barrier.dstAccessMask = VK_ACCESS_2_NONE;
+			l_MemoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+			l_MemoryBarrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+			l_MemoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_NONE;
+			l_MemoryBarrier.dstAccessMask = VK_ACCESS_2_NONE;
 		}
 		else
 		{
-			l_Barrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-			l_Barrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
-			l_Barrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-			l_Barrier.dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
+			l_MemoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+			l_MemoryBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
+			l_MemoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+			l_MemoryBarrier.dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
 		}
 
-		VkDependencyInfo l_Dependency{};
-		l_Dependency.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-		l_Dependency.imageMemoryBarrierCount = 1;
-		l_Dependency.pImageMemoryBarriers = &l_Barrier;
+		VkDependencyInfo l_DependencyInfo{};
+		l_DependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+		l_DependencyInfo.imageMemoryBarrierCount = 1;
+		l_DependencyInfo.pImageMemoryBarriers = &l_MemoryBarrier;
 
-		vkCmdPipelineBarrier2(commandBuffer, &l_Dependency);
+		vkCmdPipelineBarrier2(commandBuffer, &l_DependencyInfo);
 
 		m_SwapchainImageLayouts[imageIndex] = newLayout;
 	}

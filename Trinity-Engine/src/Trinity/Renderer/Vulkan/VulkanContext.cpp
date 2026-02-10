@@ -57,7 +57,6 @@ namespace Trinity
     {
         TR_CORE_TRACE("Creating Vulkan Instance");
 
-        // Hard requirement: Vulkan 1.3 loader/runtime.
         uint32_t l_LoaderVersion = VK_API_VERSION_1_0;
         auto l_EnumerateInstanceVersion = reinterpret_cast<PFN_vkEnumerateInstanceVersion>(vkGetInstanceProcAddr(nullptr, "vkEnumerateInstanceVersion"));
 
@@ -265,15 +264,15 @@ namespace Trinity
         l_MessengerCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
         l_MessengerCreateInfo.pfnUserCallback = Utilities::VulkanUtilities::VKDebugCallback;
 
-        PFN_vkCreateDebugUtilsMessengerEXT l_CreateFn = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(m_Instance, "vkCreateDebugUtilsMessengerEXT"));
-        if (!l_CreateFn)
+        PFN_vkCreateDebugUtilsMessengerEXT l_CreateFunction = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(m_Instance, "vkCreateDebugUtilsMessengerEXT"));
+        if (!l_CreateFunction)
         {
             TR_CORE_WARN("vkCreateDebugUtilsMessengerEXT not found (debug messenger disabled)");
 
             return;
         }
 
-        Utilities::VulkanUtilities::VKCheck(l_CreateFn(m_Instance, &l_MessengerCreateInfo, m_Allocator, &m_DebugMessenger), "Failed vkCreateDebugUtilsMessengerEXT");
+        Utilities::VulkanUtilities::VKCheck(l_CreateFunction(m_Instance, &l_MessengerCreateInfo, m_Allocator, &m_DebugMessenger), "Failed vkCreateDebugUtilsMessengerEXT");
 
         TR_CORE_TRACE("Debug Messenger Setup Complete");
 #endif
@@ -286,15 +285,15 @@ namespace Trinity
 
         if (m_DebugMessenger == VK_NULL_HANDLE)
         {
-            TR_CORE_TRACE("No Debug Messenger Found");
+            TR_CORE_WARN("No Debug Messenger Found");
 
             return;
         }
 
-        auto a_DestroyFn = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(m_Instance, "vkDestroyDebugUtilsMessengerEXT"));
-        if (a_DestroyFn)
+        auto a_DestroyFunction = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(m_Instance, "vkDestroyDebugUtilsMessengerEXT"));
+        if (a_DestroyFunction)
         {
-            a_DestroyFn(m_Instance, m_DebugMessenger, m_Allocator);
+            a_DestroyFunction(m_Instance, m_DebugMessenger, m_Allocator);
             m_DebugMessenger = VK_NULL_HANDLE;
         }
 
@@ -310,9 +309,9 @@ namespace Trinity
         std::vector<VkExtensionProperties> l_Extensions(l_Count);
         Utilities::VulkanUtilities::VKCheck(vkEnumerateInstanceExtensionProperties(nullptr, &l_Count, l_Extensions.data()), "Failed vkEnumerateInstanceExtensionProperties");
 
-        for (const auto& it_Ext : l_Extensions)
+        for (const auto& it_Extension : l_Extensions)
         {
-            if (strcmp(it_Ext.extensionName, extensionName) == 0)
+            if (strcmp(it_Extension.extensionName, extensionName) == 0)
             {
                 return true;
             }

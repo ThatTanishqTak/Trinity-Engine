@@ -1,7 +1,8 @@
 #include "ForgeLayer.h"
 
 #include "Trinity/Input/Input.h"
-
+#include "Trinity/Renderer/RenderCommand.h"
+#include "Trinity/Geometry/Geometry.h"
 #include "Trinity/Application/Application.h"
 
 ForgeLayer::ForgeLayer() : Trinity::Layer("ForgeLayer")
@@ -28,10 +29,7 @@ void ForgeLayer::OnUpdate(float deltaTime)
 
 void ForgeLayer::OnRender()
 {
-    //for (int i = 0; i < 20; i++)
-    //{
-    //    Trinity::RenderCommand::DrawCube({ 1.0f * i, 1.0f * i, 1.0f * i }, { 0.0f, 0.0f, 0.0f });
-    //}
+    Trinity::RenderCommand::DrawMesh(Trinity::Geometry::PrimitiveType::Cube, { 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f, 1.0f });
 }
 
 void ForgeLayer::OnImGuiRender()

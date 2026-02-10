@@ -1,15 +1,20 @@
 #pragma once
 
 #include <cstdint>
+#include <glm/glm.hpp>
 
 namespace Trinity
 {
 	class Window;
 
+	namespace Geometry
+	{
+		enum class PrimitiveType : uint8_t;
+	}
+
 	enum class RendererAPI
 	{
 		NONE = 0,
-
 		VULKAN,
 		MOLTENVK,
 		DIRECTX,
@@ -31,6 +36,8 @@ namespace Trinity
 
 		virtual void BeginFrame() = 0;
 		virtual void EndFrame() = 0;
+
+		virtual void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color) = 0;
 
 	protected:
 		explicit Renderer(RendererAPI api) : m_CurrentAPI(api) {}

@@ -4,6 +4,7 @@
 
 #include <string>
 #include <cstdint>
+#include <glm/glm.hpp>
 
 namespace Trinity
 {
@@ -20,7 +21,7 @@ namespace Trinity
 		static void BeginFrame();
 		static void EndFrame();
 
-		//static void DrawCube(glm::vec3 pos, glm::vec3 size, glm::vec4 tint = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f));
+		static void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color);
 
 		static Renderer& GetRenderer();
 		static std::string ApiToString(RendererAPI api);
