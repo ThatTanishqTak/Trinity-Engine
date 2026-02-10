@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <vector>
 
+#include <glm/glm.hpp>
+
 namespace Trinity
 {
 	namespace Geometry
@@ -15,13 +17,11 @@ namespace Trinity
 			Count
 		};
 
-		// IMPORTANT: don't use glm::vec3 here unless you're 100% sure your glm isn't aligned-to-16.
-		// This is vertex data, so we want predictable packing.
 		struct Vertex
 		{
-			float Position[3];
-			float Normal[3];
-			float UV[2];
+			glm::vec3 Position;
+			glm::vec3 Normal;
+			glm::vec2 UV;
 		};
 
 		struct MeshData

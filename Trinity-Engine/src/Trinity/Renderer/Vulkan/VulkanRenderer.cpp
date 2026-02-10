@@ -281,11 +281,11 @@ namespace Trinity
 		VkBuffer l_IndexBuffer = a_GPUPrimitive.VulkanIB->GetVkBuffer();
 		vkCmdBindIndexBuffer(l_CommandBuffer, l_IndexBuffer, 0, ToVkIndexType(a_GPUPrimitive.VulkanIB->GetIndexType()));
 
-		PushConstants pc{};
-		pc.MVP = glm::translate(glm::mat4(1.0f), position);
-		pc.Color = color;
+		PushConstants l_PushConstants{};
+		l_PushConstants.MVP = glm::translate(glm::mat4(1.0f), position);
+		l_PushConstants.Color = color;
 
-		vkCmdPushConstants(l_CommandBuffer, m_Pipeline.GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &pc);
+		vkCmdPushConstants(l_CommandBuffer, m_Pipeline.GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &l_PushConstants);
 
 		vkCmdDrawIndexed(l_CommandBuffer, a_GPUPrimitive.VulkanIB->GetIndexCount(), 1, 0, 0, 0);
 	}
