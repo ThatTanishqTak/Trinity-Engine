@@ -58,10 +58,11 @@ namespace Trinity
 		};
 
 		static ImageResourceState BuildImageResourceState(VkImageLayout layout);
+		static ImageResourceState BuildImageResourceState(const VulkanImageTransitionState& transitionState);
 		static SwapchainImageState BuildSwapchainImageState();
 
 		void RecreateSwapchain(uint32_t width, uint32_t height);
-		void TransitionSwapchainImage(VkCommandBuffer commandBuffer, uint32_t imageIndex, VkImageLayout newLayout);
+		void TransitionSwapchainImage(VkCommandBuffer commandBuffer, uint32_t imageIndex, const ImageResourceState& newColorAspectState);
 
 		void EnsurePrimitiveUploaded(Geometry::PrimitiveType primitive);
 
