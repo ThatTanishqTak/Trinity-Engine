@@ -11,38 +11,79 @@ namespace Trinity
 {
 	VulkanRenderer::ImageResourceState VulkanRenderer::BuildImageResourceState(VkImageLayout layout)
 	{
-		VulkanImageTransitionState l_TransitionState{};
-
 		if (layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
 		{
-			l_TransitionState = g_ColorAttachmentWriteImageState;
-		}
-		else if (layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
-		{
-			l_TransitionState = g_TransferSourceImageState;
-		}
-		else if (layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-		{
-			l_TransitionState = g_TransferDestinationImageState;
-		}
-		else if (layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-		{
-			l_TransitionState = g_ShaderReadOnlyImageState;
-		}
-		else if (layout == VK_IMAGE_LAYOUT_GENERAL)
-		{
-			l_TransitionState = g_GeneralComputeReadWriteImageState;
-		}
-		else if (layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
-		{
-			l_TransitionState = g_PresentImageState;
-		}
-		else
-		{
-			l_TransitionState = CreateVulkanImageTransitionState(layout, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT);
+			return BuildImageResourceState(ImageTransitionPreset::ColorAttachmentWrite);
 		}
 
+		if (layout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL || layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+		{
+			return BuildImageResourceState(ImageTransitionPreset::DepthAttachmentWrite);
+		}
+
+		if (layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+		{
+			return BuildImageResourceState(ImageTransitionPreset::TransferSource);
+		}
+
+		if (layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+		{
+			return BuildImageResourceState(ImageTransitionPreset::TransferDestination);
+		}
+
+		if (layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+		{
+			return BuildImageResourceState(ImageTransitionPreset::ShaderReadOnly);
+		}
+
+		if (layout == VK_IMAGE_LAYOUT_GENERAL)
+		{
+			return BuildImageResourceState(ImageTransitionPreset::GeneralComputeReadWrite);
+		}
+
+		if (layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+		{
+			return BuildImageResourceState(ImageTransitionPreset::Present);
+		}
+
+		const VulkanImageTransitionState l_TransitionState = CreateVulkanImageTransitionState(layout, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT);
+		
 		return BuildImageResourceState(l_TransitionState);
+	}
+
+	VulkanRenderer::ImageResourceState VulkanRenderer::BuildImageResourceState(ImageTransitionPreset preset)
+	{
+		if (preset == ImageTransitionPreset::Present)
+		{
+			return BuildImageResourceState(g_PresentImageState);
+		}
+
+		if (preset == ImageTransitionPreset::ColorAttachmentWrite)
+		{
+			return BuildImageResourceState(g_ColorAttachmentWriteImageState);
+		}
+
+		if (preset == ImageTransitionPreset::DepthAttachmentWrite)
+		{
+			return BuildImageResourceState(g_DepthAttachmentWriteImageState);
+		}
+
+		if (preset == ImageTransitionPreset::ShaderReadOnly)
+		{
+			return BuildImageResourceState(g_ShaderReadOnlyImageState);
+		}
+
+		if (preset == ImageTransitionPreset::TransferSource)
+		{
+			return BuildImageResourceState(g_TransferSourceImageState);
+		}
+
+		if (preset == ImageTransitionPreset::TransferDestination)
+		{
+			return BuildImageResourceState(g_TransferDestinationImageState);
+		}
+
+		return BuildImageResourceState(g_GeneralComputeReadWriteImageState);
 	}
 
 	VulkanRenderer::ImageResourceState VulkanRenderer::BuildImageResourceState(const VulkanImageTransitionState& transitionState)
@@ -205,8 +246,7 @@ namespace Trinity
 		m_Command.Begin(m_CurrentFrameIndex);
 
 		const VkCommandBuffer l_CommandBuffer = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
-
-		const ImageResourceState l_ColorAttachmentWriteState = BuildImageResourceState(g_ColorAttachmentWriteImageState);
+		const ImageResourceState l_ColorAttachmentWriteState = BuildImageResourceState(ImageTransitionPreset::ColorAttachmentWrite);
 
 		VkImageSubresourceRange l_ColorSubresourceRange{};
 		l_ColorSubresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -271,7 +311,7 @@ namespace Trinity
 		}
 
 		const VkCommandBuffer l_CommandBuffer = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
-		const ImageResourceState l_PresentState = BuildImageResourceState(g_PresentImageState);
+		const ImageResourceState l_PresentState = BuildImageResourceState(ImageTransitionPreset::Present);
 
 		VkImageSubresourceRange l_ColorSubresourceRange{};
 		l_ColorSubresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;

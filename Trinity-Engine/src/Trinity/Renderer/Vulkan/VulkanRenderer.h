@@ -43,6 +43,17 @@ namespace Trinity
 		void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& view, const glm::mat4& projection) override;
 
 	private:
+		enum class ImageTransitionPreset
+		{
+			Present,
+			ColorAttachmentWrite,
+			DepthAttachmentWrite,
+			ShaderReadOnly,
+			TransferSource,
+			TransferDestination,
+			GeneralComputeReadWrite
+		};
+
 		struct ImageResourceState
 		{
 			VkImageLayout m_Layout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -58,6 +69,7 @@ namespace Trinity
 		};
 
 		static ImageResourceState BuildImageResourceState(VkImageLayout layout);
+		static ImageResourceState BuildImageResourceState(ImageTransitionPreset preset);
 		static ImageResourceState BuildImageResourceState(const VulkanImageTransitionState& transitionState);
 		static SwapchainImageState BuildSwapchainImageState();
 
