@@ -15,6 +15,24 @@ namespace Trinity
 		uint32_t m_QueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	};
 
+	[[nodiscard]] constexpr VulkanImageTransitionState CreateVulkanImageTransitionState(VkImageLayout layout, VkPipelineStageFlags2 stageMask, VkAccessFlags2 accessMask, uint32_t queueFamilyIndex = VK_QUEUE_FAMILY_IGNORED)
+	{
+		VulkanImageTransitionState l_State{};
+		l_State.m_Layout = layout;
+		l_State.m_StageMask = stageMask;
+		l_State.m_AccessMask = accessMask;
+		l_State.m_QueueFamilyIndex = queueFamilyIndex;
+
+		return l_State;
+	}
+
+	inline constexpr VulkanImageTransitionState g_PresentImageState = CreateVulkanImageTransitionState(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE);
+	inline constexpr VulkanImageTransitionState g_ColorAttachmentWriteImageState = CreateVulkanImageTransitionState(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT);
+	inline constexpr VulkanImageTransitionState g_TransferSourceImageState = CreateVulkanImageTransitionState(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT);
+	inline constexpr VulkanImageTransitionState g_TransferDestinationImageState = CreateVulkanImageTransitionState(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
+	inline constexpr VulkanImageTransitionState g_ShaderReadOnlyImageState = CreateVulkanImageTransitionState(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_SAMPLED_READ_BIT);
+	inline constexpr VulkanImageTransitionState g_GeneralComputeReadWriteImageState = CreateVulkanImageTransitionState(VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT);
+
 	void TransitionImage(VkCommandBuffer commandBuffer, VkImage image, const VulkanImageTransitionState& oldState, const VulkanImageTransitionState& newState,
 		const VkImageSubresourceRange& subresourceRange);
 

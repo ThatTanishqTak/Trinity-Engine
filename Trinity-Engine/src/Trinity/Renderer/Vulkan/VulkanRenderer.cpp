@@ -12,23 +12,41 @@ namespace Trinity
 	VulkanRenderer::ImageResourceState VulkanRenderer::BuildImageResourceState(VkImageLayout layout)
 	{
 		ImageResourceState l_ImageResourceState{};
-		l_ImageResourceState.m_Layout = layout;
+		VulkanImageTransitionState l_TransitionState{};
 
 		if (layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
 		{
-			l_ImageResourceState.m_Stages = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-			l_ImageResourceState.m_Access = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+			l_TransitionState = g_ColorAttachmentWriteImageState;
+		}
+		else if (layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+		{
+			l_TransitionState = g_TransferSourceImageState;
+		}
+		else if (layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+		{
+			l_TransitionState = g_TransferDestinationImageState;
+		}
+		else if (layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+		{
+			l_TransitionState = g_ShaderReadOnlyImageState;
+		}
+		else if (layout == VK_IMAGE_LAYOUT_GENERAL)
+		{
+			l_TransitionState = g_GeneralComputeReadWriteImageState;
 		}
 		else if (layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
 		{
-			l_ImageResourceState.m_Stages = VK_PIPELINE_STAGE_2_NONE;
-			l_ImageResourceState.m_Access = VK_ACCESS_2_NONE;
+			l_TransitionState = g_PresentImageState;
 		}
 		else
 		{
-			l_ImageResourceState.m_Stages = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-			l_ImageResourceState.m_Access = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
+			l_TransitionState = CreateVulkanImageTransitionState(layout, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT);
 		}
+
+		l_ImageResourceState.m_Layout = l_TransitionState.m_Layout;
+		l_ImageResourceState.m_Stages = l_TransitionState.m_StageMask;
+		l_ImageResourceState.m_Access = l_TransitionState.m_AccessMask;
+		l_ImageResourceState.m_QueueFamilyIndex = l_TransitionState.m_QueueFamilyIndex;
 
 		return l_ImageResourceState;
 	}
@@ -372,17 +390,8 @@ namespace Trinity
 		l_SubresourceRange.baseArrayLayer = 0;
 		l_SubresourceRange.layerCount = 1;
 
-		VulkanImageTransitionState l_OldState{};
-		l_OldState.m_StageMask = l_ColorAspectState.m_Stages;
-		l_OldState.m_AccessMask = l_ColorAspectState.m_Access;
-		l_OldState.m_Layout = l_ColorAspectState.m_Layout;
-		l_OldState.m_QueueFamilyIndex = l_ColorAspectState.m_QueueFamilyIndex;
-
-		VulkanImageTransitionState l_NewState{};
-		l_NewState.m_StageMask = l_NewColorAspectState.m_Stages;
-		l_NewState.m_AccessMask = l_NewColorAspectState.m_Access;
-		l_NewState.m_Layout = l_NewColorAspectState.m_Layout;
-		l_NewState.m_QueueFamilyIndex = l_NewColorAspectState.m_QueueFamilyIndex;
+		const VulkanImageTransitionState l_OldState = CreateVulkanImageTransitionState(l_ColorAspectState.m_Layout, l_ColorAspectState.m_Stages, l_ColorAspectState.m_Access, l_ColorAspectState.m_QueueFamilyIndex);
+		const VulkanImageTransitionState l_NewState = CreateVulkanImageTransitionState(l_NewColorAspectState.m_Layout, l_NewColorAspectState.m_Stages, l_NewColorAspectState.m_Access, l_NewColorAspectState.m_QueueFamilyIndex);
 
 		TransitionImage(commandBuffer, m_Swapchain.GetImages()[imageIndex], l_OldState, l_NewState, l_SubresourceRange);
 
