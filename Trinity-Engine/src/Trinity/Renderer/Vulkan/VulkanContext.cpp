@@ -93,7 +93,25 @@ namespace Trinity
 
 #ifdef _DEBUG
         const bool l_DebugUtilsEnabled = std::find(m_RequiredExtensions.begin(), m_RequiredExtensions.end(), VK_EXT_DEBUG_UTILS_EXTENSION_NAME) != m_RequiredExtensions.end();
+        const bool l_ValidationFeaturesEnabled =
+            std::find(m_RequiredExtensions.begin(), m_RequiredExtensions.end(), VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME) != m_RequiredExtensions.end();
+
+        const void* l_InstanceCreatePNext = nullptr;
         VkDebugUtilsMessengerCreateInfoEXT l_DebugCreateInfo{};
+        VkValidationFeaturesEXT l_ValidationFeatures{};
+        VkValidationFeatureEnableEXT l_EnabledValidationFeatures[] =
+        {
+            VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT,
+        };
+
+        if (l_ValidationFeaturesEnabled)
+        {
+            l_ValidationFeatures.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+            l_ValidationFeatures.enabledValidationFeatureCount = static_cast<uint32_t>(std::size(l_EnabledValidationFeatures));
+            l_ValidationFeatures.pEnabledValidationFeatures = l_EnabledValidationFeatures;
+            l_ValidationFeatures.pNext = l_InstanceCreatePNext;
+            l_InstanceCreatePNext = &l_ValidationFeatures;
+        }
 
         if (l_DebugUtilsEnabled)
         {
@@ -101,8 +119,11 @@ namespace Trinity
             l_DebugCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
             l_DebugCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
             l_DebugCreateInfo.pfnUserCallback = Utilities::VulkanUtilities::VKDebugCallback;
-            l_InstanceCreateInfo.pNext = &l_DebugCreateInfo;
+            l_DebugCreateInfo.pNext = l_InstanceCreatePNext;
+            l_InstanceCreatePNext = &l_DebugCreateInfo;
         }
+
+        l_InstanceCreateInfo.pNext = l_InstanceCreatePNext;
 #endif
 
         TR_CORE_TRACE("Creating instance with {} extensions and {} layers", l_InstanceCreateInfo.enabledExtensionCount, l_InstanceCreateInfo.enabledLayerCount);
@@ -177,6 +198,15 @@ namespace Trinity
         else
         {
             TR_CORE_WARN("VK_EXT_debug_utils is not available. Validation output will be limited.");
+        }
+
+        if (IsInstanceExtensionSupported(VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME))
+        {
+            l_Extensions.push_back(VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME);
+        }
+        else
+        {
+            TR_CORE_WARN("VK_EXT_validation_features is not available. Synchronization validation cannot be enabled.");
         }
 #endif
 
