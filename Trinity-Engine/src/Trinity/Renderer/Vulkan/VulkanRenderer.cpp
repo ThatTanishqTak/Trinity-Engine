@@ -39,7 +39,22 @@ namespace Trinity
 			std::abort();
 		}
 
-		m_Context.Initialize(reinterpret_cast<HWND>(m_Window->GetNativeHandle().Window), reinterpret_cast<HINSTANCE>(m_Window->GetNativeHandle().Instance));
+		const NativeWindowHandle l_NativeWindowHandle = m_Window->GetNativeHandle();
+
+#ifdef _WIN32
+		if (l_NativeWindowHandle.WindowType != NativeWindowHandle::Type::Win32)
+		{
+			TR_CORE_CRITICAL("VulkanRenderer requires a Win32 native window handle when built for Windows");
+
+			std::abort();
+		}
+#else
+		TR_CORE_CRITICAL("VulkanRenderer is only implemented for Win32 native window handles in this build");
+
+		std::abort();
+#endif
+
+		m_Context.Initialize(l_NativeWindowHandle);
 		m_Device.Initialize(m_Context);
 		m_Swapchain.Initialize(m_Context, m_Device, m_Window->GetWidth(), m_Window->GetHeight());
 		m_Sync.Initialize(m_Context, m_Device, m_FramesInFlight, m_Swapchain.GetImageCount());

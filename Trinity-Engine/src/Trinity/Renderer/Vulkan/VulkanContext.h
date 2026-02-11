@@ -1,11 +1,8 @@
 #pragma once
 
-#include <vulkan/vulkan.h>
+#include "Trinity/Platform/Window.h"
 
-#ifdef _WIN32
-#include <Windows.h>
-#include <vulkan/vulkan_win32.h>
-#endif
+#include <vulkan/vulkan.h>
 
 #include <vector>
 
@@ -14,7 +11,7 @@ namespace Trinity
 	class VulkanContext
 	{
 	public:
-		void Initialize(HWND windowHandle, HINSTANCE windowInstance);
+		void Initialize(const NativeWindowHandle& nativeWindowHandle);
 		void Shutdown();
 
 		VkInstance GetInstance() const { return m_Instance; }
@@ -23,7 +20,7 @@ namespace Trinity
 
 	private:
 		void CreateInstance();
-		void CreateSurface(HWND windowHandle, HINSTANCE windowInstance);
+		void CreateSurface(const NativeWindowHandle& nativeWindowHandle);
 
 		void DestroySurface();
 		void DestroyInstance();
@@ -42,8 +39,6 @@ namespace Trinity
 		VkAllocationCallbacks* m_Allocator = nullptr;
 		VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
 
-		HWND m_WindowHandle = nullptr;
-		HINSTANCE m_WindowInstance = nullptr;
 
 #ifdef _DEBUG
 		VkDebugUtilsMessengerEXT m_DebugMessenger = VK_NULL_HANDLE;

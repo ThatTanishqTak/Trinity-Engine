@@ -9,22 +9,20 @@ namespace Trinity
     class Event;
     class EventQueue;
 
-    enum class NativeWindowType : uint8_t
-    {
-        None = 0,
-        Win32,
-        X11,
-        Wayland,
-        Cocoa
-    };
-
     struct NativeWindowHandle
     {
-        NativeWindowType Type = NativeWindowType::None;
+        enum class Type : uint8_t
+        {
+            Win32,
+            Xcb,
+            Wayland,
+            Cocoa,
+            Unknown
+        };
 
-        void* Window = nullptr;    // HWND on Win32, xcb_window_t on XCB, wl_surface* on Wayland, NSWindow* on Cocoa
-        void* Instance = nullptr;  // HINSTANCE on Win32
-        void* Display = nullptr;   // Display* on X11, xcb_connection_t* on XCB, wl_display* on Wayland
+        Type WindowType = Type::Unknown;
+        void* Handle1 = nullptr;
+        void* Handle2 = nullptr;
     };
 
     struct WindowProperties

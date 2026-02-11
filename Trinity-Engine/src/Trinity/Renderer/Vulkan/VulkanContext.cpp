@@ -2,19 +2,17 @@
 
 #include "Trinity/Utilities/Log.h"
 #include "Trinity/Utilities/VulkanUtilities.h"
+#include "Trinity/Renderer/Vulkan/VulkanSurface.h"
 
 #include <algorithm>
 #include <cstring>
 #include <cstdlib>
 #include <vector>
 
-#ifdef _WIN32
-#include <vulkan/vulkan_win32.h>
-#endif
 
 namespace Trinity
 {
-    void VulkanContext::Initialize(HWND windowHandle, HINSTANCE windowInstance)
+    void VulkanContext::Initialize(const NativeWindowHandle& nativeWindowHandle)
     {
         TR_CORE_TRACE("Initializing Vulkan Context");
 
@@ -25,12 +23,9 @@ namespace Trinity
             return;
         }
 
-        m_WindowHandle = windowHandle;
-        m_WindowInstance = windowInstance;
-
         CreateInstance();
         SetupDebugMessenger();
-        CreateSurface(m_WindowHandle, m_WindowInstance);
+        CreateSurface(nativeWindowHandle);
 
         TR_CORE_TRACE("Vulkan Context Initialized");
     }
@@ -117,7 +112,7 @@ namespace Trinity
         TR_CORE_TRACE("Vulkan Instance Created");
     }
 
-    void VulkanContext::CreateSurface(HWND windowHandle, HINSTANCE windowInstance)
+    void VulkanContext::CreateSurface(const NativeWindowHandle& nativeWindowHandle)
     {
         TR_CORE_TRACE("Creating Window Surface");
 
@@ -128,25 +123,7 @@ namespace Trinity
             std::abort();
         }
 
-        if (!windowHandle)
-        {
-            TR_CORE_CRITICAL("CreateSurface called with null window handle");
-
-            std::abort();
-        }
-
-#ifdef _WIN32
-        VkWin32SurfaceCreateInfoKHR l_SurfaceCreateInfo{};
-        l_SurfaceCreateInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-        l_SurfaceCreateInfo.hinstance = windowInstance;
-        l_SurfaceCreateInfo.hwnd = windowHandle;
-
-        Utilities::VulkanUtilities::VKCheck(vkCreateWin32SurfaceKHR(m_Instance, &l_SurfaceCreateInfo, m_Allocator, &m_Surface), "Failed vkCreateWin32SurfaceKHR");
-#else
-        TR_CORE_CRITICAL("CreateSurface is only implemented for Win32 in this build");
-
-        std::abort();
-#endif
+        m_Surface = CreateVulkanSurface(m_Instance, m_Allocator, nativeWindowHandle);
 
         TR_CORE_TRACE("Window Surface Created");
     }
@@ -177,9 +154,6 @@ namespace Trinity
         m_RequiredExtensions.clear();
         m_RequiredLayers.clear();
 
-        m_WindowHandle = nullptr;
-        m_WindowInstance = nullptr;
-
         TR_CORE_TRACE("Vulkan Instance Destroyed");
     }
 
@@ -192,7 +166,7 @@ namespace Trinity
         l_Extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
 
 #ifdef _WIN32
-        l_Extensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+        l_Extensions.push_back("VK_KHR_win32_surface");
 #endif
 
 #ifdef _DEBUG

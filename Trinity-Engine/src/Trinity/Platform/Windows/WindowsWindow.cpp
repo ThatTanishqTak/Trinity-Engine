@@ -170,10 +170,9 @@ namespace Trinity
     NativeWindowHandle WindowsWindow::GetNativeHandle() const
     {
         NativeWindowHandle l_Handle{};
-        l_Handle.Type = NativeWindowType::Win32;
-        l_Handle.Window = reinterpret_cast<void*>(m_WindowHandle);
-        l_Handle.Instance = reinterpret_cast<void*>(m_InstanceHandle);
-        l_Handle.Display = nullptr;
+        l_Handle.WindowType = NativeWindowHandle::Type::Win32;
+        l_Handle.Handle1 = reinterpret_cast<void*>(m_WindowHandle);
+        l_Handle.Handle2 = reinterpret_cast<void*>(m_InstanceHandle);
 
         return l_Handle;
     }
