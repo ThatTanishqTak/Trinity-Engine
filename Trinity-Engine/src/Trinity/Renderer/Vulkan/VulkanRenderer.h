@@ -62,7 +62,7 @@ namespace Trinity
 		static SwapchainImageState BuildSwapchainImageState();
 
 		void RecreateSwapchain(uint32_t width, uint32_t height);
-		void TransitionSwapchainImage(VkCommandBuffer commandBuffer, uint32_t imageIndex, const ImageResourceState& newColorAspectState);
+		void TransitionSwapchainImage(VkCommandBuffer commandBuffer, uint32_t imageIndex, const VkImageSubresourceRange& subresourceRange, const ImageResourceState& newState);
 
 		void EnsurePrimitiveUploaded(Geometry::PrimitiveType primitive);
 

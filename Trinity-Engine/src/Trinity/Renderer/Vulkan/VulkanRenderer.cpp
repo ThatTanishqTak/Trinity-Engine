@@ -208,7 +208,14 @@ namespace Trinity
 
 		const ImageResourceState l_ColorAttachmentWriteState = BuildImageResourceState(g_ColorAttachmentWriteImageState);
 
-		TransitionSwapchainImage(l_CommandBuffer, m_CurrentImageIndex, l_ColorAttachmentWriteState);
+		VkImageSubresourceRange l_ColorSubresourceRange{};
+		l_ColorSubresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		l_ColorSubresourceRange.baseMipLevel = 0;
+		l_ColorSubresourceRange.levelCount = 1;
+		l_ColorSubresourceRange.baseArrayLayer = 0;
+		l_ColorSubresourceRange.layerCount = 1;
+
+		TransitionSwapchainImage(l_CommandBuffer, m_CurrentImageIndex, l_ColorSubresourceRange, l_ColorAttachmentWriteState);
 
 		VkClearValue l_ClearColor{};
 		l_ClearColor.color.float32[0] = 0.05f;
@@ -266,9 +273,16 @@ namespace Trinity
 		const VkCommandBuffer l_CommandBuffer = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
 		const ImageResourceState l_PresentState = BuildImageResourceState(g_PresentImageState);
 
+		VkImageSubresourceRange l_ColorSubresourceRange{};
+		l_ColorSubresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		l_ColorSubresourceRange.baseMipLevel = 0;
+		l_ColorSubresourceRange.levelCount = 1;
+		l_ColorSubresourceRange.baseArrayLayer = 0;
+		l_ColorSubresourceRange.layerCount = 1;
+
 		vkCmdEndRendering(l_CommandBuffer);
 
-		TransitionSwapchainImage(l_CommandBuffer, m_CurrentImageIndex, l_PresentState);
+		TransitionSwapchainImage(l_CommandBuffer, m_CurrentImageIndex, l_ColorSubresourceRange, l_PresentState);
 
 		m_Command.End(m_CurrentFrameIndex);
 
@@ -374,7 +388,7 @@ namespace Trinity
 		DrawMesh(primitive, position, color, projection * view);
 	}
 
-	void VulkanRenderer::TransitionSwapchainImage(VkCommandBuffer commandBuffer, uint32_t imageIndex, const ImageResourceState& newColorAspectState)
+	void VulkanRenderer::TransitionSwapchainImage(VkCommandBuffer commandBuffer, uint32_t imageIndex, const VkImageSubresourceRange& subresourceRange, const ImageResourceState& newState)
 	{
 		if (imageIndex >= m_SwapchainImageStates.size())
 		{
@@ -383,27 +397,59 @@ namespace Trinity
 			std::abort();
 		}
 
-		ImageResourceState& l_ColorAspectState = m_SwapchainImageStates[imageIndex].m_ColorAspectState;
-		if (l_ColorAspectState.m_Layout == newColorAspectState.m_Layout
-			&& l_ColorAspectState.m_Stages == newColorAspectState.m_Stages
-			&& l_ColorAspectState.m_Access == newColorAspectState.m_Access
-			&& l_ColorAspectState.m_QueueFamilyIndex == newColorAspectState.m_QueueFamilyIndex)
+		SwapchainImageState& l_SwapchainImageState = m_SwapchainImageStates[imageIndex];
+
+		bool l_RequiresColorTransition = false;
+		bool l_RequiresDepthTransition = false;
+
+		if ((subresourceRange.aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) != 0)
+		{
+			const ImageResourceState& l_ColorAspectState = l_SwapchainImageState.m_ColorAspectState;
+			l_RequiresColorTransition = l_ColorAspectState.m_Layout != newState.m_Layout || l_ColorAspectState.m_Stages != newState.m_Stages
+				|| l_ColorAspectState.m_Access != newState.m_Access || l_ColorAspectState.m_QueueFamilyIndex != newState.m_QueueFamilyIndex;
+		}
+
+		if ((subresourceRange.aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT) != 0)
+		{
+			const ImageResourceState& l_DepthAspectState = l_SwapchainImageState.m_DepthAspectState;
+			l_RequiresDepthTransition = l_DepthAspectState.m_Layout != newState.m_Layout || l_DepthAspectState.m_Stages != newState.m_Stages
+				|| l_DepthAspectState.m_Access != newState.m_Access || l_DepthAspectState.m_QueueFamilyIndex != newState.m_QueueFamilyIndex;
+		}
+
+		if (!l_RequiresColorTransition && !l_RequiresDepthTransition)
 		{
 			return;
 		}
 
-		VkImageSubresourceRange l_SubresourceRange{};
-		l_SubresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		l_SubresourceRange.baseMipLevel = 0;
-		l_SubresourceRange.levelCount = 1;
-		l_SubresourceRange.baseArrayLayer = 0;
-		l_SubresourceRange.layerCount = 1;
+		ImageResourceState l_OldStateResource{};
+		if (l_RequiresColorTransition)
+		{
+			l_OldStateResource = l_SwapchainImageState.m_ColorAspectState;
+		}
+		else if (l_RequiresDepthTransition)
+		{
+			l_OldStateResource = l_SwapchainImageState.m_DepthAspectState;
+		}
+		else
+		{
+			TR_CORE_CRITICAL("Invalid swapchain transition request in TransitionSwapchainImage");
 
-		const VulkanImageTransitionState l_OldState = CreateVulkanImageTransitionState(l_ColorAspectState.m_Layout, l_ColorAspectState.m_Stages, l_ColorAspectState.m_Access, l_ColorAspectState.m_QueueFamilyIndex);
-		const VulkanImageTransitionState l_NewState = CreateVulkanImageTransitionState(newColorAspectState.m_Layout, newColorAspectState.m_Stages, newColorAspectState.m_Access, newColorAspectState.m_QueueFamilyIndex);
+			std::abort();
+		}
 
-		TransitionImage(commandBuffer, m_Swapchain.GetImages()[imageIndex], l_OldState, l_NewState, l_SubresourceRange);
+		const VulkanImageTransitionState l_OldState = CreateVulkanImageTransitionState(l_OldStateResource.m_Layout, l_OldStateResource.m_Stages, l_OldStateResource.m_Access, l_OldStateResource.m_QueueFamilyIndex);
+		const VulkanImageTransitionState l_NewState = CreateVulkanImageTransitionState(newState.m_Layout, newState.m_Stages, newState.m_Access, newState.m_QueueFamilyIndex);
 
-		l_ColorAspectState = newColorAspectState;
+		TransitionImage(commandBuffer, m_Swapchain.GetImages()[imageIndex], l_OldState, l_NewState, subresourceRange);
+
+		if ((subresourceRange.aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) != 0)
+		{
+			l_SwapchainImageState.m_ColorAspectState = newState;
+		}
+
+		if ((subresourceRange.aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT) != 0)
+		{
+			l_SwapchainImageState.m_DepthAspectState = newState;
+		}
 	}
 }
