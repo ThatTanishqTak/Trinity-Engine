@@ -9,6 +9,39 @@
 
 namespace Trinity
 {
+	VulkanRenderer::ImageResourceState VulkanRenderer::BuildImageResourceState(VkImageLayout layout)
+	{
+		ImageResourceState l_ImageResourceState{};
+		l_ImageResourceState.m_Layout = layout;
+
+		if (layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+		{
+			l_ImageResourceState.m_Stages = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+			l_ImageResourceState.m_Access = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+		}
+		else if (layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+		{
+			l_ImageResourceState.m_Stages = VK_PIPELINE_STAGE_2_NONE;
+			l_ImageResourceState.m_Access = VK_ACCESS_2_NONE;
+		}
+		else
+		{
+			l_ImageResourceState.m_Stages = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+			l_ImageResourceState.m_Access = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
+		}
+
+		return l_ImageResourceState;
+	}
+
+	VulkanRenderer::SwapchainImageState VulkanRenderer::BuildSwapchainImageState()
+	{
+		SwapchainImageState l_SwapchainImageState{};
+		l_SwapchainImageState.m_ColorAspectState = BuildImageResourceState(VK_IMAGE_LAYOUT_UNDEFINED);
+		l_SwapchainImageState.m_DepthAspectState = BuildImageResourceState(VK_IMAGE_LAYOUT_UNDEFINED);
+
+		return l_SwapchainImageState;
+	}
+
 	struct PushConstants
 	{
 		glm::mat4 ModelViewProjection;
@@ -60,7 +93,7 @@ namespace Trinity
 		m_Sync.Initialize(m_Context, m_Device, m_FramesInFlight, m_Swapchain.GetImageCount());
 		m_Command.Initialize(m_Context, m_Device, m_FramesInFlight);
 		m_Pipeline.Initialize(m_Context, m_Device, m_Swapchain.GetImageFormat(), m_VertexShaderPath, m_FragmentShaderPath);
-		m_SwapchainImageLayouts.assign(m_Swapchain.GetImageCount(), VK_IMAGE_LAYOUT_UNDEFINED);
+		m_SwapchainImageStates.assign(m_Swapchain.GetImageCount(), BuildSwapchainImageState());
 	}
 
 	void VulkanRenderer::Shutdown()
@@ -101,7 +134,7 @@ namespace Trinity
 		m_Swapchain.Recreate(width, height);
 		m_Sync.OnSwapchainRecreated(m_Swapchain.GetImageCount());
 		m_Pipeline.Recreate(m_Swapchain.GetImageFormat());
-		m_SwapchainImageLayouts.assign(m_Swapchain.GetImageCount(), VK_IMAGE_LAYOUT_UNDEFINED);
+		m_SwapchainImageStates.assign(m_Swapchain.GetImageCount(), BuildSwapchainImageState());
 	}
 
 	void VulkanRenderer::BeginFrame()
@@ -317,53 +350,37 @@ namespace Trinity
 
 	void VulkanRenderer::TransitionSwapchainImage(VkCommandBuffer commandBuffer, uint32_t imageIndex, VkImageLayout newLayout)
 	{
-		if (imageIndex >= m_SwapchainImageLayouts.size())
+		if (imageIndex >= m_SwapchainImageStates.size())
 		{
 			TR_CORE_CRITICAL("Swapchain image index out of range in TransitionSwapchainImage");
 
 			std::abort();
 		}
 
-		const VkImageLayout l_OldLayout = m_SwapchainImageLayouts[imageIndex];
-		if (l_OldLayout == newLayout)
+		ImageResourceState& l_ColorAspectState = m_SwapchainImageStates[imageIndex].m_ColorAspectState;
+		if (l_ColorAspectState.m_Layout == newLayout)
 		{
 			return;
 		}
 
+		const ImageResourceState l_NewColorAspectState = BuildImageResourceState(newLayout);
+
 		VkImageMemoryBarrier2 l_MemoryBarrier{};
 		l_MemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-		l_MemoryBarrier.oldLayout = l_OldLayout;
-		l_MemoryBarrier.newLayout = newLayout;
-		l_MemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		l_MemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		l_MemoryBarrier.oldLayout = l_ColorAspectState.m_Layout;
+		l_MemoryBarrier.newLayout = l_NewColorAspectState.m_Layout;
+		l_MemoryBarrier.srcQueueFamilyIndex = l_ColorAspectState.m_QueueFamilyIndex;
+		l_MemoryBarrier.dstQueueFamilyIndex = l_NewColorAspectState.m_QueueFamilyIndex;
 		l_MemoryBarrier.image = m_Swapchain.GetImages()[imageIndex];
 		l_MemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		l_MemoryBarrier.subresourceRange.baseMipLevel = 0;
 		l_MemoryBarrier.subresourceRange.levelCount = 1;
 		l_MemoryBarrier.subresourceRange.baseArrayLayer = 0;
 		l_MemoryBarrier.subresourceRange.layerCount = 1;
-
-		if (newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-		{
-			l_MemoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_NONE;
-			l_MemoryBarrier.srcAccessMask = VK_ACCESS_2_NONE;
-			l_MemoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-			l_MemoryBarrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-		}
-		else if (newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
-		{
-			l_MemoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-			l_MemoryBarrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-			l_MemoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_NONE;
-			l_MemoryBarrier.dstAccessMask = VK_ACCESS_2_NONE;
-		}
-		else
-		{
-			l_MemoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-			l_MemoryBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
-			l_MemoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-			l_MemoryBarrier.dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
-		}
+		l_MemoryBarrier.srcStageMask = l_ColorAspectState.m_Stages;
+		l_MemoryBarrier.srcAccessMask = l_ColorAspectState.m_Access;
+		l_MemoryBarrier.dstStageMask = l_NewColorAspectState.m_Stages;
+		l_MemoryBarrier.dstAccessMask = l_NewColorAspectState.m_Access;
 
 		VkDependencyInfo l_DependencyInfo{};
 		l_DependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
@@ -372,6 +389,6 @@ namespace Trinity
 
 		vkCmdPipelineBarrier2(commandBuffer, &l_DependencyInfo);
 
-		m_SwapchainImageLayouts[imageIndex] = newLayout;
+		l_ColorAspectState = l_NewColorAspectState;
 	}
 }

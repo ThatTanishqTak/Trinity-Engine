@@ -43,6 +43,23 @@ namespace Trinity
 		void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& view, const glm::mat4& projection) override;
 
 	private:
+		struct ImageResourceState
+		{
+			VkImageLayout m_Layout = VK_IMAGE_LAYOUT_UNDEFINED;
+			VkPipelineStageFlags2 m_Stages = VK_PIPELINE_STAGE_2_NONE;
+			VkAccessFlags2 m_Access = VK_ACCESS_2_NONE;
+			uint32_t m_QueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		};
+
+		struct SwapchainImageState
+		{
+			ImageResourceState m_ColorAspectState{};
+			ImageResourceState m_DepthAspectState{};
+		};
+
+		static ImageResourceState BuildImageResourceState(VkImageLayout layout);
+		static SwapchainImageState BuildSwapchainImageState();
+
 		void RecreateSwapchain(uint32_t width, uint32_t height);
 		void TransitionSwapchainImage(VkCommandBuffer commandBuffer, uint32_t imageIndex, VkImageLayout newLayout);
 
@@ -69,7 +86,7 @@ namespace Trinity
 		uint32_t m_CurrentImageIndex = 0;
 		bool m_FrameBegun = false;
 
-		std::vector<VkImageLayout> m_SwapchainImageLayouts{};
+		std::vector<SwapchainImageState> m_SwapchainImageStates{};
 
 		std::array<PrimitiveGpu, (size_t)Geometry::PrimitiveType::Count> m_Primitives{};
 
