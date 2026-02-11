@@ -9,6 +9,7 @@
 #include "Trinity/Renderer/Vulkan/VulkanCommand.h"
 #include "Trinity/Renderer/Vulkan/VulkanPipeline.h"
 #include "Trinity/Renderer/Vulkan/VulkanBuffer.h"
+#include "Trinity/Renderer/Vulkan/VulkanResourceStateTracker.h"
 
 #include "Trinity/Geometry/Geometry.h"
 
@@ -54,29 +55,10 @@ namespace Trinity
 			GeneralComputeReadWrite
 		};
 
-		struct ImageResourceState
-		{
-			VkImageLayout m_Layout = VK_IMAGE_LAYOUT_UNDEFINED;
-			VkPipelineStageFlags2 m_Stages = VK_PIPELINE_STAGE_2_NONE;
-			VkAccessFlags2 m_Access = VK_ACCESS_2_NONE;
-			uint32_t m_QueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		};
-
-		struct SwapchainImageState
-		{
-			ImageResourceState m_ColorAspectState{};
-			ImageResourceState m_DepthAspectState{};
-			bool m_ColorAspectInitialized = false;
-			bool m_DepthAspectInitialized = false;
-		};
-
-		static ImageResourceState BuildImageResourceState(VkImageLayout layout);
-		static ImageResourceState BuildImageResourceState(ImageTransitionPreset preset);
-		static ImageResourceState BuildImageResourceState(const VulkanImageTransitionState& transitionState);
-		static SwapchainImageState BuildSwapchainImageState();
+		static VulkanImageTransitionState BuildTransitionState(ImageTransitionPreset preset);
 
 		void RecreateSwapchain(uint32_t width, uint32_t height);
-		void TransitionSwapchainImage(VkCommandBuffer commandBuffer, uint32_t imageIndex, const VkImageSubresourceRange& subresourceRange, const ImageResourceState& newState);
+		void TransitionImageResource(VkCommandBuffer commandBuffer, VkImage image, const VkImageSubresourceRange& subresourceRange, const VulkanImageTransitionState& newState);
 
 		void EnsurePrimitiveUploaded(Geometry::PrimitiveType primitive);
 
@@ -101,7 +83,7 @@ namespace Trinity
 		uint32_t m_CurrentImageIndex = 0;
 		bool m_FrameBegun = false;
 
-		std::vector<SwapchainImageState> m_SwapchainImageStates{};
+		VulkanResourceStateTracker m_ResourceStateTracker{};
 
 		std::array<PrimitiveGpu, (size_t)Geometry::PrimitiveType::Count> m_Primitives{};
 

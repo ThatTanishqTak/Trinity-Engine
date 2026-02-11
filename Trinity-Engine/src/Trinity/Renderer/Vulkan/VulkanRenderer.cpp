@@ -9,105 +9,39 @@
 
 namespace Trinity
 {
-	VulkanRenderer::ImageResourceState VulkanRenderer::BuildImageResourceState(VkImageLayout layout)
-	{
-		if (layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-		{
-			return BuildImageResourceState(ImageTransitionPreset::ColorAttachmentWrite);
-		}
-
-		if (layout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL || layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-		{
-			return BuildImageResourceState(ImageTransitionPreset::DepthAttachmentWrite);
-		}
-
-		if (layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
-		{
-			return BuildImageResourceState(ImageTransitionPreset::TransferSource);
-		}
-
-		if (layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-		{
-			return BuildImageResourceState(ImageTransitionPreset::TransferDestination);
-		}
-
-		if (layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-		{
-			return BuildImageResourceState(ImageTransitionPreset::ShaderReadOnly);
-		}
-
-		if (layout == VK_IMAGE_LAYOUT_GENERAL)
-		{
-			return BuildImageResourceState(ImageTransitionPreset::GeneralComputeReadWrite);
-		}
-
-		if (layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
-		{
-			return BuildImageResourceState(ImageTransitionPreset::Present);
-		}
-
-		const VulkanImageTransitionState l_TransitionState = CreateVulkanImageTransitionState(layout, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT);
-		
-		return BuildImageResourceState(l_TransitionState);
-	}
-
-	VulkanRenderer::ImageResourceState VulkanRenderer::BuildImageResourceState(ImageTransitionPreset preset)
+	VulkanImageTransitionState VulkanRenderer::BuildTransitionState(ImageTransitionPreset preset)
 	{
 		if (preset == ImageTransitionPreset::Present)
 		{
-			return BuildImageResourceState(g_PresentImageState);
+			return g_PresentImageState;
 		}
 
 		if (preset == ImageTransitionPreset::ColorAttachmentWrite)
 		{
-			return BuildImageResourceState(g_ColorAttachmentWriteImageState);
+			return g_ColorAttachmentWriteImageState;
 		}
 
 		if (preset == ImageTransitionPreset::DepthAttachmentWrite)
 		{
-			return BuildImageResourceState(g_DepthAttachmentWriteImageState);
+			return g_DepthAttachmentWriteImageState;
 		}
 
 		if (preset == ImageTransitionPreset::ShaderReadOnly)
 		{
-			return BuildImageResourceState(g_ShaderReadOnlyImageState);
+			return g_ShaderReadOnlyImageState;
 		}
 
 		if (preset == ImageTransitionPreset::TransferSource)
 		{
-			return BuildImageResourceState(g_TransferSourceImageState);
+			return g_TransferSourceImageState;
 		}
 
 		if (preset == ImageTransitionPreset::TransferDestination)
 		{
-			return BuildImageResourceState(g_TransferDestinationImageState);
+			return g_TransferDestinationImageState;
 		}
 
-		return BuildImageResourceState(g_GeneralComputeReadWriteImageState);
-	}
-
-	VulkanRenderer::ImageResourceState VulkanRenderer::BuildImageResourceState(const VulkanImageTransitionState& transitionState)
-	{
-		ImageResourceState l_ImageResourceState{};
-		l_ImageResourceState.m_Layout = transitionState.m_Layout;
-		l_ImageResourceState.m_Stages = transitionState.m_StageMask;
-		l_ImageResourceState.m_Access = transitionState.m_AccessMask;
-		l_ImageResourceState.m_QueueFamilyIndex = transitionState.m_QueueFamilyIndex;
-
-		return l_ImageResourceState;
-	}
-
-	VulkanRenderer::SwapchainImageState VulkanRenderer::BuildSwapchainImageState()
-	{
-		const ImageResourceState l_UnknownResourceState = BuildImageResourceState(CreateVulkanImageTransitionState(VK_IMAGE_LAYOUT_UNDEFINED, VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE));
-
-		SwapchainImageState l_SwapchainImageState{};
-		l_SwapchainImageState.m_ColorAspectState = l_UnknownResourceState;
-		l_SwapchainImageState.m_DepthAspectState = l_UnknownResourceState;
-		l_SwapchainImageState.m_ColorAspectInitialized = false;
-		l_SwapchainImageState.m_DepthAspectInitialized = false;
-
-		return l_SwapchainImageState;
+		return g_GeneralComputeReadWriteImageState;
 	}
 
 	struct PushConstants
@@ -161,7 +95,7 @@ namespace Trinity
 		m_Sync.Initialize(m_Context, m_Device, m_FramesInFlight, m_Swapchain.GetImageCount());
 		m_Command.Initialize(m_Context, m_Device, m_FramesInFlight);
 		m_Pipeline.Initialize(m_Context, m_Device, m_Swapchain.GetImageFormat(), m_VertexShaderPath, m_FragmentShaderPath);
-		m_SwapchainImageStates.assign(m_Swapchain.GetImageCount(), BuildSwapchainImageState());
+		m_ResourceStateTracker.Reset();
 	}
 
 	void VulkanRenderer::Shutdown()
@@ -180,6 +114,7 @@ namespace Trinity
 		m_Pipeline.Shutdown();
 		m_Command.Shutdown();
 		m_Sync.Shutdown();
+		m_ResourceStateTracker.Reset();
 		m_Swapchain.Shutdown();
 		m_Device.Shutdown();
 		m_Context.Shutdown();
@@ -199,10 +134,16 @@ namespace Trinity
 
 		vkDeviceWaitIdle(m_Device.GetDevice());
 
+		const std::vector<VkImage> l_OldSwapchainImages = m_Swapchain.GetImages();
+
 		m_Swapchain.Recreate(width, height);
 		m_Sync.OnSwapchainRecreated(m_Swapchain.GetImageCount());
 		m_Pipeline.Recreate(m_Swapchain.GetImageFormat());
-		m_SwapchainImageStates.assign(m_Swapchain.GetImageCount(), BuildSwapchainImageState());
+
+		for (VkImage it_Image : l_OldSwapchainImages)
+		{
+			m_ResourceStateTracker.ForgetImage(it_Image);
+		}
 	}
 
 	void VulkanRenderer::BeginFrame()
@@ -250,7 +191,7 @@ namespace Trinity
 		m_Command.Begin(m_CurrentFrameIndex);
 
 		const VkCommandBuffer l_CommandBuffer = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
-		const ImageResourceState l_ColorAttachmentWriteState = BuildImageResourceState(ImageTransitionPreset::ColorAttachmentWrite);
+		const VulkanImageTransitionState l_ColorAttachmentWriteState = BuildTransitionState(ImageTransitionPreset::ColorAttachmentWrite);
 
 		VkImageSubresourceRange l_ColorSubresourceRange{};
 		l_ColorSubresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -259,7 +200,7 @@ namespace Trinity
 		l_ColorSubresourceRange.baseArrayLayer = 0;
 		l_ColorSubresourceRange.layerCount = 1;
 
-		TransitionSwapchainImage(l_CommandBuffer, m_CurrentImageIndex, l_ColorSubresourceRange, l_ColorAttachmentWriteState);
+		TransitionImageResource(l_CommandBuffer, m_Swapchain.GetImages()[m_CurrentImageIndex], l_ColorSubresourceRange, l_ColorAttachmentWriteState);
 
 		VkClearValue l_ClearColor{};
 		l_ClearColor.color.float32[0] = 0.05f;
@@ -315,7 +256,7 @@ namespace Trinity
 		}
 
 		const VkCommandBuffer l_CommandBuffer = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
-		const ImageResourceState l_PresentState = BuildImageResourceState(ImageTransitionPreset::Present);
+		const VulkanImageTransitionState l_PresentState = BuildTransitionState(ImageTransitionPreset::Present);
 
 		VkImageSubresourceRange l_ColorSubresourceRange{};
 		l_ColorSubresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -326,7 +267,7 @@ namespace Trinity
 
 		vkCmdEndRendering(l_CommandBuffer);
 
-		TransitionSwapchainImage(l_CommandBuffer, m_CurrentImageIndex, l_ColorSubresourceRange, l_PresentState);
+		TransitionImageResource(l_CommandBuffer, m_Swapchain.GetImages()[m_CurrentImageIndex], l_ColorSubresourceRange, l_PresentState);
 
 		m_Command.End(m_CurrentFrameIndex);
 
@@ -432,70 +373,8 @@ namespace Trinity
 		DrawMesh(primitive, position, color, projection * view);
 	}
 
-	void VulkanRenderer::TransitionSwapchainImage(VkCommandBuffer commandBuffer, uint32_t imageIndex, const VkImageSubresourceRange& subresourceRange, const ImageResourceState& newState)
+	void VulkanRenderer::TransitionImageResource(VkCommandBuffer commandBuffer, VkImage image, const VkImageSubresourceRange& subresourceRange, const VulkanImageTransitionState& newState)
 	{
-		if (imageIndex >= m_SwapchainImageStates.size())
-		{
-			TR_CORE_CRITICAL("Swapchain image index out of range in TransitionSwapchainImage");
-
-			std::abort();
-		}
-
-		SwapchainImageState& l_SwapchainImageState = m_SwapchainImageStates[imageIndex];
-
-		bool l_RequiresColorTransition = false;
-		bool l_RequiresDepthTransition = false;
-
-		if ((subresourceRange.aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) != 0)
-		{
-			const ImageResourceState& l_ColorAspectState = l_SwapchainImageState.m_ColorAspectState;
-			l_RequiresColorTransition = !l_SwapchainImageState.m_ColorAspectInitialized || l_ColorAspectState.m_Layout != newState.m_Layout || l_ColorAspectState.m_Stages != newState.m_Stages
-				|| l_ColorAspectState.m_Access != newState.m_Access || l_ColorAspectState.m_QueueFamilyIndex != newState.m_QueueFamilyIndex;
-		}
-
-		if ((subresourceRange.aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT) != 0)
-		{
-			const ImageResourceState& l_DepthAspectState = l_SwapchainImageState.m_DepthAspectState;
-			l_RequiresDepthTransition = !l_SwapchainImageState.m_DepthAspectInitialized || l_DepthAspectState.m_Layout != newState.m_Layout || l_DepthAspectState.m_Stages != newState.m_Stages
-				|| l_DepthAspectState.m_Access != newState.m_Access || l_DepthAspectState.m_QueueFamilyIndex != newState.m_QueueFamilyIndex;
-		}
-
-		if (!l_RequiresColorTransition && !l_RequiresDepthTransition)
-		{
-			return;
-		}
-
-		ImageResourceState l_OldStateResource{};
-		if (l_RequiresColorTransition)
-		{
-			l_OldStateResource = l_SwapchainImageState.m_ColorAspectState;
-		}
-		else if (l_RequiresDepthTransition)
-		{
-			l_OldStateResource = l_SwapchainImageState.m_DepthAspectState;
-		}
-		else
-		{
-			TR_CORE_CRITICAL("Invalid swapchain transition request in TransitionSwapchainImage");
-
-			std::abort();
-		}
-
-		const VulkanImageTransitionState l_OldState = CreateVulkanImageTransitionState(l_OldStateResource.m_Layout, l_OldStateResource.m_Stages, l_OldStateResource.m_Access, l_OldStateResource.m_QueueFamilyIndex);
-		const VulkanImageTransitionState l_NewState = CreateVulkanImageTransitionState(newState.m_Layout, newState.m_Stages, newState.m_Access, newState.m_QueueFamilyIndex);
-
-		TransitionImage(commandBuffer, m_Swapchain.GetImages()[imageIndex], l_OldState, l_NewState, subresourceRange);
-
-		if ((subresourceRange.aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) != 0)
-		{
-			l_SwapchainImageState.m_ColorAspectState = newState;
-			l_SwapchainImageState.m_ColorAspectInitialized = true;
-		}
-
-		if ((subresourceRange.aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT) != 0)
-		{
-			l_SwapchainImageState.m_DepthAspectState = newState;
-			l_SwapchainImageState.m_DepthAspectInitialized = true;
-		}
+		m_ResourceStateTracker.TransitionImageResource(commandBuffer, image, subresourceRange, newState);
 	}
 }

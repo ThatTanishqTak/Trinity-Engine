@@ -93,8 +93,7 @@ namespace Trinity
 
 #ifdef _DEBUG
         const bool l_DebugUtilsEnabled = std::find(m_RequiredExtensions.begin(), m_RequiredExtensions.end(), VK_EXT_DEBUG_UTILS_EXTENSION_NAME) != m_RequiredExtensions.end();
-        const bool l_ValidationFeaturesEnabled =
-            std::find(m_RequiredExtensions.begin(), m_RequiredExtensions.end(), VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME) != m_RequiredExtensions.end();
+        const bool l_ValidationFeaturesEnabled = std::find(m_RequiredExtensions.begin(), m_RequiredExtensions.end(), VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME) != m_RequiredExtensions.end();
 
         const void* l_InstanceCreatePNext = nullptr;
         VkDebugUtilsMessengerCreateInfoEXT l_DebugCreateInfo{};
