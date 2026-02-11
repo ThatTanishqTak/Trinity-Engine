@@ -157,7 +157,7 @@ namespace Trinity
         const glm::vec3 l_UpDirection = GetUpDirection();
         const float l_PanAmount = m_PanScalar * glm::max(m_Distance, 1.0f);
 
-        const glm::vec3 l_Offset = (-mouseDelta.x * l_RightDirection + mouseDelta.y * l_UpDirection) * l_PanAmount;
+        const glm::vec3 l_Offset = (-mouseDelta.x * l_RightDirection + -mouseDelta.y * l_UpDirection) * l_PanAmount;
         m_FocalPoint += l_Offset;
         m_Position += l_Offset;
     }

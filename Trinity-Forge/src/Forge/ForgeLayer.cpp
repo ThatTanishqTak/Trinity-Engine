@@ -1,11 +1,12 @@
 #include "ForgeLayer.h"
 
-#include "Trinity/Input/Input.h"
 #include "Trinity/Renderer/RenderCommand.h"
 #include "Trinity/Geometry/Geometry.h"
 #include "Trinity/Application/Application.h"
 #include "Trinity/Platform/Window.h"
+#include "Trinity/Events/Event.h"
 #include "Trinity/Events/ApplicationEvent.h"
+#include "Trinity/Events/KeyEvent.h"
 
 ForgeLayer::ForgeLayer() : Trinity::Layer("ForgeLayer")
 {
@@ -32,7 +33,7 @@ void ForgeLayer::OnUpdate(float deltaTime)
 
 void ForgeLayer::OnRender()
 {
-    Trinity::RenderCommand::DrawMesh(Trinity::Geometry::PrimitiveType::Cube, { 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f, 1.0f }, m_EditorCamera.GetViewProjectionMatrix());
+    Trinity::RenderCommand::DrawMesh(Trinity::Geometry::PrimitiveType::Cube, { 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f, 1.0f }, m_EditorCamera.GetViewMatrix(), m_EditorCamera.GetProjectionMatrix());
 }
 
 void ForgeLayer::OnImGuiRender()
@@ -42,7 +43,18 @@ void ForgeLayer::OnImGuiRender()
 
 void ForgeLayer::OnEvent(Trinity::Event& e)
 {
-    m_EditorCamera.OnEvent(e);
+    Trinity::EventDispatcher l_Dispatcher(e);
+    l_Dispatcher.Dispatch<Trinity::KeyPressedEvent>([](Trinity::KeyPressedEvent& a_KeyPressedEvent)
+    {
+        if (a_KeyPressedEvent.GetKeyCode() == Trinity::Code::KeyCode::TR_KEY_ESCAPE)
+        {
+            Trinity::Application::Close();
+
+            return true;
+        }
+
+        return false;
+    });
 
     if (e.GetEventType() == Trinity::EventType::WindowResize)
     {
@@ -50,8 +62,8 @@ void ForgeLayer::OnEvent(Trinity::Event& e)
         m_EditorCamera.SetViewportSize(static_cast<float>(a_ResizeEvent.GetWidth()), static_cast<float>(a_ResizeEvent.GetHeight()));
     }
 
-    if (Trinity::Input::KeyPressed(Trinity::Code::KeyCode::TR_KEY_ESCAPE))
+    if (!e.Handled)
     {
-        Trinity::Application::Close();
+        m_EditorCamera.OnEvent(e);
     }
 }
