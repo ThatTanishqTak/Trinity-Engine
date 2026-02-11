@@ -22,6 +22,8 @@ namespace Trinity
 		static void EndFrame();
 
 		static void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color);
+		static void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& viewProjection);
+		static void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& view, const glm::mat4& projection);
 
 		static Renderer& GetRenderer();
 		static std::string ApiToString(RendererAPI api);

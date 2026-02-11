@@ -47,7 +47,20 @@ namespace Trinity
 
 	void DirectXRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color)
 	{
+		DrawMesh(primitive, position, color, glm::mat4(1.0f));
+	}
 
+	void DirectXRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& viewProjection)
+	{
+		(void)primitive;
+		(void)position;
+		(void)color;
+		(void)viewProjection;
+	}
+
+	void DirectXRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& view, const glm::mat4& projection)
+	{
+		DrawMesh(primitive, position, color, projection * view);
 	}
 
 	void DirectXRenderer::BeginFrame()

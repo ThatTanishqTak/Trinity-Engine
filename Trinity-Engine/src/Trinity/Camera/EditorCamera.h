@@ -65,7 +65,7 @@ namespace Trinity
         float m_MoveSpeed = 7.5f;
         float m_MoveBoostScalar = 3.0f;
         float m_PanScalar = 0.0045f;
-        float m_RotationScalar = 0.16f;
+        float m_RotationScalar = 0.1f;
         float m_OrbitScalar = 0.24f;
         float m_ZoomScalar = 1.25f;
 

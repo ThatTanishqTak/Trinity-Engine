@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Trinity/Layer/Layer.h"
+#include "Trinity/Camera/EditorCamera.h"
 
 namespace Trinity
 {
@@ -24,5 +25,5 @@ public:
     void OnEvent(Trinity::Event& e) override;
 
 private:
-
+    Trinity::EditorCamera m_EditorCamera;
 };

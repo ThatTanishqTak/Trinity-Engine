@@ -11,7 +11,7 @@ namespace Trinity
 {
 	struct PushConstants
 	{
-		glm::mat4 MVP;
+		glm::mat4 ModelViewProjection;
 		glm::vec4 Color;
 	};
 
@@ -260,6 +260,11 @@ namespace Trinity
 
 	void VulkanRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color)
 	{
+		DrawMesh(primitive, position, color, glm::mat4(1.0f));
+	}
+
+	void VulkanRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& viewProjection)
+	{
 		if (!m_FrameBegun)
 		{
 			TR_CORE_CRITICAL("DrawMesh called outside BeginFrame/EndFrame");
@@ -282,12 +287,18 @@ namespace Trinity
 		vkCmdBindIndexBuffer(l_CommandBuffer, l_IndexBuffer, 0, ToVkIndexType(a_GPUPrimitive.VulkanIB->GetIndexType()));
 
 		PushConstants l_PushConstants{};
-		l_PushConstants.MVP = glm::translate(glm::mat4(1.0f), position);
+		const glm::mat4 l_ModelMatrix = glm::translate(glm::mat4(1.0f), position);
+		l_PushConstants.ModelViewProjection = viewProjection * l_ModelMatrix;
 		l_PushConstants.Color = color;
 
 		vkCmdPushConstants(l_CommandBuffer, m_Pipeline.GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &l_PushConstants);
 
 		vkCmdDrawIndexed(l_CommandBuffer, a_GPUPrimitive.VulkanIB->GetIndexCount(), 1, 0, 0, 0);
+	}
+
+	void VulkanRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& view, const glm::mat4& projection)
+	{
+		DrawMesh(primitive, position, color, projection * view);
 	}
 
 	void VulkanRenderer::TransitionSwapchainImage(VkCommandBuffer commandBuffer, uint32_t imageIndex, VkImageLayout newLayout)

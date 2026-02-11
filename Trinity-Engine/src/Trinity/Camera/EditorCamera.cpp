@@ -165,7 +165,7 @@ namespace Trinity
     void EditorCamera::ApplyFreelook(const glm::vec2& mouseDelta, float deltaTime)
     {
         m_YawDegrees += mouseDelta.x * m_RotationScalar;
-        m_PitchDegrees -= mouseDelta.y * m_RotationScalar;
+        m_PitchDegrees += mouseDelta.y * m_RotationScalar;
         m_PitchDegrees = glm::clamp(m_PitchDegrees, -m_MaxPitch, m_MaxPitch);
 
         float l_MovementSpeed = m_MoveSpeed;

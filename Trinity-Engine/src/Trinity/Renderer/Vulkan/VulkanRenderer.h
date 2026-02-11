@@ -39,6 +39,8 @@ namespace Trinity
 		void EndFrame() override;
 
 		void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color) override;
+		void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& viewProjection) override;
+		void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& view, const glm::mat4& projection) override;
 
 	private:
 		void RecreateSwapchain(uint32_t width, uint32_t height);
