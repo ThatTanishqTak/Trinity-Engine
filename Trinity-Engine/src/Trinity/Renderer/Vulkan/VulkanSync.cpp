@@ -10,6 +10,30 @@
 
 namespace Trinity
 {
+	void TransitionImage(VkCommandBuffer commandBuffer, VkImage image, const VulkanImageTransitionState& oldState, const VulkanImageTransitionState& newState,
+		const VkImageSubresourceRange& subresourceRange)
+	{
+		VkImageMemoryBarrier2 l_MemoryBarrier{};
+		l_MemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+		l_MemoryBarrier.srcStageMask = oldState.m_StageMask;
+		l_MemoryBarrier.srcAccessMask = oldState.m_AccessMask;
+		l_MemoryBarrier.dstStageMask = newState.m_StageMask;
+		l_MemoryBarrier.dstAccessMask = newState.m_AccessMask;
+		l_MemoryBarrier.oldLayout = oldState.m_Layout;
+		l_MemoryBarrier.newLayout = newState.m_Layout;
+		l_MemoryBarrier.srcQueueFamilyIndex = oldState.m_QueueFamilyIndex;
+		l_MemoryBarrier.dstQueueFamilyIndex = newState.m_QueueFamilyIndex;
+		l_MemoryBarrier.image = image;
+		l_MemoryBarrier.subresourceRange = subresourceRange;
+
+		VkDependencyInfo l_DependencyInfo{};
+		l_DependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+		l_DependencyInfo.imageMemoryBarrierCount = 1;
+		l_DependencyInfo.pImageMemoryBarriers = &l_MemoryBarrier;
+
+		vkCmdPipelineBarrier2(commandBuffer, &l_DependencyInfo);
+	}
+
 	void VulkanSync::Initialize(const VulkanContext& context, const VulkanDevice& device, uint32_t framesInFlight, uint32_t swapchainImageCount)
 	{
 		if (m_Device != VK_NULL_HANDLE)

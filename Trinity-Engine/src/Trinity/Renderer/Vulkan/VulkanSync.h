@@ -7,6 +7,17 @@
 
 namespace Trinity
 {
+	struct VulkanImageTransitionState
+	{
+		VkPipelineStageFlags2 m_StageMask = VK_PIPELINE_STAGE_2_NONE;
+		VkAccessFlags2 m_AccessMask = VK_ACCESS_2_NONE;
+		VkImageLayout m_Layout = VK_IMAGE_LAYOUT_UNDEFINED;
+		uint32_t m_QueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	};
+
+	void TransitionImage(VkCommandBuffer commandBuffer, VkImage image, const VulkanImageTransitionState& oldState, const VulkanImageTransitionState& newState,
+		const VkImageSubresourceRange& subresourceRange);
+
 	class VulkanContext;
 	class VulkanDevice;
 

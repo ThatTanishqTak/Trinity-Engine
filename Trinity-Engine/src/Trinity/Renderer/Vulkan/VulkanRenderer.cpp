@@ -365,29 +365,26 @@ namespace Trinity
 
 		const ImageResourceState l_NewColorAspectState = BuildImageResourceState(newLayout);
 
-		VkImageMemoryBarrier2 l_MemoryBarrier{};
-		l_MemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-		l_MemoryBarrier.oldLayout = l_ColorAspectState.m_Layout;
-		l_MemoryBarrier.newLayout = l_NewColorAspectState.m_Layout;
-		l_MemoryBarrier.srcQueueFamilyIndex = l_ColorAspectState.m_QueueFamilyIndex;
-		l_MemoryBarrier.dstQueueFamilyIndex = l_NewColorAspectState.m_QueueFamilyIndex;
-		l_MemoryBarrier.image = m_Swapchain.GetImages()[imageIndex];
-		l_MemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		l_MemoryBarrier.subresourceRange.baseMipLevel = 0;
-		l_MemoryBarrier.subresourceRange.levelCount = 1;
-		l_MemoryBarrier.subresourceRange.baseArrayLayer = 0;
-		l_MemoryBarrier.subresourceRange.layerCount = 1;
-		l_MemoryBarrier.srcStageMask = l_ColorAspectState.m_Stages;
-		l_MemoryBarrier.srcAccessMask = l_ColorAspectState.m_Access;
-		l_MemoryBarrier.dstStageMask = l_NewColorAspectState.m_Stages;
-		l_MemoryBarrier.dstAccessMask = l_NewColorAspectState.m_Access;
+		VkImageSubresourceRange l_SubresourceRange{};
+		l_SubresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		l_SubresourceRange.baseMipLevel = 0;
+		l_SubresourceRange.levelCount = 1;
+		l_SubresourceRange.baseArrayLayer = 0;
+		l_SubresourceRange.layerCount = 1;
 
-		VkDependencyInfo l_DependencyInfo{};
-		l_DependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-		l_DependencyInfo.imageMemoryBarrierCount = 1;
-		l_DependencyInfo.pImageMemoryBarriers = &l_MemoryBarrier;
+		VulkanImageTransitionState l_OldState{};
+		l_OldState.m_StageMask = l_ColorAspectState.m_Stages;
+		l_OldState.m_AccessMask = l_ColorAspectState.m_Access;
+		l_OldState.m_Layout = l_ColorAspectState.m_Layout;
+		l_OldState.m_QueueFamilyIndex = l_ColorAspectState.m_QueueFamilyIndex;
 
-		vkCmdPipelineBarrier2(commandBuffer, &l_DependencyInfo);
+		VulkanImageTransitionState l_NewState{};
+		l_NewState.m_StageMask = l_NewColorAspectState.m_Stages;
+		l_NewState.m_AccessMask = l_NewColorAspectState.m_Access;
+		l_NewState.m_Layout = l_NewColorAspectState.m_Layout;
+		l_NewState.m_QueueFamilyIndex = l_NewColorAspectState.m_QueueFamilyIndex;
+
+		TransitionImage(commandBuffer, m_Swapchain.GetImages()[imageIndex], l_OldState, l_NewState, l_SubresourceRange);
 
 		l_ColorAspectState = l_NewColorAspectState;
 	}
