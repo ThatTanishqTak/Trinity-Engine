@@ -49,6 +49,8 @@ namespace Trinity
         CreateNativeWindow();
 
         m_ShouldClose = false;
+        m_CursorVisible = true;
+        m_CursorLocked = false;
         m_Initialized = true;
 
         TR_CORE_TRACE("Title: {}", m_Data.Title);
@@ -65,6 +67,8 @@ namespace Trinity
             return;
         }
 
+        SetCursorLocked(false);
+        SetCursorVisible(true);
         DestroyNativeWindow();
         m_Initialized = false;
 
@@ -123,6 +127,44 @@ namespace Trinity
     {
         // Vulkan VSync is a swapchain present-mode choice. This flag is stored for later.
         m_Data.VSync = enabled;
+    }
+
+    void WindowsWindow::SetCursorVisible(bool visible)
+    {
+        if (m_CursorVisible == visible)
+        {
+            return;
+        }
+
+        m_CursorVisible = visible;
+
+        if (visible)
+        {
+            int l_ShowCount = ShowCursor(TRUE);
+            while (l_ShowCount < 0)
+            {
+                l_ShowCount = ShowCursor(TRUE);
+            }
+        }
+        else
+        {
+            int l_ShowCount = ShowCursor(FALSE);
+            while (l_ShowCount >= 0)
+            {
+                l_ShowCount = ShowCursor(FALSE);
+            }
+        }
+    }
+
+    void WindowsWindow::SetCursorLocked(bool locked)
+    {
+        if (m_CursorLocked == locked)
+        {
+            return;
+        }
+
+        m_CursorLocked = locked;
+        ApplyCursorLockClip();
     }
 
     NativeWindowHandle WindowsWindow::GetNativeHandle() const
@@ -225,6 +267,42 @@ namespace Trinity
         }
     }
 
+    void WindowsWindow::ApplyCursorLockClip()
+    {
+        if (!m_CursorLocked || m_WindowHandle == nullptr || GetForegroundWindow() != m_WindowHandle || m_Data.Minimized)
+        {
+            ClipCursor(nullptr);
+
+            return;
+        }
+
+        RECT l_ClientRect{};
+        if (!GetClientRect(m_WindowHandle, &l_ClientRect))
+        {
+            ClipCursor(nullptr);
+
+            return;
+        }
+
+        POINT l_TopLeft{ l_ClientRect.left, l_ClientRect.top };
+        POINT l_BottomRight{ l_ClientRect.right, l_ClientRect.bottom };
+
+        if (!ClientToScreen(m_WindowHandle, &l_TopLeft) || !ClientToScreen(m_WindowHandle, &l_BottomRight))
+        {
+            ClipCursor(nullptr);
+
+            return;
+        }
+
+        RECT l_ClipRect{};
+        l_ClipRect.left = l_TopLeft.x;
+        l_ClipRect.top = l_TopLeft.y;
+        l_ClipRect.right = l_BottomRight.x;
+        l_ClipRect.bottom = l_BottomRight.y;
+
+        ClipCursor(&l_ClipRect);
+    }
+
     LRESULT CALLBACK WindowsWindow::WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     {
         WindowsWindow* a_Window = nullptr;
@@ -274,6 +352,7 @@ namespace Trinity
                 const uint32_t l_Height = static_cast<uint32_t>(HIWORD(lParam));
                 m_Data.Minimized = (wParam == SIZE_MINIMIZED) || (l_Width == 0 || l_Height == 0);
 
+                ApplyCursorLockClip();
                 m_EventQueue.PushEvent(std::make_unique<WindowResizeEvent>(l_Width, l_Height));
 
                 return 0;
@@ -281,6 +360,7 @@ namespace Trinity
 
             case WM_SETFOCUS:
             {
+                ApplyCursorLockClip();
                 m_EventQueue.PushEvent(std::make_unique<WindowFocusEvent>());
 
                 return 0;
@@ -288,6 +368,7 @@ namespace Trinity
 
             case WM_KILLFOCUS:
             {
+                ApplyCursorLockClip();
                 m_EventQueue.PushEvent(std::make_unique<WindowLostFocusEvent>());
 
                 return 0;
@@ -298,6 +379,7 @@ namespace Trinity
                 const int l_X = static_cast<int>(static_cast<short>(LOWORD(lParam)));
                 const int l_Y = static_cast<int>(static_cast<short>(HIWORD(lParam)));
 
+                ApplyCursorLockClip();
                 m_EventQueue.PushEvent(std::make_unique<WindowMovedEvent>(l_X, l_Y));
 
                 return 0;

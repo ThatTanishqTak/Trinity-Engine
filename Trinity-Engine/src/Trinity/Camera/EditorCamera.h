@@ -74,6 +74,7 @@ namespace Trinity
 
         glm::vec2 m_LastMousePosition = glm::vec2(0.0f);
         bool m_HasLastMousePosition = false;
+        bool m_WasFreelookActive = false;
         float m_EventScrollDelta = 0.0f;
     };
 }

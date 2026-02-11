@@ -34,6 +34,11 @@ namespace Trinity
         void SetVSync(bool enabled) override;
         bool IsVSync() const override { return m_Data.VSync; }
 
+        void SetCursorVisible(bool visible) override;
+        void SetCursorLocked(bool locked) override;
+        bool IsCursorVisible() const override { return m_CursorVisible; }
+        bool IsCursorLocked() const override { return m_CursorLocked; }
+
         bool ShouldClose() const override { return m_ShouldClose; }
         bool IsMinimized() const override { return m_Data.Minimized; }
 
@@ -62,6 +67,7 @@ namespace Trinity
         void RegisterWindowClassIfNeeded();
         void CreateNativeWindow();
         void DestroyNativeWindow();
+        void ApplyCursorLockClip();
 
     private:
         HINSTANCE m_InstanceHandle = nullptr;
@@ -71,5 +77,7 @@ namespace Trinity
         EventQueue m_EventQueue{};
         bool m_Initialized = false;
         bool m_ShouldClose = false;
+        bool m_CursorVisible = true;
+        bool m_CursorLocked = false;
     };
 }

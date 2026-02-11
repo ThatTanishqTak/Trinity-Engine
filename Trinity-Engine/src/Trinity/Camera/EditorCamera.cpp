@@ -3,6 +3,8 @@
 #include "Trinity/Events/Event.h"
 #include "Trinity/Events/MouseEvent.h"
 #include "Trinity/Input/Input.h"
+#include "Trinity/Application/Application.h"
+#include "Trinity/Platform/Window.h"
 
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
@@ -83,11 +85,31 @@ namespace Trinity
         const bool l_MmbDown = Input::MouseButtonDown(Code::MouseCode::TR_BUTTON_MIDDLE);
         const bool l_LmbDown = Input::MouseButtonDown(Code::MouseCode::TR_BUTTON_LEFT);
 
+        Window& l_Window = Application::Get().GetWindow();
+
         if (l_RmbDown)
         {
+            if (!m_WasFreelookActive)
+            {
+                l_Window.SetCursorVisible(false);
+                l_Window.SetCursorLocked(true);
+            }
+
             ApplyFreelook(l_MouseDelta, deltaTime);
+            m_WasFreelookActive = true;
         }
-        else if (l_MmbDown)
+        else
+        {
+            if (m_WasFreelookActive)
+            {
+                l_Window.SetCursorLocked(false);
+                l_Window.SetCursorVisible(true);
+            }
+
+            m_WasFreelookActive = false;
+        }
+
+        if (l_MmbDown)
         {
             ApplyPan(l_MouseDelta);
         }
@@ -116,6 +138,7 @@ namespace Trinity
     bool EditorCamera::OnMouseScrolledEvent(MouseScrolledEvent& event)
     {
         m_EventScrollDelta += event.GetYOffset();
+
         return false;
     }
 
