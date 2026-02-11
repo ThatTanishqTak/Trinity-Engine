@@ -99,9 +99,13 @@ namespace Trinity
 
 	VulkanRenderer::SwapchainImageState VulkanRenderer::BuildSwapchainImageState()
 	{
+		const ImageResourceState l_UnknownResourceState = BuildImageResourceState(CreateVulkanImageTransitionState(VK_IMAGE_LAYOUT_UNDEFINED, VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE));
+
 		SwapchainImageState l_SwapchainImageState{};
-		l_SwapchainImageState.m_ColorAspectState = BuildImageResourceState(VK_IMAGE_LAYOUT_UNDEFINED);
-		l_SwapchainImageState.m_DepthAspectState = BuildImageResourceState(VK_IMAGE_LAYOUT_UNDEFINED);
+		l_SwapchainImageState.m_ColorAspectState = l_UnknownResourceState;
+		l_SwapchainImageState.m_DepthAspectState = l_UnknownResourceState;
+		l_SwapchainImageState.m_ColorAspectInitialized = false;
+		l_SwapchainImageState.m_DepthAspectInitialized = false;
 
 		return l_SwapchainImageState;
 	}
@@ -445,14 +449,14 @@ namespace Trinity
 		if ((subresourceRange.aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) != 0)
 		{
 			const ImageResourceState& l_ColorAspectState = l_SwapchainImageState.m_ColorAspectState;
-			l_RequiresColorTransition = l_ColorAspectState.m_Layout != newState.m_Layout || l_ColorAspectState.m_Stages != newState.m_Stages
+			l_RequiresColorTransition = !l_SwapchainImageState.m_ColorAspectInitialized || l_ColorAspectState.m_Layout != newState.m_Layout || l_ColorAspectState.m_Stages != newState.m_Stages
 				|| l_ColorAspectState.m_Access != newState.m_Access || l_ColorAspectState.m_QueueFamilyIndex != newState.m_QueueFamilyIndex;
 		}
 
 		if ((subresourceRange.aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT) != 0)
 		{
 			const ImageResourceState& l_DepthAspectState = l_SwapchainImageState.m_DepthAspectState;
-			l_RequiresDepthTransition = l_DepthAspectState.m_Layout != newState.m_Layout || l_DepthAspectState.m_Stages != newState.m_Stages
+			l_RequiresDepthTransition = !l_SwapchainImageState.m_DepthAspectInitialized || l_DepthAspectState.m_Layout != newState.m_Layout || l_DepthAspectState.m_Stages != newState.m_Stages
 				|| l_DepthAspectState.m_Access != newState.m_Access || l_DepthAspectState.m_QueueFamilyIndex != newState.m_QueueFamilyIndex;
 		}
 
@@ -485,11 +489,13 @@ namespace Trinity
 		if ((subresourceRange.aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) != 0)
 		{
 			l_SwapchainImageState.m_ColorAspectState = newState;
+			l_SwapchainImageState.m_ColorAspectInitialized = true;
 		}
 
 		if ((subresourceRange.aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT) != 0)
 		{
 			l_SwapchainImageState.m_DepthAspectState = newState;
+			l_SwapchainImageState.m_DepthAspectInitialized = true;
 		}
 	}
 }

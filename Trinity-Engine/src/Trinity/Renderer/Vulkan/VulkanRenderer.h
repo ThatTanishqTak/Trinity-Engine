@@ -66,6 +66,8 @@ namespace Trinity
 		{
 			ImageResourceState m_ColorAspectState{};
 			ImageResourceState m_DepthAspectState{};
+			bool m_ColorAspectInitialized = false;
+			bool m_DepthAspectInitialized = false;
 		};
 
 		static ImageResourceState BuildImageResourceState(VkImageLayout layout);
