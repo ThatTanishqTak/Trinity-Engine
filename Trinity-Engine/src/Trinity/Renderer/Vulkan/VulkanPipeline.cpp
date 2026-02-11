@@ -192,7 +192,7 @@ namespace Trinity
 
 		// Push constants: mat4 (64) + vec4 (16) = 80 bytes
 		VkPushConstantRange l_PushConstantRange{};
-		l_PushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+		l_PushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 		l_PushConstantRange.offset = 0;
 		l_PushConstantRange.size = 80;
 

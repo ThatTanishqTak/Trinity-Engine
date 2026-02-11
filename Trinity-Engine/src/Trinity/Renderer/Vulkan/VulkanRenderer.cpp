@@ -55,7 +55,6 @@ namespace Trinity
 			vkDeviceWaitIdle(m_Device.GetDevice());
 		}
 
-		// Free primitive buffers
 		for (auto& it_Primitive : m_Primitives)
 		{
 			it_Primitive.VulkanVB.reset();
@@ -291,7 +290,7 @@ namespace Trinity
 		l_PushConstants.ModelViewProjection = viewProjection * l_ModelMatrix;
 		l_PushConstants.Color = color;
 
-		vkCmdPushConstants(l_CommandBuffer, m_Pipeline.GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &l_PushConstants);
+		vkCmdPushConstants(l_CommandBuffer, m_Pipeline.GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstants), &l_PushConstants);
 
 		vkCmdDrawIndexed(l_CommandBuffer, a_GPUPrimitive.VulkanIB->GetIndexCount(), 1, 0, 0, 0);
 	}

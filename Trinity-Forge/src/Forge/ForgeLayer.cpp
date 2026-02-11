@@ -33,7 +33,8 @@ void ForgeLayer::OnUpdate(float deltaTime)
 
 void ForgeLayer::OnRender()
 {
-    Trinity::RenderCommand::DrawMesh(Trinity::Geometry::PrimitiveType::Cube, { 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f, 1.0f }, m_EditorCamera.GetViewMatrix(), m_EditorCamera.GetProjectionMatrix());
+    Trinity::RenderCommand::DrawMesh(Trinity::Geometry::PrimitiveType::Cube, { 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f, 1.0f }, m_EditorCamera.GetViewMatrix(),
+        m_EditorCamera.GetProjectionMatrix());
 }
 
 void ForgeLayer::OnImGuiRender()
