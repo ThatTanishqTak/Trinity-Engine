@@ -5,6 +5,8 @@
 #include "Trinity/Renderer/Vulkan/VulkanContext.h"
 #include "Trinity/Renderer/Vulkan/VulkanDevice.h"
 
+#include "Trinity/Renderer/Vulkan/VulkanShaderInterop.h"
+
 #include "Trinity/Utilities/FileManagement.h"
 #include "Trinity/Utilities/Log.h"
 #include "Trinity/Utilities/VulkanUtilities.h"
@@ -190,11 +192,11 @@ namespace Trinity
 		l_DynamicStateCreateInfo.dynamicStateCount = (uint32_t)std::size(l_DynamicState);
 		l_DynamicStateCreateInfo.pDynamicStates = l_DynamicState;
 
-		// Push constants: mat4 (64) + vec4 (16) = 80 bytes
+		// Push constants
 		VkPushConstantRange l_PushConstantRange{};
 		l_PushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 		l_PushConstantRange.offset = 0;
-		l_PushConstantRange.size = 80;
+		l_PushConstantRange.size = static_cast<uint32_t>(sizeof(SimplePushConstants));
 
 		VkPipelineLayoutCreateInfo l_PipelineLayoutCreateInfo{};
 		l_PipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -225,8 +227,7 @@ namespace Trinity
 		l_GraphicsPipelineCreateInfo.pDynamicState = &l_DynamicStateCreateInfo;
 		l_GraphicsPipelineCreateInfo.layout = m_PipelineLayout;
 
-		Utilities::VulkanUtilities::VKCheck(vkCreateGraphicsPipelines(m_Device, VK_NULL_HANDLE, 1, &l_GraphicsPipelineCreateInfo, m_Allocator, &m_Pipeline),
-			"Failed vkCreateGraphicsPipelines");
+		Utilities::VulkanUtilities::VKCheck(vkCreateGraphicsPipelines(m_Device, VK_NULL_HANDLE, 1, &l_GraphicsPipelineCreateInfo, m_Allocator, &m_Pipeline), "Failed vkCreateGraphicsPipelines");
 
 		vkDestroyShaderModule(m_Device, l_VertexShaderModule, m_Allocator);
 		vkDestroyShaderModule(m_Device, l_FragmentShaderModule, m_Allocator);

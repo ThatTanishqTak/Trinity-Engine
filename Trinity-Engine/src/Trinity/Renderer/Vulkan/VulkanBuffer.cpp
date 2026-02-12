@@ -129,6 +129,12 @@ namespace Trinity
 			std::abort();
 		}
 
+		if (size == 0)
+		{
+			// Nothing to do.
+			return;
+		}
+
 		if (offset + size > m_Size)
 		{
 			TR_CORE_CRITICAL("VulkanBuffer::SetData OOB");
@@ -160,7 +166,7 @@ namespace Trinity
 		std::memcpy(l_Map, data, (size_t)size);
 		l_StagingBuffers.Unmap();
 
-		CopyBufferImmediate(l_StagingBuffers.m_Buffer, m_Buffer, size);
+		CopyBufferImmediate(l_StagingBuffers.m_Buffer, m_Buffer, size, offset, 0);
 	}
 
 	void* VulkanBuffer::Map(VkDeviceSize offset, VkDeviceSize size)
@@ -231,7 +237,7 @@ namespace Trinity
 		std::abort();
 	}
 
-	void VulkanBuffer::CopyBufferImmediate(VkBuffer sourceBuffer, VkBuffer l_DestinationBuffer, VkDeviceSize size)
+	void VulkanBuffer::CopyBufferImmediate(VkBuffer sourceBuffer, VkBuffer l_DestinationBuffer, VkDeviceSize size, VkDeviceSize dstOffset, VkDeviceSize srcOffset)
 	{
 		VkCommandPool l_CommandPool = VK_NULL_HANDLE;
 		VkCommandBuffer l_CommandBuffer = VK_NULL_HANDLE;
@@ -259,6 +265,8 @@ namespace Trinity
 		Utilities::VulkanUtilities::VKCheck(vkBeginCommandBuffer(l_CommandBuffer, &l_CommandBufferBeginInfo), "Failed vkBeginCommandBuffer");
 
 		VkBufferCopy l_BufferCopy{};
+		l_BufferCopy.srcOffset = srcOffset;
+		l_BufferCopy.dstOffset = dstOffset;
 		l_BufferCopy.size = size;
 		vkCmdCopyBuffer(l_CommandBuffer, sourceBuffer, l_DestinationBuffer, 1, &l_BufferCopy);
 

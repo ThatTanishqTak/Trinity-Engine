@@ -33,7 +33,7 @@ void ForgeLayer::OnUpdate(float deltaTime)
 
 void ForgeLayer::OnRender()
 {
-    Trinity::RenderCommand::DrawMesh(Trinity::Geometry::PrimitiveType::Cube, { 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f, 1.0f }, m_EditorCamera.GetViewMatrix(),
+    Trinity::RenderCommand::DrawMesh(Trinity::Geometry::PrimitiveType::Cube, { 0.0f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f }, m_EditorCamera.GetViewMatrix(),
         m_EditorCamera.GetProjectionMatrix());
 }
 
@@ -45,9 +45,9 @@ void ForgeLayer::OnImGuiRender()
 void ForgeLayer::OnEvent(Trinity::Event& e)
 {
     Trinity::EventDispatcher l_Dispatcher(e);
-    l_Dispatcher.Dispatch<Trinity::KeyPressedEvent>([](Trinity::KeyPressedEvent& a_KeyPressedEvent)
+    l_Dispatcher.Dispatch<Trinity::KeyPressedEvent>([](Trinity::KeyPressedEvent& keyPressedEvent)
     {
-        if (a_KeyPressedEvent.GetKeyCode() == Trinity::Code::KeyCode::TR_KEY_ESCAPE)
+        if (keyPressedEvent.GetKeyCode() == Trinity::Code::KeyCode::TR_KEY_ESCAPE)
         {
             Trinity::Application::Close();
 

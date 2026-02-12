@@ -15,6 +15,7 @@ namespace Trinity
                 std::abort();
             }
         }
+
         VKAPI_ATTR VkBool32 VKAPI_CALL VulkanUtilities::VKDebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT messageType,
             const VkDebugUtilsMessengerCallbackDataEXT* callbackData, void* userData)
         {

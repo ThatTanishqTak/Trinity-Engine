@@ -1,5 +1,6 @@
 #include "Trinity/Renderer/Vulkan/VulkanRenderer.h"
 
+#include "Trinity/Renderer/Vulkan/VulkanShaderInterop.h"
 #include "Trinity/Platform/Window.h"
 #include "Trinity/Utilities/Log.h"
 #include "Trinity/Utilities/VulkanUtilities.h"
@@ -44,11 +45,17 @@ namespace Trinity
 		return g_GeneralComputeReadWriteImageState;
 	}
 
-	struct PushConstants
+	VkImageSubresourceRange VulkanRenderer::BuildColorSubresourceRange()
 	{
-		glm::mat4 ModelViewProjection;
-		glm::vec4 Color;
-	};
+		VkImageSubresourceRange l_SubresourceRange{};
+		l_SubresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		l_SubresourceRange.baseMipLevel = 0;
+		l_SubresourceRange.levelCount = 1;
+		l_SubresourceRange.baseArrayLayer = 0;
+		l_SubresourceRange.layerCount = 1;
+
+		return l_SubresourceRange;
+	}
 
 	VulkanRenderer::VulkanRenderer() : Renderer(RendererAPI::VULKAN)
 	{
@@ -193,19 +200,14 @@ namespace Trinity
 		const VkCommandBuffer l_CommandBuffer = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
 		const VulkanImageTransitionState l_ColorAttachmentWriteState = BuildTransitionState(ImageTransitionPreset::ColorAttachmentWrite);
 
-		VkImageSubresourceRange l_ColorSubresourceRange{};
-		l_ColorSubresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		l_ColorSubresourceRange.baseMipLevel = 0;
-		l_ColorSubresourceRange.levelCount = 1;
-		l_ColorSubresourceRange.baseArrayLayer = 0;
-		l_ColorSubresourceRange.layerCount = 1;
+		const VkImageSubresourceRange l_ColorSubresourceRange = BuildColorSubresourceRange();
 
 		TransitionImageResource(l_CommandBuffer, m_Swapchain.GetImages()[m_CurrentImageIndex], l_ColorSubresourceRange, l_ColorAttachmentWriteState);
 
 		VkClearValue l_ClearColor{};
-		l_ClearColor.color.float32[0] = 0.05f;
-		l_ClearColor.color.float32[1] = 0.05f;
-		l_ClearColor.color.float32[2] = 0.05f;
+		l_ClearColor.color.float32[0] = 0.01f;
+		l_ClearColor.color.float32[1] = 0.01f;
+		l_ClearColor.color.float32[2] = 0.01f;
 		l_ClearColor.color.float32[3] = 1.0f;
 
 		VkRenderingAttachmentInfo l_ColorAttachmentInfo{};
@@ -258,12 +260,7 @@ namespace Trinity
 		const VkCommandBuffer l_CommandBuffer = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
 		const VulkanImageTransitionState l_PresentState = BuildTransitionState(ImageTransitionPreset::Present);
 
-		VkImageSubresourceRange l_ColorSubresourceRange{};
-		l_ColorSubresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		l_ColorSubresourceRange.baseMipLevel = 0;
-		l_ColorSubresourceRange.levelCount = 1;
-		l_ColorSubresourceRange.baseArrayLayer = 0;
-		l_ColorSubresourceRange.layerCount = 1;
+		const VkImageSubresourceRange l_ColorSubresourceRange = BuildColorSubresourceRange();
 
 		vkCmdEndRendering(l_CommandBuffer);
 
@@ -358,12 +355,12 @@ namespace Trinity
 		VkBuffer l_IndexBuffer = a_GPUPrimitive.VulkanIB->GetVkBuffer();
 		vkCmdBindIndexBuffer(l_CommandBuffer, l_IndexBuffer, 0, ToVkIndexType(a_GPUPrimitive.VulkanIB->GetIndexType()));
 
-		PushConstants l_PushConstants{};
+		SimplePushConstants l_PushConstants{};
 		const glm::mat4 l_ModelMatrix = glm::translate(glm::mat4(1.0f), position);
 		l_PushConstants.ModelViewProjection = viewProjection * l_ModelMatrix;
 		l_PushConstants.Color = color;
 
-		vkCmdPushConstants(l_CommandBuffer, m_Pipeline.GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstants), &l_PushConstants);
+		vkCmdPushConstants(l_CommandBuffer, m_Pipeline.GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(SimplePushConstants), &l_PushConstants);
 
 		vkCmdDrawIndexed(l_CommandBuffer, a_GPUPrimitive.VulkanIB->GetIndexCount(), 1, 0, 0, 0);
 	}

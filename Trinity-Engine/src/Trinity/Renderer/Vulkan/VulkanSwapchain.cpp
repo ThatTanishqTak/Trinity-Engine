@@ -152,7 +152,17 @@ namespace Trinity
 		l_CreateInfo.imageColorSpace = m_SurfaceFormat.colorSpace;
 		l_CreateInfo.imageExtent = m_Extent;
 		l_CreateInfo.imageArrayLayers = 1;
-		l_CreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+		// Ask for a few extra usages up-front. We mask by what the surface supports.
+		VkImageUsageFlags l_DesiredUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+		VkImageUsageFlags l_Usage = l_DesiredUsage & l_Support.Capabilities.supportedUsageFlags;
+		if ((l_Usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) == 0)
+		{
+			TR_CORE_CRITICAL("Swapchain does not support VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT");
+
+			std::abort();
+		}
+		l_CreateInfo.imageUsage = l_Usage;
 
 		uint32_t l_QueueFamilyIndices[] = { m_GraphicsQueueFamilyIndex, m_PresentQueueFamilyIndex };
 		if (m_GraphicsQueueFamilyIndex != m_PresentQueueFamilyIndex)
@@ -271,6 +281,16 @@ namespace Trinity
 
 	VkSurfaceFormatKHR VulkanSwapchain::ChooseSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats) const
 	{
+		// Prefer an sRGB swapchain if the platform offers it.
+		for (const auto& it_Format : formats)
+		{
+			if (it_Format.format == VK_FORMAT_B8G8R8A8_SRGB && it_Format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+			{
+				return it_Format;
+			}
+		}
+
+		// If not available, UNORM + SRGB_NONLINEAR is a common fallback.
 		for (const auto& it_Format : formats)
 		{
 			if (it_Format.format == VK_FORMAT_B8G8R8A8_UNORM && it_Format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)

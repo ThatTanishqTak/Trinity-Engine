@@ -37,7 +37,7 @@ namespace Trinity
 	private:
 		void CreateRawBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
 		uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
-		void CopyBufferImmediate(VkBuffer src, VkBuffer dst, VkDeviceSize size);
+		void CopyBufferImmediate(VkBuffer src, VkBuffer dst, VkDeviceSize size, VkDeviceSize dstOffset = 0, VkDeviceSize srcOffset = 0);
 
 	private:
 		VkAllocationCallbacks* m_Allocator = nullptr;

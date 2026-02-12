@@ -56,6 +56,7 @@ namespace Trinity
 		};
 
 		static VulkanImageTransitionState BuildTransitionState(ImageTransitionPreset preset);
+		static VkImageSubresourceRange BuildColorSubresourceRange();
 
 		void RecreateSwapchain(uint32_t width, uint32_t height);
 		void TransitionImageResource(VkCommandBuffer commandBuffer, VkImage image, const VkImageSubresourceRange& subresourceRange, const VulkanImageTransitionState& newState);
