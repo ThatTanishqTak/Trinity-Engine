@@ -22,7 +22,6 @@ namespace Trinity
         void OnEvent(Event& event);
 
     private:
-        static void CheckVkResult(VkResult result);
         void InitializeVulkanBackend();
         void ShutdownVulkanBackend();
         void UploadFonts();

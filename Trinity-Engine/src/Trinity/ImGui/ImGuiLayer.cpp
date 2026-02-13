@@ -5,8 +5,12 @@
 #include "Trinity/Renderer/RenderCommand.h"
 #include "Trinity/Renderer/Vulkan/VulkanRenderer.h"
 #include "Trinity/Utilities/Log.h"
+#include "Trinity/Utilities/VulkanUtilities.h"
+
+#include <Windows.h>
 
 #include <imgui.h>
+#include <vulkan/vulkan_win32.h>
 #include <backends/imgui_impl_win32.h>
 #include <backends/imgui_impl_vulkan.h>
 
@@ -27,6 +31,31 @@ namespace Trinity
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
 
+        ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
+
+        platform_io.Platform_CreateVkSurface = [](ImGuiViewport* viewport, ImU64 vk_instance, const void* vk_allocator, ImU64* out_vk_surface) -> int
+        {
+            VkInstance instance = (VkInstance)vk_instance;
+            const VkAllocationCallbacks* allocator = (const VkAllocationCallbacks*)vk_allocator;
+
+            HWND hwnd = (HWND)viewport->PlatformHandleRaw;
+
+            VkWin32SurfaceCreateInfoKHR create_info{};
+            create_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+            create_info.hinstance = GetModuleHandle(nullptr);
+            create_info.hwnd = hwnd;
+
+            VkSurfaceKHR surface;
+            if (vkCreateWin32SurfaceKHR(instance, &create_info, allocator, &surface) != VK_SUCCESS)
+            {
+                return VK_ERROR_INITIALIZATION_FAILED;
+            }
+
+            *out_vk_surface = (ImU64)surface;
+            
+            return VK_SUCCESS;
+        };
+
         ImGuiIO& l_IO = ImGui::GetIO();
         l_IO.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         l_IO.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -45,6 +74,7 @@ namespace Trinity
         if (l_NativeHandle.WindowType != NativeWindowHandle::Type::Win32)
         {
             TR_CORE_CRITICAL("ImGuiLayer currently requires a Win32 window handle");
+
             std::abort();
         }
 
@@ -116,17 +146,6 @@ namespace Trinity
         }
     }
 
-    void ImGuiLayer::CheckVkResult(VkResult result)
-    {
-        if (result == VK_SUCCESS)
-        {
-            return;
-        }
-
-        TR_CORE_CRITICAL("ImGui Vulkan backend error: {}", static_cast<int>(result));
-        std::abort();
-    }
-
     void ImGuiLayer::InitializeVulkanBackend()
     {
         Renderer& l_Renderer = RenderCommand::GetRenderer();
@@ -139,6 +158,7 @@ namespace Trinity
         if (l_VulkanRenderer == nullptr)
         {
             TR_CORE_CRITICAL("Failed to access VulkanRenderer for ImGui initialization");
+
             std::abort();
         }
 
@@ -164,7 +184,8 @@ namespace Trinity
         l_PoolCreateInfo.poolSizeCount = static_cast<uint32_t>(l_PoolSizes.size());
         l_PoolCreateInfo.pPoolSizes = l_PoolSizes.data();
 
-        CheckVkResult(vkCreateDescriptorPool(l_VulkanRenderer->GetVulkanDevice(), &l_PoolCreateInfo, l_VulkanRenderer->GetVulkanAllocator(), &m_DescriptorPool));
+        Utilities::VulkanUtilities::VKCheck(vkCreateDescriptorPool(l_VulkanRenderer->GetVulkanDevice(), &l_PoolCreateInfo, l_VulkanRenderer->GetVulkanAllocator(), &m_DescriptorPool),
+            "Failed vkCreateDescriptorPool");
 
         ImGui_ImplVulkan_InitInfo l_InitInfo{};
         l_InitInfo.ApiVersion = VK_API_VERSION_1_3;
@@ -177,7 +198,6 @@ namespace Trinity
         l_InitInfo.MinImageCount = l_VulkanRenderer->GetVulkanSwapchainImageCount();
         l_InitInfo.ImageCount = l_VulkanRenderer->GetVulkanSwapchainImageCount();
         l_InitInfo.PipelineInfoMain.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-        l_InitInfo.CheckVkResultFn = &ImGuiLayer::CheckVkResult;
         l_InitInfo.UseDynamicRendering = true;
         l_InitInfo.PipelineInfoMain.PipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
         l_InitInfo.PipelineInfoMain.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
@@ -231,22 +251,22 @@ namespace Trinity
         l_AllocInfo.commandPool = l_CommandPool;
         l_AllocInfo.commandBufferCount = 1;
 
-        CheckVkResult(vkAllocateCommandBuffers(l_VulkanRenderer->GetVulkanDevice(), &l_AllocInfo, &l_CommandBuffer));
+        Utilities::VulkanUtilities::VKCheck(vkAllocateCommandBuffers(l_VulkanRenderer->GetVulkanDevice(), &l_AllocInfo, &l_CommandBuffer), "Failed vkAllocateCommandBuffers");
 
         VkCommandBufferBeginInfo l_BeginInfo{};
         l_BeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         l_BeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-        CheckVkResult(vkBeginCommandBuffer(l_CommandBuffer, &l_BeginInfo));
-        CheckVkResult(vkEndCommandBuffer(l_CommandBuffer));
+        Utilities::VulkanUtilities::VKCheck(vkBeginCommandBuffer(l_CommandBuffer, &l_BeginInfo), "Failed vkBeginCommandBuffer");
+        Utilities::VulkanUtilities::VKCheck(vkEndCommandBuffer(l_CommandBuffer), "Failed vkEndCommandBuffer");
 
         VkSubmitInfo l_SubmitInfo{};
         l_SubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         l_SubmitInfo.commandBufferCount = 1;
         l_SubmitInfo.pCommandBuffers = &l_CommandBuffer;
 
-        CheckVkResult(vkQueueSubmit(l_VulkanRenderer->GetVulkanGraphicsQueue(), 1, &l_SubmitInfo, VK_NULL_HANDLE));
-        CheckVkResult(vkQueueWaitIdle(l_VulkanRenderer->GetVulkanGraphicsQueue()));
+        Utilities::VulkanUtilities::VKCheck(vkQueueSubmit(l_VulkanRenderer->GetVulkanGraphicsQueue(), 1, &l_SubmitInfo, VK_NULL_HANDLE), "Failed vkQueueSubmit");
+        Utilities::VulkanUtilities::VKCheck(vkQueueWaitIdle(l_VulkanRenderer->GetVulkanGraphicsQueue()), "");
 
         vkFreeCommandBuffers(l_VulkanRenderer->GetVulkanDevice(), l_CommandPool, 1, &l_CommandBuffer);
     }
