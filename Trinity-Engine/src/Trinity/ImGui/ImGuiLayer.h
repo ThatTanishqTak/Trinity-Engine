@@ -18,8 +18,8 @@ namespace Trinity
         // Creates ImGui context + platform backend.
         void Initialize(Window& window);
 
-        void InitializeVulkan(VkInstance instance, VkPhysicalDevice physicalDevice, VkDevice device, uint32_t graphicsQueueFamily, VkQueue graphicsQueue, VkFormat swapchainColorFormat,
-            uint32_t swapchainImageCount, uint32_t minImageCount = 2);
+        void InitializeVulkan(VkInstance instance, VkSurfaceKHR surface, VkPhysicalDevice physicalDevice, VkDevice device, uint32_t graphicsQueueFamily, VkQueue graphicsQueue,
+            VkFormat swapchainColorFormat, uint32_t swapchainImageCount, uint32_t minImageCount = 2);
 
         void Shutdown();
 
@@ -45,6 +45,7 @@ namespace Trinity
         bool m_PlatformInitialized = false;
         bool m_VulkanInitialized = false;
 
+        VkInstance m_VkInstance = VK_NULL_HANDLE;
         VkDevice m_VkDevice = VK_NULL_HANDLE;
         VkQueue m_VkGraphicsQueue = VK_NULL_HANDLE;
         uint32_t m_VkGraphicsQueueFamily = 0;

@@ -39,6 +39,7 @@ namespace Trinity
         ImGuiIO& l_ImGuiIO = ImGui::GetIO();
         l_ImGuiIO.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         l_ImGuiIO.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+        l_ImGuiIO.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
         unsigned char* l_FontPixels = nullptr;
         int l_FontWidth = 0;
@@ -81,7 +82,7 @@ namespace Trinity
         TR_CORE_INFO("ImGuiLayer initialized (Context + Platform backend). Vulkan backend not initialized yet.");
     }
 
-    void ImGuiLayer::InitializeVulkan(VkInstance instance, VkPhysicalDevice physicalDevice, VkDevice device, uint32_t graphicsQueueFamily, VkQueue graphicsQueue,
+    void ImGuiLayer::InitializeVulkan(VkInstance instance, VkSurfaceKHR surface, VkPhysicalDevice physicalDevice, VkDevice device, uint32_t graphicsQueueFamily, VkQueue graphicsQueue,
         VkFormat swapchainColorFormat, uint32_t swapchainImageCount, uint32_t minImageCount)
     {
         if (!m_ContextInitialized)
@@ -119,6 +120,7 @@ namespace Trinity
             std::abort();
         }
 
+        m_VkInstance = instance;
         m_VkDevice = device;
         m_VkGraphicsQueue = graphicsQueue;
         m_VkGraphicsQueueFamily = graphicsQueueFamily;
@@ -152,6 +154,44 @@ namespace Trinity
             std::abort();
         }
 
+        ImGuiPlatformIO& l_PlatformIO = ImGui::GetPlatformIO();
+        l_PlatformIO.Platform_CreateVkSurface = [](ImGuiViewport* viewport, ImU64 instanceHandle, const void* allocatorHandle, ImU64* surfaceHandle) -> int
+        {
+            if (viewport == nullptr || surfaceHandle == nullptr)
+            {
+                return VK_ERROR_INITIALIZATION_FAILED;
+            }
+
+            HWND l_WindowHandle = reinterpret_cast<HWND>(viewport->PlatformHandleRaw);
+
+            if (l_WindowHandle == nullptr)
+            {
+                l_WindowHandle = reinterpret_cast<HWND>(viewport->PlatformHandle);
+            }
+
+            if (l_WindowHandle == nullptr)
+            {
+                return VK_ERROR_INITIALIZATION_FAILED;
+            }
+
+            VkWin32SurfaceCreateInfoKHR l_SurfaceCreateInfo{};
+            l_SurfaceCreateInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+            l_SurfaceCreateInfo.hinstance = GetModuleHandleW(nullptr);
+            l_SurfaceCreateInfo.hwnd = l_WindowHandle;
+
+            VkInstance l_Instance = reinterpret_cast<VkInstance>(instanceHandle);
+            const VkAllocationCallbacks* l_Allocator = reinterpret_cast<const VkAllocationCallbacks*>(allocatorHandle);
+            VkSurfaceKHR l_Surface = VK_NULL_HANDLE;
+            const VkResult l_Result = vkCreateWin32SurfaceKHR(l_Instance, &l_SurfaceCreateInfo, l_Allocator, &l_Surface);
+
+            *surfaceHandle = reinterpret_cast<ImU64>(l_Surface);
+
+            return static_cast<int>(l_Result);
+        };
+
+        ImGuiIO& l_ImGuiIO = ImGui::GetIO();
+        l_ImGuiIO.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;
+
         UploadFonts();
 
         m_VulkanInitialized = true;
@@ -172,6 +212,7 @@ namespace Trinity
             DestroyVulkanDescriptorPool();
 
             m_VulkanInitialized = false;
+            m_VkInstance = VK_NULL_HANDLE;
             m_VkDevice = VK_NULL_HANDLE;
             m_VkGraphicsQueue = VK_NULL_HANDLE;
             m_VkGraphicsQueueFamily = 0;
@@ -235,6 +276,14 @@ namespace Trinity
         }
 
         ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
+
+        ImGuiIO& l_ImGuiIO = ImGui::GetIO();
+
+        if ((l_ImGuiIO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) != 0)
+        {
+            ImGui::UpdatePlatformWindows();
+            ImGui::RenderPlatformWindowsDefault();
+        }
     }
 
     void ImGuiLayer::OnEvent(Event& e)
