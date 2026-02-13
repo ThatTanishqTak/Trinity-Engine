@@ -9,6 +9,7 @@
 #ifdef _WIN32
 #include <Windows.h>
 #include <backends/imgui_impl_win32.h>
+#include <vulkan/vulkan_win32.h>
 #endif
 
 #include <backends/imgui_impl_vulkan.h>
