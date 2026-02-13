@@ -39,7 +39,8 @@ void ForgeLayer::OnRender()
 
 void ForgeLayer::OnImGuiRender()
 {
-
+    //bool l_Show = true;
+    //ImGui::ShowDemoWindow(&l_show);
 }
 
 void ForgeLayer::OnEvent(Trinity::Event& e)

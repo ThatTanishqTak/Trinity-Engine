@@ -24,6 +24,7 @@ namespace Trinity
 
 		void BeginFrame() override;
 		void EndFrame() override;
+		void RenderImGui(ImGuiLayer& imGuiLayer) override;
 
 	private:
 

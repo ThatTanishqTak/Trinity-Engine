@@ -6,6 +6,7 @@
 namespace Trinity
 {
 	class Window;
+	class ImGuiLayer;
 
 	namespace Geometry
 	{
@@ -36,6 +37,10 @@ namespace Trinity
 
 		virtual void BeginFrame() = 0;
 		virtual void EndFrame() = 0;
+		virtual void RenderImGui(ImGuiLayer& imGuiLayer)
+		{
+			(void)imGuiLayer;
+		}
 
 		virtual void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color)
 		{

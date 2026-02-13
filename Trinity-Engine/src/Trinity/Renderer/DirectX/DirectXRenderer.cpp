@@ -72,4 +72,9 @@ namespace Trinity
 	{
 
 	}
+
+	void DirectXRenderer::RenderImGui(ImGuiLayer& imGuiLayer)
+	{
+		(void)imGuiLayer;
+	}
 }

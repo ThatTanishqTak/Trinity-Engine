@@ -19,7 +19,6 @@ namespace Trinity
 {
     void ImGuiLayer::Initialize()
     {
-        // Convenience wrapper for your current architecture.
         Initialize(Application::Get().GetWindow());
     }
 
@@ -28,6 +27,7 @@ namespace Trinity
         if (m_ContextInitialized)
         {
             TR_CORE_WARN("ImGuiLayer::Initialize called more than once. Ignoring.");
+
             return;
         }
 
@@ -39,9 +39,7 @@ namespace Trinity
         ImGuiIO& io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-
-        // Multi-viewport can come later once you feel like debugging platform windows.
-        // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
         ImGui::StyleColorsDark();
 
@@ -50,6 +48,7 @@ namespace Trinity
         if (native.WindowType != NativeWindowHandle::Type::Win32 || native.Handle1 == nullptr)
         {
             TR_CORE_CRITICAL("ImGuiLayer requires a Win32 native handle on Windows.");
+
             std::abort();
         }
 
@@ -59,6 +58,7 @@ namespace Trinity
         if (!ImGui_ImplWin32_Init(hwnd))
         {
             TR_CORE_CRITICAL("ImGui_ImplWin32_Init failed.");
+
             std::abort();
         }
 
@@ -66,6 +66,7 @@ namespace Trinity
 #else
         (void)window;
         TR_CORE_CRITICAL("ImGuiLayer platform init is only implemented for Win32 in this build.");
+
         std::abort();
 #endif
 
@@ -73,43 +74,41 @@ namespace Trinity
         TR_CORE_INFO("ImGuiLayer initialized (Context + Platform backend). Vulkan backend not initialized yet.");
     }
 
-    void ImGuiLayer::InitializeVulkan(
-        VkInstance instance,
-        VkPhysicalDevice physicalDevice,
-        VkDevice device,
-        uint32_t graphicsQueueFamily,
-        VkQueue graphicsQueue,
-        VkFormat swapchainColorFormat,
-        uint32_t swapchainImageCount,
-        uint32_t minImageCount)
+    void ImGuiLayer::InitializeVulkan(VkInstance instance, VkPhysicalDevice physicalDevice, VkDevice device, uint32_t graphicsQueueFamily, VkQueue graphicsQueue,
+        VkFormat swapchainColorFormat, uint32_t swapchainImageCount, uint32_t minImageCount)
     {
         if (!m_ContextInitialized)
         {
             TR_CORE_CRITICAL("ImGuiLayer::InitializeVulkan called before Initialize().");
+
             std::abort();
         }
 
         if (m_VulkanInitialized)
         {
             TR_CORE_WARN("ImGuiLayer::InitializeVulkan called more than once. Ignoring.");
+
             return;
         }
 
         if (instance == VK_NULL_HANDLE || physicalDevice == VK_NULL_HANDLE || device == VK_NULL_HANDLE)
         {
             TR_CORE_CRITICAL("ImGuiLayer::InitializeVulkan received null Vulkan handles.");
+
             std::abort();
         }
 
         if (graphicsQueue == VK_NULL_HANDLE)
         {
             TR_CORE_CRITICAL("ImGuiLayer::InitializeVulkan received null graphics queue.");
+
             std::abort();
         }
 
         if (swapchainImageCount == 0)
         {
             TR_CORE_CRITICAL("ImGuiLayer::InitializeVulkan received swapchainImageCount = 0.");
+
             std::abort();
         }
 
@@ -132,8 +131,6 @@ namespace Trinity
         initInfo.MinImageCount = (int)m_MinImageCount;
         initInfo.ImageCount = (int)m_ImageCount;
         initInfo.PipelineInfoMain.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-
-        // Your renderer uses Vulkan 1.3 dynamic rendering, so ImGui must follow.
         initInfo.UseDynamicRendering = true;
         initInfo.PipelineInfoMain.PipelineRenderingCreateInfo = {};
         initInfo.PipelineInfoMain.PipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
@@ -301,7 +298,9 @@ namespace Trinity
     void ImGuiLayer::DestroyVulkanDescriptorPool()
     {
         if (m_DescriptorPool == VK_NULL_HANDLE || m_VkDevice == VK_NULL_HANDLE)
+        {
             return;
+        }
 
         vkDestroyDescriptorPool(m_VkDevice, m_DescriptorPool, nullptr);
         m_DescriptorPool = VK_NULL_HANDLE;

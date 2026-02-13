@@ -22,6 +22,7 @@
 namespace Trinity
 {
 	class Window;
+	class ImGuiLayer;
 
 	class VulkanRenderer : public Renderer
 	{
@@ -38,6 +39,7 @@ namespace Trinity
 
 		void BeginFrame() override;
 		void EndFrame() override;
+		void RenderImGui(ImGuiLayer& imGuiLayer) override;
 
 		void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color) override;
 		void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& viewProjection) override;
@@ -83,6 +85,8 @@ namespace Trinity
 		uint32_t m_CurrentFrameIndex = 0;
 		uint32_t m_CurrentImageIndex = 0;
 		bool m_FrameBegun = false;
+		ImGuiLayer* m_ImGuiLayer = nullptr;
+		bool m_ImGuiVulkanInitialized = false;
 
 		VulkanResourceStateTracker m_ResourceStateTracker{};
 

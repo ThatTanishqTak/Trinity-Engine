@@ -1,6 +1,7 @@
 #include "Trinity/Renderer/Vulkan/VulkanRenderer.h"
 
 #include "Trinity/Renderer/Vulkan/VulkanShaderInterop.h"
+#include "Trinity/ImGui/ImGuiLayer.h"
 #include "Trinity/Platform/Window.h"
 #include "Trinity/Utilities/Log.h"
 #include "Trinity/Utilities/VulkanUtilities.h"
@@ -103,6 +104,8 @@ namespace Trinity
 		m_Command.Initialize(m_Context, m_Device, m_FramesInFlight);
 		m_Pipeline.Initialize(m_Context, m_Device, m_Swapchain.GetImageFormat(), m_VertexShaderPath, m_FragmentShaderPath);
 		m_ResourceStateTracker.Reset();
+		m_ImGuiLayer = nullptr;
+		m_ImGuiVulkanInitialized = false;
 	}
 
 	void VulkanRenderer::Shutdown()
@@ -125,6 +128,8 @@ namespace Trinity
 		m_Swapchain.Shutdown();
 		m_Device.Shutdown();
 		m_Context.Shutdown();
+		m_ImGuiLayer = nullptr;
+		m_ImGuiVulkanInitialized = false;
 	}
 
 	void VulkanRenderer::Resize(uint32_t width, uint32_t height)
@@ -146,6 +151,11 @@ namespace Trinity
 		m_Swapchain.Recreate(width, height);
 		m_Sync.OnSwapchainRecreated(m_Swapchain.GetImageCount());
 		m_Pipeline.Recreate(m_Swapchain.GetImageFormat());
+
+		if (m_ImGuiVulkanInitialized && m_ImGuiLayer != nullptr)
+		{
+			m_ImGuiLayer->OnSwapchainRecreated(2u, m_Swapchain.GetImageCount());
+		}
 
 		for (VkImage it_Image : l_OldSwapchainImages)
 		{
@@ -262,6 +272,11 @@ namespace Trinity
 
 		const VkImageSubresourceRange l_ColorSubresourceRange = BuildColorSubresourceRange();
 
+		if (m_ImGuiLayer != nullptr)
+		{
+			m_ImGuiLayer->EndFrame(l_CommandBuffer);
+		}
+
 		vkCmdEndRendering(l_CommandBuffer);
 
 		TransitionImageResource(l_CommandBuffer, m_Swapchain.GetImages()[m_CurrentImageIndex], l_ColorSubresourceRange, l_PresentState);
@@ -300,6 +315,21 @@ namespace Trinity
 
 		m_CurrentFrameIndex = (m_CurrentFrameIndex + 1) % m_FramesInFlight;
 		m_FrameBegun = false;
+	}
+
+	void VulkanRenderer::RenderImGui(ImGuiLayer& imGuiLayer)
+	{
+		m_ImGuiLayer = &imGuiLayer;
+
+		if (m_ImGuiVulkanInitialized)
+		{
+			return;
+		}
+
+		imGuiLayer.InitializeVulkan(m_Context.GetInstance(), m_Device.GetPhysicalDevice(), m_Device.GetDevice(), m_Device.GetGraphicsQueueFamilyIndex(),
+			m_Device.GetGraphicsQueue(), m_Swapchain.GetImageFormat(), m_Swapchain.GetImageCount(), 2u);
+
+		m_ImGuiVulkanInitialized = true;
 	}
 
 	void VulkanRenderer::EnsurePrimitiveUploaded(Geometry::PrimitiveType primitive)

@@ -9,6 +9,7 @@
 namespace Trinity
 {
 	class Window;
+	class ImGuiLayer;
 
 	class RenderCommand
 	{
@@ -20,6 +21,7 @@ namespace Trinity
 
 		static void BeginFrame();
 		static void EndFrame();
+		static void RenderImGui(ImGuiLayer& imGuiLayer);
 
 		static void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color);
 		static void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& viewProjection);

@@ -65,6 +65,14 @@ namespace Trinity
 		}
 	}
 
+	void RenderCommand::RenderImGui(ImGuiLayer& imGuiLayer)
+	{
+		if (s_Renderer)
+		{
+			s_Renderer->RenderImGui(imGuiLayer);
+		}
+	}
+
 	void RenderCommand::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color)
 	{
 		if (s_Renderer)

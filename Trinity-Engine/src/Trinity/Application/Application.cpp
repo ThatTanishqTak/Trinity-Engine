@@ -174,8 +174,7 @@ namespace Trinity
                 it_Layer->OnImGuiRender();
             }
 
-            m_ImGuiLayer.EndFrame(VK_NULL_HANDLE);
-
+            RenderCommand::RenderImGui(m_ImGuiLayer);
             RenderCommand::EndFrame();
         }
     }

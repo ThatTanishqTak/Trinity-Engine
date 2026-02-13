@@ -72,4 +72,9 @@ namespace Trinity
 	{
 
 	}
+
+	void MoltenVKRenderer::RenderImGui(ImGuiLayer& imGuiLayer)
+	{
+		(void)imGuiLayer;
+	}
 }
