@@ -8,7 +8,7 @@
 #include "Trinity/Events/ApplicationEvent.h"
 #include "Trinity/Events/KeyEvent.h"
 
-//#include <imgui.h>
+#include <imgui.h>
 
 ForgeLayer::ForgeLayer() : Trinity::Layer("ForgeLayer")
 {
@@ -41,16 +41,37 @@ void ForgeLayer::OnRender()
 
 void ForgeLayer::OnImGuiRender()
 {
-    //static bool s_ShowDemoWindow = true;
+    ImGuiWindowFlags l_WindowFlags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
+    const ImGuiViewport* l_MainViewport = ImGui::GetMainViewport();
 
-    //ImGui::ShowDemoWindow(&s_ShowDemoWindow);
+    ImGui::SetNextWindowPos(l_MainViewport->Pos);
+    ImGui::SetNextWindowSize(l_MainViewport->Size);
+    ImGui::SetNextWindowViewport(l_MainViewport->ID);
 
-    //if (ImGui::Begin("Forge"))
-    //{
-    //    ImGui::Text("ForgeLayer::OnImGuiRender");
-    //}
+    l_WindowFlags |= ImGuiWindowFlags_NoTitleBar;
+    l_WindowFlags |= ImGuiWindowFlags_NoCollapse;
+    l_WindowFlags |= ImGuiWindowFlags_NoResize;
+    l_WindowFlags |= ImGuiWindowFlags_NoMove;
+    l_WindowFlags |= ImGuiWindowFlags_NoBringToFrontOnFocus;
+    l_WindowFlags |= ImGuiWindowFlags_NoNavFocus;
 
-    //ImGui::End();
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+
+    ImGui::Begin("ForgeDockspace", nullptr, l_WindowFlags);
+
+    ImGui::PopStyleVar(2);
+
+    const ImGuiID l_DockspaceID = ImGui::GetID("ForgeDockspaceID");
+    ImGui::DockSpace(l_DockspaceID, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
+
+    ImGui::Begin("Viewport");
+    ImGui::Text("Trinity Forge");
+    ImGui::End();
+
+    ImGui::ShowDemoWindow();
+
+    ImGui::End();
 }
 
 void ForgeLayer::OnEvent(Trinity::Event& e)

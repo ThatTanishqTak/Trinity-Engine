@@ -5,7 +5,11 @@
 #include "Trinity/Utilities/Log.h"
 #include "Trinity/Utilities/VulkanUtilities.h"
 
+#include <imgui.h>
+#include <backends/imgui_impl_vulkan.h>
+
 #include <glm/gtc/matrix_transform.hpp>
+
 #include <cstdlib>
 
 namespace Trinity
@@ -311,11 +315,18 @@ namespace Trinity
 	{
 		m_ImGuiLayer = &imGuiLayer;
 
-		if (m_ImGuiVulkanInitialized)
+		if (!m_FrameBegun)
 		{
 			return;
 		}
 
+		ImDrawData* l_DrawData = ImGui::GetDrawData();
+		if (l_DrawData == nullptr)
+		{
+			return;
+		}
+
+		ImGui_ImplVulkan_RenderDrawData(l_DrawData, m_Command.GetCommandBuffer(m_CurrentFrameIndex));
 		m_ImGuiVulkanInitialized = true;
 	}
 

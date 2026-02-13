@@ -45,6 +45,18 @@ namespace Trinity
 		void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& viewProjection) override;
 		void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& view, const glm::mat4& projection) override;
 
+		VkInstance GetVulkanInstance() const { return m_Context.GetInstance(); }
+		VkAllocationCallbacks* GetVulkanAllocator() const { return m_Context.GetAllocator(); }
+		VkPhysicalDevice GetVulkanPhysicalDevice() const { return m_Device.GetPhysicalDevice(); }
+		VkDevice GetVulkanDevice() const { return m_Device.GetDevice(); }
+		VkQueue GetVulkanGraphicsQueue() const { return m_Device.GetGraphicsQueue(); }
+		uint32_t GetVulkanGraphicsQueueFamilyIndex() const { return m_Device.GetGraphicsQueueFamilyIndex(); }
+		uint32_t GetVulkanSwapchainImageCount() const { return m_Swapchain.GetImageCount(); }
+		VkFormat GetVulkanSwapchainImageFormat() const { return m_Swapchain.GetImageFormat(); }
+		VkCommandBuffer GetVulkanCurrentCommandBuffer() const { return m_Command.GetCommandBuffer(m_CurrentFrameIndex); }
+		VkCommandPool GetVulkanCommandPool(uint32_t frameIndex) const { return m_Command.GetCommandPool(frameIndex); }
+		bool IsFrameBegun() const { return m_FrameBegun; }
+
 	private:
 		enum class ImageTransitionPreset
 		{
