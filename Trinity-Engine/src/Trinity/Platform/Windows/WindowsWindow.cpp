@@ -6,8 +6,13 @@
 #include "Trinity/Events/KeyEvent.h"
 #include "Trinity/Events/MouseEvent.h"
 
+#include <imgui.h>
+#include <backends/imgui_impl_win32.h>
+
 #include <memory>
 #include <cstdlib>
+
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 namespace Trinity
 {
@@ -304,24 +309,24 @@ namespace Trinity
 
     LRESULT CALLBACK WindowsWindow::WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     {
-        WindowsWindow* a_Window = nullptr;
+        WindowsWindow* l_Window = nullptr;
 
         if (msg == WM_NCCREATE)
         {
             auto* a_Create = reinterpret_cast<CREATESTRUCTA*>(lParam);
-            a_Window = reinterpret_cast<WindowsWindow*>(a_Create->lpCreateParams);
+            l_Window = reinterpret_cast<WindowsWindow*>(a_Create->lpCreateParams);
 
-            SetWindowLongPtrA(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(a_Window));
-            a_Window->m_WindowHandle = hWnd;
+            SetWindowLongPtrA(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(l_Window));
+            l_Window->m_WindowHandle = hWnd;
         }
         else
         {
-            a_Window = reinterpret_cast<WindowsWindow*>(GetWindowLongPtrA(hWnd, GWLP_USERDATA));
+            l_Window = reinterpret_cast<WindowsWindow*>(GetWindowLongPtrA(hWnd, GWLP_USERDATA));
         }
 
-        if (a_Window)
+        if (l_Window)
         {
-            return a_Window->HandleMessage(msg, wParam, lParam);
+            return l_Window->HandleMessage(msg, wParam, lParam);
         }
 
         return DefWindowProcA(hWnd, msg, wParam, lParam);
@@ -329,6 +334,15 @@ namespace Trinity
 
     LRESULT WindowsWindow::HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam)
     {
+        // Let ImGui process the message first
+        if (ImGui::GetCurrentContext() != nullptr)
+        {
+            if (ImGui_ImplWin32_WndProcHandler(m_WindowHandle, msg, wParam, lParam))
+            {
+                return true;
+            }
+        }
+
         switch (msg)
         {
             case WM_CLOSE:
