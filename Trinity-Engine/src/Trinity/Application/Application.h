@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Trinity/Layer/LayerStack.h"
-#include "Trinity/ImGui/ImGuiLayer.h"
 #include "Trinity/Renderer/RenderCommand.h"
 
 #include <cstdint>
@@ -43,7 +42,6 @@ namespace Trinity
 
         LayerStack m_LayerStack;
         ApplicationSpecification m_Specification;
-        ImGuiLayer m_ImGuiLayer;
 
         std::unique_ptr<Window> m_Window;
 

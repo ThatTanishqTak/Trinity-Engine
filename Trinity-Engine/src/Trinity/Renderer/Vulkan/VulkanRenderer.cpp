@@ -1,7 +1,6 @@
 #include "Trinity/Renderer/Vulkan/VulkanRenderer.h"
 
 #include "Trinity/Renderer/Vulkan/VulkanShaderInterop.h"
-#include "Trinity/ImGui/ImGuiLayer.h"
 #include "Trinity/Platform/Window.h"
 #include "Trinity/Utilities/Log.h"
 #include "Trinity/Utilities/VulkanUtilities.h"
@@ -152,11 +151,6 @@ namespace Trinity
 		m_Sync.OnSwapchainRecreated(m_Swapchain.GetImageCount());
 		m_Pipeline.Recreate(m_Swapchain.GetImageFormat());
 
-		if (m_ImGuiVulkanInitialized && m_ImGuiLayer != nullptr)
-		{
-			m_ImGuiLayer->OnSwapchainRecreated(2u, m_Swapchain.GetImageCount());
-		}
-
 		for (VkImage it_Image : l_OldSwapchainImages)
 		{
 			m_ResourceStateTracker.ForgetImage(it_Image);
@@ -272,10 +266,6 @@ namespace Trinity
 
 		const VkImageSubresourceRange l_ColorSubresourceRange = BuildColorSubresourceRange();
 
-		if (m_ImGuiLayer != nullptr)
-		{
-			m_ImGuiLayer->EndFrame(l_CommandBuffer);
-		}
 
 		vkCmdEndRendering(l_CommandBuffer);
 
@@ -325,9 +315,6 @@ namespace Trinity
 		{
 			return;
 		}
-
-		imGuiLayer.InitializeVulkan(m_Context.GetInstance(), m_Context.GetSurface(), m_Device.GetPhysicalDevice(), m_Device.GetDevice(),
-			m_Device.GetGraphicsQueueFamilyIndex(), m_Device.GetGraphicsQueue(), m_Swapchain.GetImageFormat(), m_Swapchain.GetImageCount(), 2u);
 
 		m_ImGuiVulkanInitialized = true;
 	}
