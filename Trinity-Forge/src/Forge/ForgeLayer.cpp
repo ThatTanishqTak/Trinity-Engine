@@ -8,6 +8,8 @@
 #include "Trinity/Events/ApplicationEvent.h"
 #include "Trinity/Events/KeyEvent.h"
 
+#include <imgui.h>
+
 ForgeLayer::ForgeLayer() : Trinity::Layer("ForgeLayer")
 {
 
@@ -39,8 +41,16 @@ void ForgeLayer::OnRender()
 
 void ForgeLayer::OnImGuiRender()
 {
-    //bool l_Show = true;
-    //ImGui::ShowDemoWindow(&l_show);
+    static bool s_ShowDemoWindow = true;
+
+    ImGui::ShowDemoWindow(&s_ShowDemoWindow);
+
+    if (ImGui::Begin("Forge"))
+    {
+        ImGui::Text("ForgeLayer::OnImGuiRender");
+    }
+
+    ImGui::End();
 }
 
 void ForgeLayer::OnEvent(Trinity::Event& e)

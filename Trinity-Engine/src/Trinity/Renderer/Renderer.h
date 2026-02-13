@@ -37,23 +37,19 @@ namespace Trinity
 
 		virtual void BeginFrame() = 0;
 		virtual void EndFrame() = 0;
-		virtual void RenderImGui(ImGuiLayer& imGuiLayer)
-		{
-			(void)imGuiLayer;
-		}
+		virtual void RenderImGui(ImGuiLayer& imGuiLayer) = 0;
 
 		virtual void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color)
 		{
 			DrawMesh(primitive, position, color, glm::mat4(1.0f));
 		}
 
-		virtual void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& viewProjection) = 0;
-
 		virtual void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& view, const glm::mat4& projection)
 		{
 			DrawMesh(primitive, position, color, projection * view);
 		}
 
+		virtual void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& viewProjection) = 0;
 
 	protected:
 		explicit Renderer(RendererAPI api) : m_CurrentAPI(api) {}

@@ -36,10 +36,17 @@ namespace Trinity
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
 
-        ImGuiIO& io = ImGui::GetIO();
-        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+        ImGuiIO& l_ImGuiIO = ImGui::GetIO();
+        l_ImGuiIO.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+        l_ImGuiIO.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
+        unsigned char* l_FontPixels = nullptr;
+        int l_FontWidth = 0;
+        int l_FontHeight = 0;
+        l_ImGuiIO.Fonts->GetTexDataAsRGBA32(&l_FontPixels, &l_FontWidth, &l_FontHeight);
+        (void)l_FontPixels;
+        (void)l_FontWidth;
+        (void)l_FontHeight;
 
         ImGui::StyleColorsDark();
 
@@ -237,14 +244,14 @@ namespace Trinity
             return;
         }
 
-        const ImGuiIO& io = ImGui::GetIO();
+        const ImGuiIO& l_ImGuiIO = ImGui::GetIO();
 
-        if (e.IsInCategory(EventCategoryMouse) && io.WantCaptureMouse)
+        if (e.IsInCategory(EventCategoryMouse) && l_ImGuiIO.WantCaptureMouse)
         {
             e.Handled = true;
         }
 
-        if (e.IsInCategory(EventCategoryKeyboard) && io.WantCaptureKeyboard)
+        if (e.IsInCategory(EventCategoryKeyboard) && l_ImGuiIO.WantCaptureKeyboard)
         {
             e.Handled = true;
         }
