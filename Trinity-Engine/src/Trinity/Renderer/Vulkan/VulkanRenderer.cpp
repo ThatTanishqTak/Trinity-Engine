@@ -326,8 +326,8 @@ namespace Trinity
 			return;
 		}
 
-		imGuiLayer.InitializeVulkan(m_Context.GetInstance(), m_Device.GetPhysicalDevice(), m_Device.GetDevice(), m_Device.GetGraphicsQueueFamilyIndex(),
-			m_Device.GetGraphicsQueue(), m_Swapchain.GetImageFormat(), m_Swapchain.GetImageCount(), 2u);
+		imGuiLayer.InitializeVulkan(m_Context.GetInstance(), m_Context.GetSurface(), m_Device.GetPhysicalDevice(), m_Device.GetDevice(),
+			m_Device.GetGraphicsQueueFamilyIndex(), m_Device.GetGraphicsQueue(), m_Swapchain.GetImageFormat(), m_Swapchain.GetImageCount(), 2u);
 
 		m_ImGuiVulkanInitialized = true;
 	}
