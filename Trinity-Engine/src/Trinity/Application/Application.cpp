@@ -48,6 +48,7 @@ namespace Trinity
         m_Window->Initialize(l_WindowProperties);
 
         RenderCommand::Initialize(*m_Window, RendererAPI::VULKAN);
+        m_ImGuiLayer.Initialize(*m_Window);
 
         TR_CORE_INFO("------- APPLICATION INITIALIZED -------");
     }
@@ -56,6 +57,7 @@ namespace Trinity
     {
         TR_CORE_INFO("------- SHUTTING DOWN APPLICATION -------");
 
+        m_ImGuiLayer.Shutdown();
         RenderCommand::Shutdown();
 
         m_LayerStack.Shutdown();
@@ -93,6 +95,7 @@ namespace Trinity
     void Application::OnEvent(Event& e)
     {
         Input::OnEvent(e);
+        m_ImGuiLayer.OnEvent(e);
 
         if (e.GetEventType() == EventType::WindowResize)
         {
@@ -164,10 +167,14 @@ namespace Trinity
                 it_Layer->OnRender();
             }
 
+            m_ImGuiLayer.BeginFrame();
+
             for (const std::unique_ptr<Layer>& it_Layer : m_LayerStack)
             {
                 it_Layer->OnImGuiRender();
             }
+
+            m_ImGuiLayer.EndFrame(VK_NULL_HANDLE);
 
             RenderCommand::EndFrame();
         }
