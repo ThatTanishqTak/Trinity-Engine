@@ -18,6 +18,7 @@ namespace Trinity
 
         void BeginFrame();
         void EndFrame();
+        void OnSwapchainRecreated(uint32_t imageCount, VkFormat colorFormat);
 
         void OnEvent(Event& event);
 
@@ -31,5 +32,7 @@ namespace Trinity
         VkDescriptorPool m_DescriptorPool = VK_NULL_HANDLE;
         bool m_Initialized = false;
         bool m_VulkanBackendInitialized = false;
+        uint32_t m_SwapchainImageCount = 0;
+        VkFormat m_SwapchainColorFormat = VK_FORMAT_UNDEFINED;
     };
 }

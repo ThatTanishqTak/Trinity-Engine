@@ -97,6 +97,8 @@ namespace Trinity
 
         m_Window = nullptr;
         m_Initialized = false;
+        m_SwapchainImageCount = 0;
+        m_SwapchainColorFormat = VK_FORMAT_UNDEFINED;
     }
 
     void ImGuiLayer::BeginFrame()
@@ -144,6 +146,32 @@ namespace Trinity
         {
             event.Handled = true;
         }
+    }
+
+    void ImGuiLayer::OnSwapchainRecreated(uint32_t imageCount, VkFormat colorFormat)
+    {
+        if (!m_Initialized || !m_VulkanBackendInitialized)
+        {
+            m_SwapchainImageCount = imageCount;
+            m_SwapchainColorFormat = colorFormat;
+
+            return;
+        }
+
+        const bool l_ColorFormatChanged = m_SwapchainColorFormat != VK_FORMAT_UNDEFINED && m_SwapchainColorFormat != colorFormat;
+        if (l_ColorFormatChanged)
+        {
+            ShutdownVulkanBackend();
+            InitializeVulkanBackend();
+            m_SwapchainImageCount = imageCount;
+            m_SwapchainColorFormat = colorFormat;
+
+            return;
+        }
+
+        ImGui_ImplVulkan_SetMinImageCount(imageCount);
+        m_SwapchainImageCount = imageCount;
+        m_SwapchainColorFormat = colorFormat;
     }
 
     void ImGuiLayer::InitializeVulkanBackend()
@@ -209,6 +237,8 @@ namespace Trinity
 
         UploadFonts();
 
+        m_SwapchainImageCount = l_InitInfo.ImageCount;
+        m_SwapchainColorFormat = l_ColorFormat;
         m_VulkanBackendInitialized = true;
     }
 

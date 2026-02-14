@@ -22,8 +22,8 @@ namespace Trinity
 
         ApplicationSpecification l_Specification = specification;
         l_Specification.Title = "Forge";
-        l_Specification.Width = 1280;
-        l_Specification.Height = 720;
+        l_Specification.Width = 1920;
+        l_Specification.Height = 1080;
 
         TR_INFO("------- APPLICATION CREATED -------");
 

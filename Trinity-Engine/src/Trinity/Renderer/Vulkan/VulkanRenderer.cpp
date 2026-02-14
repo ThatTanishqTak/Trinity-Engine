@@ -1,6 +1,7 @@
 #include "Trinity/Renderer/Vulkan/VulkanRenderer.h"
 
 #include "Trinity/Renderer/Vulkan/VulkanShaderInterop.h"
+#include "Trinity/ImGui/ImGuiLayer.h"
 #include "Trinity/Platform/Window.h"
 #include "Trinity/Utilities/Log.h"
 #include "Trinity/Utilities/VulkanUtilities.h"
@@ -163,6 +164,11 @@ namespace Trinity
 		m_Swapchain.Recreate(width, height);
 		m_Sync.OnSwapchainRecreated(m_Swapchain.GetImageCount());
 		m_Pipeline.Recreate(m_Swapchain.GetImageFormat());
+
+		if (m_ImGuiLayer != nullptr)
+		{
+			m_ImGuiLayer->OnSwapchainRecreated(m_Swapchain.GetImageCount(), m_Swapchain.GetImageFormat());
+		}
 
 		for (VkImage it_Image : l_OldSwapchainImages)
 		{
