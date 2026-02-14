@@ -9,10 +9,12 @@ layout(push_constant) uniform PushConstants
 {
     mat4 u_ModelViewProjection;
     vec4 u_Color;
+    uint u_ColorInputTransfer;
     uint u_ColorOutputTransfer;
 } pc;
 
 void main()
 {
-    o_Color = ApplySceneColorOutput(v_Color, pc.u_ColorOutputTransfer);
+    vec3 l_LinearColor = ApplySceneColorInput(v_Color.rgb, pc.u_ColorInputTransfer);
+    o_Color = ApplySceneColorOutput(vec4(l_LinearColor, v_Color.a), pc.u_ColorOutputTransfer);
 }

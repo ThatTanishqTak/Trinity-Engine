@@ -10,10 +10,57 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <algorithm>
+#include <cmath>
 #include <cstdlib>
 
 namespace Trinity
 {
+	namespace
+	{
+		float SrgbChannelToLinear(float srgbChannel)
+		{
+			const float l_ClampedChannel = std::clamp(srgbChannel, 0.0f, 1.0f);
+			if (l_ClampedChannel <= 0.04045f)
+			{
+				return l_ClampedChannel / 12.92f;
+			}
+
+			return std::pow((l_ClampedChannel + 0.055f) / 1.055f, 2.4f);
+		}
+
+		uint32_t EncodeLinearizedImGuiColor(uint32_t packedSrgbColor)
+		{
+			const uint32_t l_R = packedSrgbColor & 0xFFu;
+			const uint32_t l_G = (packedSrgbColor >> 8u) & 0xFFu;
+			const uint32_t l_B = (packedSrgbColor >> 16u) & 0xFFu;
+			const uint32_t l_A = (packedSrgbColor >> 24u) & 0xFFu;
+
+			const float l_LinearR = SrgbChannelToLinear(static_cast<float>(l_R) / 255.0f);
+			const float l_LinearG = SrgbChannelToLinear(static_cast<float>(l_G) / 255.0f);
+			const float l_LinearB = SrgbChannelToLinear(static_cast<float>(l_B) / 255.0f);
+
+			const uint32_t l_EncodedR = static_cast<uint32_t>(std::clamp(l_LinearR * 255.0f, 0.0f, 255.0f) + 0.5f);
+			const uint32_t l_EncodedG = static_cast<uint32_t>(std::clamp(l_LinearG * 255.0f, 0.0f, 255.0f) + 0.5f);
+			const uint32_t l_EncodedB = static_cast<uint32_t>(std::clamp(l_LinearB * 255.0f, 0.0f, 255.0f) + 0.5f);
+
+			return l_EncodedR | (l_EncodedG << 8u) | (l_EncodedB << 16u) | (l_A << 24u);
+		}
+
+		void LinearizeImGuiDrawData(ImDrawData* drawData)
+		{
+			for (int l_CmdListIndex = 0; l_CmdListIndex < drawData->CmdListsCount; l_CmdListIndex++)
+			{
+				ImDrawList* l_DrawList = drawData->CmdLists[l_CmdListIndex];
+				for (int l_VertexIndex = 0; l_VertexIndex < l_DrawList->VtxBuffer.Size; l_VertexIndex++)
+				{
+					ImDrawVert& l_Vertex = l_DrawList->VtxBuffer[l_VertexIndex];
+					l_Vertex.col = EncodeLinearizedImGuiColor(l_Vertex.col);
+				}
+			}
+		}
+	}
+
 	VulkanImageTransitionState VulkanRenderer::BuildTransitionState(ImageTransitionPreset preset)
 	{
 		if (preset == ImageTransitionPreset::Present)
@@ -336,6 +383,11 @@ namespace Trinity
 			return;
 		}
 
+		if (m_Swapchain.IsSrgbSurfaceFormat())
+		{
+			LinearizeImGuiDrawData(l_DrawData);
+		}
+
 		ImGui_ImplVulkan_RenderDrawData(l_DrawData, m_Command.GetCommandBuffer(m_CurrentFrameIndex));
 		m_ImGuiVulkanInitialized = true;
 	}
@@ -397,6 +449,7 @@ namespace Trinity
 		const glm::mat4 l_ModelMatrix = glm::translate(glm::mat4(1.0f), position);
 		l_PushConstants.ModelViewProjection = viewProjection * l_ModelMatrix;
 		l_PushConstants.Color = color;
+		l_PushConstants.ColorInputTransfer = static_cast<uint32_t>(m_Swapchain.GetSceneColorInputTransfer());
 		l_PushConstants.ColorOutputTransfer = static_cast<uint32_t>(m_Swapchain.GetSceneColorOutputTransfer());
 
 		vkCmdPushConstants(l_CommandBuffer, m_Pipeline.GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(SimplePushConstants), &l_PushConstants);

@@ -8,6 +8,7 @@ layout(push_constant) uniform PushConstants
 {
     mat4 u_ModelViewProjection;
     vec4 u_Color;
+    uint u_ColorInputTransfer;
     uint u_ColorOutputTransfer;
 } pc;
 

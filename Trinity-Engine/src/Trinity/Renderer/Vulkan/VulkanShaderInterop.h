@@ -6,6 +6,12 @@
 
 namespace Trinity
 {
+	enum class SceneColorInputTransfer : uint32_t
+	{
+		None = 0,
+		SrgbToLinear = 1
+	};
+
 	enum class SceneColorOutputTransfer : uint32_t
 	{
 		None = 0,
@@ -16,6 +22,7 @@ namespace Trinity
 	{
 		glm::mat4 ModelViewProjection;
 		glm::vec4 Color;
+		uint32_t ColorInputTransfer = static_cast<uint32_t>(SceneColorInputTransfer::None);
 		uint32_t ColorOutputTransfer = static_cast<uint32_t>(SceneColorOutputTransfer::None);
 	};
 

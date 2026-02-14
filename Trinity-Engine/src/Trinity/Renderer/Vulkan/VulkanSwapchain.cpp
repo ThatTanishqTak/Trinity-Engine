@@ -147,6 +147,16 @@ namespace Trinity
 		return SceneColorOutputTransfer::None;
 	}
 
+	SceneColorInputTransfer VulkanSwapchain::GetSceneColorInputTransfer() const
+	{
+		return SceneColorInputTransfer::None;
+	}
+
+	bool VulkanSwapchain::IsSrgbSurfaceFormat() const
+	{
+		return IsSrgbFormat(m_SurfaceFormat.format);
+	}
+
 	// -------------------------------------------------------------------------------------------------------------------------
 
 	void VulkanSwapchain::CreateSwapchain(uint32_t width, uint32_t height, VkSwapchainKHR oldSwapchain)

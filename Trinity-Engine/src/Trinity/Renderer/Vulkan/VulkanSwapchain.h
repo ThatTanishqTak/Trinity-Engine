@@ -31,6 +31,8 @@ namespace Trinity
 		VkFormat GetImageFormat() const { return m_SurfaceFormat.format; }
 		VkPresentModeKHR GetPresentMode() const { return m_PresentMode; }
 		SceneColorOutputTransfer GetSceneColorOutputTransfer() const;
+		SceneColorInputTransfer GetSceneColorInputTransfer() const;
+		bool IsSrgbSurfaceFormat() const;
 
 		const std::vector<VkImage>& GetImages() const { return m_Images; }
 		const std::vector<VkImageView>& GetImageViews() const { return m_ImageViews; }
