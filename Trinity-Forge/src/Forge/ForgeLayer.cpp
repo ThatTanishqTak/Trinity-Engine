@@ -101,7 +101,7 @@ void ForgeLayer::OnEvent(Trinity::Event& e)
         return false;
     });
 
-    if (!e.Handled)
+    if (!e.Handled && m_CanControlCamera)
     {
         m_EditorCamera.OnEvent(e);
     }
