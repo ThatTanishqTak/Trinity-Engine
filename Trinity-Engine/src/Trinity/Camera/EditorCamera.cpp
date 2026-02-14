@@ -66,8 +66,41 @@ namespace Trinity
         return m_ViewProjectionMatrix;
     }
 
+    void EditorCamera::SetInputEnabled(bool enabled)
+    {
+        if (m_InputEnabled == enabled)
+        {
+            return;
+        }
+
+        m_InputEnabled = enabled;
+
+        if (!m_InputEnabled)
+        {
+            if (m_WasFreelookActive)
+            {
+                Window& l_Window = Application::Get().GetWindow();
+                l_Window.SetCursorLocked(false);
+                l_Window.SetCursorVisible(true);
+                m_WasFreelookActive = false;
+            }
+
+            m_HasLastMousePosition = false;
+        }
+    }
+
+    bool EditorCamera::IsInputEnabled() const
+    {
+        return m_InputEnabled;
+    }
+
     void EditorCamera::OnUpdate(float deltaTime)
     {
+        if (!m_InputEnabled)
+        {
+            m_EventScrollDelta = 0.0f;
+            return;
+        }
         const Input::Vector2 l_MousePosition = Input::MousePosition();
         const glm::vec2 l_CurrentMousePosition = glm::vec2(l_MousePosition.x, l_MousePosition.y);
 

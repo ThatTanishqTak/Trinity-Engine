@@ -28,6 +28,7 @@ void ForgeLayer::OnShutdown()
 
 void ForgeLayer::OnUpdate(float deltaTime)
 {
+    m_EditorCamera.SetInputEnabled(m_CanControlCamera);
     m_EditorCamera.OnUpdate(deltaTime);
 }
 
@@ -65,8 +66,9 @@ void ForgeLayer::OnImGuiRender()
 
     ImGui::Begin("Scene");
 
-    m_IsSceneViewportFocused = ImGui::IsWindowFocused();
-    m_IsSceneViewportHovered = ImGui::IsWindowHovered();
+    const bool l_IsSceneViewportFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+    const bool l_IsSceneViewportHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
+    m_CanControlCamera = l_IsSceneViewportFocused && l_IsSceneViewportHovered;
 
     const ImVec2 l_ViewportPanelSize = ImGui::GetContentRegionAvail();
     if (l_ViewportPanelSize.x != m_SceneViewportSize.x || l_ViewportPanelSize.y != m_SceneViewportSize.y)

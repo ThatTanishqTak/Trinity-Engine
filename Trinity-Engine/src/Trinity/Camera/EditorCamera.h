@@ -25,6 +25,9 @@ namespace Trinity
         const glm::mat4& GetProjectionMatrix() const override;
         const glm::mat4& GetViewProjectionMatrix() const override;
 
+        void SetInputEnabled(bool enabled);
+        bool IsInputEnabled() const;
+
         void OnUpdate(float deltaTime) override;
         void OnEvent(Event& event) override;
 
@@ -75,6 +78,7 @@ namespace Trinity
         glm::vec2 m_LastMousePosition = glm::vec2(0.0f);
         bool m_HasLastMousePosition = false;
         bool m_WasFreelookActive = false;
+        bool m_InputEnabled = true;
         float m_EventScrollDelta = 0.0f;
     };
 }
