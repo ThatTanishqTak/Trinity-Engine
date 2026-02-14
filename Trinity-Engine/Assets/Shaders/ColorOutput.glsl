@@ -20,24 +20,40 @@ vec3 SrgbOetf(vec3 linearColor)
     return mix(l_UseOffset, l_UseScale, l_UseLowSegment);
 }
 
-vec3 ApplySceneColorInput(vec3 inputColor, uint sceneInputTransfer)
+
+vec3 ApplyColorTransfer(vec3 inputColor, uint transferMode)
 {
-    if (sceneInputTransfer == 1u)
+    if (transferMode == 1u)
     {
         return SrgbEotf(inputColor);
+    }
+
+    if (transferMode == 2u)
+    {
+        return SrgbOetf(inputColor);
     }
 
     return inputColor;
 }
 
+vec3 ApplySceneColorInput(vec3 inputColor, uint sceneInputTransfer)
+{
+    return ApplyColorTransfer(inputColor, sceneInputTransfer);
+}
+
 vec4 ApplySceneColorOutput(vec4 linearColor, uint colorOutputTransfer)
 {
-    if (colorOutputTransfer == 1u)
-    {
-        return vec4(SrgbOetf(linearColor.rgb), linearColor.a);
-    }
+    return vec4(ApplyColorTransfer(linearColor.rgb, colorOutputTransfer), linearColor.a);
+}
 
-    return linearColor;
+vec3 ApplyUiColorInput(vec3 inputColor, uint uiInputTransfer)
+{
+    return ApplyColorTransfer(inputColor, uiInputTransfer);
+}
+
+vec4 ApplyUiColorOutput(vec4 linearColor, uint uiOutputTransfer)
+{
+    return vec4(ApplyColorTransfer(linearColor.rgb, uiOutputTransfer), linearColor.a);
 }
 
 #endif

@@ -7,60 +7,12 @@
 
 #include <imgui.h>
 #include <backends/imgui_impl_vulkan.h>
-
 #include <glm/gtc/matrix_transform.hpp>
 
-#include <algorithm>
-#include <cmath>
 #include <cstdlib>
 
 namespace Trinity
 {
-	namespace
-	{
-		float SrgbChannelToLinear(float srgbChannel)
-		{
-			const float l_ClampedChannel = std::clamp(srgbChannel, 0.0f, 1.0f);
-			if (l_ClampedChannel <= 0.04045f)
-			{
-				return l_ClampedChannel / 12.92f;
-			}
-
-			return std::pow((l_ClampedChannel + 0.055f) / 1.055f, 2.4f);
-		}
-
-		uint32_t EncodeLinearizedImGuiColor(uint32_t packedSrgbColor)
-		{
-			const uint32_t l_R = packedSrgbColor & 0xFFu;
-			const uint32_t l_G = (packedSrgbColor >> 8u) & 0xFFu;
-			const uint32_t l_B = (packedSrgbColor >> 16u) & 0xFFu;
-			const uint32_t l_A = (packedSrgbColor >> 24u) & 0xFFu;
-
-			const float l_LinearR = SrgbChannelToLinear(static_cast<float>(l_R) / 255.0f);
-			const float l_LinearG = SrgbChannelToLinear(static_cast<float>(l_G) / 255.0f);
-			const float l_LinearB = SrgbChannelToLinear(static_cast<float>(l_B) / 255.0f);
-
-			const uint32_t l_EncodedR = static_cast<uint32_t>(std::clamp(l_LinearR * 255.0f, 0.0f, 255.0f) + 0.5f);
-			const uint32_t l_EncodedG = static_cast<uint32_t>(std::clamp(l_LinearG * 255.0f, 0.0f, 255.0f) + 0.5f);
-			const uint32_t l_EncodedB = static_cast<uint32_t>(std::clamp(l_LinearB * 255.0f, 0.0f, 255.0f) + 0.5f);
-
-			return l_EncodedR | (l_EncodedG << 8u) | (l_EncodedB << 16u) | (l_A << 24u);
-		}
-
-		void LinearizeImGuiDrawData(ImDrawData* drawData)
-		{
-			for (int l_CmdListIndex = 0; l_CmdListIndex < drawData->CmdListsCount; l_CmdListIndex++)
-			{
-				ImDrawList* l_DrawList = drawData->CmdLists[l_CmdListIndex];
-				for (int l_VertexIndex = 0; l_VertexIndex < l_DrawList->VtxBuffer.Size; l_VertexIndex++)
-				{
-					ImDrawVert& l_Vertex = l_DrawList->VtxBuffer[l_VertexIndex];
-					l_Vertex.col = EncodeLinearizedImGuiColor(l_Vertex.col);
-				}
-			}
-		}
-	}
-
 	VulkanImageTransitionState VulkanRenderer::BuildTransitionState(ImageTransitionPreset preset)
 	{
 		if (preset == ImageTransitionPreset::Present)
@@ -312,6 +264,8 @@ namespace Trinity
 
 		m_Pipeline.Bind(l_CommandBuffer);
 
+		ValidateSceneColorPolicy();
+
 		m_FrameBegun = true;
 	}
 
@@ -383,11 +337,6 @@ namespace Trinity
 			return;
 		}
 
-		if (m_Swapchain.IsSrgbSurfaceFormat())
-		{
-			LinearizeImGuiDrawData(l_DrawData);
-		}
-
 		ImGui_ImplVulkan_RenderDrawData(l_DrawData, m_Command.GetCommandBuffer(m_CurrentFrameIndex));
 		m_ImGuiVulkanInitialized = true;
 	}
@@ -449,8 +398,10 @@ namespace Trinity
 		const glm::mat4 l_ModelMatrix = glm::translate(glm::mat4(1.0f), position);
 		l_PushConstants.ModelViewProjection = viewProjection * l_ModelMatrix;
 		l_PushConstants.Color = color;
-		l_PushConstants.ColorInputTransfer = static_cast<uint32_t>(m_Swapchain.GetSceneColorInputTransfer());
-		l_PushConstants.ColorOutputTransfer = static_cast<uint32_t>(m_Swapchain.GetSceneColorOutputTransfer());
+
+		const VulkanSwapchain::SceneColorPolicy& l_ColorPolicy = m_Swapchain.GetSceneColorPolicy();
+		l_PushConstants.ColorInputTransfer = static_cast<uint32_t>(l_ColorPolicy.SceneInputTransfer);
+		l_PushConstants.ColorOutputTransfer = static_cast<uint32_t>(l_ColorPolicy.SceneOutputTransfer);
 
 		vkCmdPushConstants(l_CommandBuffer, m_Pipeline.GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(SimplePushConstants), &l_PushConstants);
 
@@ -460,6 +411,45 @@ namespace Trinity
 	void VulkanRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& view, const glm::mat4& projection)
 	{
 		DrawMesh(primitive, position, color, projection * view);
+	}
+
+	void VulkanRenderer::ValidateSceneColorPolicy() const
+	{
+		const VulkanSwapchain::SceneColorPolicy& l_ColorPolicy = m_Swapchain.GetSceneColorPolicy();
+		const VkFormat l_SwapchainFormat = m_Swapchain.GetImageFormat();
+		const bool l_IsUnormSwapchain = l_SwapchainFormat == VK_FORMAT_B8G8R8A8_UNORM || l_SwapchainFormat == VK_FORMAT_R8G8B8A8_UNORM;
+		const bool l_IsSrgbSwapchain = l_SwapchainFormat == VK_FORMAT_B8G8R8A8_SRGB || l_SwapchainFormat == VK_FORMAT_R8G8B8A8_SRGB;
+
+		if (m_Configuration.m_ColorOutputPolicy == VulkanSwapchain::ColorOutputPolicy::SDRsRGB && l_ColorPolicy.SceneInputTransfer != ColorTransferMode::None)
+		{
+			TR_CORE_CRITICAL("Scene color policy validation failed: sRGB swapchain plus linear scene data must keep scene input transfer at None");
+
+			std::abort();
+		}
+
+		if (m_Configuration.m_ColorOutputPolicy == VulkanSwapchain::ColorOutputPolicy::SDRsRGB && l_IsUnormSwapchain
+			&& l_ColorPolicy.SceneOutputTransfer != ColorTransferMode::LinearToSrgb)
+		{
+			TR_CORE_CRITICAL("Scene color policy validation failed: UNORM swapchain requires explicit scene output conversion");
+
+			std::abort();
+		}
+
+		if (m_Configuration.m_ColorOutputPolicy == VulkanSwapchain::ColorOutputPolicy::SDRsRGB && l_IsUnormSwapchain
+			&& l_ColorPolicy.UiOutputTransfer != ColorTransferMode::LinearToSrgb)
+		{
+			TR_CORE_CRITICAL("Scene color policy validation failed: UNORM swapchain requires explicit ImGui output conversion");
+
+			std::abort();
+		}
+
+		if (m_Configuration.m_ColorOutputPolicy == VulkanSwapchain::ColorOutputPolicy::SDRsRGB && l_IsSrgbSwapchain
+			&& l_ColorPolicy.UiInputTransfer != ColorTransferMode::SrgbToLinear)
+		{
+			TR_CORE_CRITICAL("Scene color policy validation failed: sRGB swapchain requires ImGui input linearization on GPU path");
+
+			std::abort();
+		}
 	}
 
 	void VulkanRenderer::TransitionImageResource(VkCommandBuffer commandBuffer, VkImage image, const VkImageSubresourceRange& subresourceRange, const VulkanImageTransitionState& newState)

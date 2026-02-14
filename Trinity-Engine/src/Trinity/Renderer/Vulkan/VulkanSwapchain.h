@@ -30,9 +30,16 @@ namespace Trinity
 		VkExtent2D GetExtent() const { return m_Extent; }
 		VkFormat GetImageFormat() const { return m_SurfaceFormat.format; }
 		VkPresentModeKHR GetPresentMode() const { return m_PresentMode; }
-		SceneColorOutputTransfer GetSceneColorOutputTransfer() const;
-		SceneColorInputTransfer GetSceneColorInputTransfer() const;
-		bool IsSrgbSurfaceFormat() const;
+		struct SceneColorPolicy
+		{
+			ColorTransferMode SceneInputTransfer = ColorTransferMode::None;
+			ColorTransferMode SceneOutputTransfer = ColorTransferMode::None;
+			ColorTransferMode UiInputTransfer = ColorTransferMode::None;
+			ColorTransferMode UiOutputTransfer = ColorTransferMode::None;
+			ColorTransferMode PresentationTransfer = ColorTransferMode::None;
+		};
+
+		const SceneColorPolicy& GetSceneColorPolicy() const { return m_SceneColorPolicy; }
 
 		const std::vector<VkImage>& GetImages() const { return m_Images; }
 		const std::vector<VkImageView>& GetImageViews() const { return m_ImageViews; }
@@ -58,7 +65,8 @@ namespace Trinity
 
 		SwapchainSupportDetails QuerySwapchainSupport() const;
 
-		VkSurfaceFormatKHR ChooseSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats) const;
+		VkSurfaceFormatKHR ChooseSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats);
+		SceneColorPolicy BuildSceneColorPolicy(VkFormat surfaceFormat) const;
 		bool TryChooseSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats, VkFormat format, VkColorSpaceKHR colorSpace, VkSurfaceFormatKHR& outSurfaceFormat) const;
 		VkPresentModeKHR ChoosePresentMode(const std::vector<VkPresentModeKHR>& presentModes) const;
 		VkExtent2D ChooseExtent(const VkSurfaceCapabilitiesKHR& capabilities, uint32_t width, uint32_t height) const;
@@ -78,6 +86,7 @@ namespace Trinity
 		VkPresentModeKHR m_PresentMode = VK_PRESENT_MODE_FIFO_KHR;
 		VkExtent2D m_Extent{};
 		ColorOutputPolicy m_ColorOutputPolicy = ColorOutputPolicy::SDRsRGB;
+		SceneColorPolicy m_SceneColorPolicy{};
 
 		std::vector<VkImage> m_Images;
 		std::vector<VkImageView> m_ImageViews;

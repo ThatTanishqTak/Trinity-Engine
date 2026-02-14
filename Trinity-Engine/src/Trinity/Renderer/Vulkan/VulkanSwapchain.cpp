@@ -137,24 +137,28 @@ namespace Trinity
 		return vkQueuePresentKHR(presentQueue, &l_PresentInfo);
 	}
 
-	SceneColorOutputTransfer VulkanSwapchain::GetSceneColorOutputTransfer() const
+	VulkanSwapchain::SceneColorPolicy VulkanSwapchain::BuildSceneColorPolicy(VkFormat surfaceFormat) const
 	{
-		if (m_ColorOutputPolicy == ColorOutputPolicy::SDRsRGB && !IsSrgbFormat(m_SurfaceFormat.format))
+		SceneColorPolicy l_Policy{};
+
+		if (m_ColorOutputPolicy == ColorOutputPolicy::SDRsRGB)
 		{
-			return SceneColorOutputTransfer::LinearToSrgb;
+			l_Policy.SceneInputTransfer = ColorTransferMode::None;
+			l_Policy.SceneOutputTransfer = IsSrgbFormat(surfaceFormat) ? ColorTransferMode::None : ColorTransferMode::LinearToSrgb;
+			l_Policy.UiInputTransfer = IsSrgbFormat(surfaceFormat) ? ColorTransferMode::SrgbToLinear : ColorTransferMode::None;
+			l_Policy.UiOutputTransfer = IsSrgbFormat(surfaceFormat) ? ColorTransferMode::None : ColorTransferMode::LinearToSrgb;
+			l_Policy.PresentationTransfer = IsSrgbFormat(surfaceFormat) ? ColorTransferMode::LinearToSrgb : ColorTransferMode::None;
+
+			return l_Policy;
 		}
 
-		return SceneColorOutputTransfer::None;
-	}
+		l_Policy.SceneInputTransfer = ColorTransferMode::None;
+		l_Policy.SceneOutputTransfer = ColorTransferMode::None;
+		l_Policy.UiInputTransfer = ColorTransferMode::None;
+		l_Policy.UiOutputTransfer = ColorTransferMode::None;
+		l_Policy.PresentationTransfer = ColorTransferMode::None;
 
-	SceneColorInputTransfer VulkanSwapchain::GetSceneColorInputTransfer() const
-	{
-		return SceneColorInputTransfer::None;
-	}
-
-	bool VulkanSwapchain::IsSrgbSurfaceFormat() const
-	{
-		return IsSrgbFormat(m_SurfaceFormat.format);
+		return l_Policy;
 	}
 
 	// -------------------------------------------------------------------------------------------------------------------------
@@ -164,6 +168,7 @@ namespace Trinity
 		SwapchainSupportDetails l_Support = QuerySwapchainSupport();
 
 		m_SurfaceFormat = ChooseSurfaceFormat(l_Support.Formats);
+		m_SceneColorPolicy = BuildSceneColorPolicy(m_SurfaceFormat.format);
 		m_PresentMode = ChoosePresentMode(l_Support.PresentModes);
 		m_Extent = ChooseExtent(l_Support.Capabilities, width, height);
 
@@ -308,7 +313,7 @@ namespace Trinity
 		return l_Details;
 	}
 
-	VkSurfaceFormatKHR VulkanSwapchain::ChooseSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats) const
+	VkSurfaceFormatKHR VulkanSwapchain::ChooseSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats)
 	{
 		VkSurfaceFormatKHR l_SelectedSurfaceFormat{};
 

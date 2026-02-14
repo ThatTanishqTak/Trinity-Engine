@@ -83,6 +83,7 @@ namespace Trinity
 		void TransitionImageResource(VkCommandBuffer commandBuffer, VkImage image, const VkImageSubresourceRange& subresourceRange, const VulkanImageTransitionState& newState);
 
 		void EnsurePrimitiveUploaded(Geometry::PrimitiveType primitive);
+		void ValidateSceneColorPolicy() const;
 
 	private:
 		struct PrimitiveGpu
