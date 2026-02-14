@@ -52,7 +52,7 @@ namespace Trinity
             }
 
             *out_vk_surface = (ImU64)surface;
-            
+
             return VK_SUCCESS;
         };
 
@@ -232,6 +232,11 @@ namespace Trinity
 
         const VkFormat l_ColorFormat = l_VulkanRenderer->GetVulkanSwapchainImageFormat();
         l_InitInfo.PipelineInfoMain.PipelineRenderingCreateInfo.pColorAttachmentFormats = &l_ColorFormat;
+        l_InitInfo.PipelineInfoForViewports.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+        l_InitInfo.PipelineInfoForViewports.SwapChainImageUsage = 0; // backend will at least add VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+        l_InitInfo.PipelineInfoForViewports.PipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+        l_InitInfo.PipelineInfoForViewports.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
+        l_InitInfo.PipelineInfoForViewports.PipelineRenderingCreateInfo.pColorAttachmentFormats = &l_ColorFormat;
 
         ImGui_ImplVulkan_Init(&l_InitInfo);
 
