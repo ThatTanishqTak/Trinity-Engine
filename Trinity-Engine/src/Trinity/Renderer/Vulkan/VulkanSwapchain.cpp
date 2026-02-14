@@ -13,6 +13,14 @@
 
 namespace Trinity
 {
+	namespace
+	{
+		bool IsSrgbFormat(VkFormat format)
+		{
+			return format == VK_FORMAT_B8G8R8A8_SRGB || format == VK_FORMAT_R8G8B8A8_SRGB;
+		}
+	}
+
 	void VulkanSwapchain::Initialize(const VulkanContext& context, const VulkanDevice& device, uint32_t width, uint32_t height, ColorOutputPolicy colorOutputPolicy)
 	{
 		TR_CORE_TRACE("Initializing Vulkan Swapchain");
@@ -127,6 +135,16 @@ namespace Trinity
 		const VkPresentInfoKHR& l_PresentInfo = GetPresentInfo(waitSemaphore, imageIndex);
 
 		return vkQueuePresentKHR(presentQueue, &l_PresentInfo);
+	}
+
+	SceneColorOutputTransfer VulkanSwapchain::GetSceneColorOutputTransfer() const
+	{
+		if (m_ColorOutputPolicy == ColorOutputPolicy::SDRsRGB && !IsSrgbFormat(m_SurfaceFormat.format))
+		{
+			return SceneColorOutputTransfer::LinearToSrgb;
+		}
+
+		return SceneColorOutputTransfer::None;
 	}
 
 	// -------------------------------------------------------------------------------------------------------------------------

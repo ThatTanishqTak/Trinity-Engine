@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Trinity/Renderer/Vulkan/VulkanShaderInterop.h"
+
 #include <vulkan/vulkan.h>
 
 #include <cstdint>
@@ -28,6 +30,7 @@ namespace Trinity
 		VkExtent2D GetExtent() const { return m_Extent; }
 		VkFormat GetImageFormat() const { return m_SurfaceFormat.format; }
 		VkPresentModeKHR GetPresentMode() const { return m_PresentMode; }
+		SceneColorOutputTransfer GetSceneColorOutputTransfer() const;
 
 		const std::vector<VkImage>& GetImages() const { return m_Images; }
 		const std::vector<VkImageView>& GetImageViews() const { return m_ImageViews; }

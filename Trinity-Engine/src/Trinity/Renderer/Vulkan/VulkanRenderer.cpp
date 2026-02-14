@@ -397,6 +397,7 @@ namespace Trinity
 		const glm::mat4 l_ModelMatrix = glm::translate(glm::mat4(1.0f), position);
 		l_PushConstants.ModelViewProjection = viewProjection * l_ModelMatrix;
 		l_PushConstants.Color = color;
+		l_PushConstants.ColorOutputTransfer = static_cast<uint32_t>(m_Swapchain.GetSceneColorOutputTransfer());
 
 		vkCmdPushConstants(l_CommandBuffer, m_Pipeline.GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(SimplePushConstants), &l_PushConstants);
 
