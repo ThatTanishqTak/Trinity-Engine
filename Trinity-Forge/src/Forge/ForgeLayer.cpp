@@ -8,8 +8,6 @@
 #include "Trinity/Events/ApplicationEvent.h"
 #include "Trinity/Events/KeyEvent.h"
 
-#include <imgui.h>
-
 ForgeLayer::ForgeLayer() : Trinity::Layer("ForgeLayer")
 {
 
@@ -65,7 +63,23 @@ void ForgeLayer::OnImGuiRender()
     const ImGuiID l_DockspaceID = ImGui::GetID("ForgeDockspaceID");
     ImGui::DockSpace(l_DockspaceID, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
 
-    ImGui::ShowDemoWindow();
+    ImGui::Begin("Scene");
+
+    m_IsSceneViewportFocused = ImGui::IsWindowFocused();
+    m_IsSceneViewportHovered = ImGui::IsWindowHovered();
+
+    const ImVec2 l_ViewportPanelSize = ImGui::GetContentRegionAvail();
+    if (l_ViewportPanelSize.x != m_SceneViewportSize.x || l_ViewportPanelSize.y != m_SceneViewportSize.y)
+    {
+        m_SceneViewportSize = l_ViewportPanelSize;
+
+        if (m_SceneViewportSize.x > 0.0f && m_SceneViewportSize.y > 0.0f)
+        {
+            m_EditorCamera.SetViewportSize(m_SceneViewportSize.x, m_SceneViewportSize.y);
+        }
+    }
+
+    ImGui::End();
 
     ImGui::End();
 }
@@ -84,12 +98,6 @@ void ForgeLayer::OnEvent(Trinity::Event& e)
 
         return false;
     });
-
-    if (e.GetEventType() == Trinity::EventType::WindowResize)
-    {
-        auto& a_ResizeEvent = static_cast<Trinity::WindowResizeEvent&>(e);
-        m_EditorCamera.SetViewportSize(static_cast<float>(a_ResizeEvent.GetWidth()), static_cast<float>(a_ResizeEvent.GetHeight()));
-    }
 
     if (!e.Handled)
     {

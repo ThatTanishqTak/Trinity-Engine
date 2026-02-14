@@ -3,6 +3,8 @@
 #include "Trinity/Layer/Layer.h"
 #include "Trinity/Camera/EditorCamera.h"
 
+#include <imgui.h>
+
 namespace Trinity
 {
     class Event;
@@ -26,4 +28,7 @@ public:
 
 private:
     Trinity::EditorCamera m_EditorCamera;
+    bool m_IsSceneViewportFocused = false;
+    bool m_IsSceneViewportHovered = false;
+    ImVec2 m_SceneViewportSize = ImVec2(0.0f, 0.0f);
 };
