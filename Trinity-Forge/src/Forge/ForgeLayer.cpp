@@ -65,10 +65,6 @@ void ForgeLayer::OnImGuiRender()
     const ImGuiID l_DockspaceID = ImGui::GetID("ForgeDockspaceID");
     ImGui::DockSpace(l_DockspaceID, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
 
-    ImGui::Begin("Viewport");
-    ImGui::Text("Trinity Forge");
-    ImGui::End();
-
     ImGui::ShowDemoWindow();
 
     ImGui::End();

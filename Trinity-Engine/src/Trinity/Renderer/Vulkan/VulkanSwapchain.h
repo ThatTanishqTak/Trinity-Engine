@@ -13,7 +13,13 @@ namespace Trinity
 	class VulkanSwapchain
 	{
 	public:
-		void Initialize(const VulkanContext& context, const VulkanDevice& device, uint32_t width, uint32_t height);
+		enum class ColorOutputPolicy
+		{
+			SDRLinear,
+			SDRsRGB
+		};
+
+		void Initialize(const VulkanContext& context, const VulkanDevice& device, uint32_t width, uint32_t height, ColorOutputPolicy colorOutputPolicy);
 		void Shutdown();
 
 		void Recreate(uint32_t width, uint32_t height);
@@ -48,6 +54,7 @@ namespace Trinity
 		SwapchainSupportDetails QuerySwapchainSupport() const;
 
 		VkSurfaceFormatKHR ChooseSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats) const;
+		bool TryChooseSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats, VkFormat format, VkColorSpaceKHR colorSpace, VkSurfaceFormatKHR& outSurfaceFormat) const;
 		VkPresentModeKHR ChoosePresentMode(const std::vector<VkPresentModeKHR>& presentModes) const;
 		VkExtent2D ChooseExtent(const VkSurfaceCapabilitiesKHR& capabilities, uint32_t width, uint32_t height) const;
 
@@ -65,6 +72,7 @@ namespace Trinity
 		VkSurfaceFormatKHR m_SurfaceFormat{};
 		VkPresentModeKHR m_PresentMode = VK_PRESENT_MODE_FIFO_KHR;
 		VkExtent2D m_Extent{};
+		ColorOutputPolicy m_ColorOutputPolicy = ColorOutputPolicy::SDRsRGB;
 
 		std::vector<VkImage> m_Images;
 		std::vector<VkImageView> m_ImageViews;

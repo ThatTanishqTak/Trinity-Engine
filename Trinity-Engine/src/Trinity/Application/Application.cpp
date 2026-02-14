@@ -113,7 +113,7 @@ namespace Trinity
             (*--it)->OnEvent(e);
             if (e.Handled)
             {
-                TR_CORE_TRACE(e.ToString());
+                //TR_CORE_TRACE(e.ToString());
 
                 break;
             }

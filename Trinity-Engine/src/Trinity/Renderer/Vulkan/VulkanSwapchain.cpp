@@ -13,7 +13,7 @@
 
 namespace Trinity
 {
-	void VulkanSwapchain::Initialize(const VulkanContext& context, const VulkanDevice& device, uint32_t width, uint32_t height)
+	void VulkanSwapchain::Initialize(const VulkanContext& context, const VulkanDevice& device, uint32_t width, uint32_t height, ColorOutputPolicy colorOutputPolicy)
 	{
 		TR_CORE_TRACE("Initializing Vulkan Swapchain");
 
@@ -31,6 +31,7 @@ namespace Trinity
 
 		m_GraphicsQueueFamilyIndex = device.GetGraphicsQueueFamilyIndex();
 		m_PresentQueueFamilyIndex = device.GetPresentQueueFamilyIndex();
+		m_ColorOutputPolicy = colorOutputPolicy;
 
 		// Initialize cached present info with stable defaults.
 		m_PresentInfoCached = {};
@@ -281,25 +282,69 @@ namespace Trinity
 
 	VkSurfaceFormatKHR VulkanSwapchain::ChooseSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats) const
 	{
-		// Prefer an sRGB swapchain if the platform offers it.
-		for (const auto& it_Format : formats)
+		VkSurfaceFormatKHR l_SelectedSurfaceFormat{};
+
+		if (m_ColorOutputPolicy == ColorOutputPolicy::SDRsRGB)
 		{
-			if (it_Format.format == VK_FORMAT_B8G8R8A8_SRGB && it_Format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+			if (TryChooseSurfaceFormat(formats, VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR, l_SelectedSurfaceFormat))
 			{
-				return it_Format;
+				return l_SelectedSurfaceFormat;
+			}
+
+			if (TryChooseSurfaceFormat(formats, VK_FORMAT_R8G8B8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR, l_SelectedSurfaceFormat))
+			{
+				return l_SelectedSurfaceFormat;
+			}
+
+			if (TryChooseSurfaceFormat(formats, VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR, l_SelectedSurfaceFormat))
+			{
+				return l_SelectedSurfaceFormat;
+			}
+
+			if (TryChooseSurfaceFormat(formats, VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR, l_SelectedSurfaceFormat))
+			{
+				return l_SelectedSurfaceFormat;
 			}
 		}
-
-		// If not available, UNORM + SRGB_NONLINEAR is a common fallback.
-		for (const auto& it_Format : formats)
+		else
 		{
-			if (it_Format.format == VK_FORMAT_B8G8R8A8_UNORM && it_Format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+			if (TryChooseSurfaceFormat(formats, VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR, l_SelectedSurfaceFormat))
 			{
-				return it_Format;
+				return l_SelectedSurfaceFormat;
+			}
+
+			if (TryChooseSurfaceFormat(formats, VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR, l_SelectedSurfaceFormat))
+			{
+				return l_SelectedSurfaceFormat;
+			}
+
+			if (TryChooseSurfaceFormat(formats, VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR, l_SelectedSurfaceFormat))
+			{
+				return l_SelectedSurfaceFormat;
+			}
+
+			if (TryChooseSurfaceFormat(formats, VK_FORMAT_R8G8B8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR, l_SelectedSurfaceFormat))
+			{
+				return l_SelectedSurfaceFormat;
 			}
 		}
 
 		return formats[0];
+	}
+
+	bool VulkanSwapchain::TryChooseSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats, VkFormat format, VkColorSpaceKHR colorSpace, VkSurfaceFormatKHR& outSurfaceFormat) const
+	{
+		for (const VkSurfaceFormatKHR& it_Format : formats)
+		{
+			if (it_Format.format == format && it_Format.colorSpace == colorSpace)
+			{
+				outSurfaceFormat = it_Format;
+
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	VkPresentModeKHR VulkanSwapchain::ChoosePresentMode(const std::vector<VkPresentModeKHR>& presentModes) const

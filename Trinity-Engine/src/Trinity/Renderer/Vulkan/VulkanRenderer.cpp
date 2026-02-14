@@ -66,6 +66,11 @@ namespace Trinity
 
 	}
 
+	VulkanRenderer::VulkanRenderer(const Configuration& configuration) : Renderer(RendererAPI::VULKAN), m_Configuration(configuration)
+	{
+
+	}
+
 	VulkanRenderer::~VulkanRenderer()
 	{
 
@@ -74,6 +79,11 @@ namespace Trinity
 	void VulkanRenderer::SetWindow(Window& window)
 	{
 		m_Window = &window;
+	}
+
+	void VulkanRenderer::SetConfiguration(const Configuration& configuration)
+	{
+		m_Configuration = configuration;
 	}
 
 	void VulkanRenderer::Initialize()
@@ -102,7 +112,7 @@ namespace Trinity
 
 		m_Context.Initialize(l_NativeWindowHandle);
 		m_Device.Initialize(m_Context);
-		m_Swapchain.Initialize(m_Context, m_Device, m_Window->GetWidth(), m_Window->GetHeight());
+		m_Swapchain.Initialize(m_Context, m_Device, m_Window->GetWidth(), m_Window->GetHeight(), m_Configuration.m_ColorOutputPolicy);
 		m_Sync.Initialize(m_Context, m_Device, m_FramesInFlight, m_Swapchain.GetImageCount());
 		m_Command.Initialize(m_Context, m_Device, m_FramesInFlight);
 		m_Pipeline.Initialize(m_Context, m_Device, m_Swapchain.GetImageFormat(), m_VertexShaderPath, m_FragmentShaderPath);

@@ -27,10 +27,17 @@ namespace Trinity
 	class VulkanRenderer : public Renderer
 	{
 	public:
+		struct Configuration
+		{
+			VulkanSwapchain::ColorOutputPolicy m_ColorOutputPolicy = VulkanSwapchain::ColorOutputPolicy::SDRsRGB;
+		};
+
 		VulkanRenderer();
+		explicit VulkanRenderer(const Configuration& configuration);
 		~VulkanRenderer();
 
 		void SetWindow(Window& window) override;
+		void SetConfiguration(const Configuration& configuration);
 
 		void Initialize() override;
 		void Shutdown() override;
@@ -106,5 +113,6 @@ namespace Trinity
 
 		std::string m_VertexShaderPath = "Assets/Shaders/Simple.vert.spv";
 		std::string m_FragmentShaderPath = "Assets/Shaders/Simple.frag.spv";
+		Configuration m_Configuration{};
 	};
 }
