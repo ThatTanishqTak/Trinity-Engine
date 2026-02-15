@@ -25,6 +25,8 @@ namespace Trinity
 		void BeginFrame() override;
 		void EndFrame() override;
 		void RenderImGui(ImGuiLayer& imGuiLayer) override;
+		void SetSceneViewportSize(uint32_t width, uint32_t height) override;
+		void* GetSceneViewportHandle() const override;
 
 	private:
 

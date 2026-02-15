@@ -77,4 +77,15 @@ namespace Trinity
 	{
 		(void)imGuiLayer;
 	}
+
+	void MoltenVKRenderer::SetSceneViewportSize(uint32_t width, uint32_t height)
+	{
+		(void)width;
+		(void)height;
+	}
+
+	void* MoltenVKRenderer::GetSceneViewportHandle() const
+	{
+		return nullptr;
+	}
 }

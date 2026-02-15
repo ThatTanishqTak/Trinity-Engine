@@ -22,6 +22,8 @@ namespace Trinity
 		static void BeginFrame();
 		static void EndFrame();
 		static void RenderImGui(ImGuiLayer& imGuiLayer);
+		static void SetSceneViewportSize(uint32_t width, uint32_t height);
+		static void* GetSceneViewportHandle();
 
 		static void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color);
 		static void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& viewProjection);

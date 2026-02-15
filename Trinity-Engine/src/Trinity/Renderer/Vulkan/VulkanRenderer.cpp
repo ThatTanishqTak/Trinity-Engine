@@ -14,6 +14,26 @@
 
 namespace Trinity
 {
+	namespace
+	{
+		uint32_t FindMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties)
+		{
+			VkPhysicalDeviceMemoryProperties l_MemoryProperties{};
+			vkGetPhysicalDeviceMemoryProperties(physicalDevice, &l_MemoryProperties);
+
+			for (uint32_t it_Index = 0; it_Index < l_MemoryProperties.memoryTypeCount; ++it_Index)
+			{
+				if ((typeFilter & (1u << it_Index)) && (l_MemoryProperties.memoryTypes[it_Index].propertyFlags & properties) == properties)
+				{
+					return it_Index;
+				}
+			}
+
+			TR_CORE_CRITICAL("Failed to find suitable Vulkan memory type for scene viewport image");
+			std::abort();
+		}
+	}
+
 	VulkanImageTransitionState VulkanRenderer::BuildTransitionState(ImageTransitionPreset preset)
 	{
 		if (preset == ImageTransitionPreset::Present)
@@ -119,6 +139,7 @@ namespace Trinity
 		m_ResourceStateTracker.Reset();
 		m_ImGuiLayer = nullptr;
 		m_ImGuiVulkanInitialized = false;
+		m_SceneViewportHandle = nullptr;
 	}
 
 	void VulkanRenderer::Shutdown()
@@ -127,6 +148,8 @@ namespace Trinity
 		{
 			vkDeviceWaitIdle(m_Device.GetDevice());
 		}
+
+		DestroySceneViewportTarget();
 
 		for (auto& it_Primitive : m_Primitives)
 		{
@@ -148,6 +171,30 @@ namespace Trinity
 	void VulkanRenderer::Resize(uint32_t width, uint32_t height)
 	{
 		RecreateSwapchain(width, height);
+	}
+
+	void VulkanRenderer::SetSceneViewportSize(uint32_t width, uint32_t height)
+	{
+		if (m_SceneViewportWidth == width && m_SceneViewportHeight == height)
+		{
+			return;
+		}
+
+		m_SceneViewportWidth = width;
+		m_SceneViewportHeight = height;
+
+		if (m_Device.GetDevice() == VK_NULL_HANDLE)
+		{
+			return;
+		}
+
+		vkDeviceWaitIdle(m_Device.GetDevice());
+		RecreateSceneViewportTarget();
+	}
+
+	void* VulkanRenderer::GetSceneViewportHandle() const
+	{
+		return m_SceneViewportHandle;
 	}
 
 	void VulkanRenderer::RecreateSwapchain(uint32_t width, uint32_t height)
@@ -173,6 +220,107 @@ namespace Trinity
 		for (VkImage it_Image : l_OldSwapchainImages)
 		{
 			m_ResourceStateTracker.ForgetImage(it_Image);
+		}
+		RecreateSceneViewportTarget();
+	}
+
+	void VulkanRenderer::RecreateSceneViewportTarget()
+	{
+		DestroySceneViewportTarget();
+
+		if (m_SceneViewportWidth == 0 || m_SceneViewportHeight == 0)
+		{
+			return;
+		}
+
+		VkImageCreateInfo l_ImageCreateInfo{};
+		l_ImageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+		l_ImageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+		l_ImageCreateInfo.extent.width = m_SceneViewportWidth;
+		l_ImageCreateInfo.extent.height = m_SceneViewportHeight;
+		l_ImageCreateInfo.extent.depth = 1;
+		l_ImageCreateInfo.mipLevels = 1;
+		l_ImageCreateInfo.arrayLayers = 1;
+		l_ImageCreateInfo.format = m_Swapchain.GetImageFormat();
+		l_ImageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+		l_ImageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		l_ImageCreateInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+		l_ImageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+		l_ImageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		Utilities::VulkanUtilities::VKCheck(vkCreateImage(m_Device.GetDevice(), &l_ImageCreateInfo, m_Context.GetAllocator(), &m_SceneViewportImage), "Failed vkCreateImage");
+
+		VkMemoryRequirements l_MemoryRequirements{};
+		vkGetImageMemoryRequirements(m_Device.GetDevice(), m_SceneViewportImage, &l_MemoryRequirements);
+
+		VkMemoryAllocateInfo l_AllocateInfo{};
+		l_AllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		l_AllocateInfo.allocationSize = l_MemoryRequirements.size;
+		l_AllocateInfo.memoryTypeIndex = FindMemoryType(m_Device.GetPhysicalDevice(), l_MemoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+		Utilities::VulkanUtilities::VKCheck(vkAllocateMemory(m_Device.GetDevice(), &l_AllocateInfo, m_Context.GetAllocator(), &m_SceneViewportImageMemory), "Failed vkAllocateMemory");
+		Utilities::VulkanUtilities::VKCheck(vkBindImageMemory(m_Device.GetDevice(), m_SceneViewportImage, m_SceneViewportImageMemory, 0), "Failed vkBindImageMemory");
+
+		VkImageViewCreateInfo l_ViewCreateInfo{};
+		l_ViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		l_ViewCreateInfo.image = m_SceneViewportImage;
+		l_ViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		l_ViewCreateInfo.format = m_Swapchain.GetImageFormat();
+		l_ViewCreateInfo.subresourceRange = BuildColorSubresourceRange();
+
+		Utilities::VulkanUtilities::VKCheck(vkCreateImageView(m_Device.GetDevice(), &l_ViewCreateInfo, m_Context.GetAllocator(), &m_SceneViewportImageView), "Failed vkCreateImageView");
+
+		VkSamplerCreateInfo l_SamplerCreateInfo{};
+		l_SamplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+		l_SamplerCreateInfo.magFilter = VK_FILTER_LINEAR;
+		l_SamplerCreateInfo.minFilter = VK_FILTER_LINEAR;
+		l_SamplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		l_SamplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		l_SamplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		l_SamplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		l_SamplerCreateInfo.minLod = 0.0f;
+		l_SamplerCreateInfo.maxLod = 0.0f;
+		l_SamplerCreateInfo.maxAnisotropy = 1.0f;
+
+		Utilities::VulkanUtilities::VKCheck(vkCreateSampler(m_Device.GetDevice(), &l_SamplerCreateInfo, m_Context.GetAllocator(), &m_SceneViewportSampler), "Failed vkCreateSampler");
+
+		m_SceneViewportHandle = ImGui_ImplVulkan_AddTexture(m_SceneViewportSampler, m_SceneViewportImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	}
+
+	void VulkanRenderer::DestroySceneViewportTarget()
+	{
+		if (m_SceneViewportHandle != nullptr)
+		{
+			if (ImGui::GetCurrentContext() != nullptr)
+			{
+				ImGui_ImplVulkan_RemoveTexture((VkDescriptorSet)m_SceneViewportHandle);
+			}
+			m_SceneViewportHandle = nullptr;
+		}
+
+		if (m_SceneViewportSampler != VK_NULL_HANDLE)
+		{
+			vkDestroySampler(m_Device.GetDevice(), m_SceneViewportSampler, m_Context.GetAllocator());
+			m_SceneViewportSampler = VK_NULL_HANDLE;
+		}
+
+		if (m_SceneViewportImageView != VK_NULL_HANDLE)
+		{
+			vkDestroyImageView(m_Device.GetDevice(), m_SceneViewportImageView, m_Context.GetAllocator());
+			m_SceneViewportImageView = VK_NULL_HANDLE;
+		}
+
+		if (m_SceneViewportImage != VK_NULL_HANDLE)
+		{
+			vkDestroyImage(m_Device.GetDevice(), m_SceneViewportImage, m_Context.GetAllocator());
+			m_ResourceStateTracker.ForgetImage(m_SceneViewportImage);
+			m_SceneViewportImage = VK_NULL_HANDLE;
+		}
+
+		if (m_SceneViewportImageMemory != VK_NULL_HANDLE)
+		{
+			vkFreeMemory(m_Device.GetDevice(), m_SceneViewportImageMemory, m_Context.GetAllocator());
+			m_SceneViewportImageMemory = VK_NULL_HANDLE;
 		}
 	}
 
@@ -225,7 +373,19 @@ namespace Trinity
 
 		const VkImageSubresourceRange l_ColorSubresourceRange = BuildColorSubresourceRange();
 
-		TransitionImageResource(l_CommandBuffer, m_Swapchain.GetImages()[m_CurrentImageIndex], l_ColorSubresourceRange, l_ColorAttachmentWriteState);
+		VkExtent2D l_TargetExtent = m_Swapchain.GetExtent();
+		VkImageView l_TargetImageView = m_Swapchain.GetImageViews()[m_CurrentImageIndex];
+
+		if (m_SceneViewportImage != VK_NULL_HANDLE)
+		{
+			TransitionImageResource(l_CommandBuffer, m_SceneViewportImage, l_ColorSubresourceRange, l_ColorAttachmentWriteState);
+			l_TargetExtent = { m_SceneViewportWidth, m_SceneViewportHeight };
+			l_TargetImageView = m_SceneViewportImageView;
+		}
+		else
+		{
+			TransitionImageResource(l_CommandBuffer, m_Swapchain.GetImages()[m_CurrentImageIndex], l_ColorSubresourceRange, l_ColorAttachmentWriteState);
+		}
 
 		VkClearValue l_ClearColor{};
 		l_ClearColor.color.float32[0] = 0.0008f;
@@ -235,7 +395,7 @@ namespace Trinity
 
 		VkRenderingAttachmentInfo l_ColorAttachmentInfo{};
 		l_ColorAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-		l_ColorAttachmentInfo.imageView = m_Swapchain.GetImageViews()[m_CurrentImageIndex];
+		l_ColorAttachmentInfo.imageView = l_TargetImageView;
 		l_ColorAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		l_ColorAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 		l_ColorAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -244,32 +404,29 @@ namespace Trinity
 		VkRenderingInfo l_RenderingInfo{};
 		l_RenderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
 		l_RenderingInfo.renderArea.offset = { 0, 0 };
-		l_RenderingInfo.renderArea.extent = m_Swapchain.GetExtent();
+		l_RenderingInfo.renderArea.extent = l_TargetExtent;
 		l_RenderingInfo.layerCount = 1;
 		l_RenderingInfo.colorAttachmentCount = 1;
 		l_RenderingInfo.pColorAttachments = &l_ColorAttachmentInfo;
 
 		vkCmdBeginRendering(l_CommandBuffer, &l_RenderingInfo);
 
-		const VkExtent2D l_Extent = m_Swapchain.GetExtent();
-
 		VkViewport l_Viewport{};
 		l_Viewport.x = 0.0f;
 		l_Viewport.y = 0.0f;
-		l_Viewport.width = (float)l_Extent.width;
-		l_Viewport.height = (float)l_Extent.height;
+		l_Viewport.width = static_cast<float>(l_TargetExtent.width);
+		l_Viewport.height = static_cast<float>(l_TargetExtent.height);
 		l_Viewport.minDepth = 0.0f;
 		l_Viewport.maxDepth = 1.0f;
 
 		VkRect2D l_Scissor{};
 		l_Scissor.offset = { 0, 0 };
-		l_Scissor.extent = l_Extent;
+		l_Scissor.extent = l_TargetExtent;
 
 		vkCmdSetViewport(l_CommandBuffer, 0, 1, &l_Viewport);
 		vkCmdSetScissor(l_CommandBuffer, 0, 1, &l_Scissor);
 
 		m_Pipeline.Bind(l_CommandBuffer);
-
 		ValidateSceneColorPolicy();
 
 		m_FrameBegun = true;
@@ -283,9 +440,39 @@ namespace Trinity
 		}
 
 		const VkCommandBuffer l_CommandBuffer = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
+		const VkImageSubresourceRange l_ColorSubresourceRange = BuildColorSubresourceRange();
+		const VulkanImageTransitionState l_ColorAttachmentWriteState = BuildTransitionState(ImageTransitionPreset::ColorAttachmentWrite);
 		const VulkanImageTransitionState l_PresentState = BuildTransitionState(ImageTransitionPreset::Present);
 
-		const VkImageSubresourceRange l_ColorSubresourceRange = BuildColorSubresourceRange();
+		if (m_SceneViewportImage != VK_NULL_HANDLE)
+		{
+			vkCmdEndRendering(l_CommandBuffer);
+			TransitionImageResource(l_CommandBuffer, m_SceneViewportImage, l_ColorSubresourceRange, BuildTransitionState(ImageTransitionPreset::ShaderReadOnly));
+			TransitionImageResource(l_CommandBuffer, m_Swapchain.GetImages()[m_CurrentImageIndex], l_ColorSubresourceRange, l_ColorAttachmentWriteState);
+
+			VkClearValue l_ClearColor{};
+			l_ClearColor.color.float32[0] = 0.0008f;
+			l_ClearColor.color.float32[1] = 0.0008f;
+			l_ClearColor.color.float32[2] = 0.0008f;
+			l_ClearColor.color.float32[3] = 1.0f;
+
+			VkRenderingAttachmentInfo l_ColorAttachmentInfo{};
+			l_ColorAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+			l_ColorAttachmentInfo.imageView = m_Swapchain.GetImageViews()[m_CurrentImageIndex];
+			l_ColorAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			l_ColorAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+			l_ColorAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+			l_ColorAttachmentInfo.clearValue = l_ClearColor;
+
+			VkRenderingInfo l_RenderingInfo{};
+			l_RenderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+			l_RenderingInfo.renderArea.offset = { 0, 0 };
+			l_RenderingInfo.renderArea.extent = m_Swapchain.GetExtent();
+			l_RenderingInfo.layerCount = 1;
+			l_RenderingInfo.colorAttachmentCount = 1;
+			l_RenderingInfo.pColorAttachments = &l_ColorAttachmentInfo;
+			vkCmdBeginRendering(l_CommandBuffer, &l_RenderingInfo);
+		}
 
 
 		vkCmdEndRendering(l_CommandBuffer);
@@ -337,14 +524,46 @@ namespace Trinity
 			return;
 		}
 
-		ImDrawData* l_DrawData = ImGui::GetDrawData();
-		if (l_DrawData == nullptr)
+		const VkCommandBuffer l_CommandBuffer = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
+		if (m_SceneViewportImage != VK_NULL_HANDLE)
 		{
-			return;
+			const VkImageSubresourceRange l_ColorSubresourceRange = BuildColorSubresourceRange();
+			const VulkanImageTransitionState l_ColorAttachmentWriteState = BuildTransitionState(ImageTransitionPreset::ColorAttachmentWrite);
+
+			vkCmdEndRendering(l_CommandBuffer);
+			TransitionImageResource(l_CommandBuffer, m_SceneViewportImage, l_ColorSubresourceRange, BuildTransitionState(ImageTransitionPreset::ShaderReadOnly));
+			TransitionImageResource(l_CommandBuffer, m_Swapchain.GetImages()[m_CurrentImageIndex], l_ColorSubresourceRange, l_ColorAttachmentWriteState);
+
+			VkClearValue l_ClearColor{};
+			l_ClearColor.color.float32[0] = 0.0008f;
+			l_ClearColor.color.float32[1] = 0.0008f;
+			l_ClearColor.color.float32[2] = 0.0008f;
+			l_ClearColor.color.float32[3] = 1.0f;
+
+			VkRenderingAttachmentInfo l_ColorAttachmentInfo{};
+			l_ColorAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+			l_ColorAttachmentInfo.imageView = m_Swapchain.GetImageViews()[m_CurrentImageIndex];
+			l_ColorAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			l_ColorAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+			l_ColorAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+			l_ColorAttachmentInfo.clearValue = l_ClearColor;
+
+			VkRenderingInfo l_RenderingInfo{};
+			l_RenderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+			l_RenderingInfo.renderArea.offset = { 0, 0 };
+			l_RenderingInfo.renderArea.extent = m_Swapchain.GetExtent();
+			l_RenderingInfo.layerCount = 1;
+			l_RenderingInfo.colorAttachmentCount = 1;
+			l_RenderingInfo.pColorAttachments = &l_ColorAttachmentInfo;
+			vkCmdBeginRendering(l_CommandBuffer, &l_RenderingInfo);
 		}
 
-		ImGui_ImplVulkan_RenderDrawData(l_DrawData, m_Command.GetCommandBuffer(m_CurrentFrameIndex));
-		m_ImGuiVulkanInitialized = true;
+		ImDrawData* l_DrawData = ImGui::GetDrawData();
+		if (l_DrawData != nullptr)
+		{
+			ImGui_ImplVulkan_RenderDrawData(l_DrawData, l_CommandBuffer);
+			m_ImGuiVulkanInitialized = true;
+		}
 	}
 
 	void VulkanRenderer::EnsurePrimitiveUploaded(Geometry::PrimitiveType primitive)
@@ -449,8 +668,7 @@ namespace Trinity
 			std::abort();
 		}
 
-		if (m_Configuration.m_ColorOutputPolicy == VulkanSwapchain::ColorOutputPolicy::SDRsRGB && l_IsSrgbSwapchain
-			&& l_ColorPolicy.UiInputTransfer != ColorTransferMode::SrgbToLinear)
+		if (m_Configuration.m_ColorOutputPolicy == VulkanSwapchain::ColorOutputPolicy::SDRsRGB && l_IsSrgbSwapchain && l_ColorPolicy.UiInputTransfer != ColorTransferMode::SrgbToLinear)
 		{
 			TR_CORE_CRITICAL("Scene color policy validation failed: sRGB swapchain requires ImGui input linearization on GPU path");
 

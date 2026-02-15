@@ -47,6 +47,8 @@ namespace Trinity
 		void BeginFrame() override;
 		void EndFrame() override;
 		void RenderImGui(ImGuiLayer& imGuiLayer) override;
+		void SetSceneViewportSize(uint32_t width, uint32_t height) override;
+		void* GetSceneViewportHandle() const override;
 
 		void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color) override;
 		void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& viewProjection) override;
@@ -82,6 +84,9 @@ namespace Trinity
 		void RecreateSwapchain(uint32_t width, uint32_t height);
 		void TransitionImageResource(VkCommandBuffer commandBuffer, VkImage image, const VkImageSubresourceRange& subresourceRange, const VulkanImageTransitionState& newState);
 
+		void RecreateSceneViewportTarget();
+		void DestroySceneViewportTarget();
+
 		void EnsurePrimitiveUploaded(Geometry::PrimitiveType primitive);
 		void ValidateSceneColorPolicy() const;
 
@@ -115,5 +120,13 @@ namespace Trinity
 		std::string m_VertexShaderPath = "Assets/Shaders/Simple.vert.spv";
 		std::string m_FragmentShaderPath = "Assets/Shaders/Simple.frag.spv";
 		Configuration m_Configuration{};
+
+		uint32_t m_SceneViewportWidth = 0;
+		uint32_t m_SceneViewportHeight = 0;
+		VkImage m_SceneViewportImage = VK_NULL_HANDLE;
+		VkDeviceMemory m_SceneViewportImageMemory = VK_NULL_HANDLE;
+		VkImageView m_SceneViewportImageView = VK_NULL_HANDLE;
+		VkSampler m_SceneViewportSampler = VK_NULL_HANDLE;
+		void* m_SceneViewportHandle = nullptr;
 	};
 }

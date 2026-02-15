@@ -38,6 +38,8 @@ namespace Trinity
 		virtual void BeginFrame() = 0;
 		virtual void EndFrame() = 0;
 		virtual void RenderImGui(ImGuiLayer& imGuiLayer) = 0;
+		virtual void SetSceneViewportSize(uint32_t width, uint32_t height) = 0;
+		virtual void* GetSceneViewportHandle() const = 0;
 
 		virtual void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color)
 		{

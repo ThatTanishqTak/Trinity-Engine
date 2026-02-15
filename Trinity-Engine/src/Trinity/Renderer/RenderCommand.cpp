@@ -73,6 +73,24 @@ namespace Trinity
 		}
 	}
 
+	void RenderCommand::SetSceneViewportSize(uint32_t width, uint32_t height)
+	{
+		if (s_Renderer)
+		{
+			s_Renderer->SetSceneViewportSize(width, height);
+		}
+	}
+
+	void* RenderCommand::GetSceneViewportHandle()
+	{
+		if (!s_Renderer)
+		{
+			return nullptr;
+		}
+
+		return s_Renderer->GetSceneViewportHandle();
+	}
+
 	void RenderCommand::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color)
 	{
 		if (s_Renderer)
