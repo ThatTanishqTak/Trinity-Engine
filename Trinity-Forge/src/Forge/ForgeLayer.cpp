@@ -71,15 +71,19 @@ void ForgeLayer::OnImGuiRender()
     m_CanControlCamera = l_IsSceneViewportFocused && l_IsSceneViewportHovered;
 
     const ImVec2 l_ViewportPanelSize = ImGui::GetContentRegionAvail();
-    Trinity::RenderCommand::SetSceneViewportSize(static_cast<uint32_t>(l_ViewportPanelSize.x > 0.0f ? l_ViewportPanelSize.x : 0.0f),
-        static_cast<uint32_t>(l_ViewportPanelSize.y > 0.0f ? l_ViewportPanelSize.y : 0.0f));
-    if (l_ViewportPanelSize.x != m_SceneViewportSize.x || l_ViewportPanelSize.y != m_SceneViewportSize.y)
-    {
-        m_SceneViewportSize = l_ViewportPanelSize;
+    const uint32_t l_SceneViewportWidth = static_cast<uint32_t>(l_ViewportPanelSize.x > 0.0f ? l_ViewportPanelSize.x : 0.0f);
+    const uint32_t l_SceneViewportHeight = static_cast<uint32_t>(l_ViewportPanelSize.y > 0.0f ? l_ViewportPanelSize.y : 0.0f);
 
-        if (m_SceneViewportSize.x > 0.0f && m_SceneViewportSize.y > 0.0f)
+    Trinity::RenderCommand::SetSceneViewportSize(l_SceneViewportWidth, l_SceneViewportHeight);
+
+    const ImVec2 l_SceneViewportSize = ImVec2(static_cast<float>(l_SceneViewportWidth), static_cast<float>(l_SceneViewportHeight));
+    if (l_SceneViewportSize.x != m_SceneViewportSize.x || l_SceneViewportSize.y != m_SceneViewportSize.y)
+    {
+        m_SceneViewportSize = l_SceneViewportSize;
+
+        if (l_SceneViewportWidth > 0 && l_SceneViewportHeight > 0)
         {
-            m_EditorCamera.SetViewportSize(m_SceneViewportSize.x, m_SceneViewportSize.y);
+            m_EditorCamera.SetViewportSize(static_cast<float>(l_SceneViewportWidth), static_cast<float>(l_SceneViewportHeight));
         }
     }
 

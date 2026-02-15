@@ -86,6 +86,7 @@ namespace Trinity
 
 		void RecreateSceneViewportTarget();
 		void DestroySceneViewportTarget();
+		void BeginPresentPass(VkCommandBuffer commandBuffer, const VkImageSubresourceRange& colorSubresourceRange, const VulkanImageTransitionState& colorAttachmentWriteState);
 
 		void EnsurePrimitiveUploaded(Geometry::PrimitiveType primitive);
 		void ValidateSceneColorPolicy() const;
@@ -128,5 +129,7 @@ namespace Trinity
 		VkImageView m_SceneViewportImageView = VK_NULL_HANDLE;
 		VkSampler m_SceneViewportSampler = VK_NULL_HANDLE;
 		void* m_SceneViewportHandle = nullptr;
+		bool m_ScenePassRecording = false;
+		bool m_PresentPassRecording = false;
 	};
 }

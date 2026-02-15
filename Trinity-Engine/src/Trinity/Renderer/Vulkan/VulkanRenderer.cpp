@@ -324,6 +324,48 @@ namespace Trinity
 		}
 	}
 
+	void VulkanRenderer::BeginPresentPass(VkCommandBuffer commandBuffer, const VkImageSubresourceRange& colorSubresourceRange, const VulkanImageTransitionState& colorAttachmentWriteState)
+	{
+		if (m_PresentPassRecording)
+		{
+			return;
+		}
+
+		if (m_ScenePassRecording)
+		{
+			vkCmdEndRendering(commandBuffer);
+			TransitionImageResource(commandBuffer, m_SceneViewportImage, colorSubresourceRange, BuildTransitionState(ImageTransitionPreset::ShaderReadOnly));
+			m_ScenePassRecording = false;
+		}
+
+		TransitionImageResource(commandBuffer, m_Swapchain.GetImages()[m_CurrentImageIndex], colorSubresourceRange, colorAttachmentWriteState);
+
+		VkClearValue l_ClearColor{};
+		l_ClearColor.color.float32[0] = 0.0008f;
+		l_ClearColor.color.float32[1] = 0.0008f;
+		l_ClearColor.color.float32[2] = 0.0008f;
+		l_ClearColor.color.float32[3] = 1.0f;
+
+		VkRenderingAttachmentInfo l_ColorAttachmentInfo{};
+		l_ColorAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+		l_ColorAttachmentInfo.imageView = m_Swapchain.GetImageViews()[m_CurrentImageIndex];
+		l_ColorAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		l_ColorAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		l_ColorAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		l_ColorAttachmentInfo.clearValue = l_ClearColor;
+
+		VkRenderingInfo l_RenderingInfo{};
+		l_RenderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+		l_RenderingInfo.renderArea.offset = { 0, 0 };
+		l_RenderingInfo.renderArea.extent = m_Swapchain.GetExtent();
+		l_RenderingInfo.layerCount = 1;
+		l_RenderingInfo.colorAttachmentCount = 1;
+		l_RenderingInfo.pColorAttachments = &l_ColorAttachmentInfo;
+		vkCmdBeginRendering(commandBuffer, &l_RenderingInfo);
+
+		m_PresentPassRecording = true;
+	}
+
 	void VulkanRenderer::BeginFrame()
 	{
 		if (!m_Window || m_Window->IsMinimized())
@@ -373,61 +415,59 @@ namespace Trinity
 
 		const VkImageSubresourceRange l_ColorSubresourceRange = BuildColorSubresourceRange();
 
-		VkExtent2D l_TargetExtent = m_Swapchain.GetExtent();
-		VkImageView l_TargetImageView = m_Swapchain.GetImageViews()[m_CurrentImageIndex];
+		const VkExtent2D l_SceneExtent{ m_SceneViewportWidth, m_SceneViewportHeight };
+		const bool l_CanRecordScenePass = m_SceneViewportImage != VK_NULL_HANDLE && l_SceneExtent.width > 0 && l_SceneExtent.height > 0;
 
-		if (m_SceneViewportImage != VK_NULL_HANDLE)
+		m_ScenePassRecording = false;
+		m_PresentPassRecording = false;
+
+		if (l_CanRecordScenePass)
 		{
 			TransitionImageResource(l_CommandBuffer, m_SceneViewportImage, l_ColorSubresourceRange, l_ColorAttachmentWriteState);
-			l_TargetExtent = { m_SceneViewportWidth, m_SceneViewportHeight };
-			l_TargetImageView = m_SceneViewportImageView;
+
+			VkClearValue l_ClearColor{};
+			l_ClearColor.color.float32[0] = 0.0008f;
+			l_ClearColor.color.float32[1] = 0.0008f;
+			l_ClearColor.color.float32[2] = 0.0008f;
+			l_ClearColor.color.float32[3] = 1.0f;
+
+			VkRenderingAttachmentInfo l_ColorAttachmentInfo{};
+			l_ColorAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+			l_ColorAttachmentInfo.imageView = m_SceneViewportImageView;
+			l_ColorAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			l_ColorAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+			l_ColorAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+			l_ColorAttachmentInfo.clearValue = l_ClearColor;
+
+			VkRenderingInfo l_RenderingInfo{};
+			l_RenderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+			l_RenderingInfo.renderArea.offset = { 0, 0 };
+			l_RenderingInfo.renderArea.extent = l_SceneExtent;
+			l_RenderingInfo.layerCount = 1;
+			l_RenderingInfo.colorAttachmentCount = 1;
+			l_RenderingInfo.pColorAttachments = &l_ColorAttachmentInfo;
+
+			vkCmdBeginRendering(l_CommandBuffer, &l_RenderingInfo);
+
+			VkViewport l_Viewport{};
+			l_Viewport.x = 0.0f;
+			l_Viewport.y = 0.0f;
+			l_Viewport.width = static_cast<float>(l_SceneExtent.width);
+			l_Viewport.height = static_cast<float>(l_SceneExtent.height);
+			l_Viewport.minDepth = 0.0f;
+			l_Viewport.maxDepth = 1.0f;
+
+			VkRect2D l_Scissor{};
+			l_Scissor.offset = { 0, 0 };
+			l_Scissor.extent = l_SceneExtent;
+
+			vkCmdSetViewport(l_CommandBuffer, 0, 1, &l_Viewport);
+			vkCmdSetScissor(l_CommandBuffer, 0, 1, &l_Scissor);
+
+			m_Pipeline.Bind(l_CommandBuffer);
+			ValidateSceneColorPolicy();
+			m_ScenePassRecording = true;
 		}
-		else
-		{
-			TransitionImageResource(l_CommandBuffer, m_Swapchain.GetImages()[m_CurrentImageIndex], l_ColorSubresourceRange, l_ColorAttachmentWriteState);
-		}
-
-		VkClearValue l_ClearColor{};
-		l_ClearColor.color.float32[0] = 0.0008f;
-		l_ClearColor.color.float32[1] = 0.0008f;
-		l_ClearColor.color.float32[2] = 0.0008f;
-		l_ClearColor.color.float32[3] = 1.0f;
-
-		VkRenderingAttachmentInfo l_ColorAttachmentInfo{};
-		l_ColorAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-		l_ColorAttachmentInfo.imageView = l_TargetImageView;
-		l_ColorAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		l_ColorAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		l_ColorAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		l_ColorAttachmentInfo.clearValue = l_ClearColor;
-
-		VkRenderingInfo l_RenderingInfo{};
-		l_RenderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-		l_RenderingInfo.renderArea.offset = { 0, 0 };
-		l_RenderingInfo.renderArea.extent = l_TargetExtent;
-		l_RenderingInfo.layerCount = 1;
-		l_RenderingInfo.colorAttachmentCount = 1;
-		l_RenderingInfo.pColorAttachments = &l_ColorAttachmentInfo;
-
-		vkCmdBeginRendering(l_CommandBuffer, &l_RenderingInfo);
-
-		VkViewport l_Viewport{};
-		l_Viewport.x = 0.0f;
-		l_Viewport.y = 0.0f;
-		l_Viewport.width = static_cast<float>(l_TargetExtent.width);
-		l_Viewport.height = static_cast<float>(l_TargetExtent.height);
-		l_Viewport.minDepth = 0.0f;
-		l_Viewport.maxDepth = 1.0f;
-
-		VkRect2D l_Scissor{};
-		l_Scissor.offset = { 0, 0 };
-		l_Scissor.extent = l_TargetExtent;
-
-		vkCmdSetViewport(l_CommandBuffer, 0, 1, &l_Viewport);
-		vkCmdSetScissor(l_CommandBuffer, 0, 1, &l_Scissor);
-
-		m_Pipeline.Bind(l_CommandBuffer);
-		ValidateSceneColorPolicy();
 
 		m_FrameBegun = true;
 	}
@@ -444,38 +484,9 @@ namespace Trinity
 		const VulkanImageTransitionState l_ColorAttachmentWriteState = BuildTransitionState(ImageTransitionPreset::ColorAttachmentWrite);
 		const VulkanImageTransitionState l_PresentState = BuildTransitionState(ImageTransitionPreset::Present);
 
-		if (m_SceneViewportImage != VK_NULL_HANDLE)
-		{
-			vkCmdEndRendering(l_CommandBuffer);
-			TransitionImageResource(l_CommandBuffer, m_SceneViewportImage, l_ColorSubresourceRange, BuildTransitionState(ImageTransitionPreset::ShaderReadOnly));
-			TransitionImageResource(l_CommandBuffer, m_Swapchain.GetImages()[m_CurrentImageIndex], l_ColorSubresourceRange, l_ColorAttachmentWriteState);
-
-			VkClearValue l_ClearColor{};
-			l_ClearColor.color.float32[0] = 0.0008f;
-			l_ClearColor.color.float32[1] = 0.0008f;
-			l_ClearColor.color.float32[2] = 0.0008f;
-			l_ClearColor.color.float32[3] = 1.0f;
-
-			VkRenderingAttachmentInfo l_ColorAttachmentInfo{};
-			l_ColorAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-			l_ColorAttachmentInfo.imageView = m_Swapchain.GetImageViews()[m_CurrentImageIndex];
-			l_ColorAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-			l_ColorAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-			l_ColorAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-			l_ColorAttachmentInfo.clearValue = l_ClearColor;
-
-			VkRenderingInfo l_RenderingInfo{};
-			l_RenderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-			l_RenderingInfo.renderArea.offset = { 0, 0 };
-			l_RenderingInfo.renderArea.extent = m_Swapchain.GetExtent();
-			l_RenderingInfo.layerCount = 1;
-			l_RenderingInfo.colorAttachmentCount = 1;
-			l_RenderingInfo.pColorAttachments = &l_ColorAttachmentInfo;
-			vkCmdBeginRendering(l_CommandBuffer, &l_RenderingInfo);
-		}
-
-
+		BeginPresentPass(l_CommandBuffer, l_ColorSubresourceRange, l_ColorAttachmentWriteState);
 		vkCmdEndRendering(l_CommandBuffer);
+		m_PresentPassRecording = false;
 
 		TransitionImageResource(l_CommandBuffer, m_Swapchain.GetImages()[m_CurrentImageIndex], l_ColorSubresourceRange, l_PresentState);
 
@@ -525,38 +536,9 @@ namespace Trinity
 		}
 
 		const VkCommandBuffer l_CommandBuffer = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
-		if (m_SceneViewportImage != VK_NULL_HANDLE)
-		{
-			const VkImageSubresourceRange l_ColorSubresourceRange = BuildColorSubresourceRange();
-			const VulkanImageTransitionState l_ColorAttachmentWriteState = BuildTransitionState(ImageTransitionPreset::ColorAttachmentWrite);
-
-			vkCmdEndRendering(l_CommandBuffer);
-			TransitionImageResource(l_CommandBuffer, m_SceneViewportImage, l_ColorSubresourceRange, BuildTransitionState(ImageTransitionPreset::ShaderReadOnly));
-			TransitionImageResource(l_CommandBuffer, m_Swapchain.GetImages()[m_CurrentImageIndex], l_ColorSubresourceRange, l_ColorAttachmentWriteState);
-
-			VkClearValue l_ClearColor{};
-			l_ClearColor.color.float32[0] = 0.0008f;
-			l_ClearColor.color.float32[1] = 0.0008f;
-			l_ClearColor.color.float32[2] = 0.0008f;
-			l_ClearColor.color.float32[3] = 1.0f;
-
-			VkRenderingAttachmentInfo l_ColorAttachmentInfo{};
-			l_ColorAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-			l_ColorAttachmentInfo.imageView = m_Swapchain.GetImageViews()[m_CurrentImageIndex];
-			l_ColorAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-			l_ColorAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-			l_ColorAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-			l_ColorAttachmentInfo.clearValue = l_ClearColor;
-
-			VkRenderingInfo l_RenderingInfo{};
-			l_RenderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-			l_RenderingInfo.renderArea.offset = { 0, 0 };
-			l_RenderingInfo.renderArea.extent = m_Swapchain.GetExtent();
-			l_RenderingInfo.layerCount = 1;
-			l_RenderingInfo.colorAttachmentCount = 1;
-			l_RenderingInfo.pColorAttachments = &l_ColorAttachmentInfo;
-			vkCmdBeginRendering(l_CommandBuffer, &l_RenderingInfo);
-		}
+		const VkImageSubresourceRange l_ColorSubresourceRange = BuildColorSubresourceRange();
+		const VulkanImageTransitionState l_ColorAttachmentWriteState = BuildTransitionState(ImageTransitionPreset::ColorAttachmentWrite);
+		BeginPresentPass(l_CommandBuffer, l_ColorSubresourceRange, l_ColorAttachmentWriteState);
 
 		ImDrawData* l_DrawData = ImGui::GetDrawData();
 		if (l_DrawData != nullptr)
@@ -603,6 +585,11 @@ namespace Trinity
 			TR_CORE_CRITICAL("DrawMesh called outside BeginFrame/EndFrame");
 
 			std::abort();
+		}
+
+		if (!m_ScenePassRecording)
+		{
+			return;
 		}
 
 		EnsurePrimitiveUploaded(primitive);
