@@ -249,20 +249,30 @@ namespace Trinity
 
     void ImGuiLayer::ShutdownVulkanBackend()
     {
+        Renderer& l_Renderer = RenderCommand::GetRenderer();
+        VulkanRenderer* l_VulkanRenderer = nullptr;
+        if (l_Renderer.GetAPI() == RendererAPI::VULKAN)
+        {
+            l_VulkanRenderer = dynamic_cast<VulkanRenderer*>(&l_Renderer);
+            if (l_VulkanRenderer != nullptr)
+            {
+                const VkDevice l_Device = l_VulkanRenderer->GetVulkanDevice();
+                if (l_Device != VK_NULL_HANDLE)
+                {
+                    Utilities::VulkanUtilities::VKCheck(vkDeviceWaitIdle(l_Device), "Failed vkDeviceWaitIdle");
+                }
+            }
+        }
+
         if (m_VulkanBackendInitialized)
         {
             ImGui_ImplVulkan_Shutdown();
             m_VulkanBackendInitialized = false;
         }
 
-        Renderer& l_Renderer = RenderCommand::GetRenderer();
-        if (m_DescriptorPool != VK_NULL_HANDLE && l_Renderer.GetAPI() == RendererAPI::VULKAN)
+        if (m_DescriptorPool != VK_NULL_HANDLE && l_VulkanRenderer != nullptr)
         {
-            auto* l_VulkanRenderer = dynamic_cast<VulkanRenderer*>(&l_Renderer);
-            if (l_VulkanRenderer != nullptr)
-            {
-                vkDestroyDescriptorPool(l_VulkanRenderer->GetVulkanDevice(), m_DescriptorPool, l_VulkanRenderer->GetVulkanAllocator());
-            }
+            vkDestroyDescriptorPool(l_VulkanRenderer->GetVulkanDevice(), m_DescriptorPool, l_VulkanRenderer->GetVulkanAllocator());
         }
 
         m_DescriptorPool = VK_NULL_HANDLE;
