@@ -107,6 +107,9 @@ namespace Trinity
         const bool l_MmbDown = Input::MouseButtonDown(Code::MouseCode::TR_BUTTON_MIDDLE);
         const bool l_LmbDown = Input::MouseButtonDown(Code::MouseCode::TR_BUTTON_LEFT);
 
+        const bool l_FreelookActivated = !m_WasFreelookActive && l_RmbDown;
+        const glm::vec2 l_CameraInputDelta = l_FreelookActivated ? glm::vec2(0.0f) : l_MouseDelta;
+
         Window& l_Window = Application::Get().GetWindow();
 
         if (l_RmbDown)
@@ -117,7 +120,7 @@ namespace Trinity
                 l_Window.SetCursorLocked(true);
             }
 
-            ApplyFreelook(l_MouseDelta, deltaTime);
+            ApplyFreelook(l_CameraInputDelta, deltaTime);
             m_WasFreelookActive = true;
         }
         else
@@ -133,11 +136,11 @@ namespace Trinity
 
         if (l_MmbDown)
         {
-            ApplyPan(l_MouseDelta);
+            ApplyPan(l_CameraInputDelta);
         }
         else if (l_AltDown && l_LmbDown)
         {
-            ApplyOrbit(l_MouseDelta);
+            ApplyOrbit(l_CameraInputDelta);
         }
 
         const float l_ScrollDelta = Input::MouseScrolled().y + m_EventScrollDelta;
