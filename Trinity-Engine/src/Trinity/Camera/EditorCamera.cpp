@@ -84,8 +84,6 @@ namespace Trinity
                 l_Window.SetCursorVisible(true);
                 m_WasFreelookActive = false;
             }
-
-            m_HasLastMousePosition = false;
         }
     }
 
@@ -101,17 +99,8 @@ namespace Trinity
             m_EventScrollDelta = 0.0f;
             return;
         }
-        const Input::Vector2 l_MousePosition = Input::MousePosition();
-        const glm::vec2 l_CurrentMousePosition = glm::vec2(l_MousePosition.x, l_MousePosition.y);
-
-        glm::vec2 l_MouseDelta = glm::vec2(0.0f);
-        if (m_HasLastMousePosition)
-        {
-            l_MouseDelta = l_CurrentMousePosition - m_LastMousePosition;
-        }
-
-        m_LastMousePosition = l_CurrentMousePosition;
-        m_HasLastMousePosition = true;
+        const Input::Vector2 l_MouseDeltaInput = Input::MouseDelta();
+        const glm::vec2 l_MouseDelta = glm::vec2(l_MouseDeltaInput.x, l_MouseDeltaInput.y);
 
         const bool l_AltDown = Input::KeyDown(Code::KeyCode::TR_KEY_LEFT_ALT) || Input::KeyDown(Code::KeyCode::TR_KEY_RIGHT_ALT);
         const bool l_RmbDown = Input::MouseButtonDown(Code::MouseCode::TR_BUTTON_RIGHT);

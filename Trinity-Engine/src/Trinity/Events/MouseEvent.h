@@ -61,6 +61,33 @@ namespace Trinity
         float m_YOffset = 0.0f;
     };
 
+    class MouseRawDeltaEvent : public Event
+    {
+    public:
+        MouseRawDeltaEvent(float xDelta, float yDelta) : m_XDelta(xDelta), m_YDelta(yDelta)
+        {
+
+        }
+
+        float GetXDelta() const { return m_XDelta; }
+        float GetYDelta() const { return m_YDelta; }
+
+        std::string ToString() const override
+        {
+            std::stringstream ss;
+            ss << GetName() << ": " << m_XDelta << ", " << m_YDelta;
+
+            return ss.str();
+        }
+
+        TR_EVENT_CLASS_TYPE(MouseRawDelta)
+            TR_EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryMouse)
+
+    private:
+        float m_XDelta = 0.0f;
+        float m_YDelta = 0.0f;
+    };
+
     class MouseButtonEvent : public Event
     {
     public:

@@ -13,6 +13,7 @@ namespace Trinity
     std::unordered_map<int, Input::ButtonState> Input::s_MouseButtonStates;
     Input::Vector2 Input::s_MousePosition = Input::Vector2(0.0f);
     Input::Vector2 Input::s_MouseScrollDelta = Input::Vector2(0.0f);
+    Input::Vector2 Input::s_MouseRawDelta = Input::Vector2(0.0f);
     std::unordered_map<int, Input::GamepadState> Input::s_GamepadStates;
 
     void Input::BeginFrame()
@@ -41,6 +42,7 @@ namespace Trinity
 
         // This frame's scroll starts at 0
         s_MouseScrollDelta = Vector2(0.0f);
+        s_MouseRawDelta = Vector2(0.0f);
     }
 
     void Input::OnEvent(Event& e)
@@ -52,6 +54,7 @@ namespace Trinity
         l_Dispatcher.Dispatch<MouseButtonReleasedEvent>([](MouseButtonReleasedEvent& event) { return Input::OnMouseButtonReleasedEvent(event); });
         l_Dispatcher.Dispatch<MouseMovedEvent>([](MouseMovedEvent& event) { return Input::OnMouseMovedEvent(event); });
         l_Dispatcher.Dispatch<MouseScrolledEvent>([](MouseScrolledEvent& event) { return Input::OnMouseScrolledEvent(event); });
+        l_Dispatcher.Dispatch<MouseRawDeltaEvent>([](MouseRawDeltaEvent& event) { return Input::OnMouseRawDeltaEvent(event); });
 
         l_Dispatcher.Dispatch<GamepadConnectedEvent>([](GamepadConnectedEvent& event) { return Input::OnGamepadConnectedEvent(event); });
         l_Dispatcher.Dispatch<GamepadDisconnectedEvent>([](GamepadDisconnectedEvent& event) { return Input::OnGamepadDisconnectedEvent(event); });
@@ -120,6 +123,11 @@ namespace Trinity
     Input::Vector2 Input::MouseScrolled()
     {
         return s_MouseScrollDelta;
+    }
+
+    Input::Vector2 Input::MouseDelta()
+    {
+        return s_MouseRawDelta;
     }
 
     // ---------------- Gamepad ----------------
@@ -282,6 +290,14 @@ namespace Trinity
     {
         s_MouseScrollDelta.x += e.GetXOffset();
         s_MouseScrollDelta.y += e.GetYOffset();
+
+        return false;
+    }
+
+    bool Input::OnMouseRawDeltaEvent(MouseRawDeltaEvent& e)
+    {
+        s_MouseRawDelta.x += e.GetXDelta();
+        s_MouseRawDelta.y += e.GetYDelta();
         
         return false;
     }

@@ -75,8 +75,6 @@ namespace Trinity
         float m_MinDistance = 0.1f;
         float m_MaxPitch = 89.0f;
 
-        glm::vec2 m_LastMousePosition = glm::vec2(0.0f);
-        bool m_HasLastMousePosition = false;
         bool m_WasFreelookActive = false;
         bool m_InputEnabled = true;
         float m_EventScrollDelta = 0.0f;

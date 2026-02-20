@@ -10,7 +10,9 @@
 #include <backends/imgui_impl_win32.h>
 
 #include <memory>
+#include <cstddef>
 #include <cstdlib>
+#include <vector>
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -52,6 +54,17 @@ namespace Trinity
 
         RegisterWindowClassIfNeeded();
         CreateNativeWindow();
+
+        RAWINPUTDEVICE l_MouseRawInputDevice{};
+        l_MouseRawInputDevice.usUsagePage = 0x01;
+        l_MouseRawInputDevice.usUsage = 0x02;
+        l_MouseRawInputDevice.dwFlags = 0;
+        l_MouseRawInputDevice.hwndTarget = m_WindowHandle;
+
+        if (!RegisterRawInputDevices(&l_MouseRawInputDevice, 1, sizeof(RAWINPUTDEVICE)))
+        {
+            TR_CORE_WARN("RegisterRawInputDevices failed.");
+        }
 
         m_ShouldClose = false;
         m_CursorVisible = true;
@@ -414,6 +427,32 @@ namespace Trinity
                 const float l_Steps = static_cast<float>(l_Delta) / static_cast<float>(WHEEL_DELTA);
 
                 m_EventQueue.PushEvent(std::make_unique<MouseScrolledEvent>(0.0f, l_Steps));
+
+                return 0;
+            }
+
+            case WM_INPUT:
+            {
+                UINT l_RawInputSize = 0;
+                if (GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, nullptr, &l_RawInputSize, sizeof(RAWINPUTHEADER)) != 0 || l_RawInputSize == 0)
+                {
+                    return 0;
+                }
+
+                std::vector<std::byte> l_RawInputBuffer(l_RawInputSize);
+                const UINT l_BytesCopied = GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam), RID_INPUT, l_RawInputBuffer.data(), &l_RawInputSize, sizeof(RAWINPUTHEADER));
+                if (l_BytesCopied == static_cast<UINT>(-1) || l_BytesCopied != l_RawInputSize)
+                {
+                    return 0;
+                }
+
+                const RAWINPUT* a_RawInput = reinterpret_cast<const RAWINPUT*>(l_RawInputBuffer.data());
+                if (a_RawInput->header.dwType == RIM_TYPEMOUSE)
+                {
+                    const float l_XDelta = static_cast<float>(a_RawInput->data.mouse.lLastX);
+                    const float l_YDelta = static_cast<float>(a_RawInput->data.mouse.lLastY);
+                    m_EventQueue.PushEvent(std::make_unique<MouseRawDeltaEvent>(l_XDelta, l_YDelta));
+                }
 
                 return 0;
             }

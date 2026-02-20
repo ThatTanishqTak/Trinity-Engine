@@ -14,6 +14,7 @@ namespace Trinity
     class MouseButtonReleasedEvent;
     class MouseMovedEvent;
     class MouseScrolledEvent;
+    class MouseRawDeltaEvent;
     class GamepadConnectedEvent;
     class GamepadDisconnectedEvent;
     class GamepadButtonPressedEvent;
@@ -41,6 +42,7 @@ namespace Trinity
         static bool MouseButtonReleased(Code::MouseCode button);
         static Vector2 MousePosition();
         static Vector2 MouseScrolled(); // this frame's scroll delta (not consuming)
+        static Vector2 MouseDelta();
 
         // Gamepad
         static bool GamepadButtonDown(int gamepadID, Code::GamepadButton button);
@@ -75,6 +77,7 @@ namespace Trinity
         static bool OnMouseButtonReleasedEvent(MouseButtonReleasedEvent& e);
         static bool OnMouseMovedEvent(MouseMovedEvent& e);
         static bool OnMouseScrolledEvent(MouseScrolledEvent& e);
+        static bool OnMouseRawDeltaEvent(MouseRawDeltaEvent& e);
         static bool OnGamepadConnectedEvent(GamepadConnectedEvent& e);
         static bool OnGamepadDisconnectedEvent(GamepadDisconnectedEvent& e);
         static bool OnGamepadButtonPressedEvent(GamepadButtonPressedEvent& e);
@@ -85,6 +88,7 @@ namespace Trinity
         static std::unordered_map<int, ButtonState> s_MouseButtonStates;
         static Vector2 s_MousePosition;
         static Vector2 s_MouseScrollDelta;
+        static Vector2 s_MouseRawDelta;
         static std::unordered_map<int, GamepadState> s_GamepadStates;
     };
 }

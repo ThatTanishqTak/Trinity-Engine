@@ -21,7 +21,8 @@ namespace Trinity
 
         // Mouse
         MouseButtonPressed, MouseButtonReleased, 
-        MouseMoved, 
+        MouseMoved,
+        MouseRawDelta,
         MouseScrolled,
 
         // Gamepad
