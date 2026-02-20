@@ -177,12 +177,31 @@ namespace Trinity
     void WindowsWindow::SetCursorLocked(bool locked)
     {
         if (m_CursorLocked == locked)
-        {
             return;
+
+        // Save cursor position on lock so it can be restored on unlock.
+        if (locked)
+        {
+            m_HasCursorRestorePos = (GetCursorPos(&m_CursorRestorePos) != 0);
+            if (m_WindowHandle)
+            {
+                SetCapture(m_WindowHandle);
+            }
         }
 
         m_CursorLocked = locked;
         ApplyCursorLockClip();
+
+        if (!locked)
+        {
+            ReleaseCapture();
+
+            if (m_HasCursorRestorePos)
+            {
+                SetCursorPos(m_CursorRestorePos.x, m_CursorRestorePos.y);
+                m_HasCursorRestorePos = false;
+            }
+        }
     }
 
     NativeWindowHandle WindowsWindow::GetNativeHandle() const
@@ -394,6 +413,12 @@ namespace Trinity
 
             case WM_KILLFOCUS:
             {
+                if (m_CursorLocked)
+                {
+                    SetCursorLocked(false);
+                    SetCursorVisible(true);
+                }
+
                 ApplyCursorLockClip();
                 m_EventQueue.PushEvent(std::make_unique<WindowLostFocusEvent>());
 
@@ -413,6 +438,11 @@ namespace Trinity
 
             case WM_MOUSEMOVE:
             {
+                if (m_CursorLocked)
+                {
+                    return 0;
+                }
+
                 const float l_X = static_cast<float>(static_cast<short>(LOWORD(lParam)));
                 const float l_Y = static_cast<float>(static_cast<short>(HIWORD(lParam)));
 

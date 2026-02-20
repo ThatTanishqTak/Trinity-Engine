@@ -73,6 +73,9 @@ namespace Trinity
         HINSTANCE m_InstanceHandle = nullptr;
         HWND m_WindowHandle = nullptr;
 
+        POINT m_CursorRestorePos{ 0, 0 };
+        bool m_HasCursorRestorePos = false;
+
         WindowData m_Data{};
         EventQueue m_EventQueue{};
         bool m_Initialized = false;
