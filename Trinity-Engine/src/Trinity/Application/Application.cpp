@@ -104,8 +104,8 @@ namespace Trinity
 
         if (e.GetEventType() == EventType::WindowResize)
         {
-            auto& l_Resize = static_cast<WindowResizeEvent&>(e);
-            RenderCommand::Resize(l_Resize.GetWidth(), l_Resize.GetHeight());
+            auto& a_Resize = static_cast<WindowResizeEvent&>(e);
+            RenderCommand::Resize(a_Resize.GetWidth(), a_Resize.GetHeight());
         }
 
         for (auto it = m_LayerStack.end(); it != m_LayerStack.begin(); )

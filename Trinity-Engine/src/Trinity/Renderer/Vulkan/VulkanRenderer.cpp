@@ -341,9 +341,9 @@ namespace Trinity
 		TransitionImageResource(commandBuffer, m_Swapchain.GetImages()[m_CurrentImageIndex], colorSubresourceRange, colorAttachmentWriteState);
 
 		VkClearValue l_ClearColor{};
-		l_ClearColor.color.float32[0] = 0.0008f;
-		l_ClearColor.color.float32[1] = 0.0008f;
-		l_ClearColor.color.float32[2] = 0.0008f;
+		l_ClearColor.color.float32[0] = 0.005f;
+		l_ClearColor.color.float32[1] = 0.005f;
+		l_ClearColor.color.float32[2] = 0.005f;
 		l_ClearColor.color.float32[3] = 1.0f;
 
 		VkRenderingAttachmentInfo l_ColorAttachmentInfo{};
