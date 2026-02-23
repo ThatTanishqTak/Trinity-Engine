@@ -9,6 +9,9 @@
 #include "Trinity/Events/KeyEvent.h"
 #include "Trinity/Events/MouseEvent.h"
 
+#include "Trinity/ECS/Components.h"
+#include "Trinity/ECS/SceneRenderer.h"
+
 ForgeLayer::ForgeLayer() : Trinity::Layer("ForgeLayer")
 {
 
@@ -20,6 +23,23 @@ void ForgeLayer::OnInitialize()
 {
     auto& a_Window = Trinity::Application::Get().GetWindow();
     m_EditorCamera.SetViewportSize(static_cast<float>(a_Window.GetWidth()), static_cast<float>(a_Window.GetHeight()));
+
+    m_ActiveScene = std::make_unique<Trinity::Scene>();
+
+    // Demo entities (so you can *see* the ECS working)
+    {
+        auto l_CubeA = m_ActiveScene->CreateEntity("Cube A");
+        l_CubeA.AddComponent<Trinity::MeshRendererComponent>(Trinity::Geometry::PrimitiveType::Cube, glm::vec4(1, 0, 0, 1));
+        l_CubeA.GetComponent<Trinity::TransformComponent>().Translation = { 0.0f, 0.0f, 0.0f };
+
+        auto l_CubeB = m_ActiveScene->CreateEntity("Cube B");
+        l_CubeB.AddComponent<Trinity::MeshRendererComponent>(Trinity::Geometry::PrimitiveType::Cube, glm::vec4(0, 1, 0, 1));
+        l_CubeB.GetComponent<Trinity::TransformComponent>().Translation = { 2.0f, 0.0f, 0.0f };
+
+        auto l_Quad = m_ActiveScene->CreateEntity("Quad");
+        l_Quad.AddComponent<Trinity::MeshRendererComponent>(Trinity::Geometry::PrimitiveType::Quad, glm::vec4(0, 0.5f, 1, 1));
+        l_Quad.GetComponent<Trinity::TransformComponent>().Translation = { -2.0f, 0.0f, 0.0f };
+    }
 }
 
 void ForgeLayer::OnShutdown()
@@ -43,7 +63,12 @@ void ForgeLayer::OnUpdate(float deltaTime)
 
 void ForgeLayer::OnRender()
 {
-    Trinity::RenderCommand::DrawMesh(Trinity::Geometry::PrimitiveType::Cube, { 0.0f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f }, m_EditorCamera.GetViewMatrix(), m_EditorCamera.GetProjectionMatrix());
+    if (!m_ActiveScene)
+    {
+        return;
+    }
+
+    Trinity::SceneRenderer::Render(*m_ActiveScene, m_EditorCamera.GetViewMatrix(), m_EditorCamera.GetProjectionMatrix());
 }
 
 void ForgeLayer::OnImGuiRender()
