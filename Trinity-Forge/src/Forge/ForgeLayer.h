@@ -3,6 +3,7 @@
 #include "Trinity/Layer/Layer.h"
 #include "Trinity/Camera/EditorCamera.h"
 #include "Trinity/ECS/Scene.h"
+#include "Trinity/ECS/Entity.h"
 
 #include <imgui.h>
 #include <memory>
@@ -30,6 +31,7 @@ public:
 
 private:
     std::unique_ptr<Trinity::Scene> m_ActiveScene;
+    Trinity::Entity m_SelectedEntity;
 
     Trinity::EditorCamera m_EditorCamera;
     bool m_CanControlCamera = false;

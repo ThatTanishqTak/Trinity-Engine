@@ -9,8 +9,8 @@
 #include "Trinity/Events/KeyEvent.h"
 #include "Trinity/Events/MouseEvent.h"
 
-#include "Trinity/ECS/Components.h"
 #include "Trinity/ECS/SceneRenderer.h"
+#include "Trinity/ECS/Components.h"
 
 ForgeLayer::ForgeLayer() : Trinity::Layer("ForgeLayer")
 {
@@ -142,6 +142,110 @@ void ForgeLayer::OnImGuiRender()
 
     ImGui::End(); // Scene
     ImGui::End(); // Dockspace
+
+    if (m_ActiveScene)
+    {
+        ImGui::Begin("Scene Hierarchy");
+
+        // Create entity button
+        if (ImGui::Button("Create Entity"))
+        {
+            m_SelectedEntity = m_ActiveScene->CreateEntity("Empty Entity");
+        }
+
+        ImGui::Separator();
+
+        auto& registry = m_ActiveScene->GetRegistry();
+        entt::registry* regPtr = &registry;
+
+        auto view = registry.view<Trinity::TagComponent>();
+        for (auto e : view)
+        {
+            Trinity::Entity entity(e, regPtr);
+            auto& tag = view.get<Trinity::TagComponent>(e);
+
+            bool selected = (entity == m_SelectedEntity);
+
+            ImGuiTreeNodeFlags flags =
+                ImGuiTreeNodeFlags_OpenOnArrow |
+                ImGuiTreeNodeFlags_SpanAvailWidth |
+                (selected ? ImGuiTreeNodeFlags_Selected : 0);
+
+            bool opened = ImGui::TreeNodeEx((void*)(uint64_t)(uint32_t)e, flags, tag.Tag.c_str());
+
+            if (ImGui::IsItemClicked())
+                m_SelectedEntity = entity;
+
+            bool deleteEntity = false;
+            if (ImGui::BeginPopupContextItem())
+            {
+                if (ImGui::MenuItem("Delete"))
+                    deleteEntity = true;
+                ImGui::EndPopup();
+            }
+
+            if (opened)
+                ImGui::TreePop();
+
+            if (deleteEntity)
+            {
+                if (m_SelectedEntity == entity)
+                    m_SelectedEntity = Trinity::Entity();
+
+                m_ActiveScene->DestroyEntity(entity);
+                break; // registry modified, break out
+            }
+        }
+
+        // Click blank space to clear selection
+        if (ImGui::IsMouseDown(0) && ImGui::IsWindowHovered())
+            m_SelectedEntity = Trinity::Entity();
+
+        ImGui::End();
+
+        ImGui::Begin("Properties");
+
+        if (m_SelectedEntity)
+        {
+            // Tag
+            if (m_SelectedEntity.HasComponent<Trinity::TagComponent>())
+            {
+                auto& tag = m_SelectedEntity.GetComponent<Trinity::TagComponent>();
+
+                char buffer[256]{};
+                std::snprintf(buffer, sizeof(buffer), "%s", tag.Tag.c_str());
+
+                if (ImGui::InputText("Tag", buffer, sizeof(buffer)))
+                    tag.Tag = buffer;
+            }
+
+            // Transform
+            if (m_SelectedEntity.HasComponent<Trinity::TransformComponent>())
+            {
+                auto& tc = m_SelectedEntity.GetComponent<Trinity::TransformComponent>();
+
+                ImGui::DragFloat3("Translation", &tc.Translation.x, 0.1f);
+                ImGui::DragFloat3("Rotation", &tc.Rotation.x, 0.01f);
+                ImGui::DragFloat3("Scale", &tc.Scale.x, 0.1f);
+            }
+
+            // MeshRenderer
+            if (m_SelectedEntity.HasComponent<Trinity::MeshRendererComponent>())
+            {
+                auto& mr = m_SelectedEntity.GetComponent<Trinity::MeshRendererComponent>();
+
+                ImGui::ColorEdit4("Color", &mr.Color.x);
+
+                const char* items[] = { "Cube", "Quad" };
+                int current = (mr.Primitive == Trinity::Geometry::PrimitiveType::Cube) ? 0 : 1;
+
+                if (ImGui::Combo("Primitive", &current, items, IM_ARRAYSIZE(items)))
+                    mr.Primitive = (current == 0) ? Trinity::Geometry::PrimitiveType::Cube : Trinity::Geometry::PrimitiveType::Quad;
+            }
+        }
+
+        ImGui::End();
+    }
 }
 
 void ForgeLayer::OnEvent(Trinity::Event& e)
