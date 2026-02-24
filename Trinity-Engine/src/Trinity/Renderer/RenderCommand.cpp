@@ -14,6 +14,7 @@ namespace Trinity
 		if (s_Renderer != nullptr)
 		{
 			TR_CORE_WARN("RenderCommand::Initialize called while renderer already exists. Reinitializing.");
+
 			s_Renderer->Shutdown();
 			s_Renderer.reset();
 		}

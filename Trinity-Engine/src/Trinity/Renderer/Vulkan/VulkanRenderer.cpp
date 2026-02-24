@@ -404,10 +404,9 @@ namespace Trinity
 
 		const VkFence l_CurrentFrameFence = m_Sync.GetInFlightFence(m_CurrentFrameIndex);
 		m_Sync.SetImageInFlightFence(m_CurrentImageIndex, l_CurrentFrameFence);
-
 		m_Sync.ResetFrameFence(m_CurrentFrameIndex);
-		m_Command.Reset(m_CurrentFrameIndex);
 
+		m_Command.Reset(m_CurrentFrameIndex);
 		m_Command.Begin(m_CurrentFrameIndex);
 
 		const VkCommandBuffer l_CommandBuffer = m_Command.GetCommandBuffer(m_CurrentFrameIndex);

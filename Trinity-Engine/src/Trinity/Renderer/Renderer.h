@@ -54,7 +54,10 @@ namespace Trinity
 		virtual void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& viewProjection) = 0;
 
 	protected:
-		explicit Renderer(RendererAPI api) : m_CurrentAPI(api) {}
+		explicit Renderer(RendererAPI api) : m_CurrentAPI(api)
+		{
+
+		}
 
 	protected:
 		RendererAPI m_CurrentAPI = RendererAPI::NONE;

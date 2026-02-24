@@ -199,7 +199,9 @@ void ForgeLayer::OnImGuiRender()
 
         // Click blank space to clear selection
         if (ImGui::IsMouseDown(0) && ImGui::IsWindowHovered())
+        {
             m_SelectedEntity = Trinity::Entity();
+        }
 
         ImGui::End();
 
