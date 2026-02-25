@@ -14,6 +14,9 @@ namespace Trinity
 
 int main(int argc, char* argv[])
 {
+    (void)argc;
+    (void)argv;
+
     Trinity::Utilities::Log::Initialize();
     Trinity::Utilities::Time::Initialize();
 

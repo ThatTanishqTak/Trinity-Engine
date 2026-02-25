@@ -47,12 +47,6 @@ namespace Trinity
         std::unique_ptr<Window> m_Window;
         std::unique_ptr<ImGuiLayer> m_ImGuiLayer;
 
-        uint32_t m_PendingResizeWidth = 0;
-        uint32_t m_PendingResizeHeight = 0;
-        uint32_t m_LastAppliedResizeWidth = 0;
-        uint32_t m_LastAppliedResizeHeight = 0;
-        bool m_HasPendingResize = false;
-
         static Application* s_Instance;
     };
 }

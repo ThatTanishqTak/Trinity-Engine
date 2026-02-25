@@ -339,6 +339,27 @@ namespace Trinity
         ClipCursor(&l_ClipRect);
     }
 
+    void WindowsWindow::PushResize()
+    {
+        if (!m_WindowHandle)
+        {
+            return;
+        }
+
+        RECT l_Rect{};
+        if (!GetClientRect(m_WindowHandle, &l_Rect))
+        {
+            return;
+        }
+
+        const uint32_t l_Width = static_cast<uint32_t>(l_Rect.right - l_Rect.left);
+        const uint32_t l_Height = static_cast<uint32_t>(l_Rect.top - l_Rect.bottom);
+
+        m_Data.Minimized = l_Width == 0 || l_Height == 0;
+
+        m_EventQueue.PushEvent(std::make_unique<WindowResizeEvent>(l_Width, l_Height));
+    }
+
     LRESULT CALLBACK WindowsWindow::WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     {
         WindowsWindow* l_Window = nullptr;
@@ -391,13 +412,40 @@ namespace Trinity
                 return 0;
             }
 
+            case WM_ENTERSIZEMOVE:
+            {
+                m_IsInResize = true;
+
+                return 0;
+            }
+
+            case WM_EXITSIZEMOVE:
+            {
+                m_IsInResize = false;
+
+                ApplyCursorLockClip();
+                PushResize();
+
+                return 0;
+            }
+
             case WM_SIZE:
             {
                 const uint32_t l_Width = static_cast<uint32_t>(LOWORD(lParam));
                 const uint32_t l_Height = static_cast<uint32_t>(HIWORD(lParam));
+
                 m_Data.Minimized = (wParam == SIZE_MINIMIZED) || (l_Width == 0 || l_Height == 0);
 
                 ApplyCursorLockClip();
+
+                if (m_IsInResize)
+                {
+                    m_PendingWidth = l_Width;
+                    m_PendingHeight = l_Height;
+
+                    return 0;
+                }
+
                 m_EventQueue.PushEvent(std::make_unique<WindowResizeEvent>(l_Width, l_Height));
 
                 return 0;

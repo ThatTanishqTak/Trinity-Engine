@@ -69,6 +69,8 @@ namespace Trinity
         void DestroyNativeWindow();
         void ApplyCursorLockClip();
 
+        void PushResize();
+
     private:
         HINSTANCE m_InstanceHandle = nullptr;
         HWND m_WindowHandle = nullptr;
@@ -78,9 +80,14 @@ namespace Trinity
 
         WindowData m_Data{};
         EventQueue m_EventQueue{};
+
         bool m_Initialized = false;
         bool m_ShouldClose = false;
         bool m_CursorVisible = true;
         bool m_CursorLocked = false;
+
+        bool m_IsInResize;
+        uint32_t m_PendingWidth;
+        uint32_t m_PendingHeight;
     };
 }

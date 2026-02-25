@@ -199,6 +199,11 @@ namespace Trinity
 
 	void VulkanRenderer::RecreateSwapchain(uint32_t width, uint32_t height)
 	{
+		if (width == 0 || height == 0)
+		{
+			return;
+		}
+
 		if (m_Device.GetDevice() == VK_NULL_HANDLE)
 		{
 			return;
