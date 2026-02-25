@@ -131,5 +131,9 @@ namespace Trinity
 		void* m_SceneViewportHandle = nullptr;
 		bool m_ScenePassRecording = false;
 		bool m_PresentPassRecording = false;
+
+		bool m_PendingViewportRecreate = false;
+		uint32_t m_PendingWidth = 0;
+		uint32_t m_PendingHeight = 0;
 	};
 }

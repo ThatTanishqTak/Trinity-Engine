@@ -180,16 +180,9 @@ namespace Trinity
 			return;
 		}
 
-		m_SceneViewportWidth = width;
-		m_SceneViewportHeight = height;
-
-		if (m_Device.GetDevice() == VK_NULL_HANDLE)
-		{
-			return;
-		}
-
-		vkDeviceWaitIdle(m_Device.GetDevice());
-		RecreateSceneViewportTarget();
+		m_PendingWidth = width;
+		m_PendingHeight = height;
+		m_PendingViewportRecreate = true;
 	}
 
 	void* VulkanRenderer::GetSceneViewportHandle() const
@@ -378,6 +371,17 @@ namespace Trinity
 			m_FrameBegun = false;
 
 			return;
+		}
+
+		if (m_PendingViewportRecreate && m_Device.GetDevice() != VK_NULL_HANDLE)
+		{
+			m_SceneViewportWidth = m_PendingWidth;
+			m_SceneViewportHeight = m_PendingHeight;
+
+			vkDeviceWaitIdle(m_Device.GetDevice());
+			RecreateSceneViewportTarget();
+
+			m_PendingViewportRecreate = false;
 		}
 
 		m_FrameBegun = false;

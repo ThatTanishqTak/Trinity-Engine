@@ -92,8 +92,8 @@ namespace Trinity
         l_InstanceCreateInfo.ppEnabledLayerNames = m_RequiredLayers.data();
 
 #ifdef _DEBUG
-        const bool l_DebugUtilsEnabled = std::find(m_RequiredExtensions.begin(), m_RequiredExtensions.end(), VK_EXT_DEBUG_UTILS_EXTENSION_NAME) != m_RequiredExtensions.end();
-        const bool l_ValidationFeaturesEnabled = std::find(m_RequiredExtensions.begin(), m_RequiredExtensions.end(), VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME) != m_RequiredExtensions.end();
+        const bool l_DebugUtilsEnabled = Utilities::VulkanUtilities::HasExtension(m_RequiredExtensions, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+        const bool l_ValidationFeaturesEnabled = Utilities::VulkanUtilities::HasExtension(m_RequiredExtensions, VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME);
 
         const void* l_InstanceCreatePNext = nullptr;
         VkDebugUtilsMessengerCreateInfoEXT l_DebugCreateInfo{};
@@ -253,7 +253,7 @@ namespace Trinity
 #ifdef _DEBUG
         TR_CORE_TRACE("Setting Up Debug Messenger");
 
-        const bool l_DebugUtilsEnabled = std::find(m_RequiredExtensions.begin(), m_RequiredExtensions.end(), VK_EXT_DEBUG_UTILS_EXTENSION_NAME) != m_RequiredExtensions.end();
+        const bool l_DebugUtilsEnabled = Utilities::VulkanUtilities::HasExtension(m_RequiredExtensions, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
         if (!l_DebugUtilsEnabled)
         {
             TR_CORE_WARN("Skipping debug messenger setup (VK_EXT_debug_utils not enabled)");

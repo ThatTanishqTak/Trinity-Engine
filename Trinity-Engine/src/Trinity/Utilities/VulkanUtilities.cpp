@@ -2,6 +2,8 @@
 
 #include "Trinity/Utilities/Log.h"
 
+#include <string>
+
 namespace Trinity
 {
     namespace Utilities
@@ -10,7 +12,7 @@ namespace Trinity
         {
             if (result != VK_SUCCESS)
             {
-                TR_CORE_CRITICAL("Vulkan failure: {} (VkResult = {})", what, (int)result);
+                TR_CORE_CRITICAL("Vulkan failure: {} (VkResult = {})", what, std::to_string(result));
 
                 std::abort();
             }
@@ -38,6 +40,11 @@ namespace Trinity
             }
 
             return VK_FALSE;
+        }
+
+        bool VulkanUtilities::HasExtension(const std::vector<const char*>& list, const char* name)
+        {
+            return std::any_of(list.begin(), list.end(), [&](const char* s) {return s && name && std::strcmp(s, name) == 0; });
         }
     }
 }
