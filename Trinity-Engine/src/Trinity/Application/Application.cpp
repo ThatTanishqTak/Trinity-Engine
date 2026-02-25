@@ -48,6 +48,9 @@ namespace Trinity
         m_Window = Window::Create();
         m_Window->Initialize(l_WindowProperties);
 
+        m_LastAppliedResizeWidth = l_WindowProperties.Width;
+        m_LastAppliedResizeHeight = l_WindowProperties.Height;
+
         RenderCommand::Initialize(*m_Window, RendererAPI::VULKAN);
 
         m_ImGuiLayer = std::make_unique<ImGuiLayer>();
@@ -105,7 +108,9 @@ namespace Trinity
         if (e.GetEventType() == EventType::WindowResize)
         {
             auto& a_Resize = static_cast<WindowResizeEvent&>(e);
-            RenderCommand::Resize(a_Resize.GetWidth(), a_Resize.GetHeight());
+            m_PendingResizeWidth = a_Resize.GetWidth();
+            m_PendingResizeHeight = a_Resize.GetHeight();
+            m_HasPendingResize = true;
         }
 
         for (auto it = m_LayerStack.end(); it != m_LayerStack.begin(); )
@@ -158,6 +163,21 @@ namespace Trinity
                 m_Window->OnUpdate();
 
                 continue;
+            }
+
+            if (m_HasPendingResize)
+            {
+                const bool l_HasValidSize = m_PendingResizeWidth != 0 && m_PendingResizeHeight != 0;
+                const bool l_HasNewSize = m_PendingResizeWidth != m_LastAppliedResizeWidth || m_PendingResizeHeight != m_LastAppliedResizeHeight;
+
+                if (l_HasValidSize && l_HasNewSize)
+                {
+                    RenderCommand::Resize(m_PendingResizeWidth, m_PendingResizeHeight);
+                    m_LastAppliedResizeWidth = m_PendingResizeWidth;
+                    m_LastAppliedResizeHeight = m_PendingResizeHeight;
+                }
+
+                m_HasPendingResize = false;
             }
 
             for (const std::unique_ptr<Layer>& it_Layer : m_LayerStack)
