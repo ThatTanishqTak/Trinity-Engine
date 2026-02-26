@@ -100,7 +100,10 @@ namespace Trinity
     void Application::OnEvent(Event& e)
     {
         Input::OnEvent(e);
-        m_ImGuiLayer->OnEvent(e);
+        if (!e.Handled)
+        {
+            m_ImGuiLayer->OnEvent(e);
+        }
 
         if (e.GetEventType() == EventType::WindowResize)
         {

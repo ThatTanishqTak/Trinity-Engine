@@ -18,14 +18,17 @@ namespace Trinity
 
 	uint64_t VulkanResourceStateTracker::EncodeImageHandle(VkImage image)
 	{
-		if constexpr (std::is_pointer_v<VkImage>)
+		return[]<typename TImage>(TImage l_Image)
 		{
-			return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(image));
-		}
-		else
-		{
-			return reinterpret_cast<uint64_t>(image);
-		}
+			if constexpr (std::is_pointer_v<TImage>)
+			{
+				return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(l_Image));
+			}
+			else
+			{
+				return static_cast<uint64_t>(l_Image);
+			}
+		}(image);
 	}
 
 	VulkanResourceStateTracker::SubresourceBucket VulkanResourceStateTracker::BuildSubresourceBucket(const VkImageSubresourceRange& subresourceRange)

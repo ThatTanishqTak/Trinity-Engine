@@ -17,41 +17,50 @@
 
 namespace Trinity
 {
-	void VulkanPipeline::Initialize(const VulkanContext& context, const VulkanDevice& device, VkFormat colorFormat,
+	void VulkanPipeline::Initialize(const VulkanContext& context, const VulkanDevice& device, VkFormat colorFormat, VkFormat depthFormat,
 		const std::string& vertexShaderSpvPath, const std::string& fragmentShaderSpvPath)
 	{
 		TR_CORE_TRACE("Initializing Vulkan Pipeline");
 
-		if (m_Device != VK_NULL_HANDLE)
+		// If this object is already holding a pipeline/device, tear it down FIRST (using the old device).
+		if (m_Device != VK_NULL_HANDLE || m_Pipeline != VK_NULL_HANDLE || m_PipelineLayout != VK_NULL_HANDLE)
 		{
 			TR_CORE_WARN("VulkanPipeline::Initialize called while already initialized. Reinitializing.");
 
 			Shutdown();
 		}
 
-		m_Device = device.GetDevice();
+		const VkDevice l_Device = device.GetDevice();
+		if (l_Device == VK_NULL_HANDLE)
+		{
+			TR_CORE_CRITICAL("VulkanPipeline::Initialize called with invalid VkDevice");
+			std::abort();
+		}
+
+		if (colorFormat == VK_FORMAT_UNDEFINED)
+		{
+			TR_CORE_CRITICAL("VulkanPipeline::Initialize called with VK_FORMAT_UNDEFINED color format");
+			std::abort();
+		}
+
+		if (depthFormat == VK_FORMAT_UNDEFINED)
+		{
+			TR_CORE_CRITICAL("VulkanPipeline::Initialize called with VK_FORMAT_UNDEFINED depth format");
+			std::abort();
+		}
+
+		// Now commit new state
+		m_Device = l_Device;
 		m_Allocator = context.GetAllocator();
 		m_ColorFormat = colorFormat;
+		m_DepthFormat = depthFormat;
 		m_VertexShaderPath = vertexShaderSpvPath;
 		m_FragmentShaderPath = fragmentShaderSpvPath;
 
-		if (m_Device == VK_NULL_HANDLE)
-		{
-			TR_CORE_CRITICAL("VulkanPipeline::Initialize called with invalid VkDevice");
-
-			std::abort();
-		}
-
-		if (m_ColorFormat == VK_FORMAT_UNDEFINED)
-		{
-			TR_CORE_CRITICAL("VulkanPipeline::Initialize called with VK_FORMAT_UNDEFINED");
-
-			std::abort();
-		}
-
 		CreatePipeline();
 
-		TR_CORE_TRACE("Vulkan Pipeline Initialized (ColorFormat: {})", static_cast<int>(m_ColorFormat));
+		TR_CORE_TRACE("Vulkan Pipeline Initialized (ColorFormat: {}, DepthFormat: {})",
+			static_cast<int>(m_ColorFormat), static_cast<int>(m_DepthFormat));
 	}
 
 	void VulkanPipeline::Shutdown()
@@ -60,6 +69,7 @@ namespace Trinity
 
 		m_VertexShaderPath.clear();
 		m_FragmentShaderPath.clear();
+		m_DepthFormat = VK_FORMAT_UNDEFINED;
 		m_ColorFormat = VK_FORMAT_UNDEFINED;
 		m_Device = VK_NULL_HANDLE;
 		m_Allocator = nullptr;
@@ -174,8 +184,11 @@ namespace Trinity
 
 		VkPipelineDepthStencilStateCreateInfo l_DepthStencilStateCreateInfo{};
 		l_DepthStencilStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-		l_DepthStencilStateCreateInfo.depthTestEnable = VK_FALSE;
-		l_DepthStencilStateCreateInfo.depthWriteEnable = VK_FALSE;
+		l_DepthStencilStateCreateInfo.depthTestEnable = VK_TRUE;
+		l_DepthStencilStateCreateInfo.depthWriteEnable = VK_TRUE;
+		l_DepthStencilStateCreateInfo.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+		l_DepthStencilStateCreateInfo.depthBoundsTestEnable = VK_FALSE;
+		l_DepthStencilStateCreateInfo.stencilTestEnable = VK_FALSE;
 
 		VkPipelineColorBlendAttachmentState l_ColorBlendAttachmentState{};
 		l_ColorBlendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
@@ -209,7 +222,7 @@ namespace Trinity
 		l_RenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
 		l_RenderingCreateInfo.colorAttachmentCount = 1;
 		l_RenderingCreateInfo.pColorAttachmentFormats = &m_ColorFormat;
-		l_RenderingCreateInfo.depthAttachmentFormat = VK_FORMAT_UNDEFINED;
+		l_RenderingCreateInfo.depthAttachmentFormat = m_DepthFormat;
 		l_RenderingCreateInfo.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
 
 		VkGraphicsPipelineCreateInfo l_GraphicsPipelineCreateInfo{};

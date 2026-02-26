@@ -5,8 +5,8 @@ if (MSVC)
     add_compile_options(/MP)
 endif()
 
-if (_WIN32)
-    target_compile_definitions(VK_USE_PLATFORM_WIN32_KHR)
+if (WIN32)
+    set(TRINITY_USE_VULKAN_WIN32_PLATFORM ON)
 endif()
 
 set(CMAKE_CXX_STANDARD 23)

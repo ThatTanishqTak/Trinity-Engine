@@ -1,3 +1,5 @@
+#define NOMINMAX
+
 #include "Trinity/Renderer/Vulkan/VulkanSwapchain.h"
 
 #include "Trinity/Renderer/Vulkan/VulkanContext.h"

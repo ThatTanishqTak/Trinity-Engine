@@ -61,6 +61,10 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC
     $<$<CONFIG:Release>:TRINITY_RELEASE>
 )
 
+if (WIN32 AND TRINITY_USE_VULKAN_WIN32_PLATFORM)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC VK_USE_PLATFORM_WIN32_KHR)
+endif()
+
 option(TRINITY_EMBED_SHADERS "Embed SPIR-V shaders into binary instead of runtime files" OFF)
 
 set(SHADER_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Assets/Shaders)

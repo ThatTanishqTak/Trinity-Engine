@@ -32,6 +32,30 @@ namespace Trinity
 			TR_CORE_CRITICAL("Failed to find suitable Vulkan memory type for scene viewport image");
 			std::abort();
 		}
+
+		VkFormat FindDepthFormat(VkPhysicalDevice physicalDevice)
+		{
+			const VkFormat l_Candidates[] =
+			{
+				VK_FORMAT_D32_SFLOAT,
+				VK_FORMAT_D32_SFLOAT_S8_UINT,
+				VK_FORMAT_D24_UNORM_S8_UINT
+			};
+
+			for (VkFormat it_Format : l_Candidates)
+			{
+				VkFormatProperties l_Props{};
+				vkGetPhysicalDeviceFormatProperties(physicalDevice, it_Format, &l_Props);
+
+				if ((l_Props.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) != 0)
+				{
+					return it_Format;
+				}
+			}
+
+			TR_CORE_CRITICAL("Failed to find a supported depth format");
+			std::abort();
+		}
 	}
 
 	VulkanImageTransitionState VulkanRenderer::BuildTransitionState(ImageTransitionPreset preset)
@@ -73,6 +97,18 @@ namespace Trinity
 	{
 		VkImageSubresourceRange l_SubresourceRange{};
 		l_SubresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		l_SubresourceRange.baseMipLevel = 0;
+		l_SubresourceRange.levelCount = 1;
+		l_SubresourceRange.baseArrayLayer = 0;
+		l_SubresourceRange.layerCount = 1;
+
+		return l_SubresourceRange;
+	}
+
+	VkImageSubresourceRange VulkanRenderer::BuildDepthSubresourceRange()
+	{
+		VkImageSubresourceRange l_SubresourceRange{};
+		l_SubresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 		l_SubresourceRange.baseMipLevel = 0;
 		l_SubresourceRange.levelCount = 1;
 		l_SubresourceRange.baseArrayLayer = 0;
@@ -132,10 +168,11 @@ namespace Trinity
 
 		m_Context.Initialize(l_NativeWindowHandle);
 		m_Device.Initialize(m_Context);
+		m_SceneViewportDepthFormat = FindDepthFormat(m_Device.GetPhysicalDevice());
 		m_Swapchain.Initialize(m_Context, m_Device, m_Window->GetWidth(), m_Window->GetHeight(), m_Configuration.m_ColorOutputPolicy);
 		m_Sync.Initialize(m_Context, m_Device, m_FramesInFlight, m_Swapchain.GetImageCount());
 		m_Command.Initialize(m_Context, m_Device, m_FramesInFlight);
-		m_Pipeline.Initialize(m_Context, m_Device, m_Swapchain.GetImageFormat(), m_VertexShaderPath, m_FragmentShaderPath);
+		m_Pipeline.Initialize(m_Context, m_Device, m_Swapchain.GetImageFormat(), m_SceneViewportDepthFormat, m_VertexShaderPath, m_FragmentShaderPath);
 		m_ResourceStateTracker.Reset();
 		m_ImGuiLayer = nullptr;
 		m_ImGuiVulkanInitialized = false;
@@ -283,6 +320,49 @@ namespace Trinity
 		Utilities::VulkanUtilities::VKCheck(vkCreateSampler(m_Device.GetDevice(), &l_SamplerCreateInfo, m_Context.GetAllocator(), &m_SceneViewportSampler), "Failed vkCreateSampler");
 
 		m_SceneViewportHandle = ImGui_ImplVulkan_AddTexture(m_SceneViewportSampler, m_SceneViewportImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+		if (m_SceneViewportDepthFormat == VK_FORMAT_UNDEFINED)
+		{
+			TR_CORE_CRITICAL("Scene viewport depth format is undefined");
+			std::abort();
+		}
+
+		VkImageCreateInfo l_DepthImageCreateInfo{};
+		l_DepthImageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+		l_DepthImageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+		l_DepthImageCreateInfo.extent.width = m_SceneViewportWidth;
+		l_DepthImageCreateInfo.extent.height = m_SceneViewportHeight;
+		l_DepthImageCreateInfo.extent.depth = 1;
+		l_DepthImageCreateInfo.mipLevels = 1;
+		l_DepthImageCreateInfo.arrayLayers = 1;
+		l_DepthImageCreateInfo.format = m_SceneViewportDepthFormat;
+		l_DepthImageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+		l_DepthImageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		l_DepthImageCreateInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+		l_DepthImageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+		l_DepthImageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		Utilities::VulkanUtilities::VKCheck(vkCreateImage(m_Device.GetDevice(), &l_DepthImageCreateInfo, m_Context.GetAllocator(), &m_SceneViewportDepthImage), "Failed vkCreateImage");
+
+		VkMemoryRequirements l_DepthMemoryRequirements{};
+		vkGetImageMemoryRequirements(m_Device.GetDevice(), m_SceneViewportDepthImage, &l_DepthMemoryRequirements);
+
+		VkMemoryAllocateInfo l_DepthAllocateInfo{};
+		l_DepthAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		l_DepthAllocateInfo.allocationSize = l_DepthMemoryRequirements.size;
+		l_DepthAllocateInfo.memoryTypeIndex = FindMemoryType(m_Device.GetPhysicalDevice(), l_DepthMemoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+		Utilities::VulkanUtilities::VKCheck(vkAllocateMemory(m_Device.GetDevice(), &l_DepthAllocateInfo, m_Context.GetAllocator(), &m_SceneViewportDepthImageMemory), "Failed vkAllocateMemory");
+		Utilities::VulkanUtilities::VKCheck(vkBindImageMemory(m_Device.GetDevice(), m_SceneViewportDepthImage, m_SceneViewportDepthImageMemory, 0), "Failed vkBindImageMemory");
+
+		VkImageViewCreateInfo l_DepthViewCreateInfo{};
+		l_DepthViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		l_DepthViewCreateInfo.image = m_SceneViewportDepthImage;
+		l_DepthViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		l_DepthViewCreateInfo.format = m_SceneViewportDepthFormat;
+		l_DepthViewCreateInfo.subresourceRange = BuildDepthSubresourceRange();
+
+		Utilities::VulkanUtilities::VKCheck(vkCreateImageView(m_Device.GetDevice(), &l_DepthViewCreateInfo, m_Context.GetAllocator(), &m_SceneViewportDepthImageView), "Failed vkCreateImageView");
 	}
 
 	void VulkanRenderer::DestroySceneViewportTarget()
@@ -313,6 +393,25 @@ namespace Trinity
 			vkDestroyImage(m_Device.GetDevice(), m_SceneViewportImage, m_Context.GetAllocator());
 			m_ResourceStateTracker.ForgetImage(m_SceneViewportImage);
 			m_SceneViewportImage = VK_NULL_HANDLE;
+		}
+
+		if (m_SceneViewportDepthImageView != VK_NULL_HANDLE)
+		{
+			vkDestroyImageView(m_Device.GetDevice(), m_SceneViewportDepthImageView, m_Context.GetAllocator());
+			m_SceneViewportDepthImageView = VK_NULL_HANDLE;
+		}
+
+		if (m_SceneViewportDepthImage != VK_NULL_HANDLE)
+		{
+			vkDestroyImage(m_Device.GetDevice(), m_SceneViewportDepthImage, m_Context.GetAllocator());
+			m_ResourceStateTracker.ForgetImage(m_SceneViewportDepthImage);
+			m_SceneViewportDepthImage = VK_NULL_HANDLE;
+		}
+
+		if (m_SceneViewportDepthImageMemory != VK_NULL_HANDLE)
+		{
+			vkFreeMemory(m_Device.GetDevice(), m_SceneViewportDepthImageMemory, m_Context.GetAllocator());
+			m_SceneViewportDepthImageMemory = VK_NULL_HANDLE;
 		}
 
 		if (m_SceneViewportImageMemory != VK_NULL_HANDLE)
@@ -424,7 +523,7 @@ namespace Trinity
 		const VkImageSubresourceRange l_ColorSubresourceRange = BuildColorSubresourceRange();
 
 		const VkExtent2D l_SceneExtent{ m_SceneViewportWidth, m_SceneViewportHeight };
-		const bool l_CanRecordScenePass = m_SceneViewportImage != VK_NULL_HANDLE && l_SceneExtent.width > 0 && l_SceneExtent.height > 0;
+		const bool l_CanRecordScenePass =m_SceneViewportImage != VK_NULL_HANDLE && m_SceneViewportDepthImage != VK_NULL_HANDLE && l_SceneExtent.width > 0 && l_SceneExtent.height > 0;
 
 		m_ScenePassRecording = false;
 		m_PresentPassRecording = false;
@@ -447,6 +546,18 @@ namespace Trinity
 			l_ColorAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 			l_ColorAttachmentInfo.clearValue = l_ClearColor;
 
+			VkClearValue l_ClearDepth{};
+			l_ClearDepth.depthStencil.depth = 1.0f;
+			l_ClearDepth.depthStencil.stencil = 0;
+
+			VkRenderingAttachmentInfo l_DepthAttachmentInfo{};
+			l_DepthAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+			l_DepthAttachmentInfo.imageView = m_SceneViewportDepthImageView;
+			l_DepthAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+			l_DepthAttachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+			l_DepthAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+			l_DepthAttachmentInfo.clearValue = l_ClearDepth;
+
 			VkRenderingInfo l_RenderingInfo{};
 			l_RenderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
 			l_RenderingInfo.renderArea.offset = { 0, 0 };
@@ -454,6 +565,10 @@ namespace Trinity
 			l_RenderingInfo.layerCount = 1;
 			l_RenderingInfo.colorAttachmentCount = 1;
 			l_RenderingInfo.pColorAttachments = &l_ColorAttachmentInfo;
+			l_RenderingInfo.pDepthAttachment = &l_DepthAttachmentInfo;
+
+			const VkImageSubresourceRange l_DepthSubresourceRange = BuildDepthSubresourceRange();
+			TransitionImageResource(l_CommandBuffer, m_SceneViewportDepthImage, l_DepthSubresourceRange, BuildTransitionState(ImageTransitionPreset::DepthAttachmentWrite));
 
 			vkCmdBeginRendering(l_CommandBuffer, &l_RenderingInfo);
 

@@ -12,7 +12,8 @@ namespace Trinity
 	class VulkanPipeline
 	{
 	public:
-		void Initialize(const VulkanContext& context, const VulkanDevice& device, VkFormat colorFormat, const std::string& vertexShaderSpvPath, const std::string& fragmentShaderSpvPath);
+		void Initialize(const VulkanContext& context, const VulkanDevice& device, VkFormat colorFormat, VkFormat depthFormat,
+			const std::string& vertexShaderSpvPath, const std::string& fragmentShaderSpvPath);
 		void Shutdown();
 
 		void Recreate(VkFormat colorFormat);
@@ -33,6 +34,7 @@ namespace Trinity
 		VkDevice m_Device = VK_NULL_HANDLE;
 
 		VkFormat m_ColorFormat = VK_FORMAT_UNDEFINED;
+		VkFormat m_DepthFormat = VK_FORMAT_UNDEFINED;
 
 		std::string m_VertexShaderPath{};
 		std::string m_FragmentShaderPath{};

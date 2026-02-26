@@ -100,7 +100,7 @@ void ForgeLayer::OnImGuiRender()
 
     const bool l_IsSceneViewportFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
     const bool l_IsSceneViewportHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
-    m_CanControlCamera = l_IsSceneViewportFocused && l_IsSceneViewportHovered;
+    m_CanControlCamera = /*l_IsSceneViewportFocused &&*/ l_IsSceneViewportHovered;
 
     auto& a_Window = Trinity::Application::Get().GetWindow();
     if (m_CanControlCamera && !m_IsLooking && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
@@ -155,44 +155,49 @@ void ForgeLayer::OnImGuiRender()
 
         ImGui::Separator();
 
-        auto& registry = m_ActiveScene->GetRegistry();
-        entt::registry* regPtr = &registry;
+        auto& a_Registry = m_ActiveScene->GetRegistry();
+        entt::registry* l_RegistryPointer = &a_Registry;
 
-        auto view = registry.view<Trinity::TagComponent>();
-        for (auto e : view)
+        auto a_View = a_Registry.view<Trinity::TagComponent>();
+        for (auto it_Entity : a_View)
         {
-            Trinity::Entity entity(e, regPtr);
-            auto& tag = view.get<Trinity::TagComponent>(e);
+            Trinity::Entity l_Entity(it_Entity, l_RegistryPointer);
+            auto& a_TagComponent = a_View.get<Trinity::TagComponent>(it_Entity);
 
-            bool selected = (entity == m_SelectedEntity);
+            bool l_Selected = (l_Entity == m_SelectedEntity);
 
-            ImGuiTreeNodeFlags flags =
-                ImGuiTreeNodeFlags_OpenOnArrow |
-                ImGuiTreeNodeFlags_SpanAvailWidth |
-                (selected ? ImGuiTreeNodeFlags_Selected : 0);
+            ImGuiTreeNodeFlags l_Flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth | (l_Selected ? ImGuiTreeNodeFlags_Selected : 0);
 
-            bool opened = ImGui::TreeNodeEx((void*)(uint64_t)(uint32_t)e, flags, tag.Tag.c_str());
+            bool l_Opened = ImGui::TreeNodeEx((void*)(uint64_t)(uint32_t)it_Entity, l_Flags, a_TagComponent.Tag.c_str());
 
             if (ImGui::IsItemClicked())
-                m_SelectedEntity = entity;
+            {
+                m_SelectedEntity = l_Entity;
+            }
 
-            bool deleteEntity = false;
+            bool l_DeleteEntity = false;
             if (ImGui::BeginPopupContextItem())
             {
                 if (ImGui::MenuItem("Delete"))
-                    deleteEntity = true;
+                {
+                    l_DeleteEntity = true;
+                }
                 ImGui::EndPopup();
             }
 
-            if (opened)
-                ImGui::TreePop();
-
-            if (deleteEntity)
+            if (l_Opened)
             {
-                if (m_SelectedEntity == entity)
-                    m_SelectedEntity = Trinity::Entity();
+                ImGui::TreePop();
+            }
 
-                m_ActiveScene->DestroyEntity(entity);
+            if (l_DeleteEntity)
+            {
+                if (m_SelectedEntity == l_Entity)
+                {
+                    m_SelectedEntity = Trinity::Entity();
+                }
+
+                m_ActiveScene->DestroyEntity(l_Entity);
                 break; // registry modified, break out
             }
         }
@@ -212,37 +217,47 @@ void ForgeLayer::OnImGuiRender()
             // Tag
             if (m_SelectedEntity.HasComponent<Trinity::TagComponent>())
             {
-                auto& tag = m_SelectedEntity.GetComponent<Trinity::TagComponent>();
+                auto& a_TagComponent = m_SelectedEntity.GetComponent<Trinity::TagComponent>();
 
-                char buffer[256]{};
-                std::snprintf(buffer, sizeof(buffer), "%s", tag.Tag.c_str());
+                char l_Buffer[256]{};
+                std::snprintf(l_Buffer, sizeof(l_Buffer), "%s", a_TagComponent.Tag.c_str());
 
-                if (ImGui::InputText("Tag", buffer, sizeof(buffer)))
-                    tag.Tag = buffer;
+                if (ImGui::InputText("Tag", l_Buffer, sizeof(l_Buffer)))
+                {
+                    a_TagComponent.Tag = l_Buffer;
+                }
             }
 
             // Transform
             if (m_SelectedEntity.HasComponent<Trinity::TransformComponent>())
             {
-                auto& tc = m_SelectedEntity.GetComponent<Trinity::TransformComponent>();
+                auto& a_TransformComponent = m_SelectedEntity.GetComponent<Trinity::TransformComponent>();
 
-                ImGui::DragFloat3("Translation", &tc.Translation.x, 0.1f);
-                ImGui::DragFloat3("Rotation", &tc.Rotation.x, 0.01f);
-                ImGui::DragFloat3("Scale", &tc.Scale.x, 0.1f);
+                ImGui::DragFloat3("Translation", &a_TransformComponent.Translation.x, 0.1f);
+                ImGui::DragFloat3("Rotation", &a_TransformComponent.Rotation.x, 0.01f);
+                ImGui::DragFloat3("Scale", &a_TransformComponent.Scale.x, 0.1f);
             }
 
             // MeshRenderer
             if (m_SelectedEntity.HasComponent<Trinity::MeshRendererComponent>())
             {
-                auto& mr = m_SelectedEntity.GetComponent<Trinity::MeshRendererComponent>();
+                auto& a_MeshRendererComponent = m_SelectedEntity.GetComponent<Trinity::MeshRendererComponent>();
 
-                ImGui::ColorEdit4("Color", &mr.Color.x);
+                ImGui::ColorEdit4("Color", &a_MeshRendererComponent.Color.x);
 
-                const char* items[] = { "Cube", "Quad" };
-                int current = (mr.Primitive == Trinity::Geometry::PrimitiveType::Cube) ? 0 : 1;
+                const char* l_Items[] = { "Cube", "Quad" };
+                int l_Current = (a_MeshRendererComponent.Primitive == Trinity::Geometry::PrimitiveType::Cube) ? 0 : 1;
 
-                if (ImGui::Combo("Primitive", &current, items, IM_ARRAYSIZE(items)))
-                    mr.Primitive = (current == 0) ? Trinity::Geometry::PrimitiveType::Cube : Trinity::Geometry::PrimitiveType::Quad;
+                if (ImGui::Combo("Primitive", &l_Current, l_Items, IM_ARRAYSIZE(l_Items)))
+                {
+                    a_MeshRendererComponent.Primitive = (l_Current == 0) ? Trinity::Geometry::PrimitiveType::Cube : Trinity::Geometry::PrimitiveType::Quad;
+                }
+            }
+
+            // Add Component Button
+            if (ImGui::Button("Add Component", ImVec2(10.0f, 10.0f)))
+            {
+
             }
         }
 
@@ -250,11 +265,11 @@ void ForgeLayer::OnImGuiRender()
     }
 }
 
-void ForgeLayer::OnEvent(Trinity::Event& e)
+void ForgeLayer::OnEvent(Trinity::Event& it_Entity)
 {
-    Trinity::EventDispatcher l_Dispatcher(e);
+    Trinity::EventDispatcher l_Dispatcher(it_Entity);
 
-    // If the window loses focus mid-look (alt-tab, click another window), stop looking and restore cursor.
+    // If the window loses focus mid-look (alt-tab, click another window), stop looking and restore cursor
     l_Dispatcher.Dispatch<Trinity::WindowLostFocusEvent>([this](Trinity::WindowLostFocusEvent&)
     {
         if (m_IsLooking)
@@ -272,7 +287,7 @@ void ForgeLayer::OnEvent(Trinity::Event& e)
     {
         if (keyPressedEvent.GetKeyCode() == Trinity::Code::KeyCode::TR_KEY_ESCAPE)
         {
-            // ESC exits RMB-look first.
+            // ESC exits RMB-look first
             if (m_IsLooking)
             {
                 auto& a_Window = Trinity::Application::Get().GetWindow();
@@ -290,7 +305,7 @@ void ForgeLayer::OnEvent(Trinity::Event& e)
         return false;
     });
 
-    // Only feed raw mouse deltas to the camera while in RMB look mode.
+    // Only feed raw mouse deltas to the camera while in RMB look mode
     l_Dispatcher.Dispatch<Trinity::MouseRawDeltaEvent>([this](Trinity::MouseRawDeltaEvent& rawDeltaEvent)
     {
         if (!m_IsLooking)
@@ -303,12 +318,12 @@ void ForgeLayer::OnEvent(Trinity::Event& e)
         return true;
     });
 
-    if (!e.Handled && (m_CanControlCamera || m_IsLooking))
+    if (!it_Entity.Handled && (m_CanControlCamera || m_IsLooking))
     {
-        // Avoid double-processing raw delta (handled above).
-        if (e.GetEventType() != Trinity::EventType::MouseRawDelta)
+        // Avoid double-processing raw delta
+        if (it_Entity.GetEventType() != Trinity::EventType::MouseRawDelta)
         {
-            m_EditorCamera.OnEvent(e);
+            m_EditorCamera.OnEvent(it_Entity);
         }
     }
 }

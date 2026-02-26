@@ -80,6 +80,7 @@ namespace Trinity
 
 		static VulkanImageTransitionState BuildTransitionState(ImageTransitionPreset preset);
 		static VkImageSubresourceRange BuildColorSubresourceRange();
+		static VkImageSubresourceRange BuildDepthSubresourceRange();
 
 		void RecreateSwapchain(uint32_t width, uint32_t height);
 		void TransitionImageResource(VkCommandBuffer commandBuffer, VkImage image, const VkImageSubresourceRange& subresourceRange, const VulkanImageTransitionState& newState);
@@ -127,6 +128,10 @@ namespace Trinity
 		VkImage m_SceneViewportImage = VK_NULL_HANDLE;
 		VkDeviceMemory m_SceneViewportImageMemory = VK_NULL_HANDLE;
 		VkImageView m_SceneViewportImageView = VK_NULL_HANDLE;
+		VkFormat m_SceneViewportDepthFormat = VK_FORMAT_UNDEFINED;
+		VkImage m_SceneViewportDepthImage = VK_NULL_HANDLE;
+		VkDeviceMemory m_SceneViewportDepthImageMemory = VK_NULL_HANDLE;
+		VkImageView m_SceneViewportDepthImageView = VK_NULL_HANDLE;
 		VkSampler m_SceneViewportSampler = VK_NULL_HANDLE;
 		void* m_SceneViewportHandle = nullptr;
 		bool m_ScenePassRecording = false;
