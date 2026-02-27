@@ -12,6 +12,8 @@ namespace Trinity
     class VulkanDevice
     {
     public:
+        ~VulkanDevice() { Shutdown(); }
+
         void Initialize(const VulkanContext& context);
         void Shutdown();
 

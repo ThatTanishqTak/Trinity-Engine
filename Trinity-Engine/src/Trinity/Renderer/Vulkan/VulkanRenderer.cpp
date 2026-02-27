@@ -14,50 +14,6 @@
 
 namespace Trinity
 {
-	namespace
-	{
-		uint32_t FindMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties)
-		{
-			VkPhysicalDeviceMemoryProperties l_MemoryProperties{};
-			vkGetPhysicalDeviceMemoryProperties(physicalDevice, &l_MemoryProperties);
-
-			for (uint32_t it_Index = 0; it_Index < l_MemoryProperties.memoryTypeCount; ++it_Index)
-			{
-				if ((typeFilter & (1u << it_Index)) && (l_MemoryProperties.memoryTypes[it_Index].propertyFlags & properties) == properties)
-				{
-					return it_Index;
-				}
-			}
-
-			TR_CORE_CRITICAL("Failed to find suitable Vulkan memory type for scene viewport image");
-			std::abort();
-		}
-
-		VkFormat FindDepthFormat(VkPhysicalDevice physicalDevice)
-		{
-			const VkFormat l_Candidates[] =
-			{
-				VK_FORMAT_D32_SFLOAT,
-				VK_FORMAT_D32_SFLOAT_S8_UINT,
-				VK_FORMAT_D24_UNORM_S8_UINT
-			};
-
-			for (VkFormat it_Format : l_Candidates)
-			{
-				VkFormatProperties l_Props{};
-				vkGetPhysicalDeviceFormatProperties(physicalDevice, it_Format, &l_Props);
-
-				if ((l_Props.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) != 0)
-				{
-					return it_Format;
-				}
-			}
-
-			TR_CORE_CRITICAL("Failed to find a supported depth format");
-			std::abort();
-		}
-	}
-
 	VulkanImageTransitionState VulkanRenderer::BuildTransitionState(ImageTransitionPreset preset)
 	{
 		if (preset == ImageTransitionPreset::Present)
@@ -168,7 +124,7 @@ namespace Trinity
 
 		m_Context.Initialize(l_NativeWindowHandle);
 		m_Device.Initialize(m_Context);
-		m_SceneViewportDepthFormat = FindDepthFormat(m_Device.GetPhysicalDevice());
+		m_SceneViewportDepthFormat = Utilities::VulkanUtilities::FindDepthFormat(m_Device.GetPhysicalDevice());
 		m_Swapchain.Initialize(m_Context, m_Device, m_Window->GetWidth(), m_Window->GetHeight(), m_Configuration.m_ColorOutputPolicy);
 		m_Sync.Initialize(m_Context, m_Device, m_FramesInFlight, m_Swapchain.GetImageCount());
 		m_Command.Initialize(m_Context, m_Device, m_FramesInFlight);
@@ -291,7 +247,7 @@ namespace Trinity
 		VkMemoryAllocateInfo l_AllocateInfo{};
 		l_AllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		l_AllocateInfo.allocationSize = l_MemoryRequirements.size;
-		l_AllocateInfo.memoryTypeIndex = FindMemoryType(m_Device.GetPhysicalDevice(), l_MemoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		l_AllocateInfo.memoryTypeIndex = Utilities::VulkanUtilities::FindMemoryType(m_Device.GetPhysicalDevice(), l_MemoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 		Utilities::VulkanUtilities::VKCheck(vkAllocateMemory(m_Device.GetDevice(), &l_AllocateInfo, m_Context.GetAllocator(), &m_SceneViewportImageMemory), "Failed vkAllocateMemory");
 		Utilities::VulkanUtilities::VKCheck(vkBindImageMemory(m_Device.GetDevice(), m_SceneViewportImage, m_SceneViewportImageMemory, 0), "Failed vkBindImageMemory");
@@ -350,7 +306,7 @@ namespace Trinity
 		VkMemoryAllocateInfo l_DepthAllocateInfo{};
 		l_DepthAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		l_DepthAllocateInfo.allocationSize = l_DepthMemoryRequirements.size;
-		l_DepthAllocateInfo.memoryTypeIndex = FindMemoryType(m_Device.GetPhysicalDevice(), l_DepthMemoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		l_DepthAllocateInfo.memoryTypeIndex = Utilities::VulkanUtilities::FindMemoryType(m_Device.GetPhysicalDevice(), l_DepthMemoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 		Utilities::VulkanUtilities::VKCheck(vkAllocateMemory(m_Device.GetDevice(), &l_DepthAllocateInfo, m_Context.GetAllocator(), &m_SceneViewportDepthImageMemory), "Failed vkAllocateMemory");
 		Utilities::VulkanUtilities::VKCheck(vkBindImageMemory(m_Device.GetDevice(), m_SceneViewportDepthImage, m_SceneViewportDepthImageMemory, 0), "Failed vkBindImageMemory");

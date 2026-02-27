@@ -3,6 +3,7 @@
 #include "Trinity/Layer/LayerStack.h"
 #include "Trinity/Renderer/RenderCommand.h"
 
+#include <atomic>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -23,7 +24,7 @@ namespace Trinity
     class Application
     {
     public:
-        Application(ApplicationSpecification& specification);
+        Application(const ApplicationSpecification& specification);
         virtual ~Application();
 
         void Run();
@@ -39,7 +40,7 @@ namespace Trinity
         void OnEvent(Event& e);
 
     private:
-        static bool s_Running;
+        static std::atomic<bool> s_Running;
 
         LayerStack m_LayerStack;
         ApplicationSpecification m_Specification;

@@ -9,7 +9,7 @@
 
 namespace Trinity
 {
-    Application* CreateApplication(ApplicationSpecification& specification);
+    Application* CreateApplication(const ApplicationSpecification& specification);
 }
 
 int main(int argc, char* argv[])

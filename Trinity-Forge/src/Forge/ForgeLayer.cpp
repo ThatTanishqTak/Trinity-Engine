@@ -265,9 +265,9 @@ void ForgeLayer::OnImGuiRender()
     }
 }
 
-void ForgeLayer::OnEvent(Trinity::Event& it_Entity)
+void ForgeLayer::OnEvent(Trinity::Event& e)
 {
-    Trinity::EventDispatcher l_Dispatcher(it_Entity);
+    Trinity::EventDispatcher l_Dispatcher(e);
 
     // If the window loses focus mid-look (alt-tab, click another window), stop looking and restore cursor
     l_Dispatcher.Dispatch<Trinity::WindowLostFocusEvent>([this](Trinity::WindowLostFocusEvent&)
@@ -302,6 +302,7 @@ void ForgeLayer::OnEvent(Trinity::Event& it_Entity)
 
             return true;
         }
+
         return false;
     });
 
@@ -318,12 +319,12 @@ void ForgeLayer::OnEvent(Trinity::Event& it_Entity)
         return true;
     });
 
-    if (!it_Entity.Handled && (m_CanControlCamera || m_IsLooking))
+    if (!e.Handled && (m_CanControlCamera || m_IsLooking))
     {
         // Avoid double-processing raw delta
-        if (it_Entity.GetEventType() != Trinity::EventType::MouseRawDelta)
+        if (e.GetEventType() != Trinity::EventType::MouseRawDelta)
         {
-            m_EditorCamera.OnEvent(it_Entity);
+            m_EditorCamera.OnEvent(e);
         }
     }
 }

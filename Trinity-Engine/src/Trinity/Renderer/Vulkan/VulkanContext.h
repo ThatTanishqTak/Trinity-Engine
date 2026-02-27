@@ -11,6 +11,8 @@ namespace Trinity
 	class VulkanContext
 	{
 	public:
+		~VulkanContext() { Shutdown(); }
+
 		void Initialize(const NativeWindowHandle& nativeWindowHandle);
 		void Shutdown();
 

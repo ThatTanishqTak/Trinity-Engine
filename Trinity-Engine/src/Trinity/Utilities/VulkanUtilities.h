@@ -12,11 +12,12 @@ namespace Trinity
         {
         public:
             static void VKCheck(VkResult result, const char* what);
-            
             static VKAPI_ATTR VkBool32 VKAPI_CALL VKDebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT messageType,
                 const VkDebugUtilsMessengerCallbackDataEXT* callbackData, void* userData);
 
             static bool HasExtension(const std::vector<const char*>& list, const char* name);
+            static uint32_t FindMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties);
+            static VkFormat FindDepthFormat(VkPhysicalDevice physicalDevice);
         };
     }
 }

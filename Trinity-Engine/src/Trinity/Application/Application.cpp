@@ -16,6 +16,7 @@
 
 #include "Trinity/Input/Input.h"
 
+#include <atomic>
 #include <chrono>
 #include <cstdlib>
 #include <memory>
@@ -25,9 +26,9 @@
 namespace Trinity
 {
     Application* Application::s_Instance = nullptr;
-    bool Application::s_Running = true;
+    std::atomic<bool> Application::s_Running = true;
 
-    Application::Application(ApplicationSpecification& specification) : m_Specification(specification)
+    Application::Application(const ApplicationSpecification& specification) : m_Specification(specification)
     {
         TR_CORE_INFO("------- INITIALIZING APPLICATION -------");
 
