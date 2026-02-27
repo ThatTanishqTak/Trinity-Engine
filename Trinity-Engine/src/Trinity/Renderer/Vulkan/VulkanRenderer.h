@@ -34,7 +34,7 @@ namespace Trinity
 
 		VulkanRenderer();
 		explicit VulkanRenderer(const Configuration& configuration);
-		~VulkanRenderer();
+		~VulkanRenderer() { Shutdown(); }
 
 		void SetWindow(Window& window) override;
 		void SetConfiguration(const Configuration& configuration);
@@ -78,7 +78,7 @@ namespace Trinity
 			GeneralComputeReadWrite
 		};
 
-		static VulkanImageTransitionState BuildTransitionState(ImageTransitionPreset preset);
+		static VulkanImageTransitionState BuildTransitionState(const ImageTransitionPreset preset);
 		static VkImageSubresourceRange BuildColorSubresourceRange();
 		static VkImageSubresourceRange BuildDepthSubresourceRange();
 

@@ -14,39 +14,31 @@
 
 namespace Trinity
 {
-	VulkanImageTransitionState VulkanRenderer::BuildTransitionState(ImageTransitionPreset preset)
+	VulkanImageTransitionState VulkanRenderer::BuildTransitionState(const ImageTransitionPreset preset)
 	{
-		if (preset == ImageTransitionPreset::Present)
+		switch (preset)
 		{
-			return g_PresentImageState;
-		}
+			case ImageTransitionPreset::Present:
+				return g_PresentImageState;
 
-		if (preset == ImageTransitionPreset::ColorAttachmentWrite)
-		{
-			return g_ColorAttachmentWriteImageState;
-		}
+			case ImageTransitionPreset::ColorAttachmentWrite:
+				return g_ColorAttachmentWriteImageState;
 
-		if (preset == ImageTransitionPreset::DepthAttachmentWrite)
-		{
-			return g_DepthAttachmentWriteImageState;
-		}
+			case ImageTransitionPreset::DepthAttachmentWrite:
+				return g_DepthAttachmentWriteImageState;
 
-		if (preset == ImageTransitionPreset::ShaderReadOnly)
-		{
-			return g_ShaderReadOnlyImageState;
-		}
+			case ImageTransitionPreset::ShaderReadOnly:
+				return g_ShaderReadOnlyImageState;
 
-		if (preset == ImageTransitionPreset::TransferSource)
-		{
-			return g_TransferSourceImageState;
-		}
+			case ImageTransitionPreset::TransferSource:
+				return g_TransferSourceImageState;
 
-		if (preset == ImageTransitionPreset::TransferDestination)
-		{
-			return g_TransferDestinationImageState;
-		}
+			case ImageTransitionPreset::TransferDestination:
+				return g_TransferDestinationImageState;
 
-		return g_GeneralComputeReadWriteImageState;
+			default:
+				return g_GeneralComputeReadWriteImageState;
+		}
 	}
 
 	VkImageSubresourceRange VulkanRenderer::BuildColorSubresourceRange()
@@ -79,11 +71,6 @@ namespace Trinity
 	}
 
 	VulkanRenderer::VulkanRenderer(const Configuration& configuration) : Renderer(RendererAPI::VULKAN), m_Configuration(configuration)
-	{
-
-	}
-
-	VulkanRenderer::~VulkanRenderer()
 	{
 
 	}
