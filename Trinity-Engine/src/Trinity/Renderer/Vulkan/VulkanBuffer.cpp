@@ -43,6 +43,10 @@ namespace Trinity
 		m_MemoryUsage = other.m_MemoryUsage;
 		m_Mapped = other.m_Mapped;
 
+		m_TransferPool = other.m_TransferPool;
+		m_TransferCmdBuffer = other.m_TransferCmdBuffer;
+		m_TransferFence = other.m_TransferFence;
+
 		other.m_Allocator = nullptr;
 		other.m_PhysicalDevice = VK_NULL_HANDLE;
 		other.m_Device = VK_NULL_HANDLE;
@@ -52,6 +56,10 @@ namespace Trinity
 		other.m_Memory = VK_NULL_HANDLE;
 		other.m_Size = 0;
 		other.m_Mapped = nullptr;
+
+		other.m_TransferPool = VK_NULL_HANDLE;
+		other.m_TransferCmdBuffer = VK_NULL_HANDLE;
+		other.m_TransferFence = VK_NULL_HANDLE;
 
 		return *this;
 	}
@@ -89,6 +97,27 @@ namespace Trinity
 		}
 
 		CreateRawBuffer(size, l_BufferUsageFlags, l_PhysicalDeviceMemoryProperties);
+
+		if (memoryUsage != BufferMemoryUsage::CPUToGPU)
+		{
+			VkCommandPoolCreateInfo l_PoolInfo{};
+			l_PoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+			l_PoolInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+			l_PoolInfo.queueFamilyIndex = m_QueueFamilyIndex;
+			Utilities::VulkanUtilities::VKCheck(vkCreateCommandPool(m_Device, &l_PoolInfo, m_Allocator, &m_TransferPool), "Failed vkCreateCommandPool");
+
+			VkCommandBufferAllocateInfo l_AllocInfo{};
+			l_AllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+			l_AllocInfo.commandPool = m_TransferPool;
+			l_AllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+			l_AllocInfo.commandBufferCount = 1;
+			Utilities::VulkanUtilities::VKCheck(vkAllocateCommandBuffers(m_Device, &l_AllocInfo, &m_TransferCmdBuffer), "Failed vkAllocateCommandBuffers");
+
+			VkFenceCreateInfo l_FenceInfo{};
+			l_FenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+			l_FenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+			Utilities::VulkanUtilities::VKCheck(vkCreateFence(m_Device, &l_FenceInfo, m_Allocator, &m_TransferFence), "Failed vkCreateFence");
+		}
 	}
 
 	void VulkanBuffer::Destroy()
@@ -97,6 +126,20 @@ namespace Trinity
 			return;
 
 		Unmap();
+
+		if (m_TransferFence != VK_NULL_HANDLE)
+		{
+			vkDestroyFence(m_Device, m_TransferFence, m_Allocator);
+			m_TransferFence = VK_NULL_HANDLE;
+		}
+
+		// Destroying the pool implicitly frees m_TransferCmdBuffer.
+		if (m_TransferPool != VK_NULL_HANDLE)
+		{
+			vkDestroyCommandPool(m_Device, m_TransferPool, m_Allocator);
+			m_TransferPool = VK_NULL_HANDLE;
+			m_TransferCmdBuffer = VK_NULL_HANDLE;
+		}
 
 		if (m_Buffer != VK_NULL_HANDLE)
 		{
@@ -118,6 +161,21 @@ namespace Trinity
 		m_QueueFamilyIndex = 0;
 		m_Mapped = nullptr;
 		m_MemoryUsage = BufferMemoryUsage::GPUOnly;
+	}
+
+	VulkanBuffer VulkanBuffer::CreateStaging(const VulkanBuffer& source, VkDeviceSize size)
+	{
+		VulkanBuffer l_Staging{};
+		l_Staging.m_Allocator = source.m_Allocator;
+		l_Staging.m_PhysicalDevice = source.m_PhysicalDevice;
+		l_Staging.m_Device = source.m_Device;
+		l_Staging.m_Queue = source.m_Queue;
+		l_Staging.m_QueueFamilyIndex = source.m_QueueFamilyIndex;
+		l_Staging.m_Size = size;
+		l_Staging.m_MemoryUsage = BufferMemoryUsage::CPUToGPU;
+		l_Staging.CreateRawBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+		return l_Staging;
 	}
 
 	void VulkanBuffer::SetData(const void* data, VkDeviceSize size, VkDeviceSize offset)
@@ -144,35 +202,24 @@ namespace Trinity
 
 		if (m_MemoryUsage == BufferMemoryUsage::CPUToGPU)
 		{
-			void* l_DestinationBuffer = Map(offset, size);
+			void* l_DestinationBuffer = Map(offset);
 			std::memcpy(l_DestinationBuffer, data, (size_t)size);
 			Unmap();
 
 			return;
 		}
 
-		// GPUOnly: stage and buffer
-		VulkanBuffer l_StagingBuffers{};
-		l_StagingBuffers.m_Allocator = m_Allocator;
-		l_StagingBuffers.m_PhysicalDevice = m_PhysicalDevice;
-		l_StagingBuffers.m_Device = m_Device;
-		l_StagingBuffers.m_Queue = m_Queue;
-		l_StagingBuffers.m_QueueFamilyIndex = m_QueueFamilyIndex;
-		l_StagingBuffers.m_Size = size;
-		l_StagingBuffers.m_MemoryUsage = BufferMemoryUsage::CPUToGPU;
-		l_StagingBuffers.CreateRawBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		VulkanBuffer l_StagingBuffer = CreateStaging(*this, size);
 
-		void* l_Map = l_StagingBuffers.Map(0, size);
+		void* l_Map = l_StagingBuffer.Map(0);
 		std::memcpy(l_Map, data, (size_t)size);
-		l_StagingBuffers.Unmap();
+		l_StagingBuffer.Unmap();
 
-		CopyBufferImmediate(l_StagingBuffers.m_Buffer, m_Buffer, size, offset, 0);
+		CopyBufferImmediate(l_StagingBuffer.m_Buffer, m_Buffer, size, offset, 0);
 	}
 
-	void* VulkanBuffer::Map(VkDeviceSize offset, VkDeviceSize size)
+	void* VulkanBuffer::Map(VkDeviceSize offset)
 	{
-		(void)size;
-
 		if (m_MemoryUsage != BufferMemoryUsage::CPUToGPU)
 		{
 			TR_CORE_CRITICAL("VulkanBuffer::Map on GPUOnly buffer");
@@ -185,7 +232,7 @@ namespace Trinity
 			Utilities::VulkanUtilities::VKCheck(vkMapMemory(m_Device, m_Memory, 0, VK_WHOLE_SIZE, 0, &m_Mapped), "Failed vkMapMemory");
 		}
 
-		return (uint8_t*)m_Mapped + offset;
+		return static_cast<uint8_t*>(m_Mapped) + offset;
 	}
 
 	void VulkanBuffer::Unmap()
@@ -239,53 +286,30 @@ namespace Trinity
 
 	void VulkanBuffer::CopyBufferImmediate(VkBuffer sourceBuffer, VkBuffer l_DestinationBuffer, VkDeviceSize size, VkDeviceSize dstOffset, VkDeviceSize srcOffset)
 	{
-		VkCommandPool l_CommandPool = VK_NULL_HANDLE;
-		VkCommandBuffer l_CommandBuffer = VK_NULL_HANDLE;
-		VkFence l_Fence = VK_NULL_HANDLE;
-
-		VkCommandPoolCreateInfo l_CommandPoolCreateInfo{};
-		l_CommandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-		l_CommandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-		l_CommandPoolCreateInfo.queueFamilyIndex = m_QueueFamilyIndex;
-
-		Utilities::VulkanUtilities::VKCheck(vkCreateCommandPool(m_Device, &l_CommandPoolCreateInfo, m_Allocator, &l_CommandPool), "Failed vkCreateCommandPool");
-
-		VkCommandBufferAllocateInfo l_CommandBufferAllocateInfo{};
-		l_CommandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		l_CommandBufferAllocateInfo.commandPool = l_CommandPool;
-		l_CommandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		l_CommandBufferAllocateInfo.commandBufferCount = 1;
-
-		Utilities::VulkanUtilities::VKCheck(vkAllocateCommandBuffers(m_Device, &l_CommandBufferAllocateInfo, &l_CommandBuffer), "Failed vkAllocateCommandBuffers");
+		Utilities::VulkanUtilities::VKCheck(vkWaitForFences(m_Device, 1, &m_TransferFence, VK_TRUE, UINT64_MAX), "Failed vkWaitForFences");
+		Utilities::VulkanUtilities::VKCheck(vkResetFences(m_Device, 1, &m_TransferFence), "Failed vkResetFences");
+		Utilities::VulkanUtilities::VKCheck(vkResetCommandPool(m_Device, m_TransferPool, 0), "Failed vkResetCommandPool");
 
 		VkCommandBufferBeginInfo l_CommandBufferBeginInfo{};
 		l_CommandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		l_CommandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-		Utilities::VulkanUtilities::VKCheck(vkBeginCommandBuffer(l_CommandBuffer, &l_CommandBufferBeginInfo), "Failed vkBeginCommandBuffer");
+		Utilities::VulkanUtilities::VKCheck(vkBeginCommandBuffer(m_TransferCmdBuffer, &l_CommandBufferBeginInfo), "Failed vkBeginCommandBuffer");
 
 		VkBufferCopy l_BufferCopy{};
 		l_BufferCopy.srcOffset = srcOffset;
 		l_BufferCopy.dstOffset = dstOffset;
 		l_BufferCopy.size = size;
-		vkCmdCopyBuffer(l_CommandBuffer, sourceBuffer, l_DestinationBuffer, 1, &l_BufferCopy);
+		vkCmdCopyBuffer(m_TransferCmdBuffer, sourceBuffer, l_DestinationBuffer, 1, &l_BufferCopy);
 
-		Utilities::VulkanUtilities::VKCheck(vkEndCommandBuffer(l_CommandBuffer), "Failed vkEndCommandBuffer");
-
-		VkFenceCreateInfo l_FenceInfo{};
-		l_FenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-		Utilities::VulkanUtilities::VKCheck(vkCreateFence(m_Device, &l_FenceInfo, m_Allocator, &l_Fence), "Failed vkCreateFence");
+		Utilities::VulkanUtilities::VKCheck(vkEndCommandBuffer(m_TransferCmdBuffer), "Failed vkEndCommandBuffer");
 
 		VkSubmitInfo l_SubmitInfo{};
 		l_SubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		l_SubmitInfo.commandBufferCount = 1;
-		l_SubmitInfo.pCommandBuffers = &l_CommandBuffer;
+		l_SubmitInfo.pCommandBuffers = &m_TransferCmdBuffer;
 
-		Utilities::VulkanUtilities::VKCheck(vkQueueSubmit(m_Queue, 1, &l_SubmitInfo, l_Fence), "Failed vkQueueSubmit");
-		Utilities::VulkanUtilities::VKCheck(vkWaitForFences(m_Device, 1, &l_Fence, VK_TRUE, UINT64_MAX), "Failed vkWaitForFences");
-
-		vkDestroyFence(m_Device, l_Fence, m_Allocator);
-		vkDestroyCommandPool(m_Device, l_CommandPool, m_Allocator);
+		Utilities::VulkanUtilities::VKCheck(vkQueueSubmit(m_Queue, 1, &l_SubmitInfo, m_TransferFence), "Failed vkQueueSubmit");
+		Utilities::VulkanUtilities::VKCheck(vkWaitForFences(m_Device, 1, &m_TransferFence, VK_TRUE, UINT64_MAX), "Failed vkWaitForFences");
 	}
 
 	VulkanVertexBuffer::VulkanVertexBuffer(const VulkanContext& context, const VulkanDevice& device, uint64_t size, uint32_t stride,

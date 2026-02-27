@@ -22,7 +22,6 @@ namespace Trinity
 	{
 		TR_CORE_TRACE("Initializing Vulkan Pipeline");
 
-		// If this object is already holding a pipeline/device, tear it down FIRST (using the old device).
 		if (m_Device != VK_NULL_HANDLE || m_Pipeline != VK_NULL_HANDLE || m_PipelineLayout != VK_NULL_HANDLE)
 		{
 			TR_CORE_WARN("VulkanPipeline::Initialize called while already initialized. Reinitializing.");
@@ -59,8 +58,7 @@ namespace Trinity
 
 		CreatePipeline();
 
-		TR_CORE_TRACE("Vulkan Pipeline Initialized (ColorFormat: {}, DepthFormat: {})",
-			static_cast<int>(m_ColorFormat), static_cast<int>(m_DepthFormat));
+		TR_CORE_TRACE("Vulkan Pipeline Initialized (ColorFormat: {}, DepthFormat: {})", static_cast<int>(m_ColorFormat), static_cast<int>(m_DepthFormat));
 	}
 
 	void VulkanPipeline::Shutdown()

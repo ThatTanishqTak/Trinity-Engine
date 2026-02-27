@@ -26,8 +26,7 @@ namespace Trinity
 		void Destroy();
 
 		void SetData(const void* data, VkDeviceSize size, VkDeviceSize offset = 0);
-
-		void* Map(VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE);
+		void* Map(VkDeviceSize offset = 0);
 		void Unmap();
 
 		VkBuffer GetBuffer() const { return m_Buffer; }
@@ -38,6 +37,8 @@ namespace Trinity
 		void CreateRawBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
 		uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
 		void CopyBufferImmediate(VkBuffer src, VkBuffer dst, VkDeviceSize size, VkDeviceSize dstOffset = 0, VkDeviceSize srcOffset = 0);
+
+		static VulkanBuffer CreateStaging(const VulkanBuffer& source, VkDeviceSize size);
 
 	private:
 		VkAllocationCallbacks* m_Allocator = nullptr;
@@ -51,6 +52,10 @@ namespace Trinity
 		VkDeviceSize m_Size = 0;
 		BufferMemoryUsage m_MemoryUsage = BufferMemoryUsage::GPUOnly;
 		void* m_Mapped = nullptr;
+
+		VkCommandPool m_TransferPool = VK_NULL_HANDLE;
+		VkCommandBuffer m_TransferCmdBuffer = VK_NULL_HANDLE;
+		VkFence m_TransferFence = VK_NULL_HANDLE;
 	};
 
 	class VulkanVertexBuffer final : public VertexBuffer
