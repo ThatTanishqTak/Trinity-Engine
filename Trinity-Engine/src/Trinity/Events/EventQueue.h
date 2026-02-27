@@ -2,6 +2,7 @@
 
 #include <deque>
 #include <memory>
+#include <mutex>
 
 namespace Trinity
 {
@@ -15,6 +16,7 @@ namespace Trinity
         bool IsEmpty() const;
 
     private:
+        mutable std::mutex m_Mutex;
         std::deque<std::unique_ptr<Event>> m_Events;
     };
 }

@@ -11,11 +11,14 @@ namespace Trinity
             return;
         }
 
+        std::lock_guard<std::mutex> l_Lock(m_Mutex);
         m_Events.push_back(std::move(event));
     }
 
     bool EventQueue::TryPopEvent(std::unique_ptr<Event>& event)
     {
+        std::lock_guard<std::mutex> l_Lock(m_Mutex);
+
         if (m_Events.empty())
         {
             return false;
@@ -29,6 +32,8 @@ namespace Trinity
 
     bool EventQueue::IsEmpty() const
     {
+        std::lock_guard<std::mutex> l_Lock(m_Mutex);
+ 
         return m_Events.empty();
     }
 }
