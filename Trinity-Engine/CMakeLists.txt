@@ -42,6 +42,10 @@ add_library(${PROJECT_NAME} STATIC
     ${TRINITY_SOURCES}
 )
 
+target_precompile_headers(${PROJECT_NAME} PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Trinity/trpch.h
+)
+
 target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )

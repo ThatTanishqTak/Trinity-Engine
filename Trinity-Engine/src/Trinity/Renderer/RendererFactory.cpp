@@ -12,17 +12,27 @@ namespace Trinity
 	{
 		switch (api)
 		{
-			case RendererAPI::VULKAN:
-				return std::make_unique<VulkanRenderer>();
-			case RendererAPI::MOLTENVK:
-				return std::make_unique<MoltenVKRenderer>();
-			case RendererAPI::DIRECTX:
-				return std::make_unique<DirectXRenderer>();
-			case RendererAPI::NONE:
-			default:
-				TR_CORE_CRITICAL("RendererFactory::Create: Unsupported RendererAPI selected");
+		case RendererAPI::VULKAN:
+		{
+#if defined(_WIN32)
+			return std::make_unique<VulkanRenderer>();
+#elif defined(__APPLE__)
+			TR_CORE_WARN("RendererFactory: VULKAN requested on Apple platform — routing to MoltenVKRenderer");
+			return std::make_unique<MoltenVKRenderer>();
+#else
+			TR_CORE_CRITICAL("RendererFactory::Create: VULKAN is not supported on this platform");
+			return nullptr;
+#endif
+		}
+		case RendererAPI::MOLTENVK:
+			return std::make_unique<MoltenVKRenderer>();
+		case RendererAPI::DIRECTX:
+			return std::make_unique<DirectXRenderer>();
+		case RendererAPI::NONE:
+		default:
+			TR_CORE_CRITICAL("RendererFactory::Create: Unsupported RendererAPI selected");
 
-				return nullptr;
+			return nullptr;
 		}
 	}
 }

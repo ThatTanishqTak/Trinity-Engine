@@ -9,6 +9,7 @@
 #include "Trinity/Renderer/Vulkan/VulkanCommand.h"
 #include "Trinity/Renderer/Vulkan/VulkanPipeline.h"
 #include "Trinity/Renderer/Vulkan/VulkanBuffer.h"
+#include "Trinity/Renderer/Vulkan/VulkanUploadContext.h"
 #include "Trinity/Renderer/Vulkan/VulkanResourceStateTracker.h"
 
 #include "Trinity/Geometry/Geometry.h"
@@ -30,11 +31,13 @@ namespace Trinity
 		struct Configuration
 		{
 			VulkanSwapchain::ColorOutputPolicy m_ColorOutputPolicy = VulkanSwapchain::ColorOutputPolicy::SDRsRGB;
+
+			std::string m_VertexShaderPath = "Assets/Shaders/Simple.vert.spv";
+			std::string m_FragmentShaderPath = "Assets/Shaders/Simple.frag.spv";
 		};
 
 		VulkanRenderer();
 		explicit VulkanRenderer(const Configuration& configuration);
-		~VulkanRenderer() { Shutdown(); }
 
 		void SetWindow(Window& window) override;
 		void SetConfiguration(const Configuration& configuration);
@@ -78,7 +81,7 @@ namespace Trinity
 			GeneralComputeReadWrite
 		};
 
-		static VulkanImageTransitionState BuildTransitionState(const ImageTransitionPreset preset);
+		static VulkanImageTransitionState BuildTransitionState(ImageTransitionPreset preset);
 		static VkImageSubresourceRange BuildColorSubresourceRange();
 		static VkImageSubresourceRange BuildDepthSubresourceRange();
 
@@ -107,11 +110,13 @@ namespace Trinity
 		VulkanSync m_Sync{};
 		VulkanCommand m_Command{};
 		VulkanPipeline m_Pipeline{};
+		VulkanUploadContext m_UploadContext{};
 
 		uint32_t m_FramesInFlight = 2;
 		uint32_t m_CurrentFrameIndex = 0;
 		uint32_t m_CurrentImageIndex = 0;
 		bool m_FrameBegun = false;
+
 		ImGuiLayer* m_ImGuiLayer = nullptr;
 		bool m_ImGuiVulkanInitialized = false;
 
@@ -119,8 +124,6 @@ namespace Trinity
 
 		std::array<PrimitiveGpu, (size_t)Geometry::PrimitiveType::Count> m_Primitives{};
 
-		std::string m_VertexShaderPath = "Assets/Shaders/Simple.vert.spv";
-		std::string m_FragmentShaderPath = "Assets/Shaders/Simple.frag.spv";
 		Configuration m_Configuration{};
 
 		uint32_t m_SceneViewportWidth = 0;

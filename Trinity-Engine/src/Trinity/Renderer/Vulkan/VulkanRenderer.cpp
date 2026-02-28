@@ -14,30 +14,30 @@
 
 namespace Trinity
 {
-	VulkanImageTransitionState VulkanRenderer::BuildTransitionState(const ImageTransitionPreset preset)
+	VulkanImageTransitionState VulkanRenderer::BuildTransitionState(ImageTransitionPreset preset)
 	{
 		switch (preset)
 		{
-			case ImageTransitionPreset::Present:
-				return g_PresentImageState;
+		case ImageTransitionPreset::Present:
+			return g_PresentImageState;
 
-			case ImageTransitionPreset::ColorAttachmentWrite:
-				return g_ColorAttachmentWriteImageState;
+		case ImageTransitionPreset::ColorAttachmentWrite:
+			return g_ColorAttachmentWriteImageState;
 
-			case ImageTransitionPreset::DepthAttachmentWrite:
-				return g_DepthAttachmentWriteImageState;
+		case ImageTransitionPreset::DepthAttachmentWrite:
+			return g_DepthAttachmentWriteImageState;
 
-			case ImageTransitionPreset::ShaderReadOnly:
-				return g_ShaderReadOnlyImageState;
+		case ImageTransitionPreset::ShaderReadOnly:
+			return g_ShaderReadOnlyImageState;
 
-			case ImageTransitionPreset::TransferSource:
-				return g_TransferSourceImageState;
+		case ImageTransitionPreset::TransferSource:
+			return g_TransferSourceImageState;
 
-			case ImageTransitionPreset::TransferDestination:
-				return g_TransferDestinationImageState;
+		case ImageTransitionPreset::TransferDestination:
+			return g_TransferDestinationImageState;
 
-			default:
-				return g_GeneralComputeReadWriteImageState;
+		default:
+			return g_GeneralComputeReadWriteImageState;
 		}
 	}
 
@@ -103,10 +103,6 @@ namespace Trinity
 
 			std::abort();
 		}
-#else
-		TR_CORE_CRITICAL("VulkanRenderer is only implemented for Win32 native window handles in this build");
-
-		std::abort();
 #endif
 
 		m_Context.Initialize(l_NativeWindowHandle);
@@ -115,7 +111,8 @@ namespace Trinity
 		m_Swapchain.Initialize(m_Context, m_Device, m_Window->GetWidth(), m_Window->GetHeight(), m_Configuration.m_ColorOutputPolicy);
 		m_Sync.Initialize(m_Context, m_Device, m_FramesInFlight, m_Swapchain.GetImageCount());
 		m_Command.Initialize(m_Context, m_Device, m_FramesInFlight);
-		m_Pipeline.Initialize(m_Context, m_Device, m_Swapchain.GetImageFormat(), m_SceneViewportDepthFormat, m_VertexShaderPath, m_FragmentShaderPath);
+		m_UploadContext.Initialize(m_Context, m_Device);
+		m_Pipeline.Initialize(m_Context, m_Device, m_Swapchain.GetImageFormat(), m_SceneViewportDepthFormat, m_Configuration.m_VertexShaderPath, m_Configuration.m_FragmentShaderPath);
 		m_ResourceStateTracker.Reset();
 		m_ImGuiLayer = nullptr;
 		m_ImGuiVulkanInitialized = false;
@@ -137,6 +134,7 @@ namespace Trinity
 			it_Primitive.VulkanIB.reset();
 		}
 
+		m_UploadContext.Shutdown();
 		m_Pipeline.Shutdown();
 		m_Command.Shutdown();
 		m_Sync.Shutdown();
@@ -466,7 +464,7 @@ namespace Trinity
 		const VkImageSubresourceRange l_ColorSubresourceRange = BuildColorSubresourceRange();
 
 		const VkExtent2D l_SceneExtent{ m_SceneViewportWidth, m_SceneViewportHeight };
-		const bool l_CanRecordScenePass =m_SceneViewportImage != VK_NULL_HANDLE && m_SceneViewportDepthImage != VK_NULL_HANDLE && l_SceneExtent.width > 0 && l_SceneExtent.height > 0;
+		const bool l_CanRecordScenePass = m_SceneViewportImage != VK_NULL_HANDLE && m_SceneViewportDepthImage != VK_NULL_HANDLE && l_SceneExtent.width > 0 && l_SceneExtent.height > 0;
 
 		m_ScenePassRecording = false;
 		m_PresentPassRecording = false;
@@ -560,7 +558,7 @@ namespace Trinity
 
 		const VkSemaphore l_ImageAvailable = m_Sync.GetImageAvailableSemaphore(m_CurrentFrameIndex);
 		const VkSemaphore l_RenderFinished = m_Sync.GetRenderFinishedSemaphore(m_CurrentImageIndex);
-		const VkFence l_InFlightFence = m_Sync.GetInFlightFence(m_CurrentFrameIndex);
+		const VkFence     l_InFlightFence = m_Sync.GetInFlightFence(m_CurrentFrameIndex);
 
 		VkPipelineStageFlags l_WaitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
@@ -632,11 +630,20 @@ namespace Trinity
 
 		const auto& a_Mesh = Geometry::GetPrimitive(primitive);
 
-		a_GPUPrimitive.VulkanVB = std::make_unique<VulkanVertexBuffer>(m_Context, m_Device, (uint64_t)(a_Mesh.Vertices.size() * sizeof(Geometry::Vertex)),
-			(uint32_t)sizeof(Geometry::Vertex), BufferMemoryUsage::GPUOnly, a_Mesh.Vertices.data());
+		a_GPUPrimitive.VulkanVB = std::make_unique<VulkanVertexBuffer>(
+			m_Context, m_Device, m_UploadContext,
+			(uint64_t)(a_Mesh.Vertices.size() * sizeof(Geometry::Vertex)),
+			(uint32_t)sizeof(Geometry::Vertex),
+			BufferMemoryUsage::GPUOnly,
+			a_Mesh.Vertices.data());
 
-		a_GPUPrimitive.VulkanIB = std::make_unique<VulkanIndexBuffer>(m_Context, m_Device, (uint64_t)(a_Mesh.Indices.size() * sizeof(uint32_t)),
-			(uint32_t)a_Mesh.Indices.size(), IndexType::UInt32, BufferMemoryUsage::GPUOnly, a_Mesh.Indices.data());
+		a_GPUPrimitive.VulkanIB = std::make_unique<VulkanIndexBuffer>(
+			m_Context, m_Device, m_UploadContext,
+			(uint64_t)(a_Mesh.Indices.size() * sizeof(uint32_t)),
+			(uint32_t)a_Mesh.Indices.size(),
+			IndexType::UInt32,
+			BufferMemoryUsage::GPUOnly,
+			a_Mesh.Indices.data());
 	}
 
 	void VulkanRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color)
@@ -665,7 +672,7 @@ namespace Trinity
 
 		const VkCommandBuffer l_CommandBuffer = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
 
-		VkBuffer l_VertexBuffer = a_GPUPrimitive.VulkanVB->GetVkBuffer();
+		VkBuffer     l_VertexBuffer = a_GPUPrimitive.VulkanVB->GetVkBuffer();
 		VkDeviceSize l_Offsets[] = { 0 };
 		vkCmdBindVertexBuffers(l_CommandBuffer, 0, 1, &l_VertexBuffer, l_Offsets);
 

@@ -26,7 +26,7 @@ void ForgeLayer::OnInitialize()
 
     m_ActiveScene = std::make_unique<Trinity::Scene>();
 
-    // Demo entities (so you can *see* the ECS working)
+    // Demo entities
     {
         auto l_CubeA = m_ActiveScene->CreateEntity("Cube A");
         l_CubeA.AddComponent<Trinity::MeshRendererComponent>(Trinity::Geometry::PrimitiveType::Cube, glm::vec4(1, 0, 0, 1));
@@ -278,29 +278,6 @@ void ForgeLayer::OnEvent(Trinity::Event& e)
             a_Window.SetCursorLocked(false);
             a_Window.SetCursorVisible(true);
             m_IsLooking = false;
-        }
-
-        return false;
-    });
-
-    l_Dispatcher.Dispatch<Trinity::KeyPressedEvent>([this](Trinity::KeyPressedEvent& keyPressedEvent)
-    {
-        if (keyPressedEvent.GetKeyCode() == Trinity::Code::KeyCode::TR_KEY_ESCAPE)
-        {
-            // ESC exits RMB-look first
-            if (m_IsLooking)
-            {
-                auto& a_Window = Trinity::Application::Get().GetWindow();
-                a_Window.SetCursorLocked(false);
-                a_Window.SetCursorVisible(true);
-                m_IsLooking = false;
-            
-                return true;
-            }
-
-            Trinity::Application::Close();
-
-            return true;
         }
 
         return false;
