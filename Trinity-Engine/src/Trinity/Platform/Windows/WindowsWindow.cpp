@@ -177,7 +177,9 @@ namespace Trinity
     void WindowsWindow::SetCursorLocked(bool locked)
     {
         if (m_CursorLocked == locked)
+        {
             return;
+        }
 
         // Save cursor position on lock so it can be restored on unlock.
         if (locked)
@@ -353,7 +355,7 @@ namespace Trinity
         }
 
         const uint32_t l_Width = static_cast<uint32_t>(l_Rect.right - l_Rect.left);
-        const uint32_t l_Height = static_cast<uint32_t>(l_Rect.top - l_Rect.bottom);
+        const uint32_t l_Height = static_cast<uint32_t>(l_Rect.bottom - l_Rect.top);
 
         m_Data.Minimized = l_Width == 0 || l_Height == 0;
 
