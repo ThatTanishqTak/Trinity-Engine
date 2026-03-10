@@ -40,6 +40,7 @@ namespace Trinity
         }
 
         s_Instance = this;
+        s_Running = true;
 
         WindowProperties l_WindowProperties;
         l_WindowProperties.Title = m_Specification.Title;

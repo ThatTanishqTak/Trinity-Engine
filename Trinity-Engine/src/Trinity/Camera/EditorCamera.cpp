@@ -3,8 +3,6 @@
 #include "Trinity/Events/Event.h"
 #include "Trinity/Events/MouseEvent.h"
 #include "Trinity/Input/Input.h"
-#include "Trinity/Application/Application.h"
-#include "Trinity/Platform/Window.h"
 
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
@@ -77,13 +75,8 @@ namespace Trinity
 
         if (!m_InputEnabled)
         {
-            if (m_WasFreelookActive)
-            {
-                Window& l_Window = Application::Get().GetWindow();
-                l_Window.SetCursorLocked(false);
-                l_Window.SetCursorVisible(true);
-                m_WasFreelookActive = false;
-            }
+            // Reset freelook tracking so the first frame back won't produce a delta jump.
+            m_WasFreelookActive = false;
         }
     }
 
@@ -97,8 +90,10 @@ namespace Trinity
         if (!m_InputEnabled)
         {
             m_EventScrollDelta = 0.0f;
+
             return;
         }
+
         const Input::Vector2 l_MouseDeltaInput = Input::MouseDelta();
         const glm::vec2 l_MouseDelta = glm::vec2(l_MouseDeltaInput.x, l_MouseDeltaInput.y);
 
@@ -110,27 +105,13 @@ namespace Trinity
         const bool l_FreelookActivated = !m_WasFreelookActive && l_RmbDown;
         const glm::vec2 l_CameraInputDelta = l_FreelookActivated ? glm::vec2(0.0f) : l_MouseDelta;
 
-        Window& l_Window = Application::Get().GetWindow();
-
         if (l_RmbDown)
         {
-            if (!m_WasFreelookActive)
-            {
-                l_Window.SetCursorVisible(false);
-                l_Window.SetCursorLocked(true);
-            }
-
             ApplyFreelook(l_CameraInputDelta, deltaTime);
             m_WasFreelookActive = true;
         }
         else
         {
-            if (m_WasFreelookActive)
-            {
-                l_Window.SetCursorLocked(false);
-                l_Window.SetCursorVisible(true);
-            }
-
             m_WasFreelookActive = false;
         }
 
@@ -209,22 +190,27 @@ namespace Trinity
         {
             l_MovementDirection += l_ForwardDirection;
         }
+        
         if (Input::KeyDown(Code::KeyCode::TR_KEY_S))
         {
             l_MovementDirection -= l_ForwardDirection;
         }
+        
         if (Input::KeyDown(Code::KeyCode::TR_KEY_D))
         {
             l_MovementDirection += l_RightDirection;
         }
+        
         if (Input::KeyDown(Code::KeyCode::TR_KEY_A))
         {
             l_MovementDirection -= l_RightDirection;
         }
+        
         if (Input::KeyDown(Code::KeyCode::TR_KEY_E))
         {
             l_MovementDirection += l_WorldUpDirection;
         }
+
         if (Input::KeyDown(Code::KeyCode::TR_KEY_Q))
         {
             l_MovementDirection -= l_WorldUpDirection;
