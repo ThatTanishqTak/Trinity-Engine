@@ -94,6 +94,22 @@ namespace Trinity
 		return s_Renderer->GetSceneViewportHandle();
 	}
 
+	void RenderCommand::DrawMesh(Geometry::PrimitiveType primitive, const glm::mat4& model, const glm::vec4& color, const glm::mat4& viewProjection)
+	{
+		if (s_Renderer)
+		{
+			s_Renderer->DrawMesh(primitive, model, color, viewProjection);
+		}
+	}
+
+	void RenderCommand::DrawMesh(Geometry::PrimitiveType primitive, const glm::mat4& model, const glm::vec4& color, const glm::mat4& view, const glm::mat4& projection)
+	{
+		if (s_Renderer)
+		{
+			s_Renderer->DrawMesh(primitive, model, color, view, projection);
+		}
+	}
+
 	void RenderCommand::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color)
 	{
 		if (s_Renderer)
@@ -126,7 +142,7 @@ namespace Trinity
 
 			std::abort();
 		}
-		
+
 		return *s_Renderer;
 	}
 
@@ -138,7 +154,7 @@ namespace Trinity
 				return "Vulkan";
 			case RendererAPI::MOLTENVK:
 				return "MoltenVK";
-			case RendererAPI::DIRECTX: 
+			case RendererAPI::DIRECTX:
 				return "DirectX";
 			default:
 				return "Unknown";

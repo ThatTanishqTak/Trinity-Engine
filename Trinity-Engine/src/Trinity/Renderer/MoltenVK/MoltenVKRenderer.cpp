@@ -63,6 +63,11 @@ namespace Trinity
 		DrawMesh(primitive, position, color, projection * view);
 	}
 
+	void MoltenVKRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::mat4& model, const glm::vec4& color, const glm::mat4& viewProjection)
+	{
+
+	}
+
 	void MoltenVKRenderer::BeginFrame()
 	{
 

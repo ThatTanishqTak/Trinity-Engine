@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 namespace Trinity
 {
@@ -41,17 +42,30 @@ namespace Trinity
 		virtual void SetSceneViewportSize(uint32_t width, uint32_t height) = 0;
 		virtual void* GetSceneViewportHandle() const = 0;
 
-		virtual void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color)
+		// Draw with a full model matrix and pre-combined view-projection.
+		virtual void DrawMesh(Geometry::PrimitiveType primitive, const glm::mat4& model, const glm::vec4& color, const glm::mat4& viewProjection) = 0;
+
+		// Convenience: separate view and projection matrices.
+		virtual void DrawMesh(Geometry::PrimitiveType primitive, const glm::mat4& model, const glm::vec4& color, const glm::mat4& view, const glm::mat4& projection)
 		{
-			DrawMesh(primitive, position, color, glm::mat4(1.0f));
+			DrawMesh(primitive, model, color, projection * view);
+		}
+
+		// Convenience: translation-only model (no rotation or scale).
+		virtual void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& viewProjection)
+		{
+			DrawMesh(primitive, glm::translate(glm::mat4(1.0f), position), color, viewProjection);
 		}
 
 		virtual void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& view, const glm::mat4& projection)
 		{
-			DrawMesh(primitive, position, color, projection * view);
+			DrawMesh(primitive, glm::translate(glm::mat4(1.0f), position), color, projection * view);
 		}
 
-		virtual void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& viewProjection) = 0;
+		virtual void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color)
+		{
+			DrawMesh(primitive, glm::translate(glm::mat4(1.0f), position), color, glm::mat4(1.0f));
+		}
 
 	protected:
 		explicit Renderer(RendererAPI api) : m_CurrentAPI(api)

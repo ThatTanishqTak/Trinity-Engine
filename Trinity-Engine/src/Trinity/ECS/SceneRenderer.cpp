@@ -11,7 +11,7 @@ namespace Trinity
 
         registry.view<TransformComponent, MeshRendererComponent>().each([&](entt::entity entity, TransformComponent& transform, MeshRendererComponent& mesh)
             {
-                RenderCommand::DrawMesh(mesh.Primitive, transform.Translation, mesh.Color, view, projection);
+                RenderCommand::DrawMesh(mesh.Primitive, transform.GetTransform(), mesh.Color, view, projection);
             }
         );
     }

@@ -646,12 +646,7 @@ namespace Trinity
 			a_Mesh.Indices.data());
 	}
 
-	void VulkanRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color)
-	{
-		DrawMesh(primitive, position, color, glm::mat4(1.0f));
-	}
-
-	void VulkanRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& viewProjection)
+	void VulkanRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::mat4& model, const glm::vec4& color, const glm::mat4& viewProjection)
 	{
 		if (!m_FrameBegun)
 		{
@@ -680,8 +675,7 @@ namespace Trinity
 		vkCmdBindIndexBuffer(l_CommandBuffer, l_IndexBuffer, 0, ToVkIndexType(a_GPUPrimitive.VulkanIB->GetIndexType()));
 
 		SimplePushConstants l_PushConstants{};
-		const glm::mat4 l_ModelMatrix = glm::translate(glm::mat4(1.0f), position);
-		l_PushConstants.ModelViewProjection = viewProjection * l_ModelMatrix;
+		l_PushConstants.ModelViewProjection = viewProjection * model;
 		l_PushConstants.Color = color;
 
 		const VulkanSwapchain::SceneColorPolicy& l_ColorPolicy = m_Swapchain.GetSceneColorPolicy();
@@ -693,9 +687,19 @@ namespace Trinity
 		vkCmdDrawIndexed(l_CommandBuffer, a_GPUPrimitive.VulkanIB->GetIndexCount(), 1, 0, 0, 0);
 	}
 
+	void VulkanRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color)
+	{
+		DrawMesh(primitive, glm::translate(glm::mat4(1.0f), position), color, glm::mat4(1.0f));
+	}
+
+	void VulkanRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& viewProjection)
+	{
+		DrawMesh(primitive, glm::translate(glm::mat4(1.0f), position), color, viewProjection);
+	}
+
 	void VulkanRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& view, const glm::mat4& projection)
 	{
-		DrawMesh(primitive, position, color, projection * view);
+		DrawMesh(primitive, glm::translate(glm::mat4(1.0f), position), color, projection * view);
 	}
 
 	void VulkanRenderer::ValidateSceneColorPolicy() const
