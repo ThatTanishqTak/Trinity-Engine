@@ -28,6 +28,7 @@ public:
     void OnImGuiRender() override;
 
     void OnEvent(Trinity::Event& e) override;
+    void LoadScene(std::unique_ptr<Trinity::Scene> scene);
 
 private:
     std::unique_ptr<Trinity::Scene> m_ActiveScene;

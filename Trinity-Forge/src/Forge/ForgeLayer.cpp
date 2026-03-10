@@ -19,27 +19,35 @@ ForgeLayer::ForgeLayer() : Trinity::Layer("ForgeLayer")
 
 ForgeLayer::~ForgeLayer() = default;
 
+void ForgeLayer::LoadScene(std::unique_ptr<Trinity::Scene> scene)
+{
+    m_SelectedEntity = Trinity::Entity{};
+    m_ActiveScene = std::move(scene);
+}
+
 void ForgeLayer::OnInitialize()
 {
     auto& a_Window = Trinity::Application::Get().GetWindow();
     m_EditorCamera.SetViewportSize(static_cast<float>(a_Window.GetWidth()), static_cast<float>(a_Window.GetHeight()));
 
-    m_ActiveScene = std::make_unique<Trinity::Scene>();
+    auto l_Scene = std::make_unique<Trinity::Scene>();
 
     // Demo entities
     {
-        auto l_CubeA = m_ActiveScene->CreateEntity("Cube A");
+        auto l_CubeA = l_Scene->CreateEntity("Cube A");
         l_CubeA.AddComponent<Trinity::MeshRendererComponent>(Trinity::Geometry::PrimitiveType::Cube, glm::vec4(1, 0, 0, 1));
         l_CubeA.GetComponent<Trinity::TransformComponent>().Translation = { 0.0f, 0.0f, 0.0f };
 
-        auto l_CubeB = m_ActiveScene->CreateEntity("Cube B");
+        auto l_CubeB = l_Scene->CreateEntity("Cube B");
         l_CubeB.AddComponent<Trinity::MeshRendererComponent>(Trinity::Geometry::PrimitiveType::Cube, glm::vec4(0, 1, 0, 1));
         l_CubeB.GetComponent<Trinity::TransformComponent>().Translation = { 2.0f, 0.0f, 0.0f };
 
-        auto l_Quad = m_ActiveScene->CreateEntity("Quad");
+        auto l_Quad = l_Scene->CreateEntity("Quad");
         l_Quad.AddComponent<Trinity::MeshRendererComponent>(Trinity::Geometry::PrimitiveType::Quad, glm::vec4(0, 0.5f, 1, 1));
         l_Quad.GetComponent<Trinity::TransformComponent>().Translation = { -2.0f, 0.0f, 0.0f };
     }
+
+    LoadScene(std::move(l_Scene));
 }
 
 void ForgeLayer::OnShutdown()
@@ -271,30 +279,30 @@ void ForgeLayer::OnEvent(Trinity::Event& e)
 
     // If the window loses focus mid-look (alt-tab, click another window), stop looking and restore cursor
     l_Dispatcher.Dispatch<Trinity::WindowLostFocusEvent>([this](Trinity::WindowLostFocusEvent&)
-    {
-        if (m_IsLooking)
         {
-            auto& a_Window = Trinity::Application::Get().GetWindow();
-            a_Window.SetCursorLocked(false);
-            a_Window.SetCursorVisible(true);
-            m_IsLooking = false;
-        }
+            if (m_IsLooking)
+            {
+                auto& a_Window = Trinity::Application::Get().GetWindow();
+                a_Window.SetCursorLocked(false);
+                a_Window.SetCursorVisible(true);
+                m_IsLooking = false;
+            }
 
-        return false;
-    });
+            return false;
+        });
 
     // Only feed raw mouse deltas to the camera while in RMB look mode
     l_Dispatcher.Dispatch<Trinity::MouseRawDeltaEvent>([this](Trinity::MouseRawDeltaEvent& rawDeltaEvent)
-    {
-        if (!m_IsLooking)
         {
-            return false;
-        }
+            if (!m_IsLooking)
+            {
+                return false;
+            }
 
-        m_EditorCamera.OnEvent(rawDeltaEvent);
+            m_EditorCamera.OnEvent(rawDeltaEvent);
 
-        return true;
-    });
+            return true;
+        });
 
     if (!e.Handled && (m_CanControlCamera || m_IsLooking))
     {
