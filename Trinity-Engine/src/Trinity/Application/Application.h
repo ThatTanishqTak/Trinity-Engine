@@ -19,6 +19,7 @@ namespace Trinity
         std::string Title = "Trinity-Application";
         uint32_t Width = 1280;
         uint32_t Height = 720;
+        RendererAPI RendererAPI = Trinity::RendererAPI::VULKAN;
     };
 
     class Application

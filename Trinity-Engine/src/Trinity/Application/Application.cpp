@@ -49,7 +49,7 @@ namespace Trinity
         m_Window = Window::Create();
         m_Window->Initialize(l_WindowProperties);
 
-        RenderCommand::Initialize(*m_Window, RendererAPI::VULKAN);
+        RenderCommand::Initialize(*m_Window, m_Specification.RendererAPI);
 
         m_ImGuiLayer = std::make_unique<ImGuiLayer>();
         m_ImGuiLayer->Initialize(*m_Window);

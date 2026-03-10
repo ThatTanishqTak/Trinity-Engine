@@ -23,6 +23,8 @@ namespace Trinity
 		if (!s_Renderer)
 		{
 			TR_CORE_CRITICAL("RenderCommand::Initialize: RendererFactory returned nullptr");
+
+			return;
 		}
 
 		TR_CORE_TRACE("Selected API: {}", ApiToString(api));
@@ -121,6 +123,8 @@ namespace Trinity
 		if (!s_Renderer)
 		{
 			TR_CORE_CRITICAL("RenderCommand::GetRenderer called before renderer initialization");
+
+			std::abort();
 		}
 		
 		return *s_Renderer;
