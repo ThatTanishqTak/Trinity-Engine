@@ -1,14 +1,14 @@
 #pragma once
 
 #include "Trinity/Renderer/Buffer.h"
+#include "Trinity/Renderer/Vulkan/VulkanAllocator.h"
 
 #include <vulkan/vulkan.h>
+#include <vk_mem_alloc.h>
 #include <cstdint>
 
 namespace Trinity
 {
-	class VulkanContext;
-	class VulkanDevice;
 	class VulkanUploadContext;
 
 	class VulkanBuffer
@@ -22,7 +22,7 @@ namespace Trinity
 		VulkanBuffer(VulkanBuffer&& other) noexcept;
 		VulkanBuffer& operator=(VulkanBuffer&& other) noexcept;
 
-		void Create(const VulkanContext& context, const VulkanDevice& device, VkDeviceSize size, VkBufferUsageFlags usage, BufferMemoryUsage memoryUsage, VulkanUploadContext* uploadContext = nullptr);
+		void Create(VulkanAllocator& allocator, VkDeviceSize size, VkBufferUsageFlags usage, BufferMemoryUsage memoryUsage, VulkanUploadContext* uploadContext = nullptr);
 		void Destroy();
 
 		void SetData(const void* data, VkDeviceSize size, VkDeviceSize offset = 0);
@@ -34,16 +34,14 @@ namespace Trinity
 		BufferMemoryUsage GetMemoryUsage() const { return m_MemoryUsage; }
 
 	private:
-		void CreateRawBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
+		void CreateRawBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VmaAllocationCreateFlags allocationFlags);
 
 		static VulkanBuffer CreateStaging(const VulkanBuffer& source, VkDeviceSize size);
 
 	private:
-		VkAllocationCallbacks* m_Allocator = nullptr;
-		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
-		VkDevice m_Device = VK_NULL_HANDLE;
+		VulkanAllocator* m_VmaAllocator = nullptr;
 		VkBuffer m_Buffer = VK_NULL_HANDLE;
-		VkDeviceMemory m_Memory = VK_NULL_HANDLE;
+		VmaAllocation m_Allocation = VK_NULL_HANDLE;
 		VkDeviceSize m_Size = 0;
 		BufferMemoryUsage m_MemoryUsage = BufferMemoryUsage::GPUOnly;
 		void* m_Mapped = nullptr;
@@ -54,7 +52,7 @@ namespace Trinity
 	class VulkanVertexBuffer final : public VertexBuffer
 	{
 	public:
-		VulkanVertexBuffer(const VulkanContext& context, const VulkanDevice& device, VulkanUploadContext& uploadContext, uint64_t size, uint32_t stride,
+		VulkanVertexBuffer(VulkanAllocator& allocator, VulkanUploadContext& uploadContext, uint64_t size, uint32_t stride,
 			BufferMemoryUsage memoryUsage = BufferMemoryUsage::GPUOnly, const void* initialData = nullptr);
 		~VulkanVertexBuffer() override;
 
@@ -74,7 +72,7 @@ namespace Trinity
 	class VulkanIndexBuffer final : public IndexBuffer
 	{
 	public:
-		VulkanIndexBuffer(const VulkanContext& context, const VulkanDevice& device, VulkanUploadContext& uploadContext, uint64_t size, uint32_t indexCount,
+		VulkanIndexBuffer(VulkanAllocator& allocator, VulkanUploadContext& uploadContext, uint64_t size, uint32_t indexCount,
 			IndexType indexType = IndexType::UInt32, BufferMemoryUsage memoryUsage = BufferMemoryUsage::GPUOnly, const void* initialData = nullptr);
 		~VulkanIndexBuffer() override;
 

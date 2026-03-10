@@ -1,5 +1,6 @@
 #include "Trinity/Renderer/Vulkan/VulkanRenderer.h"
 
+#include "Trinity/Renderer/Vulkan/VulkanAllocator.h"
 #include "Trinity/Renderer/Vulkan/VulkanShaderInterop.h"
 #include "Trinity/ImGui/ImGuiLayer.h"
 #include "Trinity/Platform/Window.h"
@@ -36,8 +37,12 @@ namespace Trinity
 		case ImageTransitionPreset::TransferDestination:
 			return g_TransferDestinationImageState;
 
-		default:
+		case ImageTransitionPreset::GeneralComputeReadWrite:
 			return g_GeneralComputeReadWriteImageState;
+
+		default:
+			TR_CORE_CRITICAL("BuildTransitionState: unhandled ImageTransitionPreset");
+			std::abort();
 		}
 	}
 
@@ -107,6 +112,7 @@ namespace Trinity
 
 		m_Context.Initialize(l_NativeWindowHandle);
 		m_Device.Initialize(m_Context);
+		m_Allocator.Initialize(m_Context, m_Device);
 		m_SceneViewportDepthFormat = Utilities::VulkanUtilities::FindDepthFormat(m_Device.GetPhysicalDevice());
 		m_Swapchain.Initialize(m_Context, m_Device, m_Window->GetWidth(), m_Window->GetHeight(), m_Configuration.m_ColorOutputPolicy);
 		m_Sync.Initialize(m_Context, m_Device, m_FramesInFlight, m_Swapchain.GetImageCount());
@@ -140,6 +146,7 @@ namespace Trinity
 		m_Sync.Shutdown();
 		m_ResourceStateTracker.Reset();
 		m_Swapchain.Shutdown();
+		m_Allocator.Shutdown();
 		m_Device.Shutdown();
 		m_Context.Shutdown();
 		m_ImGuiLayer = nullptr;
@@ -224,18 +231,7 @@ namespace Trinity
 		l_ImageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 		l_ImageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-		Utilities::VulkanUtilities::VKCheck(vkCreateImage(m_Device.GetDevice(), &l_ImageCreateInfo, m_Context.GetAllocator(), &m_SceneViewportImage), "Failed vkCreateImage");
-
-		VkMemoryRequirements l_MemoryRequirements{};
-		vkGetImageMemoryRequirements(m_Device.GetDevice(), m_SceneViewportImage, &l_MemoryRequirements);
-
-		VkMemoryAllocateInfo l_AllocateInfo{};
-		l_AllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		l_AllocateInfo.allocationSize = l_MemoryRequirements.size;
-		l_AllocateInfo.memoryTypeIndex = Utilities::VulkanUtilities::FindMemoryType(m_Device.GetPhysicalDevice(), l_MemoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-		Utilities::VulkanUtilities::VKCheck(vkAllocateMemory(m_Device.GetDevice(), &l_AllocateInfo, m_Context.GetAllocator(), &m_SceneViewportImageMemory), "Failed vkAllocateMemory");
-		Utilities::VulkanUtilities::VKCheck(vkBindImageMemory(m_Device.GetDevice(), m_SceneViewportImage, m_SceneViewportImageMemory, 0), "Failed vkBindImageMemory");
+		m_Allocator.CreateImage(l_ImageCreateInfo, m_SceneViewportImage, m_SceneViewportImageAllocation);
 
 		VkImageViewCreateInfo l_ViewCreateInfo{};
 		l_ViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -283,18 +279,7 @@ namespace Trinity
 		l_DepthImageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 		l_DepthImageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-		Utilities::VulkanUtilities::VKCheck(vkCreateImage(m_Device.GetDevice(), &l_DepthImageCreateInfo, m_Context.GetAllocator(), &m_SceneViewportDepthImage), "Failed vkCreateImage");
-
-		VkMemoryRequirements l_DepthMemoryRequirements{};
-		vkGetImageMemoryRequirements(m_Device.GetDevice(), m_SceneViewportDepthImage, &l_DepthMemoryRequirements);
-
-		VkMemoryAllocateInfo l_DepthAllocateInfo{};
-		l_DepthAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		l_DepthAllocateInfo.allocationSize = l_DepthMemoryRequirements.size;
-		l_DepthAllocateInfo.memoryTypeIndex = Utilities::VulkanUtilities::FindMemoryType(m_Device.GetPhysicalDevice(), l_DepthMemoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-		Utilities::VulkanUtilities::VKCheck(vkAllocateMemory(m_Device.GetDevice(), &l_DepthAllocateInfo, m_Context.GetAllocator(), &m_SceneViewportDepthImageMemory), "Failed vkAllocateMemory");
-		Utilities::VulkanUtilities::VKCheck(vkBindImageMemory(m_Device.GetDevice(), m_SceneViewportDepthImage, m_SceneViewportDepthImageMemory, 0), "Failed vkBindImageMemory");
+		m_Allocator.CreateImage(l_DepthImageCreateInfo, m_SceneViewportDepthImage, m_SceneViewportDepthImageAllocation);
 
 		VkImageViewCreateInfo l_DepthViewCreateInfo{};
 		l_DepthViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -331,9 +316,10 @@ namespace Trinity
 
 		if (m_SceneViewportImage != VK_NULL_HANDLE)
 		{
-			vkDestroyImage(m_Device.GetDevice(), m_SceneViewportImage, m_Context.GetAllocator());
 			m_ResourceStateTracker.ForgetImage(m_SceneViewportImage);
+			m_Allocator.DestroyImage(m_SceneViewportImage, m_SceneViewportImageAllocation);
 			m_SceneViewportImage = VK_NULL_HANDLE;
+			m_SceneViewportImageAllocation = VK_NULL_HANDLE;
 		}
 
 		if (m_SceneViewportDepthImageView != VK_NULL_HANDLE)
@@ -344,21 +330,10 @@ namespace Trinity
 
 		if (m_SceneViewportDepthImage != VK_NULL_HANDLE)
 		{
-			vkDestroyImage(m_Device.GetDevice(), m_SceneViewportDepthImage, m_Context.GetAllocator());
 			m_ResourceStateTracker.ForgetImage(m_SceneViewportDepthImage);
+			m_Allocator.DestroyImage(m_SceneViewportDepthImage, m_SceneViewportDepthImageAllocation);
 			m_SceneViewportDepthImage = VK_NULL_HANDLE;
-		}
-
-		if (m_SceneViewportDepthImageMemory != VK_NULL_HANDLE)
-		{
-			vkFreeMemory(m_Device.GetDevice(), m_SceneViewportDepthImageMemory, m_Context.GetAllocator());
-			m_SceneViewportDepthImageMemory = VK_NULL_HANDLE;
-		}
-
-		if (m_SceneViewportImageMemory != VK_NULL_HANDLE)
-		{
-			vkFreeMemory(m_Device.GetDevice(), m_SceneViewportImageMemory, m_Context.GetAllocator());
-			m_SceneViewportImageMemory = VK_NULL_HANDLE;
+			m_SceneViewportDepthImageAllocation = VK_NULL_HANDLE;
 		}
 	}
 
@@ -418,7 +393,15 @@ namespace Trinity
 			m_SceneViewportWidth = m_PendingWidth;
 			m_SceneViewportHeight = m_PendingHeight;
 
-			vkDeviceWaitIdle(m_Device.GetDevice());
+			// Wait only for the in-flight frame fences rather than stalling the
+			// entire device. The scene viewport images are exclusively written
+			// during the scene render pass, which completes before each frame
+			// fence is signalled, so this is sufficient.
+			for (uint32_t i = 0; i < m_FramesInFlight; ++i)
+			{
+				m_Sync.WaitForFrameFence(i);
+			}
+
 			RecreateSceneViewportTarget();
 
 			m_PendingViewportRecreate = false;
@@ -631,14 +614,14 @@ namespace Trinity
 		const auto& a_Mesh = Geometry::GetPrimitive(primitive);
 
 		a_GPUPrimitive.VulkanVB = std::make_unique<VulkanVertexBuffer>(
-			m_Context, m_Device, m_UploadContext,
+			m_Allocator, m_UploadContext,
 			(uint64_t)(a_Mesh.Vertices.size() * sizeof(Geometry::Vertex)),
 			(uint32_t)sizeof(Geometry::Vertex),
 			BufferMemoryUsage::GPUOnly,
 			a_Mesh.Vertices.data());
 
 		a_GPUPrimitive.VulkanIB = std::make_unique<VulkanIndexBuffer>(
-			m_Context, m_Device, m_UploadContext,
+			m_Allocator, m_UploadContext,
 			(uint64_t)(a_Mesh.Indices.size() * sizeof(uint32_t)),
 			(uint32_t)a_Mesh.Indices.size(),
 			IndexType::UInt32,

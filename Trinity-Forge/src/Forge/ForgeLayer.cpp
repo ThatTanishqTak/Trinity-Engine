@@ -108,7 +108,7 @@ void ForgeLayer::OnImGuiRender()
 
     const bool l_IsSceneViewportFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
     const bool l_IsSceneViewportHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
-    m_CanControlCamera = /*l_IsSceneViewportFocused &&*/ l_IsSceneViewportHovered;
+    m_CanControlCamera = l_IsSceneViewportFocused && l_IsSceneViewportHovered;
 
     auto& a_Window = Trinity::Application::Get().GetWindow();
     if (m_CanControlCamera && !m_IsLooking && ImGui::IsMouseClicked(ImGuiMouseButton_Right))

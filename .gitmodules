@@ -17,3 +17,6 @@
 [submodule "Trinity-Engine/vendor/entt"]
 	path = Trinity-Engine/vendor/entt
 	url = https://github.com/ThatTanishqTak/entt.git
+[submodule "Trinity-Engine/vendor/VulkanMemoryAllocator"]
+	path = Trinity-Engine/vendor/VulkanMemoryAllocator
+	url = https://github.com/ThatTanishqTak/VulkanMemoryAllocator.git

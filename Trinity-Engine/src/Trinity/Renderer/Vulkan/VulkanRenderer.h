@@ -4,6 +4,7 @@
 
 #include "Trinity/Renderer/Vulkan/VulkanContext.h"
 #include "Trinity/Renderer/Vulkan/VulkanDevice.h"
+#include "Trinity/Renderer/Vulkan/VulkanAllocator.h"
 #include "Trinity/Renderer/Vulkan/VulkanSwapchain.h"
 #include "Trinity/Renderer/Vulkan/VulkanSync.h"
 #include "Trinity/Renderer/Vulkan/VulkanCommand.h"
@@ -107,6 +108,7 @@ namespace Trinity
 
 		VulkanContext m_Context{};
 		VulkanDevice m_Device{};
+		VulkanAllocator m_Allocator{};
 		VulkanSwapchain m_Swapchain{};
 		VulkanSync m_Sync{};
 		VulkanCommand m_Command{};
@@ -130,11 +132,11 @@ namespace Trinity
 		uint32_t m_SceneViewportWidth = 0;
 		uint32_t m_SceneViewportHeight = 0;
 		VkImage m_SceneViewportImage = VK_NULL_HANDLE;
-		VkDeviceMemory m_SceneViewportImageMemory = VK_NULL_HANDLE;
+		VmaAllocation m_SceneViewportImageAllocation = VK_NULL_HANDLE;
 		VkImageView m_SceneViewportImageView = VK_NULL_HANDLE;
 		VkFormat m_SceneViewportDepthFormat = VK_FORMAT_UNDEFINED;
 		VkImage m_SceneViewportDepthImage = VK_NULL_HANDLE;
-		VkDeviceMemory m_SceneViewportDepthImageMemory = VK_NULL_HANDLE;
+		VmaAllocation m_SceneViewportDepthImageAllocation = VK_NULL_HANDLE;
 		VkImageView m_SceneViewportDepthImageView = VK_NULL_HANDLE;
 		VkSampler m_SceneViewportSampler = VK_NULL_HANDLE;
 		void* m_SceneViewportHandle = nullptr;

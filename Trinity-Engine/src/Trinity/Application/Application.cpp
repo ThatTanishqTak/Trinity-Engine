@@ -158,9 +158,7 @@ namespace Trinity
             if (m_Window->IsMinimized())
             {
                 constexpr auto l_MinimizedSleep = std::chrono::milliseconds(16);
-
                 std::this_thread::sleep_for(l_MinimizedSleep);
-                m_Window->OnUpdate();
 
                 continue;
             }

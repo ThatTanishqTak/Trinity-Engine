@@ -31,6 +31,8 @@ add_subdirectory(vendor/entt)
 add_subdirectory(vendor/imgui)
 add_subdirectory(vendor/stb)
 
+add_subdirectory(vendor/VulkanMemoryAllocator)
+
 file(GLOB_RECURSE TRINITY_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/**.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/**.hpp
@@ -58,6 +60,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     Vulkan::Vulkan
     imgui
     stb::stb
+    GPUOpen::VulkanMemoryAllocator
 )
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC

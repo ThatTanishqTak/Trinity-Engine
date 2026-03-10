@@ -24,7 +24,7 @@ namespace Trinity
 		{
 			TR_CORE_CRITICAL("RenderCommand::Initialize: RendererFactory returned nullptr");
 
-			return;
+			std::abort();
 		}
 
 		TR_CORE_TRACE("Selected API: {}", ApiToString(api));

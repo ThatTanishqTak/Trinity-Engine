@@ -1,5 +1,6 @@
-#include "Trinity/Camera/EditorCamera.h"
+#define GLM_ENABLE_EXPERIMENTAL
 
+#include "Trinity/Camera/EditorCamera.h"
 #include "Trinity/Events/Event.h"
 #include "Trinity/Events/MouseEvent.h"
 #include "Trinity/Input/Input.h"
@@ -8,7 +9,6 @@
 #include <glm/geometric.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/trigonometric.hpp>
-#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/norm.hpp>
 
 namespace Trinity
