@@ -7,6 +7,7 @@
 
 #include <imgui.h>
 #include <memory>
+#include <string>
 
 namespace Trinity
 {
@@ -31,6 +32,14 @@ public:
     void LoadScene(std::unique_ptr<Trinity::Scene> scene);
 
 private:
+    void DrawMenuBar();
+
+    void NewScene();
+    void OpenScene(const std::string& filePath);
+    void SaveScene();
+    void SaveSceneAs();
+
+private:
     std::unique_ptr<Trinity::Scene> m_ActiveScene;
     Trinity::Entity m_SelectedEntity;
 
@@ -38,4 +47,6 @@ private:
     bool m_CanControlCamera = false;
     bool m_IsLooking = false;
     ImVec2 m_SceneViewportSize = ImVec2(0.0f, 0.0f);
+
+    std::string m_CurrentScenePath;
 };

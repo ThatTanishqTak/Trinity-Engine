@@ -10,14 +10,14 @@ namespace Trinity
 
     Entity Scene::CreateEntity(const std::string& name)
     {
-        entt::entity handle = m_Registry.create();
-        Entity entity(handle, &m_Registry);
+        entt::entity l_Handle = m_Registry.create();
+        Entity l_Entity(l_Handle, &m_Registry);
 
-        entity.AddComponent<IDComponent>(GenerateID());
-        entity.AddComponent<TagComponent>(name);
-        entity.AddComponent<TransformComponent>();
+        l_Entity.AddComponent<IDComponent>(GenerateID());
+        l_Entity.AddComponent<TagComponent>(name);
+        l_Entity.AddComponent<TransformComponent>();
 
-        return entity;
+        return l_Entity;
     }
 
     void Scene::DestroyEntity(Entity entity)
@@ -28,5 +28,20 @@ namespace Trinity
         }
 
         m_Registry.destroy(entity.GetHandle());
+    }
+
+    Entity Scene::FindEntityByTag(const std::string& tag)
+    {
+        auto a_View = m_Registry.view<TagComponent>();
+        for (auto it_Entity : a_View)
+        {
+            const TagComponent& l_Tag = a_View.get<TagComponent>(it_Entity);
+            if (l_Tag.Tag == tag)
+            {
+                return Entity(it_Entity, &m_Registry);
+            }
+        }
+
+        return Entity{};
     }
 }

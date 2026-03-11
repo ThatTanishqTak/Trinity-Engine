@@ -8,9 +8,12 @@
 #include "Trinity/Events/ApplicationEvent.h"
 #include "Trinity/Events/KeyEvent.h"
 #include "Trinity/Events/MouseEvent.h"
+#include "Trinity/Input/Input.h"
 
 #include "Trinity/ECS/SceneRenderer.h"
 #include "Trinity/ECS/Components.h"
+#include "Trinity/ECS/SceneSerializer.h"
+#include "Trinity/Utilities/FileManagement.h"
 
 ForgeLayer::ForgeLayer() : Trinity::Layer("ForgeLayer")
 {
@@ -64,7 +67,35 @@ void ForgeLayer::OnShutdown()
 
 void ForgeLayer::OnUpdate(float deltaTime)
 {
-    // Allow camera input while the scene viewport is active OR while we're in RMB look mode.
+    const bool l_Ctrl = Trinity::Input::KeyDown(Trinity::Code::KeyCode::TR_KEY_LEFT_CONTROL);
+    const bool l_Shift = Trinity::Input::KeyDown(Trinity::Code::KeyCode::TR_KEY_LEFT_SHIFT);
+
+    if (l_Ctrl && Trinity::Input::KeyPressed(Trinity::Code::KeyCode::TR_KEY_N))
+    {
+        NewScene();
+    }
+
+    if (l_Ctrl && Trinity::Input::KeyPressed(Trinity::Code::KeyCode::TR_KEY_S))
+    {
+        if (l_Shift || m_CurrentScenePath.empty())
+        {
+            SaveSceneAs();
+        }
+        else
+        {
+            SaveScene();
+        }
+    }
+
+    if (l_Ctrl && Trinity::Input::KeyPressed(Trinity::Code::KeyCode::TR_KEY_O))
+    {
+        const auto l_Path = Trinity::Utilities::FileManagement::OpenFileDialog({ { "Trinity Scene", "*.scene" }, { "All Files", "*.*" } });
+        if (l_Path)
+        {
+            OpenScene(*l_Path);
+        }
+    }
+
     m_EditorCamera.SetInputEnabled(m_CanControlCamera || m_IsLooking);
     m_EditorCamera.OnUpdate(deltaTime);
 }
@@ -100,6 +131,8 @@ void ForgeLayer::OnImGuiRender()
 
     ImGui::Begin("ForgeDockspace", nullptr, l_WindowFlags);
     ImGui::PopStyleVar(2);
+
+    DrawMenuBar();
 
     const ImGuiID l_DockspaceID = ImGui::GetID("ForgeDockspaceID");
     ImGui::DockSpace(l_DockspaceID, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
@@ -312,4 +345,111 @@ void ForgeLayer::OnEvent(Trinity::Event& e)
             m_EditorCamera.OnEvent(e);
         }
     }
+}
+
+void ForgeLayer::DrawMenuBar()
+{
+    if (!ImGui::BeginMenuBar())
+    {
+        return;
+    }
+
+    if (ImGui::BeginMenu("File"))
+    {
+        if (ImGui::MenuItem("New Scene", "Ctrl+N"))
+        {
+            NewScene();
+        }
+
+        if (ImGui::MenuItem("Open Scene...", "Ctrl+O"))
+        {
+            const auto l_Path = Trinity::Utilities::FileManagement::OpenFileDialog({ { "Trinity Scene", "*.scene" }, { "All Files", "*.*" } });
+            if (l_Path)
+            {
+                OpenScene(*l_Path);
+            }
+        }
+
+        ImGui::Separator();
+
+        if (ImGui::MenuItem("Save Scene", "Ctrl+S", false, !m_CurrentScenePath.empty()))
+        {
+            SaveScene();
+        }
+
+        if (ImGui::MenuItem("Save Scene As...", "Ctrl+Shift+S"))
+        {
+            SaveSceneAs();
+        }
+
+        ImGui::Separator();
+
+        if (ImGui::MenuItem("Exit"))
+        {
+            Trinity::Application::Close();
+        }
+
+        ImGui::EndMenu();
+    }
+
+    if (!m_CurrentScenePath.empty())
+    {
+        const std::string l_Label = "  |  " + m_CurrentScenePath;
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 8.0f);
+        ImGui::TextDisabled("%s", l_Label.c_str());
+    }
+
+    ImGui::EndMenuBar();
+}
+
+void ForgeLayer::NewScene()
+{
+    LoadScene(std::make_unique<Trinity::Scene>());
+    m_CurrentScenePath.clear();
+}
+
+void ForgeLayer::OpenScene(const std::string& filePath)
+{
+    if (filePath.empty())
+    {
+        return;
+    }
+
+    auto l_Scene = std::make_unique<Trinity::Scene>();
+    Trinity::SceneSerializer l_Serializer(*l_Scene);
+
+    if (l_Serializer.Deserialize(filePath))
+    {
+        LoadScene(std::move(l_Scene));
+        m_CurrentScenePath = filePath;
+    }
+}
+
+void ForgeLayer::SaveScene()
+{
+    if (m_CurrentScenePath.empty() || !m_ActiveScene)
+    {
+        return;
+    }
+
+    Trinity::SceneSerializer l_Serializer(*m_ActiveScene);
+    l_Serializer.Serialize(m_CurrentScenePath);
+}
+
+void ForgeLayer::SaveSceneAs()
+{
+    if (!m_ActiveScene)
+    {
+        return;
+    }
+
+    const auto l_Path = Trinity::Utilities::FileManagement::SaveFileDialog({ { "Trinity Scene", "*.scene" } }, "scene");
+    if (!l_Path)
+    {
+        return;
+    }
+
+    Trinity::SceneSerializer l_Serializer(*m_ActiveScene);
+    l_Serializer.Serialize(*l_Path);
+    m_CurrentScenePath = *l_Path;
 }
