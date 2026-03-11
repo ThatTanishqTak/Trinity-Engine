@@ -7,11 +7,11 @@
 #include "Trinity/Utilities/Log.h"
 #include "Trinity/Utilities/VulkanUtilities.h"
 
-#include <Windows.h>
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_vulkan.h>
 
 #include <imgui.h>
-#include <vulkan/vulkan_win32.h>
-#include <backends/imgui_impl_win32.h>
+#include <backends/imgui_impl_sdl3.h>
 #include <backends/imgui_impl_vulkan.h>
 
 #include <array>
@@ -31,31 +31,6 @@ namespace Trinity
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
 
-        ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
-
-        platform_io.Platform_CreateVkSurface = [](ImGuiViewport* viewport, ImU64 vk_instance, const void* vk_allocator, ImU64* out_vk_surface) -> int
-        {
-            VkInstance instance = (VkInstance)vk_instance;
-            const VkAllocationCallbacks* allocator = (const VkAllocationCallbacks*)vk_allocator;
-
-            HWND hwnd = (HWND)viewport->PlatformHandleRaw;
-
-            VkWin32SurfaceCreateInfoKHR create_info{};
-            create_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-            create_info.hinstance = GetModuleHandle(nullptr);
-            create_info.hwnd = hwnd;
-
-            VkSurfaceKHR surface;
-            if (vkCreateWin32SurfaceKHR(instance, &create_info, allocator, &surface) != VK_SUCCESS)
-            {
-                return VK_ERROR_INITIALIZATION_FAILED;
-            }
-
-            *out_vk_surface = (ImU64)surface;
-
-            return VK_SUCCESS;
-        };
-
         ImGuiIO& l_IO = ImGui::GetIO();
         l_IO.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         l_IO.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -71,14 +46,20 @@ namespace Trinity
         }
 
         const NativeWindowHandle l_NativeHandle = m_Window->GetNativeHandle();
-        if (l_NativeHandle.PlatformHandle == nullptr)
+        if (l_NativeHandle.Window == nullptr)
         {
-            TR_CORE_CRITICAL("ImGuiLayer currently requires a valid platform window handle");
+            TR_CORE_CRITICAL("ImGuiLayer requires a valid SDL_Window handle");
 
             std::abort();
         }
 
-        ImGui_ImplWin32_Init(l_NativeHandle.PlatformHandle);
+        ImGui_ImplSDL3_InitForVulkan(l_NativeHandle.Window);
+
+        m_Window->SetPlatformEventCallback([](const void* event)
+            {
+                ImGui_ImplSDL3_ProcessEvent(static_cast<const SDL_Event*>(event));
+            });
+
         InitializeVulkanBackend();
 
         m_Initialized = true;
@@ -91,8 +72,9 @@ namespace Trinity
             return;
         }
 
+        m_Window->SetPlatformEventCallback(nullptr);
         ShutdownVulkanBackend();
-        ImGui_ImplWin32_Shutdown();
+        ImGui_ImplSDL3_Shutdown();
         ImGui::DestroyContext();
 
         m_Window = nullptr;
@@ -109,7 +91,7 @@ namespace Trinity
         }
 
         ImGui_ImplVulkan_NewFrame();
-        ImGui_ImplWin32_NewFrame();
+        ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
     }
 

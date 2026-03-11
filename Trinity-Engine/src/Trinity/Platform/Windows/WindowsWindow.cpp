@@ -100,6 +100,11 @@ namespace Trinity
         SDL_Event l_Event{};
         while (SDL_PollEvent(&l_Event))
         {
+            if (m_PlatformEventCallback)
+            {
+                m_PlatformEventCallback(&l_Event);
+            }
+
             if (l_Event.type == SDL_EVENT_QUIT)
             {
                 m_ShouldClose = true;

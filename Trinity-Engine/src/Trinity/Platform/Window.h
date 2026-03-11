@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 
@@ -60,9 +61,13 @@ namespace Trinity
 
         virtual NativeWindowHandle GetNativeHandle() const = 0;
 
+        void SetPlatformEventCallback(std::function<void(const void*)> callback) { m_PlatformEventCallback = std::move(callback); }
+
         static std::unique_ptr<Window> Create();
 
     protected:
         Window() = default;
+
+        std::function<void(const void*)> m_PlatformEventCallback;
     };
 }
