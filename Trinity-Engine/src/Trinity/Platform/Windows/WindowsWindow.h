@@ -2,15 +2,12 @@
 
 #include "Trinity/Events/EventQueue.h"
 #include "Trinity/Platform/Window.h"
-#include "Trinity/Input/InputCodes.h"
+
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_mouse.h>
 
 #include <cstdint>
 #include <string>
-
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <Windows.h>
 
 namespace Trinity
 {
@@ -53,29 +50,14 @@ namespace Trinity
             bool VSync = true;
             bool Resizable = true;
             bool Minimized = false;
-
         };
 
     private:
-        static LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+        SDL_Window* m_WindowHandle = nullptr;
+        uint32_t m_WindowID = 0;
 
-        LRESULT HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam);
-
-        static Code::KeyCode TranslateKeyCode(WPARAM wParam, LPARAM lParam);
-        static Code::MouseCode TranslateMouseButton(UINT msg, WPARAM wParam);
-
-        void RegisterWindowClassIfNeeded();
-        void CreateNativeWindow();
-        void DestroyNativeWindow();
-        void ApplyCursorLockClip();
-
-        void PushResize();
-
-    private:
-        HINSTANCE m_InstanceHandle = nullptr;
-        HWND m_WindowHandle = nullptr;
-
-        POINT m_CursorRestorePos{ 0, 0 };
+        float m_CursorRestoreX = 0.0f;
+        float m_CursorRestoreY = 0.0f;
         bool m_HasCursorRestorePos = false;
 
         WindowData m_Data{};
@@ -85,9 +67,5 @@ namespace Trinity
         bool m_ShouldClose = false;
         bool m_CursorVisible = true;
         bool m_CursorLocked = false;
-
-        bool m_IsInResize;
-        uint32_t m_PendingWidth;
-        uint32_t m_PendingHeight;
     };
 }
