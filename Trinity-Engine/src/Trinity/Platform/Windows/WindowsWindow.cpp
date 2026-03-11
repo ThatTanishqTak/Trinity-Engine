@@ -2,9 +2,10 @@
 
 #include "Trinity/Events/ApplicationEvent.h"
 #include "Trinity/Events/Event.h"
+#include "Trinity/Events/KeyEvent.h"
+#include "Trinity/Events/MouseEvent.h"
+#include "Trinity/Platform/SDL/SDLEventTranslator.h"
 #include "Trinity/Utilities/Log.h"
-
-#include <SDL3/SDL_mouse.h>
 
 #include <memory>
 
@@ -99,6 +100,13 @@ namespace Trinity
         SDL_Event l_Event{};
         while (SDL_PollEvent(&l_Event))
         {
+            if (l_Event.type == SDL_EVENT_QUIT)
+            {
+                m_ShouldClose = true;
+
+                continue;
+            }
+
             if (l_Event.type == SDL_EVENT_WINDOW_RESIZED && l_Event.window.windowID == m_WindowID)
             {
                 const uint32_t l_Width = static_cast<uint32_t>(l_Event.window.data1);
@@ -136,9 +144,58 @@ namespace Trinity
                 continue;
             }
 
-            if (l_Event.type == SDL_EVENT_QUIT)
+            if (l_Event.type == SDL_EVENT_KEY_DOWN && l_Event.key.windowID == m_WindowID)
             {
-                m_ShouldClose = true;
+                const Code::KeyCode l_KeyCode = TranslateKeyCode(l_Event.key.key, l_Event.key.scancode);
+                if (l_KeyCode != Code::KeyCode::UNKNOWN)
+                {
+                    const int l_RepeatCount = (l_Event.key.repeat == 0) ? 0 : 1;
+                    m_EventQueue.PushEvent(std::make_unique<KeyPressedEvent>(l_KeyCode, l_RepeatCount));
+                }
+
+                continue;
+            }
+
+            if (l_Event.type == SDL_EVENT_KEY_UP && l_Event.key.windowID == m_WindowID)
+            {
+                const Code::KeyCode l_KeyCode = TranslateKeyCode(l_Event.key.key, l_Event.key.scancode);
+                if (l_KeyCode != Code::KeyCode::UNKNOWN)
+                {
+                    m_EventQueue.PushEvent(std::make_unique<KeyReleasedEvent>(l_KeyCode));
+                }
+
+                continue;
+            }
+
+            if (l_Event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && l_Event.button.windowID == m_WindowID)
+            {
+                const Code::MouseCode l_ButtonCode = TranslateMouseButton(l_Event.button.button);
+                m_EventQueue.PushEvent(std::make_unique<MouseButtonPressedEvent>(l_ButtonCode));
+
+                continue;
+            }
+
+            if (l_Event.type == SDL_EVENT_MOUSE_BUTTON_UP && l_Event.button.windowID == m_WindowID)
+            {
+                const Code::MouseCode l_ButtonCode = TranslateMouseButton(l_Event.button.button);
+                m_EventQueue.PushEvent(std::make_unique<MouseButtonReleasedEvent>(l_ButtonCode));
+
+                continue;
+            }
+
+            if (l_Event.type == SDL_EVENT_MOUSE_MOTION && l_Event.motion.windowID == m_WindowID)
+            {
+                m_EventQueue.PushEvent(std::make_unique<MouseMovedEvent>(l_Event.motion.x, l_Event.motion.y));
+                m_EventQueue.PushEvent(std::make_unique<MouseRawDeltaEvent>(l_Event.motion.xrel, l_Event.motion.yrel));
+
+                continue;
+            }
+
+            if (l_Event.type == SDL_EVENT_MOUSE_WHEEL && l_Event.wheel.windowID == m_WindowID)
+            {
+                m_EventQueue.PushEvent(std::make_unique<MouseScrolledEvent>(l_Event.wheel.x, l_Event.wheel.y));
+
+                continue;
             }
         }
     }
