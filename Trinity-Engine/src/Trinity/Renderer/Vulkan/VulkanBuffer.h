@@ -91,6 +91,32 @@ namespace Trinity
 		IndexType m_IndexType = IndexType::UInt32;
 	};
 
+	class VulkanUniformBuffer final : public UniformBuffer
+	{
+	public:
+		VulkanUniformBuffer(VulkanAllocator& allocator, uint64_t size);
+		~VulkanUniformBuffer() override;
+
+		// Non-copyable, movable.
+		VulkanUniformBuffer(const VulkanUniformBuffer&) = delete;
+		VulkanUniformBuffer& operator=(const VulkanUniformBuffer&) = delete;
+		VulkanUniformBuffer(VulkanUniformBuffer&& other) noexcept;
+		VulkanUniformBuffer& operator=(VulkanUniformBuffer&& other) noexcept;
+
+		void SetData(const void* data, uint64_t size, uint64_t offset = 0) override;
+
+		uint64_t GetSize() const override { return (uint64_t)m_Buffer.GetSize(); }
+		uint64_t GetNativeHandle() const override { return (uint64_t)(uintptr_t)m_Buffer.GetBuffer(); }
+
+		VkBuffer GetVkBuffer() const { return m_Buffer.GetBuffer(); }
+
+		VkDescriptorBufferInfo GetDescriptorBufferInfo(VkDeviceSize offset = 0, VkDeviceSize range = VK_WHOLE_SIZE) const;
+
+	private:
+		VulkanBuffer m_Buffer{};
+		void* m_MappedPtr = nullptr;
+	};
+
 	inline VkIndexType ToVkIndexType(IndexType type)
 	{
 		return (type == IndexType::UInt16) ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32;

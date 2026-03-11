@@ -42,4 +42,20 @@ namespace Trinity
 
 		virtual uint64_t GetNativeHandle() const = 0;
 	};
+
+	class UniformBuffer
+	{
+	public:
+		virtual ~UniformBuffer() = default;
+		virtual void SetData(const void* data, uint64_t size, uint64_t offset = 0) = 0;
+
+		template<typename T>
+		void SetData(const T& value, uint64_t offset = 0)
+		{
+			SetData(&value, sizeof(T), offset);
+		}
+
+		virtual uint64_t GetSize() const = 0;
+		virtual uint64_t GetNativeHandle() const = 0;
+	};
 }

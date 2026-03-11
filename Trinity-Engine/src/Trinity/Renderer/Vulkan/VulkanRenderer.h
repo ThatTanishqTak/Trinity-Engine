@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Trinity/Renderer/Renderer.h"
+#include "Trinity/Renderer/ShaderLibrary.h"
 
 #include "Trinity/Renderer/Vulkan/VulkanContext.h"
 #include "Trinity/Renderer/Vulkan/VulkanDevice.h"
@@ -33,7 +34,10 @@ namespace Trinity
 		{
 			VulkanSwapchain::ColorOutputPolicy m_ColorOutputPolicy = VulkanSwapchain::ColorOutputPolicy::SDRsRGB;
 
+			std::string m_VertexShaderName = "Simple.vert";
 			std::string m_VertexShaderPath = "Assets/Shaders/Simple.vert.spv";
+
+			std::string m_FragmentShaderName = "Simple.frag";
 			std::string m_FragmentShaderPath = "Assets/Shaders/Simple.frag.spv";
 		};
 
@@ -53,6 +57,8 @@ namespace Trinity
 		void RenderImGui(ImGuiLayer& imGuiLayer) override;
 		void SetSceneViewportSize(uint32_t width, uint32_t height) override;
 		void* GetSceneViewportHandle() const override;
+
+		void ReloadShaders();
 
 		void DrawMesh(Geometry::PrimitiveType primitive, const glm::mat4& model, const glm::vec4& color, const glm::mat4& viewProjection) override;
 		void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color) override;
@@ -105,6 +111,8 @@ namespace Trinity
 		};
 
 		Window* m_Window = nullptr;
+
+		ShaderLibrary m_ShaderLibrary{};
 
 		VulkanContext m_Context{};
 		VulkanDevice m_Device{};

@@ -7,7 +7,6 @@
 
 #include "Trinity/Renderer/Vulkan/VulkanShaderInterop.h"
 
-#include "Trinity/Utilities/FileManagement.h"
 #include "Trinity/Utilities/Log.h"
 #include "Trinity/Utilities/VulkanUtilities.h"
 
@@ -18,7 +17,7 @@
 namespace Trinity
 {
 	void VulkanPipeline::Initialize(const VulkanContext& context, const VulkanDevice& device, VkFormat colorFormat, VkFormat depthFormat,
-		const std::string& vertexShaderSpvPath, const std::string& fragmentShaderSpvPath)
+		const std::vector<uint32_t>& vertexSpirV, const std::vector<uint32_t>& fragmentSpirV)
 	{
 		TR_CORE_TRACE("Initializing Vulkan Pipeline");
 
@@ -53,8 +52,8 @@ namespace Trinity
 		m_Allocator = context.GetAllocator();
 		m_ColorFormat = colorFormat;
 		m_DepthFormat = depthFormat;
-		m_VertexShaderPath = vertexShaderSpvPath;
-		m_FragmentShaderPath = fragmentShaderSpvPath;
+		m_VertexSpirV = vertexSpirV;
+		m_FragmentSpirV = fragmentSpirV;
 
 		CreatePipeline();
 
@@ -65,8 +64,8 @@ namespace Trinity
 	{
 		DestroyPipeline();
 
-		m_VertexShaderPath.clear();
-		m_FragmentShaderPath.clear();
+		m_VertexSpirV.clear();
+		m_FragmentSpirV.clear();
 		m_DepthFormat = VK_FORMAT_UNDEFINED;
 		m_ColorFormat = VK_FORMAT_UNDEFINED;
 		m_Device = VK_NULL_HANDLE;
@@ -119,8 +118,8 @@ namespace Trinity
 			DestroyPipeline();
 		}
 
-		const VkShaderModule l_VertexShaderModule = CreateShaderModule(m_VertexShaderPath);
-		const VkShaderModule l_FragmentShaderModule = CreateShaderModule(m_FragmentShaderPath);
+		const VkShaderModule l_VertexShaderModule = CreateShaderModule(m_VertexSpirV);
+		const VkShaderModule l_FragmentShaderModule = CreateShaderModule(m_FragmentSpirV);
 
 		VkPipelineShaderStageCreateInfo l_VertexStage{};
 		l_VertexStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -264,21 +263,19 @@ namespace Trinity
 		}
 	}
 
-	VkShaderModule VulkanPipeline::CreateShaderModule(const std::string& path) const
+	VkShaderModule VulkanPipeline::CreateShaderModule(const std::vector<uint32_t>& spirV) const
 	{
-		const std::vector<char> l_Code = Utilities::FileManagement::LoadFromFile(path);
-
-		if (l_Code.empty() || (l_Code.size() % 4) != 0)
+		if (spirV.empty() || (spirV.size() * 4) % 4 != 0)
 		{
-			TR_CORE_CRITICAL("Invalid SPIR-V file (size not multiple of 4): {}", path.c_str());
+			TR_CORE_CRITICAL("VulkanPipeline::CreateShaderModule — empty or invalid SPIR-V");
 
 			std::abort();
 		}
 
 		VkShaderModuleCreateInfo l_CreateInfo{};
 		l_CreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-		l_CreateInfo.codeSize = l_Code.size();
-		l_CreateInfo.pCode = reinterpret_cast<const uint32_t*>(l_Code.data());
+		l_CreateInfo.codeSize = spirV.size() * sizeof(uint32_t);
+		l_CreateInfo.pCode = spirV.data();
 
 		VkShaderModule l_Module = VK_NULL_HANDLE;
 		Utilities::VulkanUtilities::VKCheck(vkCreateShaderModule(m_Device, &l_CreateInfo, m_Allocator, &l_Module), "Failed vkCreateShaderModule");

@@ -238,4 +238,89 @@ namespace Trinity
 	{
 		m_Buffer.SetData(data, (VkDeviceSize)size, (VkDeviceSize)offset);
 	}
+
+	VulkanUniformBuffer::VulkanUniformBuffer(VulkanAllocator& allocator, uint64_t size)
+	{
+		if (size == 0)
+		{
+			TR_CORE_CRITICAL("VulkanUniformBuffer: size = 0");
+
+			std::abort();
+		}
+
+		const VkDeviceSize l_Alignment = allocator.GetMinUniformBufferOffsetAlignment();
+		const VkDeviceSize l_AlignedSize = (size + l_Alignment - 1) & ~(l_Alignment - 1);
+
+		m_Buffer.Create(allocator, l_AlignedSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, BufferMemoryUsage::CPUToGPU, /* uploadContext */ nullptr);
+
+		m_MappedPtr = m_Buffer.Map(0);
+	}
+
+	VulkanUniformBuffer::~VulkanUniformBuffer()
+	{
+		if (m_MappedPtr)
+		{
+			m_Buffer.Unmap();
+			m_MappedPtr = nullptr;
+		}
+
+		m_Buffer.Destroy();
+	}
+
+	VulkanUniformBuffer::VulkanUniformBuffer(VulkanUniformBuffer&& other) noexcept
+	{
+		*this = std::move(other);
+	}
+
+	VulkanUniformBuffer& VulkanUniformBuffer::operator=(VulkanUniformBuffer&& other) noexcept
+	{
+		if (this == &other)
+		{
+			return *this;
+		}
+
+		// Clean up our own resources first.
+		if (m_MappedPtr)
+		{
+			m_Buffer.Unmap();
+			m_MappedPtr = nullptr;
+		}
+
+		m_Buffer.Destroy();
+
+		m_Buffer = std::move(other.m_Buffer);
+		m_MappedPtr = other.m_MappedPtr;
+
+		other.m_MappedPtr = nullptr;
+
+		return *this;
+	}
+
+	void VulkanUniformBuffer::SetData(const void* data, uint64_t size, uint64_t offset)
+	{
+		if (!data)
+		{
+			TR_CORE_CRITICAL("VulkanUniformBuffer::SetData - null data pointer");
+			std::abort();
+		}
+
+		if (offset + size > (uint64_t)m_Buffer.GetSize())
+		{
+			TR_CORE_CRITICAL("VulkanUniformBuffer::SetData write range [offset = {}, size = {}] exceeds buffer size {}", offset, size, m_Buffer.GetSize());
+
+			std::abort();
+		}
+
+		std::memcpy(static_cast<uint8_t*>(m_MappedPtr) + offset, data, (size_t)size);
+	}
+
+	VkDescriptorBufferInfo VulkanUniformBuffer::GetDescriptorBufferInfo(VkDeviceSize offset, VkDeviceSize range) const
+	{
+		VkDescriptorBufferInfo l_Info{};
+		l_Info.buffer = m_Buffer.GetBuffer();
+		l_Info.offset = offset;
+		l_Info.range = range;
+
+		return l_Info;
+	}
 }

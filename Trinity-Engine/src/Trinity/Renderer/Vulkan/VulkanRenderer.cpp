@@ -118,7 +118,14 @@ namespace Trinity
 		m_Sync.Initialize(m_Context, m_Device, m_FramesInFlight, m_Swapchain.GetImageCount());
 		m_Command.Initialize(m_Context, m_Device, m_FramesInFlight);
 		m_UploadContext.Initialize(m_Context, m_Device);
-		m_Pipeline.Initialize(m_Context, m_Device, m_Swapchain.GetImageFormat(), m_SceneViewportDepthFormat, m_Configuration.m_VertexShaderPath, m_Configuration.m_FragmentShaderPath);
+
+		m_ShaderLibrary.Load(m_Configuration.m_VertexShaderName, m_Configuration.m_VertexShaderPath, ShaderStage::Vertex);
+		m_ShaderLibrary.Load(m_Configuration.m_FragmentShaderName, m_Configuration.m_FragmentShaderPath, ShaderStage::Fragment);
+
+		const std::vector<uint32_t>& l_VertexSpirV = *m_ShaderLibrary.GetSpirV(m_Configuration.m_VertexShaderName);
+		const std::vector<uint32_t>& l_FragmentSpirV = *m_ShaderLibrary.GetSpirV(m_Configuration.m_FragmentShaderName);
+
+		m_Pipeline.Initialize(m_Context, m_Device, m_Swapchain.GetImageFormat(), m_SceneViewportDepthFormat, l_VertexSpirV, l_FragmentSpirV);
 		m_ResourceStateTracker.Reset();
 		m_ImGuiLayer = nullptr;
 		m_ImGuiVulkanInitialized = false;
@@ -142,6 +149,7 @@ namespace Trinity
 
 		m_UploadContext.Shutdown();
 		m_Pipeline.Shutdown();
+		m_ShaderLibrary.Clear();
 		m_Command.Shutdown();
 		m_Sync.Shutdown();
 		m_ResourceStateTracker.Reset();
@@ -683,6 +691,32 @@ namespace Trinity
 	void VulkanRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& view, const glm::mat4& projection)
 	{
 		DrawMesh(primitive, glm::translate(glm::mat4(1.0f), position), color, projection * view);
+	}
+
+	void VulkanRenderer::ReloadShaders()
+	{
+		if (m_Device.GetDevice() == VK_NULL_HANDLE)
+		{
+			return;
+		}
+
+		m_ShaderLibrary.HotReload();
+
+		const std::vector<uint32_t>* l_VertexSpirV = m_ShaderLibrary.GetSpirV(m_Configuration.m_VertexShaderName);
+		const std::vector<uint32_t>* l_FragmentSpirV = m_ShaderLibrary.GetSpirV(m_Configuration.m_FragmentShaderName);
+
+		if (!l_VertexSpirV || !l_FragmentSpirV)
+		{
+			TR_CORE_WARN("VulkanRenderer::ReloadShaders — one or more shaders not found in library");
+
+			return;
+		}
+
+		vkDeviceWaitIdle(m_Device.GetDevice());
+
+		m_Pipeline.Initialize(m_Context, m_Device, m_Swapchain.GetImageFormat(), m_SceneViewportDepthFormat, *l_VertexSpirV, *l_FragmentSpirV);
+
+		TR_CORE_INFO("VulkanRenderer: shaders reloaded");
 	}
 
 	void VulkanRenderer::ValidateSceneColorPolicy() const

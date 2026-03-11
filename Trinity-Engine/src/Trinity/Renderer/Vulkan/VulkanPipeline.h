@@ -3,6 +3,8 @@
 #include <vulkan/vulkan.h>
 
 #include <string>
+#include <vector>
+#include <cstdint>
 
 namespace Trinity
 {
@@ -13,7 +15,7 @@ namespace Trinity
 	{
 	public:
 		void Initialize(const VulkanContext& context, const VulkanDevice& device, VkFormat colorFormat, VkFormat depthFormat,
-			const std::string& vertexShaderSpvPath, const std::string& fragmentShaderSpvPath);
+			const std::vector<uint32_t>& vertexSpirV, const std::vector<uint32_t>& fragmentSpirV);
 		void Shutdown();
 
 		void Recreate(VkFormat colorFormat);
@@ -27,7 +29,7 @@ namespace Trinity
 		void CreatePipeline();
 		void DestroyPipeline();
 
-		VkShaderModule CreateShaderModule(const std::string& path) const;
+		VkShaderModule CreateShaderModule(const std::vector<uint32_t>& spirV) const;
 
 	private:
 		VkAllocationCallbacks* m_Allocator = nullptr;
@@ -36,8 +38,8 @@ namespace Trinity
 		VkFormat m_ColorFormat = VK_FORMAT_UNDEFINED;
 		VkFormat m_DepthFormat = VK_FORMAT_UNDEFINED;
 
-		std::string m_VertexShaderPath{};
-		std::string m_FragmentShaderPath{};
+		std::vector<uint32_t> m_VertexSpirV;
+		std::vector<uint32_t> m_FragmentSpirV;
 
 		VkPipelineLayout m_PipelineLayout = VK_NULL_HANDLE;
 		VkPipeline m_Pipeline = VK_NULL_HANDLE;

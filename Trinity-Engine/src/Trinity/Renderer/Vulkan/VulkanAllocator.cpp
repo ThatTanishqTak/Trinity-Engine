@@ -101,4 +101,12 @@ namespace Trinity
 	{
 		vmaUnmapMemory(m_Allocator, allocation);
 	}
+
+	VkDeviceSize VulkanAllocator::GetMinUniformBufferOffsetAlignment() const
+	{
+		const VkPhysicalDeviceProperties* l_Props = nullptr;
+		vmaGetPhysicalDeviceProperties(m_Allocator, &l_Props);
+
+		return l_Props->limits.minUniformBufferOffsetAlignment;
+	}
 }

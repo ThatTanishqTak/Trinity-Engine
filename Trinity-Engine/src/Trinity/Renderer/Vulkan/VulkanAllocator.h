@@ -28,6 +28,8 @@ namespace Trinity
 		VmaAllocator GetHandle() const { return m_Allocator; }
 		bool IsInitialized() const { return m_Allocator != VK_NULL_HANDLE; }
 
+		VkDeviceSize GetMinUniformBufferOffsetAlignment() const;
+
 	private:
 		VmaAllocator m_Allocator = VK_NULL_HANDLE;
 	};
