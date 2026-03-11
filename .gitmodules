@@ -20,3 +20,6 @@
 [submodule "Trinity-Engine/vendor/VulkanMemoryAllocator"]
 	path = Trinity-Engine/vendor/VulkanMemoryAllocator
 	url = https://github.com/ThatTanishqTak/VulkanMemoryAllocator.git
+[submodule "Trinity-Engine/vendor/SDL"]
+	path = Trinity-Engine/vendor/SDL
+	url = https://github.com/ThatTanishqTak/SDL.git

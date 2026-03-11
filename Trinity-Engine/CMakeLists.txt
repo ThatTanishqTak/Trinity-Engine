@@ -28,9 +28,10 @@ set(ENTT_BUILD_TESTING OFF CACHE BOOL "" FORCE)
 set(ENTT_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 add_subdirectory(vendor/entt)
 
+add_subdirectory(vendor/SDL EXCLUDE_FROM_ALL)
+
 add_subdirectory(vendor/imgui)
 add_subdirectory(vendor/stb)
-
 add_subdirectory(vendor/VulkanMemoryAllocator)
 
 file(GLOB_RECURSE TRINITY_SOURCES CONFIGURE_DEPENDS
@@ -40,7 +41,7 @@ file(GLOB_RECURSE TRINITY_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/**.c
 )
 
-add_library(${PROJECT_NAME} STATIC 
+add_library(${PROJECT_NAME} STATIC
     ${TRINITY_SOURCES}
 )
 
@@ -61,6 +62,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     imgui
     stb::stb
     GPUOpen::VulkanMemoryAllocator
+    SDL3::SDL3
 )
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC

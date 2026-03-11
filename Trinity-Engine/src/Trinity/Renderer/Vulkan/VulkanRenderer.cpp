@@ -269,6 +269,7 @@ namespace Trinity
 		if (m_SceneViewportDepthFormat == VK_FORMAT_UNDEFINED)
 		{
 			TR_CORE_CRITICAL("Scene viewport depth format is undefined");
+
 			std::abort();
 		}
 
@@ -401,10 +402,6 @@ namespace Trinity
 			m_SceneViewportWidth = m_PendingWidth;
 			m_SceneViewportHeight = m_PendingHeight;
 
-			// Wait only for the in-flight frame fences rather than stalling the
-			// entire device. The scene viewport images are exclusively written
-			// during the scene render pass, which completes before each frame
-			// fence is signalled, so this is sufficient.
 			for (uint32_t i = 0; i < m_FramesInFlight; ++i)
 			{
 				m_Sync.WaitForFrameFence(i);
@@ -465,9 +462,9 @@ namespace Trinity
 			TransitionImageResource(l_CommandBuffer, m_SceneViewportImage, l_ColorSubresourceRange, l_ColorAttachmentWriteState);
 
 			VkClearValue l_ClearColor{};
-			l_ClearColor.color.float32[0] = 0.0008f;
-			l_ClearColor.color.float32[1] = 0.0008f;
-			l_ClearColor.color.float32[2] = 0.0008f;
+			l_ClearColor.color.float32[0] = 0.005f;
+			l_ClearColor.color.float32[1] = 0.005f;
+			l_ClearColor.color.float32[2] = 0.005f;
 			l_ClearColor.color.float32[3] = 1.0f;
 
 			VkRenderingAttachmentInfo l_ColorAttachmentInfo{};
