@@ -101,15 +101,6 @@ namespace Trinity
 
 		const NativeWindowHandle l_NativeWindowHandle = m_Window->GetNativeHandle();
 
-#ifdef _WIN32
-		if (l_NativeWindowHandle.WindowType != NativeWindowHandle::Type::Win32)
-		{
-			TR_CORE_CRITICAL("VulkanRenderer requires a Win32 native window handle when built for Windows");
-
-			std::abort();
-		}
-#endif
-
 		m_Context.Initialize(l_NativeWindowHandle);
 		m_Device.Initialize(m_Context);
 		m_Allocator.Initialize(m_Context, m_Device);

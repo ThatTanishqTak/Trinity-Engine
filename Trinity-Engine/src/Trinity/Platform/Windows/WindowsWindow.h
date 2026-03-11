@@ -4,7 +4,6 @@
 #include "Trinity/Platform/Window.h"
 
 #include <SDL3/SDL.h>
-#include <SDL3/SDL_mouse.h>
 
 #include <cstdint>
 #include <string>

@@ -19,13 +19,13 @@ namespace Trinity
 		VkSurfaceKHR GetSurface() const { return m_Surface; }
 
 	private:
-		void CreateInstance();
+		void CreateInstance(const NativeWindowHandle& nativeWindowHandle);
 		void CreateSurface(const NativeWindowHandle& nativeWindowHandle);
 
 		void DestroySurface();
 		void DestroyInstance();
 
-		std::vector<const char*> GetRequiredExtensions() const;
+		std::vector<const char*> GetRequiredExtensions(const NativeWindowHandle& nativeWindowHandle) const;
 		std::vector<const char*> GetRequiredLayers() const;
 
 		void SetupDebugMessenger();

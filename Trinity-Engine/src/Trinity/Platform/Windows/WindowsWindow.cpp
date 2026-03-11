@@ -4,6 +4,8 @@
 #include "Trinity/Events/Event.h"
 #include "Trinity/Utilities/Log.h"
 
+#include <SDL3/SDL_mouse.h>
+
 #include <memory>
 
 namespace Trinity
@@ -210,10 +212,6 @@ namespace Trinity
         {
             SDL_SetWindowRelativeMouseMode(m_WindowHandle, locked);
         }
-        else
-        {
-            SDL_SetRelativeMouseMode(locked);
-        }
 
         if (!locked && m_HasCursorRestorePos && m_WindowHandle != nullptr)
         {
@@ -225,14 +223,12 @@ namespace Trinity
     NativeWindowHandle WindowsWindow::GetNativeHandle() const
     {
         NativeWindowHandle l_Handle{};
+        l_Handle.Window = m_WindowHandle;
+        l_Handle.Properties = SDL_GetWindowProperties(m_WindowHandle);
+
 #if defined(_WIN32)
-        l_Handle.WindowType = NativeWindowHandle::Type::Win32;
-        SDL_PropertiesID l_Properties = SDL_GetWindowProperties(m_WindowHandle);
-        l_Handle.Handle1 = SDL_GetPointerProperty(l_Properties, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
-        l_Handle.Handle2 = SDL_GetPointerProperty(l_Properties, SDL_PROP_WINDOW_WIN32_INSTANCE_POINTER, nullptr);
-#else
-        l_Handle.WindowType = NativeWindowHandle::Type::Unknown;
-        l_Handle.Handle1 = m_WindowHandle;
+        l_Handle.PlatformHandle = SDL_GetPointerProperty(l_Handle.Properties, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
+        l_Handle.PlatformHandle2 = SDL_GetPointerProperty(l_Handle.Properties, SDL_PROP_WINDOW_WIN32_INSTANCE_POINTER, nullptr);
 #endif
 
         return l_Handle;

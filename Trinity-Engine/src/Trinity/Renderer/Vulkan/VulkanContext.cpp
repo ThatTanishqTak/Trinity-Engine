@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <vector>
 
+#include <SDL3/SDL_vulkan.h>
 
 namespace Trinity
 {
@@ -23,7 +24,7 @@ namespace Trinity
             return;
         }
 
-        CreateInstance();
+        CreateInstance(nativeWindowHandle);
         SetupDebugMessenger();
         CreateSurface(nativeWindowHandle);
 
@@ -48,7 +49,7 @@ namespace Trinity
         TR_CORE_TRACE("Vulkan Context Shutdown Complete");
     }
 
-    void VulkanContext::CreateInstance()
+    void VulkanContext::CreateInstance(const NativeWindowHandle& nativeWindowHandle)
     {
         TR_CORE_TRACE("Creating Vulkan Instance");
 
@@ -72,7 +73,7 @@ namespace Trinity
             std::abort();
         }
 
-        m_RequiredExtensions = GetRequiredExtensions();
+        m_RequiredExtensions = GetRequiredExtensions(nativeWindowHandle);
         m_RequiredLayers = GetRequiredLayers();
 
         VkApplicationInfo l_AppInfo{};
@@ -179,15 +180,29 @@ namespace Trinity
 
     //-------------------------------------------------------------------------------------------------------------------------------------------------------------//
 
-    std::vector<const char*> VulkanContext::GetRequiredExtensions() const
+    std::vector<const char*> VulkanContext::GetRequiredExtensions(const NativeWindowHandle& nativeWindowHandle) const
     {
         std::vector<const char*> l_Extensions{};
 
         l_Extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
 
-#ifdef _WIN32
-        l_Extensions.push_back("VK_KHR_win32_surface");
-#endif
+        if (nativeWindowHandle.Window == nullptr)
+        {
+            TR_CORE_CRITICAL("GetRequiredExtensions received null SDL_Window");
+
+            std::abort();
+        }
+
+        uint32_t l_SDLExtensionCount = 0;
+        const char* const* l_SDLExtensions = SDL_Vulkan_GetInstanceExtensions(&l_SDLExtensionCount);
+        if (l_SDLExtensions == nullptr || l_SDLExtensionCount == 0)
+        {
+            TR_CORE_CRITICAL("SDL_Vulkan_GetInstanceExtensions failed: {}", SDL_GetError());
+
+            std::abort();
+        }
+
+        l_Extensions.insert(l_Extensions.end(), l_SDLExtensions, l_SDLExtensions + l_SDLExtensionCount);
 
 #ifdef _DEBUG
         if (IsInstanceExtensionSupported(VK_EXT_DEBUG_UTILS_EXTENSION_NAME))

@@ -4,6 +4,8 @@
 #include <memory>
 #include <string>
 
+#include <SDL3/SDL_video.h>
+
 namespace Trinity
 {
     class Event;
@@ -11,18 +13,10 @@ namespace Trinity
 
     struct NativeWindowHandle
     {
-        enum class Type : uint8_t
-        {
-            Win32,
-            Xcb,
-            Wayland,
-            Cocoa,
-            Unknown
-        };
-
-        Type WindowType = Type::Unknown;
-        void* Handle1 = nullptr;
-        void* Handle2 = nullptr;
+        SDL_Window* Window = nullptr;
+        SDL_PropertiesID Properties = 0;
+        void* PlatformHandle = nullptr;
+        void* PlatformHandle2 = nullptr;
     };
 
     struct WindowProperties

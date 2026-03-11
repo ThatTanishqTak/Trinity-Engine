@@ -28,7 +28,7 @@ set(ENTT_BUILD_TESTING OFF CACHE BOOL "" FORCE)
 set(ENTT_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 add_subdirectory(vendor/entt)
 
-add_subdirectory(vendor/SDL EXCLUDE_FROM_ALL)
+add_subdirectory(vendor/SDL)
 
 add_subdirectory(vendor/imgui)
 add_subdirectory(vendor/stb)

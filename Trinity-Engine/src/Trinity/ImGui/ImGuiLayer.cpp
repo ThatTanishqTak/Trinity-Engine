@@ -71,14 +71,14 @@ namespace Trinity
         }
 
         const NativeWindowHandle l_NativeHandle = m_Window->GetNativeHandle();
-        if (l_NativeHandle.WindowType != NativeWindowHandle::Type::Win32)
+        if (l_NativeHandle.PlatformHandle == nullptr)
         {
-            TR_CORE_CRITICAL("ImGuiLayer currently requires a Win32 window handle");
+            TR_CORE_CRITICAL("ImGuiLayer currently requires a valid platform window handle");
 
             std::abort();
         }
 
-        ImGui_ImplWin32_Init(l_NativeHandle.Handle1);
+        ImGui_ImplWin32_Init(l_NativeHandle.PlatformHandle);
         InitializeVulkanBackend();
 
         m_Initialized = true;
