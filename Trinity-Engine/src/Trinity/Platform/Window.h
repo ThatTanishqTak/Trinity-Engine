@@ -16,8 +16,6 @@ namespace Trinity
     {
         SDL_Window* Window = nullptr;
         SDL_PropertiesID Properties = 0;
-        void* PlatformHandle = nullptr;
-        void* PlatformHandle2 = nullptr;
     };
 
     struct WindowProperties

@@ -141,9 +141,9 @@ namespace Trinity
                 break;
             }
 
-            auto& l_EventQueue = m_Window->GetEventQueue();
+            auto& a_EventQueue = m_Window->GetEventQueue();
             std::unique_ptr<Event> l_Event;
-            while (l_EventQueue.TryPopEvent(l_Event))
+            while (a_EventQueue.TryPopEvent(l_Event))
             {
                 OnEvent(*l_Event);
             }

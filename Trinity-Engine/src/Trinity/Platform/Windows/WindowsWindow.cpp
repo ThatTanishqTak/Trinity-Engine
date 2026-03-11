@@ -2,6 +2,7 @@
 
 #include "Trinity/Events/ApplicationEvent.h"
 #include "Trinity/Events/Event.h"
+#include "Trinity/Events/GamepadEvent.h"
 #include "Trinity/Events/KeyEvent.h"
 #include "Trinity/Events/MouseEvent.h"
 #include "Trinity/Platform/SDL/SDLEventTranslator.h"
@@ -30,9 +31,9 @@ namespace Trinity
             return;
         }
 
-        if (!SDL_InitSubSystem(SDL_INIT_VIDEO))
+        if (!SDL_InitSubSystem(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
         {
-            TR_CORE_CRITICAL("SDL_InitSubSystem(SDL_INIT_VIDEO) failed: {}", SDL_GetError());
+            TR_CORE_CRITICAL("SDL_InitSubSystem failed: {}", SDL_GetError());
 
             return;
         }
@@ -55,7 +56,7 @@ namespace Trinity
         {
             TR_CORE_CRITICAL("SDL_CreateWindow failed: {}", SDL_GetError());
 
-            SDL_QuitSubSystem(SDL_INIT_VIDEO);
+            SDL_QuitSubSystem(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD);
 
             return;
         }
@@ -87,7 +88,7 @@ namespace Trinity
         m_WindowID = 0;
         m_Initialized = false;
 
-        SDL_QuitSubSystem(SDL_INIT_VIDEO);
+        SDL_QuitSubSystem(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD);
     }
 
     void WindowsWindow::OnUpdate()
@@ -202,6 +203,55 @@ namespace Trinity
 
                 continue;
             }
+
+            if (l_Event.type == SDL_EVENT_GAMEPAD_ADDED)
+            {
+                SDL_Gamepad* l_Gamepad = SDL_OpenGamepad(l_Event.gdevice.which);
+                if (l_Gamepad != nullptr)
+                {
+                    const int l_GamepadID = static_cast<int>(l_Event.gdevice.which);
+                    const char* l_Name = SDL_GetGamepadName(l_Gamepad);
+                    m_EventQueue.PushEvent(std::make_unique<GamepadConnectedEvent>(l_GamepadID, l_Name != nullptr ? l_Name : "", true));
+                }
+
+                continue;
+            }
+
+            if (l_Event.type == SDL_EVENT_GAMEPAD_REMOVED)
+            {
+                const int l_GamepadID = static_cast<int>(l_Event.gdevice.which);
+                m_EventQueue.PushEvent(std::make_unique<GamepadDisconnectedEvent>(l_GamepadID));
+
+                continue;
+            }
+
+            if (l_Event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN)
+            {
+                const int l_GamepadID = static_cast<int>(l_Event.gbutton.which);
+                const Code::GamepadButton l_Button = TranslateGamepadButton(static_cast<SDL_GamepadButton>(l_Event.gbutton.button));
+                m_EventQueue.PushEvent(std::make_unique<GamepadButtonPressedEvent>(l_GamepadID, l_Button));
+
+                continue;
+            }
+
+            if (l_Event.type == SDL_EVENT_GAMEPAD_BUTTON_UP)
+            {
+                const int l_GamepadID = static_cast<int>(l_Event.gbutton.which);
+                const Code::GamepadButton l_Button = TranslateGamepadButton(static_cast<SDL_GamepadButton>(l_Event.gbutton.button));
+                m_EventQueue.PushEvent(std::make_unique<GamepadButtonReleasedEvent>(l_GamepadID, l_Button));
+
+                continue;
+            }
+
+            if (l_Event.type == SDL_EVENT_GAMEPAD_AXIS_MOTION)
+            {
+                const int l_GamepadID = static_cast<int>(l_Event.gaxis.which);
+                const Code::GamepadAxis l_Axis = TranslateGamepadAxis(static_cast<SDL_GamepadAxis>(l_Event.gaxis.axis));
+                const float l_Value = l_Event.gaxis.value / 32767.0f;
+                m_EventQueue.PushEvent(std::make_unique<GamepadAxisMovedEvent>(l_GamepadID, l_Axis, l_Value));
+
+                continue;
+            }
         }
     }
 
@@ -287,11 +337,6 @@ namespace Trinity
         NativeWindowHandle l_Handle{};
         l_Handle.Window = m_WindowHandle;
         l_Handle.Properties = SDL_GetWindowProperties(m_WindowHandle);
-
-#if defined(_WIN32)
-        l_Handle.PlatformHandle = SDL_GetPointerProperty(l_Handle.Properties, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
-        l_Handle.PlatformHandle2 = SDL_GetPointerProperty(l_Handle.Properties, SDL_PROP_WINDOW_WIN32_INSTANCE_POINTER, nullptr);
-#endif
 
         return l_Handle;
     }

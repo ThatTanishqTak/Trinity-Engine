@@ -136,21 +136,58 @@ namespace Trinity
     {
         switch (mouseButton)
         {
-            case SDL_BUTTON_LEFT: return Code::MouseCode::TR_BUTTON_LEFT;
-            case SDL_BUTTON_RIGHT: return Code::MouseCode::TR_BUTTON_RIGHT;
-            case SDL_BUTTON_MIDDLE: return Code::MouseCode::TR_BUTTON_MIDDLE;
-            case SDL_BUTTON_X1: return Code::MouseCode::TR_BUTTON_3;
-            case SDL_BUTTON_X2: return Code::MouseCode::TR_BUTTON_4;
-            default:
+        case SDL_BUTTON_LEFT: return Code::MouseCode::TR_BUTTON_LEFT;
+        case SDL_BUTTON_RIGHT: return Code::MouseCode::TR_BUTTON_RIGHT;
+        case SDL_BUTTON_MIDDLE: return Code::MouseCode::TR_BUTTON_MIDDLE;
+        case SDL_BUTTON_X1: return Code::MouseCode::TR_BUTTON_3;
+        case SDL_BUTTON_X2: return Code::MouseCode::TR_BUTTON_4;
+        default:
+        {
+            const int l_ButtonIndex = static_cast<int>(mouseButton) - 1;
+            if (l_ButtonIndex >= static_cast<int>(Code::MouseCode::TR_BUTTON_0) && l_ButtonIndex <= static_cast<int>(Code::MouseCode::TR_BUTTON_LAST))
             {
-                const int l_ButtonIndex = static_cast<int>(mouseButton) - 1;
-                if (l_ButtonIndex >= static_cast<int>(Code::MouseCode::TR_BUTTON_0) && l_ButtonIndex <= static_cast<int>(Code::MouseCode::TR_BUTTON_LAST))
-                {
-                    return static_cast<Code::MouseCode>(l_ButtonIndex);
-                }
-
-                return Code::MouseCode::TR_BUTTON_0;
+                return static_cast<Code::MouseCode>(l_ButtonIndex);
             }
+
+            return Code::MouseCode::TR_BUTTON_0;
+        }
+        }
+    }
+
+    Code::GamepadButton TranslateGamepadButton(SDL_GamepadButton button)
+    {
+        switch (button)
+        {
+        case SDL_GAMEPAD_BUTTON_SOUTH:          return Code::GamepadButton::TR_BUTTON_A;
+        case SDL_GAMEPAD_BUTTON_EAST:           return Code::GamepadButton::TR_BUTTON_B;
+        case SDL_GAMEPAD_BUTTON_WEST:           return Code::GamepadButton::TR_BUTTON_X;
+        case SDL_GAMEPAD_BUTTON_NORTH:          return Code::GamepadButton::TR_BUTTON_Y;
+        case SDL_GAMEPAD_BUTTON_LEFT_SHOULDER:  return Code::GamepadButton::TR_BUTTON_LEFT_BUMPER;
+        case SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER: return Code::GamepadButton::TR_BUTTON_RIGHT_BUMPER;
+        case SDL_GAMEPAD_BUTTON_BACK:           return Code::GamepadButton::TR_BUTTON_BACK;
+        case SDL_GAMEPAD_BUTTON_START:          return Code::GamepadButton::TR_BUTTON_START;
+        case SDL_GAMEPAD_BUTTON_GUIDE:          return Code::GamepadButton::TR_BUTTON_GUIDE;
+        case SDL_GAMEPAD_BUTTON_LEFT_STICK:     return Code::GamepadButton::TR_BUTTON_LEFT_THUMB;
+        case SDL_GAMEPAD_BUTTON_RIGHT_STICK:    return Code::GamepadButton::TR_BUTTON_RIGHT_THUMB;
+        case SDL_GAMEPAD_BUTTON_DPAD_UP:        return Code::GamepadButton::TR_BUTTON_DPAD_UP;
+        case SDL_GAMEPAD_BUTTON_DPAD_RIGHT:     return Code::GamepadButton::TR_BUTTON_DPAD_RIGHT;
+        case SDL_GAMEPAD_BUTTON_DPAD_DOWN:      return Code::GamepadButton::TR_BUTTON_DPAD_DOWN;
+        case SDL_GAMEPAD_BUTTON_DPAD_LEFT:      return Code::GamepadButton::TR_BUTTON_DPAD_LEFT;
+        default:                                return Code::GamepadButton::TR_BUTTON_A;
+        }
+    }
+
+    Code::GamepadAxis TranslateGamepadAxis(SDL_GamepadAxis axis)
+    {
+        switch (axis)
+        {
+        case SDL_GAMEPAD_AXIS_LEFTX:         return Code::GamepadAxis::TR_AXIS_LEFT_X;
+        case SDL_GAMEPAD_AXIS_LEFTY:         return Code::GamepadAxis::TR_AXIS_LEFT_Y;
+        case SDL_GAMEPAD_AXIS_RIGHTX:        return Code::GamepadAxis::TR_AXIS_RIGHT_X;
+        case SDL_GAMEPAD_AXIS_RIGHTY:        return Code::GamepadAxis::TR_AXIS_RIGHT_Y;
+        case SDL_GAMEPAD_AXIS_LEFT_TRIGGER:  return Code::GamepadAxis::TR_AXIS_LEFT_TRIGGER;
+        case SDL_GAMEPAD_AXIS_RIGHT_TRIGGER: return Code::GamepadAxis::TR_AXIS_RIGHT_TRIGGER;
+        default:                             return Code::GamepadAxis::TR_AXIS_LEFT_X;
         }
     }
 }
