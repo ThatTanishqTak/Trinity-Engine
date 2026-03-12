@@ -22,6 +22,7 @@ endif()
 
 set(GLM_TEST_ENABLE OFF CACHE BOOL "" FORCE)
 set(GLM_PERF_TEST_ENABLE OFF CACHE BOOL "" FORCE)
+set(GLM_BUILD_LIBRARY OFF CACHE BOOL "" FORCE)
 add_subdirectory(vendor/glm)
 
 set(ENTT_BUILD_TESTING OFF CACHE BOOL "" FORCE)
@@ -29,6 +30,8 @@ set(ENTT_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 add_subdirectory(vendor/entt)
 
 add_subdirectory(vendor/SDL)
+
+add_subdirectory(vendor/assimp)
 
 add_subdirectory(vendor/imgui)
 add_subdirectory(vendor/stb)
@@ -63,6 +66,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     stb::stb
     GPUOpen::VulkanMemoryAllocator
     SDL3::SDL3
+    assimp
 )
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC

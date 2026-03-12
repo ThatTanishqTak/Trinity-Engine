@@ -2,6 +2,8 @@
 
 #include "Trinity/Renderer/RenderCommand.h"
 #include "Trinity/ECS/Components.h"
+#include "Trinity/Assets/AssetManager.h"
+#include "Trinity/Assets/MeshAsset.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/quaternion.hpp>
@@ -60,10 +62,23 @@ namespace Trinity
 
     void SceneRenderer::SubmitMeshes(Scene& scene, const glm::mat4& view, const glm::mat4& projection)
     {
+        AssetManager& l_AssetManager = AssetManager::Get();
         auto& a_Registry = scene.GetRegistry();
-        a_Registry.view<TransformComponent, MeshRendererComponent>().each([&](const TransformComponent& transform, const MeshRendererComponent& mesh)
+
+        a_Registry.view<TransformComponent, MeshRendererComponent>().each([&](const TransformComponent& transform, const MeshRendererComponent& meshRenderer)
             {
-                RenderCommand::DrawMesh(mesh.Primitive, transform.GetTransform(), mesh.Color, view, projection);
+                if (!meshRenderer.Mesh)
+                {
+                    return;
+                }
+
+                std::shared_ptr<MeshAsset> l_Mesh = l_AssetManager.Resolve(meshRenderer.Mesh);
+                if (!l_Mesh || !l_Mesh->IsValid())
+                {
+                    return;
+                }
+
+                RenderCommand::DrawMesh(l_Mesh->GetVertexBuffer(), l_Mesh->GetIndexBuffer(), l_Mesh->GetIndexCount(), transform.GetTransform(), meshRenderer.Color, view, projection);
 
                 s_Stats.DrawCalls++;
                 s_Stats.EntityCount++;

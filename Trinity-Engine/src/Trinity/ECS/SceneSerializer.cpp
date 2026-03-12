@@ -4,6 +4,8 @@
 #include "Trinity/ECS/Entity.h"
 #include "Trinity/ECS/Components.h"
 #include "Trinity/Utilities/Log.h"
+#include "Trinity/Assets/AssetHandle.h"
+#include "Trinity/Assets/MeshAsset.h"
 
 #include <yaml-cpp/yaml.h>
 
@@ -31,7 +33,7 @@ namespace YAML
             {
                 return false;
             }
-            
+
             v.x = l_Node[0].as<float>();
             v.y = l_Node[1].as<float>();
 
@@ -59,7 +61,7 @@ namespace YAML
             {
                 return false;
             }
-            
+
             v.x = l_Node[0].as<float>();
             v.y = l_Node[1].as<float>();
             v.z = l_Node[2].as<float>();
@@ -94,7 +96,7 @@ namespace YAML
             v.y = l_Node[1].as<float>();
             v.z = l_Node[2].as<float>();
             v.w = l_Node[3].as<float>();
-            
+
             return true;
         }
     };
@@ -112,14 +114,14 @@ namespace Trinity
     static YAML::Emitter& operator<<(YAML::Emitter& out, const glm::vec3& v)
     {
         out << YAML::Flow << YAML::BeginSeq << v.x << v.y << v.z << YAML::EndSeq;
-        
+
         return out;
     }
 
     static YAML::Emitter& operator<<(YAML::Emitter& out, const glm::vec4& v)
     {
         out << YAML::Flow << YAML::BeginSeq << v.x << v.y << v.z << v.w << YAML::EndSeq;
-        
+
         return out;
     }
 
@@ -153,7 +155,7 @@ namespace Trinity
             const MeshRendererComponent& l_Mesh = entity.GetComponent<MeshRendererComponent>();
             out << YAML::Key << "MeshRendererComponent";
             out << YAML::BeginMap;
-            out << YAML::Key << "Primitive" << YAML::Value << static_cast<int>(l_Mesh.Primitive);
+            out << YAML::Key << "MeshUUID" << YAML::Value << l_Mesh.Mesh.GetUUID();
             out << YAML::Key << "Color" << YAML::Value << l_Mesh.Color;
             out << YAML::EndMap;
         }
@@ -289,7 +291,7 @@ namespace Trinity
         if (!l_Root["Scene"])
         {
             TR_CORE_ERROR("SceneSerializer::Deserialize: missing 'Scene' key in '{}'", filePath);
-            
+
             return false;
         }
 
@@ -323,7 +325,7 @@ namespace Trinity
             if (const YAML::Node& l_MeshNode = it_EntityNode["MeshRendererComponent"])
             {
                 MeshRendererComponent& l_Mesh = l_Entity.AddComponent<MeshRendererComponent>();
-                l_Mesh.Primitive = static_cast<Geometry::PrimitiveType>(l_MeshNode["Primitive"].as<int>());
+                l_Mesh.Mesh = AssetHandle<MeshAsset>(l_MeshNode["MeshUUID"].as<uint64_t>());
                 l_Mesh.Color = l_MeshNode["Color"].as<glm::vec4>();
             }
 

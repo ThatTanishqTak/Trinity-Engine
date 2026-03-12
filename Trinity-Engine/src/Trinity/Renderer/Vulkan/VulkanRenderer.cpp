@@ -537,7 +537,7 @@ namespace Trinity
 
 		const VkSemaphore l_ImageAvailable = m_Sync.GetImageAvailableSemaphore(m_CurrentFrameIndex);
 		const VkSemaphore l_RenderFinished = m_Sync.GetRenderFinishedSemaphore(m_CurrentImageIndex);
-		const VkFence     l_InFlightFence = m_Sync.GetInFlightFence(m_CurrentFrameIndex);
+		const VkFence l_InFlightFence = m_Sync.GetInFlightFence(m_CurrentFrameIndex);
 
 		VkPipelineStageFlags l_WaitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
@@ -609,20 +609,11 @@ namespace Trinity
 
 		const auto& a_Mesh = Geometry::GetPrimitive(primitive);
 
-		a_GPUPrimitive.VulkanVB = std::make_unique<VulkanVertexBuffer>(
-			m_Allocator, m_UploadContext,
-			(uint64_t)(a_Mesh.Vertices.size() * sizeof(Geometry::Vertex)),
-			(uint32_t)sizeof(Geometry::Vertex),
-			BufferMemoryUsage::GPUOnly,
-			a_Mesh.Vertices.data());
+		a_GPUPrimitive.VulkanVB = std::make_unique<VulkanVertexBuffer>(m_Allocator, m_UploadContext, (uint64_t)(a_Mesh.Vertices.size() * sizeof(Geometry::Vertex)), (uint32_t)sizeof(Geometry::Vertex),
+			BufferMemoryUsage::GPUOnly, a_Mesh.Vertices.data());
 
-		a_GPUPrimitive.VulkanIB = std::make_unique<VulkanIndexBuffer>(
-			m_Allocator, m_UploadContext,
-			(uint64_t)(a_Mesh.Indices.size() * sizeof(uint32_t)),
-			(uint32_t)a_Mesh.Indices.size(),
-			IndexType::UInt32,
-			BufferMemoryUsage::GPUOnly,
-			a_Mesh.Indices.data());
+		a_GPUPrimitive.VulkanIB = std::make_unique<VulkanIndexBuffer>(m_Allocator, m_UploadContext, (uint64_t)(a_Mesh.Indices.size() * sizeof(uint32_t)), (uint32_t)a_Mesh.Indices.size(),
+			IndexType::UInt32, BufferMemoryUsage::GPUOnly, a_Mesh.Indices.data());
 	}
 
 	void VulkanRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::mat4& model, const glm::vec4& color, const glm::mat4& viewProjection)
@@ -669,6 +660,42 @@ namespace Trinity
 	void VulkanRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color)
 	{
 		DrawMesh(primitive, glm::translate(glm::mat4(1.0f), position), color, glm::mat4(1.0f));
+	}
+
+	void VulkanRenderer::DrawMesh(VertexBuffer& vertexBuffer, IndexBuffer& indexBuffer, uint32_t indexCount, const glm::mat4& model, const glm::vec4& color, const glm::mat4& viewProjection)
+	{
+		if (!m_FrameBegun)
+		{
+			TR_CORE_CRITICAL("DrawMesh called outside BeginFrame/EndFrame");
+
+			std::abort();
+		}
+
+		if (!m_ScenePassRecording)
+		{
+			return;
+		}
+
+		const VkCommandBuffer l_CommandBuffer = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
+
+		VkBuffer l_VkVertexBuffer = reinterpret_cast<VkBuffer>(vertexBuffer.GetNativeHandle());
+		VkDeviceSize l_Offsets[] = { 0 };
+		vkCmdBindVertexBuffers(l_CommandBuffer, 0, 1, &l_VkVertexBuffer, l_Offsets);
+
+		VkBuffer l_VkIndexBuffer = reinterpret_cast<VkBuffer>(indexBuffer.GetNativeHandle());
+		vkCmdBindIndexBuffer(l_CommandBuffer, l_VkIndexBuffer, 0, ToVkIndexType(indexBuffer.GetIndexType()));
+
+		SimplePushConstants l_PushConstants{};
+		l_PushConstants.ModelViewProjection = viewProjection * model;
+		l_PushConstants.Color = color;
+
+		const VulkanSwapchain::SceneColorPolicy& l_ColorPolicy = m_Swapchain.GetSceneColorPolicy();
+		l_PushConstants.ColorInputTransfer = static_cast<uint32_t>(l_ColorPolicy.SceneInputTransfer);
+		l_PushConstants.ColorOutputTransfer = static_cast<uint32_t>(l_ColorPolicy.SceneOutputTransfer);
+
+		vkCmdPushConstants(l_CommandBuffer, m_Pipeline.GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(SimplePushConstants), &l_PushConstants);
+
+		vkCmdDrawIndexed(l_CommandBuffer, indexCount, 1, 0, 0, 0);
 	}
 
 	void VulkanRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& viewProjection)
@@ -721,16 +748,14 @@ namespace Trinity
 			std::abort();
 		}
 
-		if (m_Configuration.m_ColorOutputPolicy == VulkanSwapchain::ColorOutputPolicy::SDRsRGB && l_IsUnormSwapchain
-			&& l_ColorPolicy.SceneOutputTransfer != ColorTransferMode::LinearToSrgb)
+		if (m_Configuration.m_ColorOutputPolicy == VulkanSwapchain::ColorOutputPolicy::SDRsRGB && l_IsUnormSwapchain && l_ColorPolicy.SceneOutputTransfer != ColorTransferMode::LinearToSrgb)
 		{
 			TR_CORE_CRITICAL("Scene color policy validation failed: UNORM swapchain requires explicit scene output conversion");
 
 			std::abort();
 		}
 
-		if (m_Configuration.m_ColorOutputPolicy == VulkanSwapchain::ColorOutputPolicy::SDRsRGB && l_IsUnormSwapchain
-			&& l_ColorPolicy.UiOutputTransfer != ColorTransferMode::LinearToSrgb)
+		if (m_Configuration.m_ColorOutputPolicy == VulkanSwapchain::ColorOutputPolicy::SDRsRGB && l_IsUnormSwapchain && l_ColorPolicy.UiOutputTransfer != ColorTransferMode::LinearToSrgb)
 		{
 			TR_CORE_CRITICAL("Scene color policy validation failed: UNORM swapchain requires explicit ImGui output conversion");
 

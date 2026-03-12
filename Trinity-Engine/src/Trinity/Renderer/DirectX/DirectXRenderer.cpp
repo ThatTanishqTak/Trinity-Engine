@@ -50,6 +50,16 @@ namespace Trinity
 
 	}
 
+	void DirectXRenderer::DrawMesh(VertexBuffer& vertexBuffer, IndexBuffer& indexBuffer, uint32_t indexCount, const glm::mat4& model, const glm::vec4& color, const glm::mat4& viewProjection)
+	{
+		(void)vertexBuffer;
+		(void)indexBuffer;
+		(void)indexCount;
+		(void)model;
+		(void)color;
+		(void)viewProjection;
+	}
+
 	void DirectXRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color)
 	{
 		DrawMesh(primitive, position, color, glm::mat4(1.0f));

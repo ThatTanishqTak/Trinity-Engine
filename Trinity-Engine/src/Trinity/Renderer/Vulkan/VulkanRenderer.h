@@ -61,6 +61,7 @@ namespace Trinity
 		void ReloadShaders();
 
 		void DrawMesh(Geometry::PrimitiveType primitive, const glm::mat4& model, const glm::vec4& color, const glm::mat4& viewProjection) override;
+		void DrawMesh(VertexBuffer& vertexBuffer, IndexBuffer& indexBuffer, uint32_t indexCount, const glm::mat4& model, const glm::vec4& color, const glm::mat4& viewProjection) override;
 		void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color) override;
 		void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& viewProjection) override;
 		void DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& view, const glm::mat4& projection) override;
@@ -75,6 +76,9 @@ namespace Trinity
 		VkFormat GetVulkanSwapchainImageFormat() const { return m_Swapchain.GetImageFormat(); }
 		VkCommandBuffer GetVulkanCurrentCommandBuffer() const { return m_Command.GetCommandBuffer(m_CurrentFrameIndex); }
 		VkCommandPool GetVulkanCommandPool(uint32_t frameIndex) const { return m_Command.GetCommandPool(frameIndex); }
+		VulkanAllocator& GetVMAAllocator() { return m_Allocator; }
+		VulkanUploadContext& GetUploadContext() { return m_UploadContext; }
+
 		bool IsFrameBegun() const { return m_FrameBegun; }
 
 	private:

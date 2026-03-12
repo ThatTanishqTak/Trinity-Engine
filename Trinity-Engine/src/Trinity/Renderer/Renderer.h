@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Trinity/Renderer/Buffer.h"
+
 #include <cstdint>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -44,6 +46,7 @@ namespace Trinity
 
 		// Draw with a full model matrix and pre-combined view-projection.
 		virtual void DrawMesh(Geometry::PrimitiveType primitive, const glm::mat4& model, const glm::vec4& color, const glm::mat4& viewProjection) = 0;
+		virtual void DrawMesh(VertexBuffer& vertexBuffer, IndexBuffer& indexBuffer, uint32_t indexCount, const glm::mat4& model, const glm::vec4& color, const glm::mat4& viewProjection) = 0;
 
 		// Convenience: separate view and projection matrices.
 		virtual void DrawMesh(Geometry::PrimitiveType primitive, const glm::mat4& model, const glm::vec4& color, const glm::mat4& view, const glm::mat4& projection)

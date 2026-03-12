@@ -23,3 +23,6 @@
 [submodule "Trinity-Engine/vendor/SDL"]
 	path = Trinity-Engine/vendor/SDL
 	url = https://github.com/ThatTanishqTak/SDL.git
+[submodule "Trinity-Engine/vendor/assimp"]
+	path = Trinity-Engine/vendor/assimp
+	url = https://github.com/ThatTanishqTak/assimp.git

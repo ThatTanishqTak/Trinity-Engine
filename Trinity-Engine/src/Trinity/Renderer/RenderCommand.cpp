@@ -110,6 +110,22 @@ namespace Trinity
 		}
 	}
 
+	void RenderCommand::DrawMesh(VertexBuffer& vertexBuffer, IndexBuffer& indexBuffer, uint32_t indexCount, const glm::mat4& model, const glm::vec4& color, const glm::mat4& viewProjection)
+	{
+		if (s_Renderer)
+		{
+			s_Renderer->DrawMesh(vertexBuffer, indexBuffer, indexCount, model, color, viewProjection);
+		}
+	}
+
+	void RenderCommand::DrawMesh(VertexBuffer& vertexBuffer, IndexBuffer& indexBuffer, uint32_t indexCount, const glm::mat4& model, const glm::vec4& color, const glm::mat4& view, const glm::mat4& projection)
+	{
+		if (s_Renderer)
+		{
+			s_Renderer->DrawMesh(vertexBuffer, indexBuffer, indexCount, model, color, projection * view);
+		}
+	}
+
 	void RenderCommand::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color)
 	{
 		if (s_Renderer)

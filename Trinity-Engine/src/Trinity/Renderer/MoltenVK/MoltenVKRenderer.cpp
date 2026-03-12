@@ -68,6 +68,16 @@ namespace Trinity
 
 	}
 
+	void MoltenVKRenderer::DrawMesh(VertexBuffer& vertexBuffer, IndexBuffer& indexBuffer, uint32_t indexCount, const glm::mat4& model, const glm::vec4& color, const glm::mat4& viewProjection)
+	{
+		(void)vertexBuffer;
+		(void)indexBuffer;
+		(void)indexCount;
+		(void)model;
+		(void)color;
+		(void)viewProjection;
+	}
+
 	void MoltenVKRenderer::BeginFrame()
 	{
 

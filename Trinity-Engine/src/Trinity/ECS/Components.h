@@ -2,6 +2,8 @@
 
 #include "Trinity/Geometry/Geometry.h"
 #include "Trinity/Renderer/Material.h"
+#include "Trinity/Assets/AssetHandle.h"
+#include "Trinity/Assets/MeshAsset.h"
 
 #include <cstdint>
 #include <memory>
@@ -45,11 +47,11 @@ namespace Trinity
 
     struct MeshRendererComponent
     {
-        Geometry::PrimitiveType Primitive = Geometry::PrimitiveType::Cube;
+        AssetHandle<MeshAsset> Mesh;
         glm::vec4 Color{ 1.0f };
 
         MeshRendererComponent() = default;
-        MeshRendererComponent(Geometry::PrimitiveType primitive, const glm::vec4& color) : Primitive(primitive), Color(color)
+        MeshRendererComponent(AssetHandle<MeshAsset> mesh, const glm::vec4& color) : Mesh(mesh), Color(color)
         {
 
         }
