@@ -4,7 +4,6 @@
 
 #include "Trinity/Renderer/Vulkan/VulkanContext.h"
 #include "Trinity/Renderer/Vulkan/VulkanDevice.h"
-
 #include "Trinity/Renderer/Vulkan/VulkanShaderInterop.h"
 
 #include "Trinity/Utilities/Log.h"
@@ -16,8 +15,7 @@
 
 namespace Trinity
 {
-	void VulkanPipeline::Initialize(const VulkanContext& context, const VulkanDevice& device, VkFormat colorFormat, VkFormat depthFormat,
-		const std::vector<uint32_t>& vertexSpirV, const std::vector<uint32_t>& fragmentSpirV)
+	void VulkanPipeline::Initialize(const VulkanContext& context, const VulkanDevice& device, VkFormat colorFormat, VkFormat depthFormat, const std::vector<uint32_t>& vertexSpirV, const std::vector<uint32_t>& fragmentSpirV)
 	{
 		TR_CORE_TRACE("Initializing Vulkan Pipeline");
 
@@ -32,22 +30,24 @@ namespace Trinity
 		if (l_Device == VK_NULL_HANDLE)
 		{
 			TR_CORE_CRITICAL("VulkanPipeline::Initialize called with invalid VkDevice");
+
 			std::abort();
 		}
 
 		if (colorFormat == VK_FORMAT_UNDEFINED)
 		{
 			TR_CORE_CRITICAL("VulkanPipeline::Initialize called with VK_FORMAT_UNDEFINED color format");
+
 			std::abort();
 		}
 
 		if (depthFormat == VK_FORMAT_UNDEFINED)
 		{
 			TR_CORE_CRITICAL("VulkanPipeline::Initialize called with VK_FORMAT_UNDEFINED depth format");
+
 			std::abort();
 		}
 
-		// Now commit new state
 		m_Device = l_Device;
 		m_Allocator = context.GetAllocator();
 		m_ColorFormat = colorFormat;
@@ -118,6 +118,19 @@ namespace Trinity
 			DestroyPipeline();
 		}
 
+		VkDescriptorSetLayoutBinding l_TextureBinding{};
+		l_TextureBinding.binding = 0;
+		l_TextureBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		l_TextureBinding.descriptorCount = 1;
+		l_TextureBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+		VkDescriptorSetLayoutCreateInfo l_SetLayoutInfo{};
+		l_SetLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		l_SetLayoutInfo.bindingCount = 1;
+		l_SetLayoutInfo.pBindings = &l_TextureBinding;
+
+		Utilities::VulkanUtilities::VKCheck(vkCreateDescriptorSetLayout(m_Device, &l_SetLayoutInfo, m_Allocator, &m_TextureSetLayout), "Failed vkCreateDescriptorSetLayout");
+
 		const VkShaderModule l_VertexShaderModule = CreateShaderModule(m_VertexSpirV);
 		const VkShaderModule l_FragmentShaderModule = CreateShaderModule(m_FragmentSpirV);
 
@@ -135,7 +148,6 @@ namespace Trinity
 
 		const VkPipelineShaderStageCreateInfo l_ShaderStageCreateInfo[] = { l_VertexStage, l_FragmentStage };
 
-		// Vertex input
 		VkVertexInputBindingDescription l_BindingDescription{};
 		l_BindingDescription.binding = 0;
 		l_BindingDescription.stride = sizeof(Geometry::Vertex);
@@ -199,10 +211,9 @@ namespace Trinity
 		const VkDynamicState l_DynamicState[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
 		VkPipelineDynamicStateCreateInfo l_DynamicStateCreateInfo{};
 		l_DynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-		l_DynamicStateCreateInfo.dynamicStateCount = (uint32_t)std::size(l_DynamicState);
+		l_DynamicStateCreateInfo.dynamicStateCount = static_cast<uint32_t>(std::size(l_DynamicState));
 		l_DynamicStateCreateInfo.pDynamicStates = l_DynamicState;
 
-		// Push constants
 		VkPushConstantRange l_PushConstantRange{};
 		l_PushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 		l_PushConstantRange.offset = 0;
@@ -210,6 +221,8 @@ namespace Trinity
 
 		VkPipelineLayoutCreateInfo l_PipelineLayoutCreateInfo{};
 		l_PipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		l_PipelineLayoutCreateInfo.setLayoutCount = 1;
+		l_PipelineLayoutCreateInfo.pSetLayouts = &m_TextureSetLayout;
 		l_PipelineLayoutCreateInfo.pushConstantRangeCount = 1;
 		l_PipelineLayoutCreateInfo.pPushConstantRanges = &l_PushConstantRange;
 
@@ -260,6 +273,12 @@ namespace Trinity
 		{
 			vkDestroyPipelineLayout(m_Device, m_PipelineLayout, m_Allocator);
 			m_PipelineLayout = VK_NULL_HANDLE;
+		}
+
+		if (m_TextureSetLayout != VK_NULL_HANDLE)
+		{
+			vkDestroyDescriptorSetLayout(m_Device, m_TextureSetLayout, m_Allocator);
+			m_TextureSetLayout = VK_NULL_HANDLE;
 		}
 	}
 

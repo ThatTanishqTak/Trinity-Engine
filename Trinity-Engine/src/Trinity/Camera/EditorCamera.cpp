@@ -64,6 +64,21 @@ namespace Trinity
         return m_ViewProjectionMatrix;
     }
 
+    const glm::vec3& EditorCamera::GetPosition() const
+    {
+        return m_Position;
+    }
+
+    const float& EditorCamera::GetFarClip() const
+    {
+        return m_FarClip;
+    }
+
+    const float& EditorCamera::GetNearClip() const
+    {
+        return m_NearClip;
+    }
+
     void EditorCamera::SetInputEnabled(bool enabled)
     {
         if (m_InputEnabled == enabled)

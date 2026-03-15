@@ -21,7 +21,9 @@ namespace Trinity
 		VulkanTexture2D(const VulkanTexture2D&) = delete;
 		VulkanTexture2D& operator=(const VulkanTexture2D&) = delete;
 
-		void Load(VulkanAllocator& allocator, VulkanUploadContext& uploadContext, VkDevice device, VkAllocationCallbacks* hostAllocator, const std::string& filePath, TextureFormat format = TextureFormat::RGBA8_SRGB, bool generateMips = true);
+		void Load(VulkanAllocator& allocator, VulkanUploadContext& uploadContext, VkDevice device, VkAllocationCallbacks* hostAllocator, const std::string& filePath, TextureFormat format = TextureFormat::RGBA8_SRGB,bool generateMips = true);
+		void CreateSolid(VulkanAllocator& allocator, VulkanUploadContext& uploadContext, VkDevice device, VkAllocationCallbacks* hostAllocator, uint8_t r, uint8_t g, uint8_t b, uint8_t a, TextureFormat format = TextureFormat::RGBA8_UNORM);
+
 		void Destroy();
 
 		uint32_t GetWidth() const override { return m_Width; }
@@ -38,6 +40,11 @@ namespace Trinity
 		VkFormat GetVkFormat() const { return m_Format; }
 
 	private:
+		void AllocateImage(VulkanAllocator& allocator, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format);
+
+		void FinalizeImageView();
+		void FinalizeSampler();
+
 		static VkFormat ToVkFormat(TextureFormat format);
 		static uint32_t ComputeMipLevels(uint32_t width, uint32_t height);
 

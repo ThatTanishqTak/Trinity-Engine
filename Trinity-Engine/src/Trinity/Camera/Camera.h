@@ -20,6 +20,9 @@ namespace Trinity
         virtual const glm::mat4& GetViewMatrix() const = 0;
         virtual const glm::mat4& GetProjectionMatrix() const = 0;
         virtual const glm::mat4& GetViewProjectionMatrix() const = 0;
+        virtual const glm::vec3& GetPosition() const = 0;
+        virtual const float& GetFarClip() const = 0;
+        virtual const float& GetNearClip() const = 0;
 
         virtual void OnUpdate(float deltaTime) = 0;
         virtual void OnEvent(Event& event) = 0;

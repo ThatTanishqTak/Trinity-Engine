@@ -78,7 +78,7 @@ void ForgeLayer::OnRender()
         return;
     }
 
-    Trinity::SceneRenderer::Render(*m_ActiveScene, m_EditorCamera.GetViewMatrix(), m_EditorCamera.GetProjectionMatrix());
+    Trinity::SceneRenderer::Render(*m_ActiveScene, m_EditorCamera.GetViewMatrix(), m_EditorCamera.GetProjectionMatrix(), m_EditorCamera.GetPosition(), m_EditorCamera.GetNearClip(), m_EditorCamera.GetFarClip());
 }
 
 void ForgeLayer::OnImGuiRender()

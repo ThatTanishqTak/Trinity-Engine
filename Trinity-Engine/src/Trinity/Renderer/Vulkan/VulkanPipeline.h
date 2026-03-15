@@ -2,7 +2,6 @@
 
 #include <vulkan/vulkan.h>
 
-#include <string>
 #include <vector>
 #include <cstdint>
 
@@ -24,6 +23,7 @@ namespace Trinity
 
 		VkPipeline GetPipeline() const { return m_Pipeline; }
 		VkPipelineLayout GetPipelineLayout() const { return m_PipelineLayout; }
+		VkDescriptorSetLayout GetTextureSetLayout() const { return m_TextureSetLayout; }
 
 	private:
 		void CreatePipeline();
@@ -41,6 +41,7 @@ namespace Trinity
 		std::vector<uint32_t> m_VertexSpirV;
 		std::vector<uint32_t> m_FragmentSpirV;
 
+		VkDescriptorSetLayout m_TextureSetLayout = VK_NULL_HANDLE;
 		VkPipelineLayout m_PipelineLayout = VK_NULL_HANDLE;
 		VkPipeline m_Pipeline = VK_NULL_HANDLE;
 	};

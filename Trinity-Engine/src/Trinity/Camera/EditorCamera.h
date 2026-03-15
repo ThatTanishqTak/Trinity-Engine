@@ -24,6 +24,9 @@ namespace Trinity
         const glm::mat4& GetViewMatrix() const override;
         const glm::mat4& GetProjectionMatrix() const override;
         const glm::mat4& GetViewProjectionMatrix() const override;
+        const glm::vec3& GetPosition() const override;
+        const float& GetFarClip() const override;
+        const float& GetNearClip() const override;
 
         void SetInputEnabled(bool enabled);
         bool IsInputEnabled() const;

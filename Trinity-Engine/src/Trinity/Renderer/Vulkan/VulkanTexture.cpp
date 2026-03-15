@@ -17,7 +17,7 @@ namespace Trinity
 		Destroy();
 	}
 
-	void VulkanTexture2D::Load(VulkanAllocator& allocator, VulkanUploadContext& uploadContext, VkDevice device, VkAllocationCallbacks* hostAllocator, const std::string& filePath, TextureFormat format, bool generateMips)
+	void VulkanTexture2D::Load(VulkanAllocator& allocator, VulkanUploadContext& uploadContext,VkDevice device, VkAllocationCallbacks* hostAllocator, const std::string& filePath, TextureFormat format, bool generateMips)
 	{
 		Destroy();
 
@@ -57,15 +57,61 @@ namespace Trinity
 
 		stbi_image_free(l_Pixels);
 
+		AllocateImage(allocator, m_Width, m_Height, m_MipLevels, m_Format);
+		uploadContext.UploadImageWithMips(l_StagingBuffer, m_Image, m_Width, m_Height, m_MipLevels);
+		allocator.DestroyBuffer(l_StagingBuffer, l_StagingAllocation);
+
+		FinalizeImageView();
+		FinalizeSampler();
+
+		TR_CORE_TRACE("VulkanTexture2D: loaded '{}' ({}x{}, {} mips)", filePath.c_str(), m_Width, m_Height, m_MipLevels);
+	}
+
+	void VulkanTexture2D::CreateSolid(VulkanAllocator& allocator, VulkanUploadContext& uploadContext,VkDevice device, VkAllocationCallbacks* hostAllocator, uint8_t r, uint8_t g, uint8_t b, uint8_t a, TextureFormat format)
+	{
+		Destroy();
+
+		m_Allocator = &allocator;
+		m_Device = device;
+		m_HostAllocator = hostAllocator;
+		m_Format = ToVkFormat(format);
+		m_Width = 1;
+		m_Height = 1;
+		m_MipLevels = 1;
+
+		const uint8_t l_Pixel[4] = { r, g, b, a };
+		constexpr VkDeviceSize l_ImageSize = 4;
+
+		VkBuffer l_StagingBuffer = VK_NULL_HANDLE;
+		VmaAllocation l_StagingAllocation = VK_NULL_HANDLE;
+
+		allocator.CreateBuffer(l_ImageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT, l_StagingBuffer, l_StagingAllocation);
+
+		void* l_MappedData = allocator.MapMemory(l_StagingAllocation);
+		std::memcpy(l_MappedData, l_Pixel, static_cast<size_t>(l_ImageSize));
+		allocator.UnmapMemory(l_StagingAllocation);
+
+		AllocateImage(allocator, 1, 1, 1, m_Format);
+		uploadContext.UploadImageWithMips(l_StagingBuffer, m_Image, 1, 1, 1);
+		allocator.DestroyBuffer(l_StagingBuffer, l_StagingAllocation);
+
+		FinalizeImageView();
+		FinalizeSampler();
+
+		TR_CORE_TRACE("VulkanTexture2D: created solid ({},{},{},{}) 1x1", r, g, b, a);
+	}
+
+	void VulkanTexture2D::AllocateImage(VulkanAllocator& allocator, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format)
+	{
 		VkImageCreateInfo l_ImageCreateInfo{};
 		l_ImageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 		l_ImageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
-		l_ImageCreateInfo.extent.width = m_Width;
-		l_ImageCreateInfo.extent.height = m_Height;
+		l_ImageCreateInfo.extent.width = width;
+		l_ImageCreateInfo.extent.height = height;
 		l_ImageCreateInfo.extent.depth = 1;
-		l_ImageCreateInfo.mipLevels = m_MipLevels;
+		l_ImageCreateInfo.mipLevels = mipLevels;
 		l_ImageCreateInfo.arrayLayers = 1;
-		l_ImageCreateInfo.format = m_Format;
+		l_ImageCreateInfo.format = format;
 		l_ImageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 		l_ImageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		l_ImageCreateInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -73,9 +119,10 @@ namespace Trinity
 		l_ImageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 		allocator.CreateImage(l_ImageCreateInfo, m_Image, m_Allocation);
-		uploadContext.UploadImageWithMips(l_StagingBuffer, m_Image, m_Width, m_Height, m_MipLevels);
-		allocator.DestroyBuffer(l_StagingBuffer, l_StagingAllocation);
+	}
 
+	void VulkanTexture2D::FinalizeImageView()
+	{
 		VkImageViewCreateInfo l_ViewCreateInfo{};
 		l_ViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		l_ViewCreateInfo.image = m_Image;
@@ -88,7 +135,10 @@ namespace Trinity
 		l_ViewCreateInfo.subresourceRange.layerCount = 1;
 
 		Utilities::VulkanUtilities::VKCheck(vkCreateImageView(m_Device, &l_ViewCreateInfo, m_HostAllocator, &m_ImageView), "VulkanTexture2D: vkCreateImageView failed");
+	}
 
+	void VulkanTexture2D::FinalizeSampler()
+	{
 		VkSamplerCreateInfo l_SamplerCreateInfo{};
 		l_SamplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 		l_SamplerCreateInfo.magFilter = VK_FILTER_LINEAR;
@@ -108,8 +158,6 @@ namespace Trinity
 		l_SamplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
 
 		Utilities::VulkanUtilities::VKCheck(vkCreateSampler(m_Device, &l_SamplerCreateInfo, m_HostAllocator, &m_Sampler), "VulkanTexture2D: vkCreateSampler failed");
-
-		TR_CORE_TRACE("VulkanTexture2D: loaded '{}' ({}x{}, {} mips)", filePath.c_str(), m_Width, m_Height, m_MipLevels);
 	}
 
 	void VulkanTexture2D::Destroy()
@@ -152,14 +200,14 @@ namespace Trinity
 	{
 		switch (format)
 		{
-			case TextureFormat::RGBA8_SRGB: return VK_FORMAT_R8G8B8A8_SRGB;
-			case TextureFormat::RGBA8_UNORM: return VK_FORMAT_R8G8B8A8_UNORM;
-			default: return VK_FORMAT_R8G8B8A8_SRGB;
+		case TextureFormat::RGBA8_SRGB:  return VK_FORMAT_R8G8B8A8_SRGB;
+		case TextureFormat::RGBA8_UNORM: return VK_FORMAT_R8G8B8A8_UNORM;
+		default:                         return VK_FORMAT_R8G8B8A8_SRGB;
 		}
 	}
 
 	uint32_t VulkanTexture2D::ComputeMipLevels(uint32_t width, uint32_t height)
 	{
-		return static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1;
+		return static_cast<uint32_t>(std::floor(std::log2(static_cast<float>(std::max(width, height))))) + 1;
 	}
 }

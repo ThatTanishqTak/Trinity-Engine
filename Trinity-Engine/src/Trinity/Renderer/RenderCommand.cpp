@@ -94,6 +94,18 @@ namespace Trinity
 		return s_Renderer->GetSceneViewportHandle();
 	}
 
+	Renderer& RenderCommand::GetRenderer()
+	{
+		if (!s_Renderer)
+		{
+			TR_CORE_CRITICAL("RenderCommand::GetRenderer called before Initialize");
+
+			std::abort();
+		}
+
+		return *s_Renderer;
+	}
+
 	void RenderCommand::DrawMesh(Geometry::PrimitiveType primitive, const glm::mat4& model, const glm::vec4& color, const glm::mat4& viewProjection)
 	{
 		if (s_Renderer)
@@ -126,54 +138,94 @@ namespace Trinity
 		}
 	}
 
-	void RenderCommand::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color)
+	void RenderCommand::BeginShadowPass(const glm::mat4& lightSpaceMatrix)
 	{
 		if (s_Renderer)
 		{
-			s_Renderer->DrawMesh(primitive, position, color);
+			s_Renderer->BeginShadowPass(lightSpaceMatrix);
 		}
 	}
 
-	void RenderCommand::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& viewProjection)
+	void RenderCommand::EndShadowPass()
 	{
 		if (s_Renderer)
 		{
-			s_Renderer->DrawMesh(primitive, position, color, viewProjection);
+			s_Renderer->EndShadowPass();
 		}
 	}
 
-	void RenderCommand::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& view, const glm::mat4& projection)
+	void RenderCommand::DrawMeshShadow(VertexBuffer& vertexBuffer, IndexBuffer& indexBuffer, uint32_t indexCount, const glm::mat4& lightSpaceMVP)
 	{
 		if (s_Renderer)
 		{
-			s_Renderer->DrawMesh(primitive, position, color, view, projection);
+			s_Renderer->DrawMeshShadow(vertexBuffer, indexBuffer, indexCount, lightSpaceMVP);
 		}
 	}
 
-	Renderer& RenderCommand::GetRenderer()
+	void RenderCommand::BeginGeometryPass()
 	{
-		if (!s_Renderer)
+		if (s_Renderer)
 		{
-			TR_CORE_CRITICAL("RenderCommand::GetRenderer called before renderer initialization");
-
-			std::abort();
+			s_Renderer->BeginGeometryPass();
 		}
+	}
 
-		return *s_Renderer;
+	void RenderCommand::EndGeometryPass()
+	{
+		if (s_Renderer)
+		{
+			s_Renderer->EndGeometryPass();
+		}
+	}
+
+	void RenderCommand::DrawMeshDeferred(VertexBuffer& vertexBuffer, IndexBuffer& indexBuffer, uint32_t indexCount, const glm::mat4& model, const glm::mat4& viewProjection, Texture2D* albedoTexture)
+	{
+		if (s_Renderer)
+		{
+			s_Renderer->DrawMeshDeferred(vertexBuffer, indexBuffer, indexCount, model, viewProjection, albedoTexture);
+		}
+	}
+
+	void RenderCommand::BeginLightingPass()
+	{
+		if (s_Renderer)
+		{
+			s_Renderer->BeginLightingPass();
+		}
+	}
+
+	void RenderCommand::EndLightingPass()
+	{
+		if (s_Renderer)
+		{
+			s_Renderer->EndLightingPass();
+		}
+	}
+
+	void RenderCommand::UploadLights(const void* lightData, uint32_t byteSize)
+	{
+		if (s_Renderer)
+		{
+			s_Renderer->UploadLights(lightData, byteSize);
+		}
+	}
+
+	void RenderCommand::DrawLightingQuad(const glm::mat4& invViewProjection, const glm::vec3& cameraPosition, float cameraNear, float cameraFar)
+	{
+		if (s_Renderer)
+		{
+			s_Renderer->DrawLightingQuad(invViewProjection, cameraPosition, cameraNear, cameraFar);
+		}
 	}
 
 	std::string RenderCommand::ApiToString(RendererAPI api)
 	{
 		switch (api)
 		{
-			case RendererAPI::VULKAN:
-				return "Vulkan";
-			case RendererAPI::MOLTENVK:
-				return "MoltenVK";
-			case RendererAPI::DIRECTX:
-				return "DirectX";
-			default:
-				return "Unknown";
+		case RendererAPI::VULKAN:   return "Vulkan";
+		case RendererAPI::MOLTENVK: return "MoltenVK";
+		case RendererAPI::DIRECTX:  return "DirectX 12";
+		default:                    return "None";
 		}
 	}
 }
