@@ -69,10 +69,14 @@ namespace Trinity
 	}
 
 	VulkanRenderer::VulkanRenderer() : Renderer(RendererAPI::VULKAN)
-	{}
+	{
+
+	}
 
 	VulkanRenderer::VulkanRenderer(const Configuration& configuration) : Renderer(RendererAPI::VULKAN), m_Configuration(configuration)
-	{}
+	{
+
+	}
 
 	void VulkanRenderer::SetWindow(Window& window)
 	{
@@ -426,14 +430,16 @@ namespace Trinity
 
 		m_DescriptorAllocator.BeginFrame(m_CurrentFrameIndex);
 
+		if (m_LightingDescriptorPool != VK_NULL_HANDLE)
+		{
+			vkResetDescriptorPool(m_Device.GetDevice(), m_LightingDescriptorPool, 0);
+		}
+
 		const VkCommandBuffer l_CommandBuffer = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
 		const VulkanImageTransitionState l_ColorAttachmentWriteState = BuildTransitionState(ImageTransitionPreset::ColorAttachmentWrite);
 		const VkImageSubresourceRange l_ColorSubresourceRange = BuildColorSubresourceRange();
 		const VkExtent2D l_SceneExtent{ m_SceneViewportWidth, m_SceneViewportHeight };
-		const bool l_CanRecordScenePass = m_SceneViewportImage != VK_NULL_HANDLE
-			&& m_SceneViewportDepthImage != VK_NULL_HANDLE
-			&& l_SceneExtent.width > 0
-			&& l_SceneExtent.height > 0;
+		const bool l_CanRecordScenePass = m_SceneViewportImage != VK_NULL_HANDLE && m_SceneViewportDepthImage != VK_NULL_HANDLE && l_SceneExtent.width > 0 && l_SceneExtent.height > 0;
 
 		m_ScenePassRecording = false;
 		m_PresentPassRecording = false;
@@ -1731,9 +1737,6 @@ namespace Trinity
 		}
 
 		const VkCommandBuffer l_Cmd = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
-
-		vkResetDescriptorPool(m_Device.GetDevice(), m_LightingDescriptorPool, 0);
-
 		const VkDescriptorSet l_GBufSet = BuildGBufferDescriptorSet();
 
 		VkDescriptorSetAllocateInfo l_UBOAllocInfo{};
