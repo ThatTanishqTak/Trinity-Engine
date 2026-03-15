@@ -13,6 +13,13 @@ namespace Trinity
 	void TransitionImage(VkCommandBuffer commandBuffer, VkImage image, const VulkanImageTransitionState& oldState, const VulkanImageTransitionState& newState,
 		const VkImageSubresourceRange& subresourceRange)
 	{
+		if (image == VK_NULL_HANDLE)
+		{
+			TR_CORE_CRITICAL("TransitionImage: image is VK_NULL_HANDLE");
+
+			std::abort();
+		}
+
 		VkImageMemoryBarrier2 l_MemoryBarrier{};
 		l_MemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 		l_MemoryBarrier.srcStageMask = oldState.m_StageMask;

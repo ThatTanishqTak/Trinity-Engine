@@ -36,6 +36,8 @@ namespace Trinity
 			return g_TransferDestinationImageState;
 		case ImageTransitionPreset::GeneralComputeReadWrite:
 			return g_GeneralComputeReadWriteImageState;
+		case ImageTransitionPreset::DepthShaderReadOnly:
+			return g_DepthShaderReadOnlyImageState;
 		default:
 			TR_CORE_CRITICAL("BuildTransitionState: unhandled ImageTransitionPreset");
 			std::abort();
@@ -1546,6 +1548,13 @@ namespace Trinity
 			return;
 		}
 
+		if (m_ScenePassRecording)
+		{
+			const VkCommandBuffer l_Cmd = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
+			vkCmdEndRendering(l_Cmd);
+			m_ScenePassRecording = false;
+		}
+
 		const VkCommandBuffer l_Cmd = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
 		const VkImageSubresourceRange l_ColorRange{ VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
 		const VulkanImageTransitionState l_CAW = BuildTransitionState(ImageTransitionPreset::ColorAttachmentWrite);
@@ -1612,6 +1621,7 @@ namespace Trinity
 		TransitionImageResource(l_Cmd, m_GBuffer.GetAlbedoImage(), l_ColorRange, l_SRO);
 		TransitionImageResource(l_Cmd, m_GBuffer.GetNormalImage(), l_ColorRange, l_SRO);
 		TransitionImageResource(l_Cmd, m_GBuffer.GetMaterialImage(), l_ColorRange, l_SRO);
+		TransitionImageResource(l_Cmd, m_SceneViewportDepthImage, BuildDepthSubresourceRange(), BuildTransitionState(ImageTransitionPreset::DepthShaderReadOnly));
 
 		m_GeometryPassRecording = false;
 	}
@@ -1656,7 +1666,7 @@ namespace Trinity
 
 	void VulkanRenderer::BeginLightingPass()
 	{
-		if (!m_FrameBegun)
+		if (!m_FrameBegun || m_SceneViewportImage == VK_NULL_HANDLE)
 		{
 			return;
 		}

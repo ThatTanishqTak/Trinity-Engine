@@ -1,5 +1,7 @@
 #include "Trinity/Renderer/Vulkan/VulkanResourceStateTracker.h"
 
+#include "Trinity/Utilities/Log.h"
+
 #include <functional>
 
 namespace Trinity
@@ -76,6 +78,13 @@ namespace Trinity
 
 	bool VulkanResourceStateTracker::TransitionImageResource(VkCommandBuffer commandBuffer, VkImage image, const VkImageSubresourceRange& subresourceRange, const VulkanImageTransitionState& newState)
 	{
+		if (image == VK_NULL_HANDLE)
+		{
+			TR_CORE_CRITICAL("VulkanResourceStateTracker::TransitionImageResource called with null image");
+
+			std::abort();
+		}
+
 		const ResourceBucketKey l_ResourceBucketKey = BuildResourceBucketKey(image, subresourceRange);
 		auto& a_TrackedResourceState = m_TrackedResourceStates[l_ResourceBucketKey];
 

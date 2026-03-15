@@ -108,7 +108,8 @@ namespace Trinity
 			ShaderReadOnly,
 			TransferSource,
 			TransferDestination,
-			GeneralComputeReadWrite
+			GeneralComputeReadWrite,
+			DepthShaderReadOnly
 		};
 
 		static VulkanImageTransitionState BuildTransitionState(ImageTransitionPreset preset);

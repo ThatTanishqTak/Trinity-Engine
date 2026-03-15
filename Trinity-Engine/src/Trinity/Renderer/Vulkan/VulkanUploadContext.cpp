@@ -138,6 +138,13 @@ namespace Trinity
 			std::abort();
 		}
 
+		if (dstImage == VK_NULL_HANDLE)
+		{
+			TR_CORE_CRITICAL("VulkanUploadContext::UploadImageWithMips called with null dstImage");
+
+			std::abort();
+		}
+
 		BeginCommands();
 
 		// Transition all mips to TRANSFER_DST_OPTIMAL
