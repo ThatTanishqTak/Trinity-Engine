@@ -15,10 +15,15 @@
 namespace Trinity
 {
 	static constexpr uint32_t s_SpvMagic = 0x07230203;
+	static constexpr uint32_t s_OpTypeInt = 21;
+	static constexpr uint32_t s_OpTypeFloat = 22;
+	static constexpr uint32_t s_OpTypeVector = 23;
+	static constexpr uint32_t s_OpTypeMatrix = 24;
+	static constexpr uint32_t s_OpTypeStruct = 30;
+	static constexpr uint32_t s_OpTypePointer = 32;
 	static constexpr uint32_t s_OpDecorate = 47;
 	static constexpr uint32_t s_OpMemberDecorate = 48;
 	static constexpr uint32_t s_OpVariable = 59;
-	static constexpr uint32_t s_OpTypePointer = 32;
 	static constexpr uint32_t s_DecorationBinding = 33;
 	static constexpr uint32_t s_DecorationDescriptorSet = 34;
 	static constexpr uint32_t s_DecorationBlock = 2;
@@ -125,6 +130,7 @@ namespace Trinity
 		if (a_It == m_Shaders.end())
 		{
 			TR_CORE_WARN("ShaderLibrary::Reload — shader '{}' not found", name.c_str());
+
 			return false;
 		}
 
@@ -207,6 +213,8 @@ namespace Trinity
 		std::unordered_map<uint32_t, std::string> l_Names;
 		std::vector<MemberOffsetEntry> l_MemberOffsets;
 		std::unordered_map<uint32_t, bool> l_BlockIds;
+		std::unordered_map<uint32_t, uint32_t> l_TypeSizes;
+		std::unordered_map<uint32_t, std::vector<uint32_t>> l_StructMemberTypes;
 
 		uint32_t l_Idx = 5;
 		while (l_Idx < spirV.size())
@@ -226,6 +234,50 @@ namespace Trinity
 				const char* l_NamePtr = reinterpret_cast<const char*>(&spirV[l_Idx + 2]);
 				const size_t l_MaxLen = (l_WordCount - 2) * 4;
 				l_Names[l_Id] = std::string(l_NamePtr, strnlen(l_NamePtr, l_MaxLen));
+			}
+			else if (l_Opcode == s_OpTypeInt && l_WordCount >= 3)
+			{
+				const uint32_t l_ResultId = spirV[l_Idx + 1];
+				const uint32_t l_Width = spirV[l_Idx + 2];
+				l_TypeSizes[l_ResultId] = l_Width / 8;
+			}
+			else if (l_Opcode == s_OpTypeFloat && l_WordCount >= 3)
+			{
+				const uint32_t l_ResultId = spirV[l_Idx + 1];
+				const uint32_t l_Width = spirV[l_Idx + 2];
+				l_TypeSizes[l_ResultId] = l_Width / 8;
+			}
+			else if (l_Opcode == s_OpTypeVector && l_WordCount >= 4)
+			{
+				const uint32_t l_ResultId = spirV[l_Idx + 1];
+				const uint32_t l_ComponentId = spirV[l_Idx + 2];
+				const uint32_t l_Count = spirV[l_Idx + 3];
+				const auto a_It = l_TypeSizes.find(l_ComponentId);
+				if (a_It != l_TypeSizes.end())
+				{
+					l_TypeSizes[l_ResultId] = a_It->second * l_Count;
+				}
+			}
+			else if (l_Opcode == s_OpTypeMatrix && l_WordCount >= 4)
+			{
+				const uint32_t l_ResultId = spirV[l_Idx + 1];
+				const uint32_t l_ColumnId = spirV[l_Idx + 2];
+				const uint32_t l_ColCount = spirV[l_Idx + 3];
+				const auto a_It = l_TypeSizes.find(l_ColumnId);
+				if (a_It != l_TypeSizes.end())
+				{
+					l_TypeSizes[l_ResultId] = a_It->second * l_ColCount;
+				}
+			}
+			else if (l_Opcode == s_OpTypeStruct && l_WordCount >= 2)
+			{
+				const uint32_t l_ResultId = spirV[l_Idx + 1];
+				std::vector<uint32_t> l_Members;
+				for (uint32_t l_M = 2; l_M < l_WordCount; ++l_M)
+				{
+					l_Members.push_back(spirV[l_Idx + l_M]);
+				}
+				l_StructMemberTypes[l_ResultId] = std::move(l_Members);
 			}
 			else if (l_Opcode == s_OpDecorate && l_WordCount >= 3)
 			{
@@ -282,9 +334,7 @@ namespace Trinity
 					continue;
 				}
 
-				if (l_StorageClass == s_StorageClassUniform ||
-					l_StorageClass == s_StorageClassUniformConstant ||
-					l_StorageClass == s_StorageClassStorageBuffer)
+				if (l_StorageClass == s_StorageClassUniform || l_StorageClass == s_StorageClassUniformConstant || l_StorageClass == s_StorageClassStorageBuffer)
 				{
 					const auto& l_Dec = l_Decorations[l_ResultId];
 					if (l_Dec.m_Set != ~0u && l_Dec.m_Binding != ~0u)
@@ -308,21 +358,33 @@ namespace Trinity
 					const uint32_t l_PointedTypeId = a_PtrIt->second.m_TypeId;
 
 					uint32_t l_MaxEndByte = 0;
+					uint32_t l_MaxMemberIdx = 0;
+
 					for (const auto& it_Entry : l_MemberOffsets)
 					{
-						if (it_Entry.m_StructId == l_PointedTypeId)
+						if (it_Entry.m_StructId == l_PointedTypeId && it_Entry.m_Offset > l_MaxEndByte)
 						{
-							if (it_Entry.m_Offset > l_MaxEndByte)
-							{
-								l_MaxEndByte = it_Entry.m_Offset;
-							}
+							l_MaxEndByte = it_Entry.m_Offset;
+							l_MaxMemberIdx = it_Entry.m_Member;
 						}
 					}
 
 					if (l_MaxEndByte > 0)
 					{
+						uint32_t l_LastMemberSize = 4;
+
+						const auto a_StructIt = l_StructMemberTypes.find(l_PointedTypeId);
+						if (a_StructIt != l_StructMemberTypes.end() && l_MaxMemberIdx < static_cast<uint32_t>(a_StructIt->second.size()))
+						{
+							const auto a_SizeIt = l_TypeSizes.find(a_StructIt->second[l_MaxMemberIdx]);
+							if (a_SizeIt != l_TypeSizes.end())
+							{
+								l_LastMemberSize = a_SizeIt->second;
+							}
+						}
+
 						l_Result.m_PushConstants.m_Offset = 0;
-						l_Result.m_PushConstants.m_Size = l_MaxEndByte + 16;
+						l_Result.m_PushConstants.m_Size = l_MaxEndByte + l_LastMemberSize;
 					}
 				}
 			}
@@ -330,27 +392,91 @@ namespace Trinity
 			l_Idx += l_WordCount;
 		}
 
-		std::sort(l_Result.m_Bindings.begin(), l_Result.m_Bindings.end(),
-			[](const ShaderBindingInfo& a, const ShaderBindingInfo& b)
+		std::sort(l_Result.m_Bindings.begin(), l_Result.m_Bindings.end(), [](const ShaderBindingInfo& a, const ShaderBindingInfo& b)
 			{
-				if (a.m_Set != b.m_Set) return a.m_Set < b.m_Set;
+				if (a.m_Set != b.m_Set)
+				{
+					return a.m_Set < b.m_Set;
+				}
+				
 				return a.m_Binding < b.m_Binding;
 			});
 
 		return l_Result;
 	}
 
+#ifdef TR_ENABLE_SHADER_COMPILATION
+	class FileIncluder : public shaderc::CompileOptions::IncluderInterface
+	{
+	public:
+		explicit FileIncluder(std::filesystem::path baseDir) : m_BaseDir(std::move(baseDir))
+		{
+
+		}
+
+		shaderc_include_result* GetInclude(const char* requestedSource, shaderc_include_type, const char* requestingSource, size_t) override
+		{
+			std::filesystem::path l_RequestingDir = std::filesystem::path(requestingSource).parent_path();
+			std::filesystem::path l_Resolved = l_RequestingDir / requestedSource;
+
+			if (!std::filesystem::exists(l_Resolved))
+			{
+				l_Resolved = m_BaseDir / requestedSource;
+			}
+
+			auto* l_Data = new IncludeData{};
+
+			if (std::filesystem::exists(l_Resolved))
+			{
+				const std::vector<char> l_Bytes = Utilities::FileManagement::LoadFromFile(l_Resolved.string());
+				l_Data->m_Content.assign(l_Bytes.begin(), l_Bytes.end());
+				l_Data->m_SourceName = l_Resolved.string();
+			}
+			else
+			{
+				l_Data->m_Content = "Cannot find include: " + std::string(requestedSource);
+				l_Data->m_SourceName = "";
+			}
+
+			l_Data->m_Result.source_name = l_Data->m_SourceName.c_str();
+			l_Data->m_Result.source_name_length = l_Data->m_SourceName.size();
+			l_Data->m_Result.content = l_Data->m_Content.c_str();
+			l_Data->m_Result.content_length = l_Data->m_Content.size();
+			l_Data->m_Result.user_data = l_Data;
+
+			return &l_Data->m_Result;
+		}
+
+		void ReleaseInclude(shaderc_include_result* data) override
+		{
+			delete static_cast<IncludeData*>(data->user_data);
+		}
+
+	private:
+		struct IncludeData
+		{
+			std::string m_SourceName;
+			std::string m_Content;
+			shaderc_include_result m_Result{};
+		};
+
+		std::filesystem::path m_BaseDir;
+	};
+#endif
+
 	std::vector<uint32_t> ShaderLibrary::CompileGlsl(const std::string& sourcePath, ShaderStage stage)
 	{
 #ifndef TR_ENABLE_SHADER_COMPILATION
 		(void)sourcePath;
 		(void)stage;
+
 		return {};
 #else
 		const std::vector<char> l_Source = Utilities::FileManagement::LoadFromFile(sourcePath);
 		if (l_Source.empty())
 		{
 			TR_CORE_CRITICAL("ShaderLibrary::CompileGlsl — empty source file: {}", sourcePath.c_str());
+
 			std::abort();
 		}
 
@@ -359,25 +485,26 @@ namespace Trinity
 		shaderc_shader_kind l_Kind = shaderc_vertex_shader;
 		switch (stage)
 		{
-		case ShaderStage::Vertex:   l_Kind = shaderc_vertex_shader;   break;
-		case ShaderStage::Fragment: l_Kind = shaderc_fragment_shader; break;
-		case ShaderStage::Compute:  l_Kind = shaderc_compute_shader;  break;
-		default: break;
+			case ShaderStage::Vertex:   l_Kind = shaderc_vertex_shader;   break;
+			case ShaderStage::Fragment: l_Kind = shaderc_fragment_shader; break;
+			case ShaderStage::Compute:  l_Kind = shaderc_compute_shader;  break;
+			default: break;
 		}
 
 		shaderc::Compiler l_Compiler;
 		shaderc::CompileOptions l_Options;
 		l_Options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
 		l_Options.SetOptimizationLevel(shaderc_optimization_level_performance);
-		l_Options.SetIncluder(std::make_unique<shaderc::CompileOptions::IncluderInterface>());
 
-		const shaderc::SpvCompilationResult l_Result = l_Compiler.CompileGlslToSpv(
-			l_SourceStr, l_Kind, sourcePath.c_str(), l_Options);
+		const std::filesystem::path l_SourceDir = std::filesystem::path(sourcePath).parent_path();
+		l_Options.SetIncluder(std::make_unique<FileIncluder>(l_SourceDir));
+
+		const shaderc::SpvCompilationResult l_Result = l_Compiler.CompileGlslToSpv(l_SourceStr, l_Kind, sourcePath.c_str(), l_Options);
 
 		if (l_Result.GetCompilationStatus() != shaderc_compilation_status_success)
 		{
-			TR_CORE_CRITICAL("ShaderLibrary::CompileGlsl — compilation failed for '{}': {}",
-				sourcePath.c_str(), l_Result.GetErrorMessage().c_str());
+			TR_CORE_CRITICAL("ShaderLibrary::CompileGlsl — compilation failed for '{}': {}", sourcePath.c_str(), l_Result.GetErrorMessage().c_str());
+
 			std::abort();
 		}
 

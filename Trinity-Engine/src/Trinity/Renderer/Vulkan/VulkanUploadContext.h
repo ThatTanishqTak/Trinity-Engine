@@ -2,6 +2,8 @@
 
 #include <vulkan/vulkan.h>
 
+#include <cstdint>
+
 namespace Trinity
 {
 	class VulkanContext;
@@ -20,7 +22,14 @@ namespace Trinity
 
 		void CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size, VkDeviceSize srcOffset = 0, VkDeviceSize dstOffset = 0);
 
+		void UploadImage(VkBuffer stagingBuffer, VkImage dstImage, uint32_t width, uint32_t height);
+		void UploadImageWithMips(VkBuffer stagingBuffer, VkImage dstImage, uint32_t width, uint32_t height, uint32_t mipLevels);
+
 		bool IsInitialized() const { return m_Device != VK_NULL_HANDLE; }
+
+	private:
+		void BeginCommands();
+		void SubmitAndWait();
 
 	private:
 		VkAllocationCallbacks* m_Allocator = nullptr;

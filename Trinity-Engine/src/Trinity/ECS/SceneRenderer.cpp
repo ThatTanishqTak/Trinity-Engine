@@ -65,7 +65,7 @@ namespace Trinity
         AssetManager& l_AssetManager = AssetManager::Get();
         auto& a_Registry = scene.GetRegistry();
 
-        a_Registry.view<TransformComponent, MeshRendererComponent>().each([&](const TransformComponent& transform, const MeshRendererComponent& meshRenderer)
+        a_Registry.view<TransformComponent, MeshRendererComponent>().each([&](entt::entity it_Entity, const TransformComponent& transform, const MeshRendererComponent& meshRenderer)
             {
                 if (!meshRenderer.Mesh)
                 {
@@ -78,7 +78,22 @@ namespace Trinity
                     return;
                 }
 
-                RenderCommand::DrawMesh(l_Mesh->GetVertexBuffer(), l_Mesh->GetIndexBuffer(), l_Mesh->GetIndexCount(), transform.GetTransform(), meshRenderer.Color, view, projection);
+                glm::vec4 l_Color = meshRenderer.Color;
+
+                if (a_Registry.all_of<MaterialComponent>(it_Entity))
+                {
+                    const MaterialComponent& l_MatComp = a_Registry.get<MaterialComponent>(it_Entity);
+                    if (l_MatComp.Mat)
+                    {
+                        glm::vec4 l_MatColor;
+                        if (l_MatComp.Mat->GetVec4("Color", l_MatColor))
+                        {
+                            l_Color = l_MatColor;
+                        }
+                    }
+                }
+
+                RenderCommand::DrawMesh(l_Mesh->GetVertexBuffer(), l_Mesh->GetIndexBuffer(), l_Mesh->GetIndexCount(), transform.GetTransform(), l_Color, view, projection);
 
                 s_Stats.DrawCalls++;
                 s_Stats.EntityCount++;
