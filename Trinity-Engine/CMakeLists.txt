@@ -80,7 +80,7 @@ endif()
 
 option(TRINITY_EMBED_SHADERS "Embed SPIR-V shaders into binary instead of runtime files" OFF)
 
-set(SHADER_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Assets/Shaders)
+set(SHADER_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/Assets/Shaders)
 
 set(SHADER_BUILD_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/Assets/Shaders)
 file(MAKE_DIRECTORY ${SHADER_BUILD_OUTPUT_DIR})
