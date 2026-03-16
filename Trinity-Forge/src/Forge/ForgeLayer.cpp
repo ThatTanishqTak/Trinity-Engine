@@ -32,6 +32,8 @@ void ForgeLayer::OnInitialize()
     auto& a_Window = Trinity::Application::Get().GetWindow();
     m_EditorCamera.SetViewportSize(static_cast<float>(a_Window.GetWidth()), static_cast<float>(a_Window.GetHeight()));
 
+    Trinity::BuiltIn::RegisterAll();
+
     auto l_Scene = std::make_unique<Trinity::Scene>();
 
     // Demo entities
@@ -66,7 +68,6 @@ void ForgeLayer::OnShutdown()
 
 void ForgeLayer::OnUpdate(float deltaTime)
 {
-    // Allow camera input while the scene viewport is active OR while we're in RMB look mode.
     m_EditorCamera.SetInputEnabled(m_CanControlCamera || m_IsLooking);
     m_EditorCamera.OnUpdate(deltaTime);
 }

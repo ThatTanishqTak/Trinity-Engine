@@ -802,7 +802,7 @@ namespace Trinity
 			l_Info.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 			l_Info.maxLod = 0.0f;
 			l_Info.maxAnisotropy = 1.0f;
-			Utilities::VulkanUtilities::VKCheck(vkCreateSampler(m_Device.GetDevice(), &l_Info, m_Context.GetAllocator(), &m_GBufferSampler), "VulkanRenderer: GBuffer vkCreateSampler failed");
+			Utilities::VulkanUtilities::VKCheck(vkCreateSampler(m_Device.GetDevice(), &l_Info, m_Context.GetAllocator(), &m_GBufferSampler), "VulkanRenderer: GeometryBuffer vkCreateSampler failed");
 		}
 
 		{
@@ -1096,11 +1096,11 @@ namespace Trinity
 
 	void VulkanRenderer::CreateGBufferPipeline()
 	{
-		m_ShaderLibrary.Load("GBuffer.vert", "Assets/Shaders/GeometryBuffer.vert.spv", ShaderStage::Vertex);
-		m_ShaderLibrary.Load("GBuffer.frag", "Assets/Shaders/GeometryBuffer.frag.spv", ShaderStage::Fragment);
+		m_ShaderLibrary.Load("GeometryBuffer.vert", "Assets/Shaders/GeometryBuffer.vert.spv", ShaderStage::Vertex);
+		m_ShaderLibrary.Load("GeometryBuffer.frag", "Assets/Shaders/GeometryBuffer.frag.spv", ShaderStage::Fragment);
 
-		const std::vector<uint32_t>& l_VSSpv = *m_ShaderLibrary.GetSpirV("GBuffer.vert");
-		const std::vector<uint32_t>& l_FSSpv = *m_ShaderLibrary.GetSpirV("GBuffer.frag");
+		const std::vector<uint32_t>& l_VSSpv = *m_ShaderLibrary.GetSpirV("GeometryBuffer.vert");
+		const std::vector<uint32_t>& l_FSSpv = *m_ShaderLibrary.GetSpirV("GeometryBuffer.frag");
 
 		VkDescriptorSetLayoutBinding l_TexBinding{};
 		l_TexBinding.binding = 0;
@@ -1112,7 +1112,7 @@ namespace Trinity
 		l_SetLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 		l_SetLayoutInfo.bindingCount = 1;
 		l_SetLayoutInfo.pBindings = &l_TexBinding;
-		Utilities::VulkanUtilities::VKCheck(vkCreateDescriptorSetLayout(m_Device.GetDevice(), &l_SetLayoutInfo, m_Context.GetAllocator(), &m_GBufferTextureSetLayout), "GBuffer: vkCreateDescriptorSetLayout failed");
+		Utilities::VulkanUtilities::VKCheck(vkCreateDescriptorSetLayout(m_Device.GetDevice(), &l_SetLayoutInfo, m_Context.GetAllocator(), &m_GBufferTextureSetLayout), "GeometryBuffer: vkCreateDescriptorSetLayout failed");
 
 		VkPushConstantRange l_PC{};
 		l_PC.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -1125,7 +1125,7 @@ namespace Trinity
 		l_LayoutInfo.pSetLayouts = &m_GBufferTextureSetLayout;
 		l_LayoutInfo.pushConstantRangeCount = 1;
 		l_LayoutInfo.pPushConstantRanges = &l_PC;
-		Utilities::VulkanUtilities::VKCheck(vkCreatePipelineLayout(m_Device.GetDevice(), &l_LayoutInfo, m_Context.GetAllocator(), &m_GBufferPipelineLayout), "GBuffer: vkCreatePipelineLayout failed");
+		Utilities::VulkanUtilities::VKCheck(vkCreatePipelineLayout(m_Device.GetDevice(), &l_LayoutInfo, m_Context.GetAllocator(), &m_GBufferPipelineLayout), "GeometryBuffer: vkCreatePipelineLayout failed");
 
 		auto l_CreateModule = [&](const std::vector<uint32_t>& spv) -> VkShaderModule
 			{
@@ -1224,7 +1224,7 @@ namespace Trinity
 		l_Info.pDynamicState = &l_DynState;
 		l_Info.layout = m_GBufferPipelineLayout;
 
-		Utilities::VulkanUtilities::VKCheck(vkCreateGraphicsPipelines(m_Device.GetDevice(), VK_NULL_HANDLE, 1, &l_Info, m_Context.GetAllocator(), &m_GBufferPipeline), "GBuffer: vkCreateGraphicsPipelines failed");
+		Utilities::VulkanUtilities::VKCheck(vkCreateGraphicsPipelines(m_Device.GetDevice(), VK_NULL_HANDLE, 1, &l_Info, m_Context.GetAllocator(), &m_GBufferPipeline), "GeometryBuffer: vkCreateGraphicsPipelines failed");
 
 		vkDestroyShaderModule(m_Device.GetDevice(), l_VS, m_Context.GetAllocator());
 		vkDestroyShaderModule(m_Device.GetDevice(), l_FS, m_Context.GetAllocator());
@@ -1249,7 +1249,7 @@ namespace Trinity
 		l_GBufSetInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 		l_GBufSetInfo.bindingCount = 5;
 		l_GBufSetInfo.pBindings = l_GBufBindings;
-		Utilities::VulkanUtilities::VKCheck(vkCreateDescriptorSetLayout(m_Device.GetDevice(), &l_GBufSetInfo, m_Context.GetAllocator(), &m_LightingGBufferSetLayout), "Lighting: vkCreateDescriptorSetLayout (GBuffer set) failed");
+		Utilities::VulkanUtilities::VKCheck(vkCreateDescriptorSetLayout(m_Device.GetDevice(), &l_GBufSetInfo, m_Context.GetAllocator(), &m_LightingGBufferSetLayout), "Lighting: vkCreateDescriptorSetLayout (GeometryBuffer set) failed");
 
 		VkDescriptorSetLayoutBinding l_UBOBinding{};
 		l_UBOBinding.binding = 0;
@@ -1410,7 +1410,7 @@ namespace Trinity
 		l_AllocInfo.pSetLayouts = &m_LightingGBufferSetLayout;
 
 		VkDescriptorSet l_Set = VK_NULL_HANDLE;
-		Utilities::VulkanUtilities::VKCheck(vkAllocateDescriptorSets(m_Device.GetDevice(), &l_AllocInfo, &l_Set), "VulkanRenderer: vkAllocateDescriptorSets (GBuffer set) failed");
+		Utilities::VulkanUtilities::VKCheck(vkAllocateDescriptorSets(m_Device.GetDevice(), &l_AllocInfo, &l_Set), "VulkanRenderer: vkAllocateDescriptorSets (GeometryBuffer set) failed");
 
 		const VkImageLayout l_SRO = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		const VkImageLayout l_DSR = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
