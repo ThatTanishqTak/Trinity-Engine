@@ -3,6 +3,7 @@ project(Trinity)
 
 if (MSVC)
     add_compile_options(/MP)
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/EHsc>)
 endif()
 
 if (WIN32)
