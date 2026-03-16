@@ -126,4 +126,56 @@ namespace Trinity
 
 		Utilities::VulkanUtilities::VKCheck(vkCreateImageView(m_Device, &l_ViewInfo, m_HostAllocator, &outView), "VulkanGeometryBuffer: vkCreateImageView failed");
 	}
+
+	void VulkanGeometryBuffer::TransitionToShaderRead(VkCommandBuffer commandBuffer)
+	{
+		VkImageMemoryBarrier l_Barrier{};
+		l_Barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		l_Barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		l_Barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		l_Barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		l_Barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		l_Barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		l_Barrier.subresourceRange.baseMipLevel = 0;
+		l_Barrier.subresourceRange.levelCount = 1;
+		l_Barrier.subresourceRange.baseArrayLayer = 0;
+		l_Barrier.subresourceRange.layerCount = 1;
+		l_Barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		l_Barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+		VkImage l_Images[] = { m_AlbedoImage, m_NormalImage, m_MaterialImage };
+		for (VkImage it_Image : l_Images)
+		{
+			l_Barrier.image = it_Image;
+			vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &l_Barrier);
+		}
+	}
+
+	void VulkanGeometryBuffer::TransitionToAttachment(VkCommandBuffer commandBuffer)
+	{
+		VkImageLayout l_OldLayout = m_bInitialized ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED;
+
+		m_bInitialized = true;
+
+		VkImageMemoryBarrier l_Barrier{};
+		l_Barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		l_Barrier.oldLayout = l_OldLayout;
+		l_Barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		l_Barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		l_Barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		l_Barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		l_Barrier.subresourceRange.baseMipLevel = 0;
+		l_Barrier.subresourceRange.levelCount = 1;
+		l_Barrier.subresourceRange.baseArrayLayer = 0;
+		l_Barrier.subresourceRange.layerCount = 1;
+		l_Barrier.srcAccessMask = m_bInitialized ? VK_ACCESS_SHADER_READ_BIT : 0;
+		l_Barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+		VkImage l_Images[] = { m_AlbedoImage, m_NormalImage, m_MaterialImage };
+		for (VkImage it_Image : l_Images)
+		{
+			l_Barrier.image = it_Image;
+			vkCmdPipelineBarrier(commandBuffer, m_bInitialized ? VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &l_Barrier);
+		}
+	}
 }

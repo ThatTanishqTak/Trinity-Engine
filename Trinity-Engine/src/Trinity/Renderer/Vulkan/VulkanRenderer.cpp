@@ -1612,7 +1612,7 @@ namespace Trinity
 		vkCmdBeginRendering(l_Cmd, &l_RenderingInfo);
 
 		VkViewport l_Viewport{ 0.0f, 0.0f, static_cast<float>(m_SceneViewportWidth), static_cast<float>(m_SceneViewportHeight), 0.0f, 1.0f };
-		VkRect2D   l_Scissor{ { 0, 0 }, { m_SceneViewportWidth, m_SceneViewportHeight } };
+		VkRect2D l_Scissor{ { 0, 0 }, { m_SceneViewportWidth, m_SceneViewportHeight } };
 		vkCmdSetViewport(l_Cmd, 0, 1, &l_Viewport);
 		vkCmdSetScissor(l_Cmd, 0, 1, &l_Scissor);
 		vkCmdBindPipeline(l_Cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GBufferPipeline);

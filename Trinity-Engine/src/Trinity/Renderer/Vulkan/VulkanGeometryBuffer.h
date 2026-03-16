@@ -19,6 +19,7 @@ namespace Trinity
 		static constexpr VkFormat NormalFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
 		static constexpr VkFormat MaterialFormat = VK_FORMAT_R8G8B8A8_UNORM;
 
+	public:
 		void Initialize(const VulkanContext& context, const VulkanDevice& device, VulkanAllocator& allocator, uint32_t width, uint32_t height);
 		void Shutdown();
 		void Recreate(uint32_t width, uint32_t height);
@@ -33,6 +34,9 @@ namespace Trinity
 		VkImageView GetNormalView() const { return m_NormalView; }
 		VkImage GetMaterialImage() const { return m_MaterialImage; }
 		VkImageView GetMaterialView() const { return m_MaterialView; }
+
+		void TransitionToShaderRead(VkCommandBuffer commandBuffer);
+		void TransitionToAttachment(VkCommandBuffer commandBuffer);
 
 	private:
 		void CreateAttachments();
@@ -59,5 +63,7 @@ namespace Trinity
 		VkImage m_MaterialImage = VK_NULL_HANDLE;
 		VmaAllocation m_MaterialAllocation = VK_NULL_HANDLE;
 		VkImageView m_MaterialView = VK_NULL_HANDLE;
+
+		bool m_bInitialized = false;
 	};
 }
