@@ -262,10 +262,10 @@ void ForgeLayer::OnImGuiRender()
             }
 
             // Add Component Button
-            if (ImGui::Button("Add Component", ImVec2(10.0f, 10.0f)))
-            {
-
-            }
+            //if (ImGui::Button("Add Component", ImVec2(10.0f, 10.0f)))
+            //{
+            //
+            //}
         }
 
         ImGui::End();

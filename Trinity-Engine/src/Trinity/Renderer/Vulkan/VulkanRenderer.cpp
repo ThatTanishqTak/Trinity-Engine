@@ -319,6 +319,7 @@ namespace Trinity
 
 		if (m_SceneViewportDepthImage != VK_NULL_HANDLE)
 		{
+			m_ResourceStateTracker.ForgetImage(m_SceneViewportDepthImage);
 			m_Allocator.DestroyImage(m_SceneViewportDepthImage, m_SceneViewportDepthImageAllocation);
 			m_SceneViewportDepthImage = VK_NULL_HANDLE;
 			m_SceneViewportDepthImageAllocation = VK_NULL_HANDLE;
@@ -332,6 +333,7 @@ namespace Trinity
 
 		if (m_SceneViewportImage != VK_NULL_HANDLE)
 		{
+			m_ResourceStateTracker.ForgetImage(m_SceneViewportImage);
 			m_Allocator.DestroyImage(m_SceneViewportImage, m_SceneViewportImageAllocation);
 			m_SceneViewportImage = VK_NULL_HANDLE;
 			m_SceneViewportImageAllocation = VK_NULL_HANDLE;
@@ -406,12 +408,14 @@ namespace Trinity
 		if (l_Acquire == VK_ERROR_OUT_OF_DATE_KHR)
 		{
 			RecreateSwapchain(m_Window->GetWidth(), m_Window->GetHeight());
+
 			return;
 		}
 
 		if (l_Acquire != VK_SUCCESS && l_Acquire != VK_SUBOPTIMAL_KHR)
 		{
 			TR_CORE_CRITICAL("vkAcquireNextImageKHR failed (VkResult = {})", static_cast<int>(l_Acquire));
+
 			std::abort();
 		}
 
@@ -430,9 +434,9 @@ namespace Trinity
 
 		m_DescriptorAllocator.BeginFrame(m_CurrentFrameIndex);
 
-		if (m_LightingDescriptorPool != VK_NULL_HANDLE)
+		if (!m_LightingDescriptorPools.empty() && m_LightingDescriptorPools[m_CurrentFrameIndex] != VK_NULL_HANDLE)
 		{
-			vkResetDescriptorPool(m_Device.GetDevice(), m_LightingDescriptorPool, 0);
+			vkResetDescriptorPool(m_Device.GetDevice(), m_LightingDescriptorPools[m_CurrentFrameIndex], 0);
 		}
 
 		const VkCommandBuffer l_CommandBuffer = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
@@ -617,17 +621,8 @@ namespace Trinity
 
 		const auto& a_Mesh = Geometry::GetPrimitive(primitive);
 
-		a_GPUPrimitive.VulkanVB = std::make_unique<VulkanVertexBuffer>(
-			m_Allocator, m_UploadContext,
-			static_cast<uint64_t>(a_Mesh.Vertices.size() * sizeof(Geometry::Vertex)),
-			static_cast<uint32_t>(sizeof(Geometry::Vertex)),
-			BufferMemoryUsage::GPUOnly, a_Mesh.Vertices.data());
-
-		a_GPUPrimitive.VulkanIB = std::make_unique<VulkanIndexBuffer>(
-			m_Allocator, m_UploadContext,
-			static_cast<uint64_t>(a_Mesh.Indices.size() * sizeof(uint32_t)),
-			static_cast<uint32_t>(a_Mesh.Indices.size()),
-			IndexType::UInt32, BufferMemoryUsage::GPUOnly, a_Mesh.Indices.data());
+		a_GPUPrimitive.VulkanVB = std::make_unique<VulkanVertexBuffer>(m_Allocator, m_UploadContext, static_cast<uint64_t>(a_Mesh.Vertices.size() * sizeof(Geometry::Vertex)), static_cast<uint32_t>(sizeof(Geometry::Vertex)), BufferMemoryUsage::GPUOnly, a_Mesh.Vertices.data());
+		a_GPUPrimitive.VulkanIB = std::make_unique<VulkanIndexBuffer>(m_Allocator, m_UploadContext, static_cast<uint64_t>(a_Mesh.Indices.size() * sizeof(uint32_t)), static_cast<uint32_t>(a_Mesh.Indices.size()), IndexType::UInt32, BufferMemoryUsage::GPUOnly, a_Mesh.Indices.data());
 	}
 
 	void VulkanRenderer::ValidateSceneColorPolicy() const
@@ -641,30 +636,28 @@ namespace Trinity
 			&& l_ColorPolicy.SceneInputTransfer != ColorTransferMode::None)
 		{
 			TR_CORE_CRITICAL("Scene color policy validation failed: sRGB swapchain plus linear scene data must keep scene input transfer at None");
+
 			std::abort();
 		}
 
-		if (m_Configuration.m_ColorOutputPolicy == VulkanSwapchain::ColorOutputPolicy::SDRsRGB
-			&& l_IsUnormSwapchain
-			&& l_ColorPolicy.SceneOutputTransfer != ColorTransferMode::LinearToSrgb)
+		if (m_Configuration.m_ColorOutputPolicy == VulkanSwapchain::ColorOutputPolicy::SDRsRGB && l_IsUnormSwapchain && l_ColorPolicy.SceneOutputTransfer != ColorTransferMode::LinearToSrgb)
 		{
 			TR_CORE_CRITICAL("Scene color policy validation failed: UNORM swapchain requires explicit scene output conversion");
+
 			std::abort();
 		}
 
-		if (m_Configuration.m_ColorOutputPolicy == VulkanSwapchain::ColorOutputPolicy::SDRsRGB
-			&& l_IsUnormSwapchain
-			&& l_ColorPolicy.UiOutputTransfer != ColorTransferMode::LinearToSrgb)
+		if (m_Configuration.m_ColorOutputPolicy == VulkanSwapchain::ColorOutputPolicy::SDRsRGB && l_IsUnormSwapchain && l_ColorPolicy.UiOutputTransfer != ColorTransferMode::LinearToSrgb)
 		{
 			TR_CORE_CRITICAL("Scene color policy validation failed: UNORM swapchain requires explicit ImGui output conversion");
+
 			std::abort();
 		}
 
-		if (m_Configuration.m_ColorOutputPolicy == VulkanSwapchain::ColorOutputPolicy::SDRsRGB
-			&& l_IsSrgbSwapchain
-			&& l_ColorPolicy.UiInputTransfer != ColorTransferMode::SrgbToLinear)
+		if (m_Configuration.m_ColorOutputPolicy == VulkanSwapchain::ColorOutputPolicy::SDRsRGB && l_IsSrgbSwapchain && l_ColorPolicy.UiInputTransfer != ColorTransferMode::SrgbToLinear)
 		{
 			TR_CORE_CRITICAL("Scene color policy validation failed: sRGB swapchain requires ImGui input linearization on GPU path");
+
 			std::abort();
 		}
 	}
@@ -674,6 +667,7 @@ namespace Trinity
 		if (!m_FrameBegun)
 		{
 			TR_CORE_CRITICAL("DrawMesh called outside BeginFrame/EndFrame");
+
 			std::abort();
 		}
 
@@ -728,7 +722,7 @@ namespace Trinity
 
 		const VkCommandBuffer l_CommandBuffer = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
 
-		VkBuffer     l_VkVertexBuffer = reinterpret_cast<VkBuffer>(vertexBuffer.GetNativeHandle());
+		VkBuffer l_VkVertexBuffer = reinterpret_cast<VkBuffer>(vertexBuffer.GetNativeHandle());
 		VkDeviceSize l_Offsets[] = { 0 };
 		vkCmdBindVertexBuffers(l_CommandBuffer, 0, 1, &l_VkVertexBuffer, l_Offsets);
 
@@ -773,6 +767,7 @@ namespace Trinity
 		if (!l_VertexSpirV || !l_FragmentSpirV)
 		{
 			TR_CORE_WARN("VulkanRenderer::ReloadShaders — one or more shaders not found in library");
+
 			return;
 		}
 
@@ -784,12 +779,8 @@ namespace Trinity
 
 	void VulkanRenderer::InitDeferredResources()
 	{
-		m_DescriptorAllocator.Initialize(m_Device.GetDevice(), m_Context.GetAllocator(),
-			m_FramesInFlight, s_MaxTextureDescriptorsPerFrame);
-
-		m_WhiteTexture.CreateSolid(m_Allocator, m_UploadContext,
-			m_Device.GetDevice(), m_Context.GetAllocator(),
-			255, 255, 255, 255);
+		m_DescriptorAllocator.Initialize(m_Device.GetDevice(), m_Context.GetAllocator(), m_FramesInFlight, s_MaxTextureDescriptorsPerFrame);
+		m_WhiteTexture.CreateSolid(m_Allocator, m_UploadContext, m_Device.GetDevice(), m_Context.GetAllocator(), 255, 255, 255, 255);
 
 		{
 			VkSamplerCreateInfo l_Info{};
@@ -856,7 +847,7 @@ namespace Trinity
 			l_Barrier.dstStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT;
 			l_Barrier.dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 			l_Barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			l_Barrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+			l_Barrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 			l_Barrier.image = m_ShadowMapImage;
 			l_Barrier.subresourceRange = { VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1 };
 
@@ -888,15 +879,19 @@ namespace Trinity
 			const std::array<VkDescriptorPoolSize, 2> l_Sizes =
 			{ {
 				{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 5 * m_FramesInFlight },
-				{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         1 * m_FramesInFlight }
+				{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 * m_FramesInFlight }
 			} };
 
-			VkDescriptorPoolCreateInfo l_PoolInfo{};
-			l_PoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-			l_PoolInfo.maxSets = 2 * m_FramesInFlight;
-			l_PoolInfo.poolSizeCount = static_cast<uint32_t>(l_Sizes.size());
-			l_PoolInfo.pPoolSizes = l_Sizes.data();
-			Utilities::VulkanUtilities::VKCheck(vkCreateDescriptorPool(m_Device.GetDevice(), &l_PoolInfo, m_Context.GetAllocator(), &m_LightingDescriptorPool), "VulkanRenderer: vkCreateDescriptorPool failed");
+			m_LightingDescriptorPools.resize(m_FramesInFlight, VK_NULL_HANDLE);
+			for (uint32_t i = 0; i < m_FramesInFlight; ++i)
+			{
+				VkDescriptorPoolCreateInfo l_PoolInfo{};
+				l_PoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+				l_PoolInfo.maxSets = 2;
+				l_PoolInfo.poolSizeCount = static_cast<uint32_t>(l_Sizes.size());
+				l_PoolInfo.pPoolSizes = l_Sizes.data();
+				Utilities::VulkanUtilities::VKCheck(vkCreateDescriptorPool(m_Device.GetDevice(), &l_PoolInfo, m_Context.GetAllocator(), &m_LightingDescriptorPools[i]), "VulkanRenderer: vkCreateDescriptorPool failed");
+			}
 		}
 
 		CreateShadowPipeline();
@@ -917,11 +912,15 @@ namespace Trinity
 		m_LightingUBOs.clear();
 		DestroyDeferredPipelines();
 
-		if (m_LightingDescriptorPool != VK_NULL_HANDLE)
+		for (VkDescriptorPool& it_Pool : m_LightingDescriptorPools)
 		{
-			vkDestroyDescriptorPool(l_Dev, m_LightingDescriptorPool, m_Context.GetAllocator());
-			m_LightingDescriptorPool = VK_NULL_HANDLE;
+			if (it_Pool != VK_NULL_HANDLE)
+			{
+				vkDestroyDescriptorPool(l_Dev, it_Pool, m_Context.GetAllocator());
+				it_Pool = VK_NULL_HANDLE;
+			}
 		}
+		m_LightingDescriptorPools.clear();
 
 		m_GBuffer.Shutdown();
 
@@ -961,6 +960,13 @@ namespace Trinity
 			return;
 		}
 
+		if (m_GBuffer.IsValid())
+		{
+			m_ResourceStateTracker.ForgetImage(m_GBuffer.GetAlbedoImage());
+			m_ResourceStateTracker.ForgetImage(m_GBuffer.GetNormalImage());
+			m_ResourceStateTracker.ForgetImage(m_GBuffer.GetMaterialImage());
+		}
+
 		m_GBuffer.Recreate(m_SceneViewportWidth, m_SceneViewportHeight);
 	}
 
@@ -997,6 +1003,7 @@ namespace Trinity
 				l_Info.pCode = spv.data();
 				VkShaderModule l_Mod = VK_NULL_HANDLE;
 				Utilities::VulkanUtilities::VKCheck(vkCreateShaderModule(m_Device.GetDevice(), &l_Info, m_Context.GetAllocator(), &l_Mod), "vkCreateShaderModule");
+
 				return l_Mod;
 			};
 
@@ -1021,7 +1028,7 @@ namespace Trinity
 		VkVertexInputAttributeDescription l_Attrs[3]{};
 		l_Attrs[0] = { 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Geometry::Vertex, Position) };
 		l_Attrs[1] = { 1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Geometry::Vertex, Normal) };
-		l_Attrs[2] = { 2, 0, VK_FORMAT_R32G32_SFLOAT,    offsetof(Geometry::Vertex, UV) };
+		l_Attrs[2] = { 2, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(Geometry::Vertex, UV) };
 
 		VkPipelineVertexInputStateCreateInfo l_VI{};
 		l_VI.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -1135,6 +1142,7 @@ namespace Trinity
 				l_Info.pCode = spv.data();
 				VkShaderModule l_Mod = VK_NULL_HANDLE;
 				Utilities::VulkanUtilities::VKCheck(vkCreateShaderModule(m_Device.GetDevice(), &l_Info, m_Context.GetAllocator(), &l_Mod), "vkCreateShaderModule");
+
 				return l_Mod;
 			};
 
@@ -1405,7 +1413,7 @@ namespace Trinity
 	{
 		VkDescriptorSetAllocateInfo l_AllocInfo{};
 		l_AllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		l_AllocInfo.descriptorPool = m_LightingDescriptorPool;
+		l_AllocInfo.descriptorPool = m_LightingDescriptorPools[m_CurrentFrameIndex];
 		l_AllocInfo.descriptorSetCount = 1;
 		l_AllocInfo.pSetLayouts = &m_LightingGBufferSetLayout;
 
@@ -1453,8 +1461,8 @@ namespace Trinity
 			l_Barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 			l_Barrier.srcStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
 			l_Barrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-			l_Barrier.dstStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT;
-			l_Barrier.dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			l_Barrier.dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+			l_Barrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
 			l_Barrier.oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 			l_Barrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 			l_Barrier.image = m_ShadowMapImage;
@@ -1656,8 +1664,8 @@ namespace Trinity
 		const VkDescriptorSet l_TexSet = BuildTextureDescriptorSet(l_View, l_Sampler);
 		vkCmdBindDescriptorSets(l_Cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GBufferPipelineLayout, 0, 1, &l_TexSet, 0, nullptr);
 
-		VkBuffer     l_VB = reinterpret_cast<VkBuffer>(vertexBuffer.GetNativeHandle());
-		VkBuffer     l_IB = reinterpret_cast<VkBuffer>(indexBuffer.GetNativeHandle());
+		VkBuffer l_VB = reinterpret_cast<VkBuffer>(vertexBuffer.GetNativeHandle());
+		VkBuffer l_IB = reinterpret_cast<VkBuffer>(indexBuffer.GetNativeHandle());
 		VkDeviceSize l_Off = 0;
 		vkCmdBindVertexBuffers(l_Cmd, 0, 1, &l_VB, &l_Off);
 		vkCmdBindIndexBuffer(l_Cmd, l_IB, 0, ToVkIndexType(indexBuffer.GetIndexType()));
@@ -1675,6 +1683,11 @@ namespace Trinity
 		if (!m_FrameBegun || m_SceneViewportImage == VK_NULL_HANDLE)
 		{
 			return;
+		}
+
+		if (m_GeometryPassRecording)
+		{
+			EndGeometryPass();
 		}
 
 		const VkCommandBuffer l_Cmd = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
@@ -1699,7 +1712,7 @@ namespace Trinity
 		vkCmdBeginRendering(l_Cmd, &l_RenderingInfo);
 
 		VkViewport l_Viewport{ 0.0f, 0.0f, static_cast<float>(m_SceneViewportWidth), static_cast<float>(m_SceneViewportHeight), 0.0f, 1.0f };
-		VkRect2D   l_Scissor{ { 0, 0 }, { m_SceneViewportWidth, m_SceneViewportHeight } };
+		VkRect2D l_Scissor{ { 0, 0 }, { m_SceneViewportWidth, m_SceneViewportHeight } };
 		vkCmdSetViewport(l_Cmd, 0, 1, &l_Viewport);
 		vkCmdSetScissor(l_Cmd, 0, 1, &l_Scissor);
 		vkCmdBindPipeline(l_Cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_LightingPipeline);
@@ -1741,7 +1754,7 @@ namespace Trinity
 
 		VkDescriptorSetAllocateInfo l_UBOAllocInfo{};
 		l_UBOAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		l_UBOAllocInfo.descriptorPool = m_LightingDescriptorPool;
+		l_UBOAllocInfo.descriptorPool = m_LightingDescriptorPools[m_CurrentFrameIndex];
 		l_UBOAllocInfo.descriptorSetCount = 1;
 		l_UBOAllocInfo.pSetLayouts = &m_LightingUBOSetLayout;
 

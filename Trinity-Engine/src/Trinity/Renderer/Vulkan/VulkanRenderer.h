@@ -214,8 +214,8 @@ namespace Trinity
 		VkPipelineLayout m_LightingPipelineLayout = VK_NULL_HANDLE;
 		VkDescriptorSetLayout m_LightingGBufferSetLayout = VK_NULL_HANDLE;
 		VkDescriptorSetLayout m_LightingUBOSetLayout = VK_NULL_HANDLE;
-		VkDescriptorPool m_LightingDescriptorPool = VK_NULL_HANDLE;
 
+		std::vector<VkDescriptorPool> m_LightingDescriptorPools;
 		std::vector<VulkanUniformBuffer> m_LightingUBOs;
 
 		bool m_ShadowPassRecording = false;
