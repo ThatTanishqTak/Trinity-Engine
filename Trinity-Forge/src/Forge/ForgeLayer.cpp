@@ -64,6 +64,12 @@ void ForgeLayer::OnShutdown()
         a_Window.SetCursorVisible(true);
         m_IsLooking = false;
     }
+
+    m_SelectedEntity = Trinity::Entity{};
+    m_ActiveScene.reset();
+    m_CurrentScenePath.clear();
+    m_SceneViewportSize = ImVec2(0.0f, 0.0f);
+    m_CanControlCamera = false;
 }
 
 void ForgeLayer::OnUpdate(float deltaTime)

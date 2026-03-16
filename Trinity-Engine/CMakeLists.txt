@@ -37,6 +37,8 @@ add_subdirectory(vendor/imgui)
 add_subdirectory(vendor/stb)
 add_subdirectory(vendor/VulkanMemoryAllocator)
 
+#add_compile_definitions(TR_ENABLE_SHADER_COMPILATION)
+
 file(GLOB_RECURSE TRINITY_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/**.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/**.hpp

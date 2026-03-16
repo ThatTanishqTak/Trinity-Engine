@@ -493,7 +493,7 @@ namespace Trinity
 
 		shaderc::Compiler l_Compiler;
 		shaderc::CompileOptions l_Options;
-		l_Options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
+		l_Options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_4);
 		l_Options.SetOptimizationLevel(shaderc_optimization_level_performance);
 
 		const std::filesystem::path l_SourceDir = std::filesystem::path(sourcePath).parent_path();

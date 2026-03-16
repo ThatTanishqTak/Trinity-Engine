@@ -1729,6 +1729,7 @@ namespace Trinity
 
 		const VkCommandBuffer l_Cmd = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
 		vkCmdEndRendering(l_Cmd);
+		TransitionImageResource(l_Cmd, m_SceneViewportImage, BuildColorSubresourceRange(), BuildTransitionState(ImageTransitionPreset::ShaderReadOnly));
 		m_LightingPassRecording = false;
 	}
 

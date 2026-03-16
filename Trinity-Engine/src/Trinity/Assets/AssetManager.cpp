@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <random>
+#include <utility>
 
 namespace Trinity
 {
@@ -14,6 +15,12 @@ namespace Trinity
 
     void AssetManager::Initialize()
     {
+        if (m_Worker.joinable())
+        {
+            TR_CORE_WARN("AssetManager::Initialize called while already initialized");
+            return;
+        }
+
         m_Shutdown = false;
         m_Worker = std::thread(&AssetManager::WorkerThread, this);
 
@@ -22,16 +29,36 @@ namespace Trinity
 
     void AssetManager::Shutdown()
     {
-        std::lock_guard<std::mutex> l_Lock(m_Mutex);
-        m_Shutdown = true;
-        m_WorkAvailable.notify_one();
-
-        if (m_Worker.joinable())
         {
-            m_Worker.join();
+            std::lock_guard<std::mutex> l_Lock(m_Mutex);
+            if (!m_Worker.joinable())
+            {
+                m_Assets.clear();
+
+                std::lock_guard<std::mutex> l_CompletionLock(m_CompletionMutex);
+                std::queue<std::function<void()>>{}.swap(m_CompletionCallbacks);
+
+                return;
+            }
+
+            m_Shutdown = true;
         }
 
-        m_Assets.clear();
+        m_WorkAvailable.notify_one();
+        m_Worker.join();
+
+        {
+            std::lock_guard<std::mutex> l_Lock(m_Mutex);
+            std::queue<std::function<void()>>{}.swap(m_Queue);
+            m_Assets.clear();
+        }
+
+        {
+            std::lock_guard<std::mutex> l_CompletionLock(m_CompletionMutex);
+            std::queue<std::function<void()>>{}.swap(m_CompletionCallbacks);
+        }
+
+        m_Shutdown = false;
 
         TR_CORE_INFO("AssetManager shutdown");
     }

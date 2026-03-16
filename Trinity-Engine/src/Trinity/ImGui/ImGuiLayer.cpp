@@ -198,7 +198,7 @@ namespace Trinity
             "Failed vkCreateDescriptorPool");
 
         ImGui_ImplVulkan_InitInfo l_InitInfo{};
-        l_InitInfo.ApiVersion = VK_API_VERSION_1_3;
+        l_InitInfo.ApiVersion = VK_API_VERSION_1_4;
         l_InitInfo.Instance = l_VulkanRenderer->GetVulkanInstance();
         l_InitInfo.PhysicalDevice = l_VulkanRenderer->GetVulkanPhysicalDevice();
         l_InitInfo.Device = l_VulkanRenderer->GetVulkanDevice();

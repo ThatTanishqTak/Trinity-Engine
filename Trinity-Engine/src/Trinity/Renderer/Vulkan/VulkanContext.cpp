@@ -65,9 +65,9 @@ namespace Trinity
 
         Utilities::VulkanUtilities::VKCheck(l_EnumerateInstanceVersion(&l_LoaderVersion), "Failed vkEnumerateInstanceVersion");
 
-        if (l_LoaderVersion < VK_API_VERSION_1_3)
+        if (l_LoaderVersion < VK_API_VERSION_1_4)
         {
-            TR_CORE_CRITICAL("Vulkan 1.3 is required (found loader/runtime API {}.{}.{})", VK_VERSION_MAJOR(l_LoaderVersion), VK_VERSION_MINOR(l_LoaderVersion),
+            TR_CORE_CRITICAL("Vulkan 1.4 is required (found loader/runtime API {}.{}.{})", VK_VERSION_MAJOR(l_LoaderVersion), VK_VERSION_MINOR(l_LoaderVersion),
                 VK_VERSION_PATCH(l_LoaderVersion));
 
             std::abort();
@@ -78,7 +78,7 @@ namespace Trinity
 
         VkApplicationInfo l_AppInfo{};
         l_AppInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-        l_AppInfo.apiVersion = VK_API_VERSION_1_3;
+        l_AppInfo.apiVersion = VK_API_VERSION_1_4;
         l_AppInfo.pApplicationName = "Trinity-Application";
         l_AppInfo.applicationVersion = VK_MAKE_VERSION(0, 1, 0);
         l_AppInfo.pEngineName = "Trinity-Engine";

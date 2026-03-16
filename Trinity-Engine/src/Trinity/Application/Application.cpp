@@ -6,6 +6,7 @@
 #include "Trinity/Utilities/Time.h"
 
 #include "Trinity/Platform/Window.h"
+#include "Trinity/Assets/AssetManager.h"
 
 #include "Trinity/Events/Event.h"
 #include "Trinity/Events/EventQueue.h"
@@ -51,6 +52,7 @@ namespace Trinity
         m_Window->Initialize(l_WindowProperties);
 
         RenderCommand::Initialize(*m_Window, m_Specification.RendererAPI);
+        AssetManager::Get().Initialize();
 
         m_ImGuiLayer = std::make_unique<ImGuiLayer>();
         m_ImGuiLayer->Initialize(*m_Window);
@@ -65,9 +67,9 @@ namespace Trinity
         m_ImGuiLayer->Shutdown();
         m_ImGuiLayer.reset();
 
-        RenderCommand::Shutdown();
-
         m_LayerStack.Shutdown();
+        AssetManager::Get().Shutdown();
+        RenderCommand::Shutdown();
 
         m_Window->Shutdown();
         m_Window.reset();
