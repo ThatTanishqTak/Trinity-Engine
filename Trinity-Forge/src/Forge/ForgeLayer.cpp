@@ -474,7 +474,8 @@ void ForgeLayer::DrawSceneViewport()
             ImGuizmo::SetRect(m_SceneViewportBounds[0].x, m_SceneViewportBounds[0].y, m_SceneViewportBounds[1].x - m_SceneViewportBounds[0].x, m_SceneViewportBounds[1].y - m_SceneViewportBounds[0].y);
 
             const glm::mat4 l_View = m_EditorCamera.GetViewMatrix();
-            const glm::mat4 l_Projection = m_EditorCamera.GetProjectionMatrix();
+            glm::mat4 l_Projection = m_EditorCamera.GetProjectionMatrix();
+            l_Projection[1][1] *= -1.0f;
 
             auto& a_Transform = m_SelectedEntity.GetComponent<Trinity::TransformComponent>();
             glm::mat4 l_TransformMatrix = a_Transform.GetTransform();
