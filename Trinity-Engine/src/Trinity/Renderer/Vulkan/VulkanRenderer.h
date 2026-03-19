@@ -77,7 +77,7 @@ namespace Trinity
 
 		void BeginGeometryPass() override;
 		void EndGeometryPass() override;
-		void DrawMeshDeferred(VertexBuffer& vertexBuffer, IndexBuffer& indexBuffer, uint32_t indexCount, const glm::mat4& model, const glm::mat4& viewProjection, Texture2D* albedoTexture) override;
+		void DrawMeshDeferred(VertexBuffer& vertexBuffer, IndexBuffer& indexBuffer, uint32_t indexCount, const glm::mat4& model, const glm::mat4& viewProjection, const glm::vec4& color, Texture2D* albedoTexture) override;
 
 		void BeginLightingPass() override;
 		void EndLightingPass() override;

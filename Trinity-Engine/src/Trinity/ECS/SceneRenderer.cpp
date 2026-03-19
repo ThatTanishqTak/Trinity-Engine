@@ -194,7 +194,7 @@ namespace Trinity
 					(void)l_MatComp;
 				}
 
-				RenderCommand::DrawMeshDeferred(l_Mesh->GetVertexBuffer(), l_Mesh->GetIndexBuffer(), l_Mesh->GetIndexCount(), transform.GetTransform(), l_VP, l_Albedo);
+				RenderCommand::DrawMeshDeferred(l_Mesh->GetVertexBuffer(), l_Mesh->GetIndexBuffer(), l_Mesh->GetIndexCount(), transform.GetTransform(), l_VP, meshRenderer.Color, l_Albedo);
 
 				s_Stats.DrawCalls++;
 				s_Stats.EntityCount++;

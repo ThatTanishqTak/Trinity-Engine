@@ -45,7 +45,7 @@ namespace Trinity
 
 		static void BeginGeometryPass();
 		static void EndGeometryPass();
-		static void DrawMeshDeferred(VertexBuffer& vertexBuffer, IndexBuffer& indexBuffer, uint32_t indexCount, const glm::mat4& model, const glm::mat4& viewProjection, Texture2D* albedoTexture);
+		static void DrawMeshDeferred(VertexBuffer& vertexBuffer, IndexBuffer& indexBuffer, uint32_t indexCount, const glm::mat4& model, const glm::mat4& viewProjection, const glm::vec4& color, Texture2D* albedoTexture);
 
 		static void BeginLightingPass();
 		static void EndLightingPass();

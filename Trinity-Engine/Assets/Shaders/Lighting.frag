@@ -122,8 +122,8 @@ void main()
         l_Lo += CookTorranceBRDF(l_Albedo, l_Metalness, l_Roughness, l_N, l_V, l_L, l_Color, l_Attenuation);
     }
 
-    const vec3 l_Ambient = vec3(0.03) * l_Albedo;
-    vec3 l_FinalColor    = l_Ambient + l_Lo;
+    const vec3 l_Ambient = vec3(0.15) * l_Albedo;
+    vec3 l_FinalColor = l_Ambient + l_Lo;
 
     o_Color = ApplySceneColorOutput(vec4(l_FinalColor, 1.0), pc.u_ColorOutputTransfer);
 }

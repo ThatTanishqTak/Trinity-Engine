@@ -1667,7 +1667,7 @@ namespace Trinity
 		m_GeometryPassRecording = false;
 	}
 
-	void VulkanRenderer::DrawMeshDeferred(VertexBuffer& vertexBuffer, IndexBuffer& indexBuffer, uint32_t indexCount, const glm::mat4& model, const glm::mat4& viewProjection, Texture2D* albedoTexture)
+	void VulkanRenderer::DrawMeshDeferred(VertexBuffer& vertexBuffer, IndexBuffer& indexBuffer, uint32_t indexCount, const glm::mat4& model, const glm::mat4& viewProjection, const glm::vec4& color, Texture2D* albedoTexture)
 	{
 		if (!m_GeometryPassRecording)
 		{
@@ -1700,6 +1700,7 @@ namespace Trinity
 		GeometryBufferPushConstants l_PushConstantRange{};
 		l_PushConstantRange.ModelViewProjection = viewProjection * model;
 		l_PushConstantRange.Model = model;
+		l_PushConstantRange.Color = color;
 		vkCmdPushConstants(l_CommandBuffer, m_GBufferPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(GeometryBufferPushConstants), &l_PushConstantRange);
 
 		vkCmdDrawIndexed(l_CommandBuffer, indexCount, 1, 0, 0, 0);

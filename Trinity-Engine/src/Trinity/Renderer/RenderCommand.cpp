@@ -178,11 +178,11 @@ namespace Trinity
 		}
 	}
 
-	void RenderCommand::DrawMeshDeferred(VertexBuffer& vertexBuffer, IndexBuffer& indexBuffer, uint32_t indexCount, const glm::mat4& model, const glm::mat4& viewProjection, Texture2D* albedoTexture)
+	void RenderCommand::DrawMeshDeferred(VertexBuffer& vertexBuffer, IndexBuffer& indexBuffer, uint32_t indexCount, const glm::mat4& model, const glm::mat4& viewProjection, const glm::vec4& color, Texture2D* albedoTexture)
 	{
 		if (s_Renderer)
 		{
-			s_Renderer->DrawMeshDeferred(vertexBuffer, indexBuffer, indexCount, model, viewProjection, albedoTexture);
+			s_Renderer->DrawMeshDeferred(vertexBuffer, indexBuffer, indexCount, model, viewProjection, color, albedoTexture);
 		}
 	}
 
