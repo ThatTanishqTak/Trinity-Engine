@@ -203,8 +203,7 @@ namespace Trinity
 		RenderCommand::EndGeometryPass();
 	}
 
-	void SceneRenderer::SubmitLightingPass(const glm::mat4& view, const glm::mat4& projection,
-		const glm::vec3& cameraPosition, float cameraNear, float cameraFar)
+	void SceneRenderer::SubmitLightingPass(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& cameraPosition, float cameraNear, float cameraFar)
 	{
 		LightingUniformData l_UniformData{};
 

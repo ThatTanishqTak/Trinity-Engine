@@ -454,9 +454,9 @@ namespace Trinity
 			TransitionImageResource(l_CommandBuffer, m_SceneViewportImage, l_ColorSubresourceRange, l_ColorAttachmentWriteState);
 
 			VkClearValue l_ClearColor{};
-			l_ClearColor.color.float32[0] = 0.005f;
-			l_ClearColor.color.float32[1] = 0.005f;
-			l_ClearColor.color.float32[2] = 0.005f;
+			l_ClearColor.color.float32[0] = 0.01f;
+			l_ClearColor.color.float32[1] = 0.01f;
+			l_ClearColor.color.float32[2] = 0.01f;
 			l_ClearColor.color.float32[3] = 1.0f;
 
 			VkRenderingAttachmentInfo l_ColorAttachmentInfo{};
