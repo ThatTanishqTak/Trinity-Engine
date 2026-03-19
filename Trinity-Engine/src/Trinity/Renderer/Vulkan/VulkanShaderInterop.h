@@ -10,7 +10,7 @@ namespace Trinity
 	{
 		None = 0,
 		SrgbToLinear = 1,
-		LinearToSrgb = 2
+		LinearToSrgb = 2,
 	};
 
 	struct SimplePushConstants
@@ -45,7 +45,7 @@ namespace Trinity
 	{
 		glm::mat4 InvViewProjection;
 		glm::vec4 CameraPosition;
-		uint32_t ColorOutputTransfer = static_cast<uint32_t>(ColorTransferMode::None);
+		uint32_t  ColorOutputTransfer = static_cast<uint32_t>(ColorTransferMode::None);
 		float CameraNear = 0.01f;
 		float CameraFar = 1000.0f;
 		uint32_t _Pad = 0;
@@ -72,4 +72,17 @@ namespace Trinity
 		uint32_t ShadowsEnabled = 0;
 		uint32_t _Pad[2] = {};
 	};
+
+	// Lighting pass set 0: GBuffer + depth + shadow inputs
+	static constexpr uint32_t LightingBinding_Albedo = 0; // sampler2D u_Albedo
+	static constexpr uint32_t LightingBinding_Normal = 1; // sampler2D u_Normal
+	static constexpr uint32_t LightingBinding_Material = 2; // sampler2D u_Material
+	static constexpr uint32_t LightingBinding_Depth = 3; // sampler2D u_Depth
+	static constexpr uint32_t LightingBinding_ShadowMap = 4; // sampler2DShadow u_ShadowMap
+
+	// Lighting pass set 1: uniform buffer
+	static constexpr uint32_t LightingBinding_LightUBO = 0; // LightingUniforms
+
+	// GBuffer pass set 0: albedo texture input
+	static constexpr uint32_t GBufferBinding_AlbedoTex = 0; // sampler2D u_AlbedoTexture
 }

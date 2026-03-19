@@ -381,6 +381,7 @@ namespace Trinity
 		if (!m_Window || m_Window->IsMinimized())
 		{
 			m_FrameBegun = false;
+
 			return;
 		}
 
@@ -545,7 +546,7 @@ namespace Trinity
 
 		const VkSemaphore l_ImageAvailable = m_Sync.GetImageAvailableSemaphore(m_CurrentFrameIndex);
 		const VkSemaphore l_RenderFinished = m_Sync.GetRenderFinishedSemaphore(m_CurrentImageIndex);
-		const VkFence     l_InFlightFence = m_Sync.GetInFlightFence(m_CurrentFrameIndex);
+		const VkFence l_InFlightFence = m_Sync.GetInFlightFence(m_CurrentFrameIndex);
 
 		VkPipelineStageFlags l_WaitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
@@ -682,7 +683,7 @@ namespace Trinity
 		auto& a_GPUPrimitive = m_Primitives[l_Index];
 		const VkCommandBuffer l_CommandBuffer = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
 
-		VkBuffer     l_VertexBuffer = a_GPUPrimitive.VulkanVB->GetVkBuffer();
+		VkBuffer l_VertexBuffer = a_GPUPrimitive.VulkanVB->GetVkBuffer();
 		VkDeviceSize l_Offsets[] = { 0 };
 		vkCmdBindVertexBuffers(l_CommandBuffer, 0, 1, &l_VertexBuffer, l_Offsets);
 
@@ -1161,7 +1162,7 @@ namespace Trinity
 		VkVertexInputAttributeDescription l_Attrs[3]{};
 		l_Attrs[0] = { 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Geometry::Vertex, Position) };
 		l_Attrs[1] = { 1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Geometry::Vertex, Normal) };
-		l_Attrs[2] = { 2, 0, VK_FORMAT_R32G32_SFLOAT,    offsetof(Geometry::Vertex, UV) };
+		l_Attrs[2] = { 2, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(Geometry::Vertex, UV) };
 
 		VkPipelineVertexInputStateCreateInfo l_VI{};
 		l_VI.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -1210,7 +1211,7 @@ namespace Trinity
 		l_DynState.dynamicStateCount = 2;
 		l_DynState.pDynamicStates = l_Dyn;
 
-		const VkFormat l_ColorFmts[3] = { VulkanGeometryBuffer::AlbedoFormat, VulkanGeometryBuffer::NormalFormat, VulkanGeometryBuffer::MaterialFormat };
+		const VkFormat l_ColorFmts[3] = { TextureFormatToVkFormat(VulkanGeometryBuffer::AlbedoFormat), TextureFormatToVkFormat(VulkanGeometryBuffer::NormalFormat), TextureFormatToVkFormat(VulkanGeometryBuffer::MaterialFormat) };
 		VkPipelineRenderingCreateInfo l_Rendering{};
 		l_Rendering.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
 		l_Rendering.colorAttachmentCount = 3;
@@ -1293,6 +1294,7 @@ namespace Trinity
 				l_Info.pCode = spv.data();
 				VkShaderModule l_Mod = VK_NULL_HANDLE;
 				Utilities::VulkanUtilities::VKCheck(vkCreateShaderModule(m_Device.GetDevice(), &l_Info, m_Context.GetAllocator(), &l_Mod), "vkCreateShaderModule");
+
 				return l_Mod;
 			};
 
@@ -1371,15 +1373,34 @@ namespace Trinity
 
 	void VulkanRenderer::DestroyDeferredPipelines()
 	{
-		const VkDevice               l_Dev = m_Device.GetDevice();
+		const VkDevice l_Dev = m_Device.GetDevice();
 		const VkAllocationCallbacks* l_Alloc = m_Context.GetAllocator();
 
 		auto l_Destroy = [&](VkPipeline& pipe, VkPipelineLayout& layout, VkDescriptorSetLayout& set0, VkDescriptorSetLayout* set1 = nullptr)
 			{
-				if (pipe != VK_NULL_HANDLE) { vkDestroyPipeline(l_Dev, pipe, l_Alloc);              pipe = VK_NULL_HANDLE; }
-				if (layout != VK_NULL_HANDLE) { vkDestroyPipelineLayout(l_Dev, layout, l_Alloc);       layout = VK_NULL_HANDLE; }
-				if (set0 != VK_NULL_HANDLE) { vkDestroyDescriptorSetLayout(l_Dev, set0, l_Alloc);    set0 = VK_NULL_HANDLE; }
-				if (set1 && *set1 != VK_NULL_HANDLE) { vkDestroyDescriptorSetLayout(l_Dev, *set1, l_Alloc); *set1 = VK_NULL_HANDLE; }
+				if (pipe != VK_NULL_HANDLE)
+				{
+					vkDestroyPipeline(l_Dev, pipe, l_Alloc);
+					pipe = VK_NULL_HANDLE;
+				}
+				
+				if (layout != VK_NULL_HANDLE)
+				{
+					vkDestroyPipelineLayout(l_Dev, layout, l_Alloc);
+					layout = VK_NULL_HANDLE;
+				}
+
+				if (set0 != VK_NULL_HANDLE)
+				{
+					vkDestroyDescriptorSetLayout(l_Dev, set0, l_Alloc);
+					set0 = VK_NULL_HANDLE;
+				}
+
+				if (set1 && *set1 != VK_NULL_HANDLE)
+				{
+					vkDestroyDescriptorSetLayout(l_Dev, *set1, l_Alloc);
+					*set1 = VK_NULL_HANDLE;
+				}
 			};
 
 		l_Destroy(m_ShadowPipeline, m_ShadowPipelineLayout, m_ShadowTextureSetLayout);
@@ -1424,11 +1445,11 @@ namespace Trinity
 		const VkImageLayout l_DSR = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 
 		VkDescriptorImageInfo l_Imgs[5]{};
-		l_Imgs[0] = { m_GBufferSampler,   m_GBuffer.GetAlbedoView(),          l_SRO };
-		l_Imgs[1] = { m_GBufferSampler,   m_GBuffer.GetNormalView(),           l_SRO };
-		l_Imgs[2] = { m_GBufferSampler,   m_GBuffer.GetMaterialView(),         l_SRO };
-		l_Imgs[3] = { m_GBufferSampler,   m_SceneViewportDepthImageView,       l_DSR };
-		l_Imgs[4] = { m_ShadowMapSampler, m_ShadowMapView,                     l_DSR };
+		l_Imgs[0] = { m_GBufferSampler, m_GBuffer.GetAlbedoView(), l_SRO };
+		l_Imgs[1] = { m_GBufferSampler, m_GBuffer.GetNormalView(), l_SRO };
+		l_Imgs[2] = { m_GBufferSampler, m_GBuffer.GetMaterialView(), l_SRO };
+		l_Imgs[3] = { m_GBufferSampler, m_SceneViewportDepthImageView, l_DSR };
+		l_Imgs[4] = { m_ShadowMapSampler, m_ShadowMapView, l_DSR };
 
 		VkWriteDescriptorSet l_Writes[5]{};
 		for (uint32_t i = 0; i < 5; ++i)
@@ -1492,7 +1513,7 @@ namespace Trinity
 		vkCmdBeginRendering(l_Cmd, &l_RenderingInfo);
 
 		VkViewport l_Viewport{ 0.0f, 0.0f, static_cast<float>(s_ShadowMapSize), static_cast<float>(s_ShadowMapSize), 0.0f, 1.0f };
-		VkRect2D   l_Scissor{ { 0, 0 }, { s_ShadowMapSize, s_ShadowMapSize } };
+		VkRect2D  l_Scissor{ { 0, 0 }, { s_ShadowMapSize, s_ShadowMapSize } };
 		vkCmdSetViewport(l_Cmd, 0, 1, &l_Viewport);
 		vkCmdSetScissor(l_Cmd, 0, 1, &l_Scissor);
 		vkCmdBindPipeline(l_Cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ShadowPipeline);
@@ -1541,8 +1562,8 @@ namespace Trinity
 
 		const VkCommandBuffer l_Cmd = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
 
-		VkBuffer     l_VB = reinterpret_cast<VkBuffer>(vertexBuffer.GetNativeHandle());
-		VkBuffer     l_IB = reinterpret_cast<VkBuffer>(indexBuffer.GetNativeHandle());
+		VkBuffer l_VB = reinterpret_cast<VkBuffer>(vertexBuffer.GetNativeHandle());
+		VkBuffer l_IB = reinterpret_cast<VkBuffer>(indexBuffer.GetNativeHandle());
 		VkDeviceSize l_Off = 0;
 
 		vkCmdBindVertexBuffers(l_Cmd, 0, 1, &l_VB, &l_Off);
@@ -1650,7 +1671,7 @@ namespace Trinity
 		const VkCommandBuffer l_Cmd = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
 
 		VkImageView l_View = m_WhiteTexture.GetImageView();
-		VkSampler   l_Sampler = m_WhiteTexture.GetSampler();
+		VkSampler l_Sampler = m_WhiteTexture.GetSampler();
 
 		if (albedoTexture)
 		{

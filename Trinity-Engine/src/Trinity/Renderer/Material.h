@@ -1,26 +1,21 @@
 #pragma once
 
+#include "Trinity/Assets/AssetHandle.h"
+#include "Trinity/Renderer/Texture.h"
+
 #include <glm/glm.hpp>
 
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 #include <variant>
 #include <vector>
-#include <cstdint>
 
 namespace Trinity
 {
 	class ShaderLibrary;
 
-	using MaterialPropertyValue = std::variant<
-		float,
-		int32_t,
-		uint32_t,
-		glm::vec2,
-		glm::vec3,
-		glm::vec4,
-		glm::mat4
-	>;
+	using MaterialPropertyValue = std::variant<float, int32_t, uint32_t, glm::vec2, glm::vec3, glm::vec4, glm::mat4, AssetUUID>;
 
 	enum class MaterialPropertyType : uint8_t
 	{
@@ -30,7 +25,8 @@ namespace Trinity
 		Vec2,
 		Vec3,
 		Vec4,
-		Mat4
+		Mat4,
+		Texture,
 	};
 
 	struct MaterialProperty
@@ -38,6 +34,7 @@ namespace Trinity
 		MaterialPropertyType m_Type = MaterialPropertyType::Float;
 		MaterialPropertyValue m_Value;
 		uint32_t m_PackedOffset = ~0u;
+		TextureFormat m_TextureFormatHint = TextureFormat::RGBA8_SRGB;
 	};
 
 	class Material
@@ -62,6 +59,8 @@ namespace Trinity
 		void SetVec4(const std::string& name, const glm::vec4& value);
 		void SetMat4(const std::string& name, const glm::mat4& value);
 
+		void SetTexture(const std::string& name, AssetUUID uuid, TextureFormat formatHint = TextureFormat::RGBA8_SRGB);
+
 		bool GetFloat(const std::string& name, float& outValue) const;
 		bool GetInt(const std::string& name, int32_t& outValue) const;
 		bool GetUInt(const std::string& name, uint32_t& outValue) const;
@@ -70,11 +69,13 @@ namespace Trinity
 		bool GetVec4(const std::string& name, glm::vec4& outValue) const;
 		bool GetMat4(const std::string& name, glm::mat4& outValue) const;
 
+		bool GetTexture(const std::string& name, AssetUUID& outUUID) const;
+		TextureFormat GetTextureFormatHint(const std::string& name) const;
+
 		bool HasProperty(const std::string& name) const;
 		void RemoveProperty(const std::string& name);
 
 		std::vector<uint8_t> PackProperties() const;
-
 		void AssignPackedOffsets(const ShaderLibrary& library);
 
 	private:

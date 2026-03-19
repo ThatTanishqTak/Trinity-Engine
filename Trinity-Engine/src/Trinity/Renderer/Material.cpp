@@ -2,11 +2,10 @@
 
 #include "Trinity/Renderer/ShaderLibrary.h"
 #include "Trinity/Renderer/Shader.h"
-
 #include "Trinity/Utilities/Log.h"
 
-#include <cstring>
 #include <algorithm>
+#include <cstring>
 
 namespace Trinity
 {
@@ -20,15 +19,8 @@ namespace Trinity
 
 	}
 
-	void Material::SetVertexShader(const std::string& shaderName)
-	{
-		m_VertexShader = shaderName;
-	}
-
-	void Material::SetFragmentShader(const std::string& shaderName)
-	{
-		m_FragmentShader = shaderName;
-	}
+	void Material::SetVertexShader(const std::string& shaderName) { m_VertexShader = shaderName; }
+	void Material::SetFragmentShader(const std::string& shaderName) { m_FragmentShader = shaderName; }
 
 	void Material::SetFloat(const std::string& name, float value)
 	{
@@ -63,6 +55,16 @@ namespace Trinity
 	void Material::SetMat4(const std::string& name, const glm::mat4& value)
 	{
 		m_Properties[name] = { MaterialPropertyType::Mat4, value };
+	}
+
+	void Material::SetTexture(const std::string& name, AssetUUID uuid, TextureFormat formatHint)
+	{
+		MaterialProperty l_Prop{};
+		l_Prop.m_Type = MaterialPropertyType::Texture;
+		l_Prop.m_Value = uuid;
+		l_Prop.m_PackedOffset = ~0u;
+		l_Prop.m_TextureFormatHint = formatHint;
+		m_Properties[name] = l_Prop;
 	}
 
 	bool Material::GetFloat(const std::string& name, float& outValue) const
@@ -111,7 +113,7 @@ namespace Trinity
 		{
 			return false;
 		}
-		
+
 		outValue = std::get<glm::vec2>(a_It->second.m_Value);
 		
 		return true;
@@ -126,7 +128,7 @@ namespace Trinity
 		}
 		
 		outValue = std::get<glm::vec3>(a_It->second.m_Value);
-		
+
 		return true;
 	}
 
@@ -152,8 +154,32 @@ namespace Trinity
 		}
 		
 		outValue = std::get<glm::mat4>(a_It->second.m_Value);
+
+		return true;
+	}
+
+	bool Material::GetTexture(const std::string& name, AssetUUID& outUUID) const
+	{
+		const auto a_It = m_Properties.find(name);
+		if (a_It == m_Properties.end() || a_It->second.m_Type != MaterialPropertyType::Texture)
+		{
+			return false;
+		}
+		
+		outUUID = std::get<AssetUUID>(a_It->second.m_Value);
 		
 		return true;
+	}
+
+	TextureFormat Material::GetTextureFormatHint(const std::string& name) const
+	{
+		const auto a_It = m_Properties.find(name);
+		if (a_It == m_Properties.end() || a_It->second.m_Type != MaterialPropertyType::Texture)
+		{
+			return TextureFormat::RGBA8_SRGB;  // safe default
+		}
+		
+		return a_It->second.m_TextureFormatHint;
 	}
 
 	bool Material::HasProperty(const std::string& name) const
@@ -183,8 +209,12 @@ namespace Trinity
 			}
 
 			const uint32_t l_Size = PropertyTypeSize(l_Prop.m_Type);
-			const uint32_t l_End = l_Prop.m_PackedOffset + l_Size;
+			if (l_Size == 0)
+			{
+				continue;
+			}
 
+			const uint32_t l_End = l_Prop.m_PackedOffset + l_Size;
 			if (l_End > m_PackedSize)
 			{
 				TR_CORE_WARN("Material '{}': property '{}' at offset {} overflows packed size {}", m_Name.c_str(), l_Name.c_str(), l_Prop.m_PackedOffset, m_PackedSize);
@@ -219,6 +249,12 @@ namespace Trinity
 		uint32_t l_CurrentOffset = 0;
 		for (auto& [l_Name, l_Prop] : m_Properties)
 		{
+			if (l_Prop.m_Type == MaterialPropertyType::Texture)
+			{
+				l_Prop.m_PackedOffset = ~0u;
+				continue;
+			}
+
 			const uint32_t l_Alignment = std::min(PropertyTypeSize(l_Prop.m_Type), 16u);
 			l_CurrentOffset = (l_CurrentOffset + l_Alignment - 1) & ~(l_Alignment - 1);
 			l_Prop.m_PackedOffset = l_CurrentOffset;
@@ -235,14 +271,24 @@ namespace Trinity
 	{
 		switch (type)
 		{
-			case MaterialPropertyType::Float: return 4;
-			case MaterialPropertyType::Int:   return 4;
-			case MaterialPropertyType::UInt:  return 4;
-			case MaterialPropertyType::Vec2:  return 8;
-			case MaterialPropertyType::Vec3:  return 12;
-			case MaterialPropertyType::Vec4:  return 16;
-			case MaterialPropertyType::Mat4:  return 64;
-			default:                          return 0;
+			case MaterialPropertyType::Float:
+				return 4;
+			case MaterialPropertyType::Int:
+				return 4;
+			case MaterialPropertyType::UInt:
+				return 4;
+			case MaterialPropertyType::Vec2:
+				return 8;
+			case MaterialPropertyType::Vec3:
+				return 12;
+			case MaterialPropertyType::Vec4:
+				return 16;
+			case MaterialPropertyType::Mat4:
+				return 64;
+			case MaterialPropertyType::Texture:
+				return 0;
+			default:
+				return 0;
 		}
 	}
 
@@ -254,50 +300,53 @@ namespace Trinity
 			{
 				const float l_V = std::get<float>(prop.m_Value);
 				std::memcpy(buffer.data() + offset, &l_V, sizeof(float));
-				
+
 				break;
 			}
 			case MaterialPropertyType::Int:
 			{
 				const int32_t l_V = std::get<int32_t>(prop.m_Value);
 				std::memcpy(buffer.data() + offset, &l_V, sizeof(int32_t));
+
 				break;
 			}
 			case MaterialPropertyType::UInt:
 			{
 				const uint32_t l_V = std::get<uint32_t>(prop.m_Value);
 				std::memcpy(buffer.data() + offset, &l_V, sizeof(uint32_t));
-				
+
 				break;
 			}
 			case MaterialPropertyType::Vec2:
 			{
 				const glm::vec2 l_V = std::get<glm::vec2>(prop.m_Value);
 				std::memcpy(buffer.data() + offset, &l_V, sizeof(glm::vec2));
-				
+
 				break;
 			}
 			case MaterialPropertyType::Vec3:
 			{
 				const glm::vec3 l_V = std::get<glm::vec3>(prop.m_Value);
 				std::memcpy(buffer.data() + offset, &l_V, sizeof(glm::vec3));
-				
+
 				break;
 			}
 			case MaterialPropertyType::Vec4:
 			{
 				const glm::vec4 l_V = std::get<glm::vec4>(prop.m_Value);
 				std::memcpy(buffer.data() + offset, &l_V, sizeof(glm::vec4));
-				
+
 				break;
 			}
 			case MaterialPropertyType::Mat4:
 			{
 				const glm::mat4 l_V = std::get<glm::mat4>(prop.m_Value);
 				std::memcpy(buffer.data() + offset, &l_V, sizeof(glm::mat4));
-				
+
 				break;
 			}
+			case MaterialPropertyType::Texture:
+				break;
 			default:
 				break;
 		}

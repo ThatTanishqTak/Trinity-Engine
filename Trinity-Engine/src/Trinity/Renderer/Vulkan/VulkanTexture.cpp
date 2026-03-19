@@ -5,38 +5,103 @@
 
 #include <stb_image.h>
 
+#include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
-#include <cmath>
-#include <algorithm>
 
 namespace Trinity
 {
+	VkFormat TextureFormatToVkFormat(TextureFormat format)
+	{
+		switch (format)
+		{
+			// 8-bit RGBA
+			case TextureFormat::RGBA8_SRGB:
+				return VK_FORMAT_R8G8B8A8_SRGB;
+			case TextureFormat::RGBA8_UNORM:
+				return VK_FORMAT_R8G8B8A8_UNORM;
+
+			// 16-bit HDR
+			case TextureFormat::RGBA16F:
+				return VK_FORMAT_R16G16B16A16_SFLOAT;
+
+			// Single-channel
+			case TextureFormat::R8_UNORM:
+				return VK_FORMAT_R8_UNORM;
+
+			// Dual-channel
+			case TextureFormat::RG8_UNORM:
+				return VK_FORMAT_R8G8_UNORM;
+
+			// Depth
+			case TextureFormat::D32:
+				return VK_FORMAT_D32_SFLOAT;
+			case TextureFormat::D24S8:
+				return VK_FORMAT_D24_UNORM_S8_UINT;
+
+			// BC7 compressed
+			case TextureFormat::BC7_SRGB:
+				return VK_FORMAT_BC7_SRGB_BLOCK;
+			case TextureFormat::BC7_UNORM:
+				return VK_FORMAT_BC7_UNORM_BLOCK;
+		}
+
+		TR_CORE_CRITICAL("TextureFormatToVkFormat: unhandled TextureFormat value ({})", static_cast<uint32_t>(format));
+		std::abort();
+	}
+
+	VkImageAspectFlags TextureFormatToAspectFlags(TextureFormat format)
+	{
+		if (format == TextureFormat::D24S8)
+		{
+			return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+		}
+
+		if (IsDepthFormat(format))
+		{
+			return VK_IMAGE_ASPECT_DEPTH_BIT;
+		}
+
+		return VK_IMAGE_ASPECT_COLOR_BIT;
+	}
+
 	VulkanTexture2D::~VulkanTexture2D()
 	{
 		Destroy();
 	}
 
-	void VulkanTexture2D::Load(VulkanAllocator& allocator, VulkanUploadContext& uploadContext,VkDevice device, VkAllocationCallbacks* hostAllocator, const std::string& filePath, TextureFormat format, bool generateMips)
+	void VulkanTexture2D::Load(VulkanAllocator& allocator, VulkanUploadContext& uploadContext, VkDevice device, VkAllocationCallbacks* hostAllocator, const std::string& filePath, TextureFormat format, bool generateMips)
 	{
+		if (IsDepthFormat(format))
+		{
+			TR_CORE_CRITICAL("VulkanTexture2D::Load — depth formats cannot be loaded from file ('{}'). Create depth images through VulkanAllocator directly.", filePath.c_str());
+			std::abort();
+		}
+
+		if (IsCompressedFormat(format))
+		{
+			TR_CORE_CRITICAL("VulkanTexture2D::Load — BC7 textures require a DDS/KTX2 loader which is not yet implemented. Attempted file: '{}'", filePath.c_str());
+			std::abort();
+		}
+
 		Destroy();
 
 		m_Allocator = &allocator;
 		m_Device = device;
 		m_HostAllocator = hostAllocator;
 		m_Path = filePath;
-		m_Format = ToVkFormat(format);
+		m_TextureFormat = format;
+		m_VkFormat = TextureFormatToVkFormat(format);
 
 		int l_Width = 0;
 		int l_Height = 0;
 		int l_Channels = 0;
 
 		stbi_uc* l_Pixels = stbi_load(filePath.c_str(), &l_Width, &l_Height, &l_Channels, STBI_rgb_alpha);
-
 		if (!l_Pixels)
 		{
 			TR_CORE_CRITICAL("VulkanTexture2D::Load — stbi_load failed for '{}': {}", filePath.c_str(), stbi_failure_reason());
-
 			std::abort();
 		}
 
@@ -44,7 +109,7 @@ namespace Trinity
 		m_Height = static_cast<uint32_t>(l_Height);
 		m_MipLevels = generateMips ? ComputeMipLevels(m_Width, m_Height) : 1;
 
-		const VkDeviceSize l_ImageSize = static_cast<VkDeviceSize>(m_Width) * m_Height * 4;
+		const VkDeviceSize l_ImageSize = static_cast<VkDeviceSize>(m_Width) * m_Height * 4; // always RGBA (4 bytes)
 
 		VkBuffer l_StagingBuffer = VK_NULL_HANDLE;
 		VmaAllocation l_StagingAllocation = VK_NULL_HANDLE;
@@ -57,24 +122,37 @@ namespace Trinity
 
 		stbi_image_free(l_Pixels);
 
-		AllocateImage(allocator, m_Width, m_Height, m_MipLevels, m_Format);
+		AllocateImage(allocator, m_Width, m_Height, m_MipLevels, m_VkFormat);
 		uploadContext.UploadImageWithMips(l_StagingBuffer, m_Image, m_Width, m_Height, m_MipLevels);
 		allocator.DestroyBuffer(l_StagingBuffer, l_StagingAllocation);
 
 		FinalizeImageView();
 		FinalizeSampler();
 
-		TR_CORE_TRACE("VulkanTexture2D: loaded '{}' ({}x{}, {} mips)", filePath.c_str(), m_Width, m_Height, m_MipLevels);
+		TR_CORE_TRACE("VulkanTexture2D: loaded '{}' ({}×{}, {} mips, format={})", filePath.c_str(), m_Width, m_Height, m_MipLevels, static_cast<uint32_t>(format));
 	}
 
-	void VulkanTexture2D::CreateSolid(VulkanAllocator& allocator, VulkanUploadContext& uploadContext,VkDevice device, VkAllocationCallbacks* hostAllocator, uint8_t r, uint8_t g, uint8_t b, uint8_t a, TextureFormat format)
+	void VulkanTexture2D::CreateSolid(VulkanAllocator& allocator, VulkanUploadContext& uploadContext, VkDevice device, VkAllocationCallbacks* hostAllocator, uint8_t r, uint8_t g, uint8_t b, uint8_t a, TextureFormat format)
 	{
+		if (IsDepthFormat(format))
+		{
+			TR_CORE_CRITICAL("VulkanTexture2D::CreateSolid — depth formats are not valid for solid colour textures.");
+			std::abort();
+		}
+
+		if (IsCompressedFormat(format))
+		{
+			TR_CORE_CRITICAL("VulkanTexture2D::CreateSolid — BC7 formats cannot be used for solid colour textures.");
+			std::abort();
+		}
+
 		Destroy();
 
 		m_Allocator = &allocator;
 		m_Device = device;
 		m_HostAllocator = hostAllocator;
-		m_Format = ToVkFormat(format);
+		m_TextureFormat = format;
+		m_VkFormat = TextureFormatToVkFormat(format);
 		m_Width = 1;
 		m_Height = 1;
 		m_MipLevels = 1;
@@ -85,20 +163,20 @@ namespace Trinity
 		VkBuffer l_StagingBuffer = VK_NULL_HANDLE;
 		VmaAllocation l_StagingAllocation = VK_NULL_HANDLE;
 
-		allocator.CreateBuffer(l_ImageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT, l_StagingBuffer, l_StagingAllocation);
+		allocator.CreateBuffer(l_ImageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_AUTO, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT, l_StagingBuffer, l_StagingAllocation);
 
 		void* l_MappedData = allocator.MapMemory(l_StagingAllocation);
 		std::memcpy(l_MappedData, l_Pixel, static_cast<size_t>(l_ImageSize));
 		allocator.UnmapMemory(l_StagingAllocation);
 
-		AllocateImage(allocator, 1, 1, 1, m_Format);
+		AllocateImage(allocator, 1, 1, 1, m_VkFormat);
 		uploadContext.UploadImageWithMips(l_StagingBuffer, m_Image, 1, 1, 1);
 		allocator.DestroyBuffer(l_StagingBuffer, l_StagingAllocation);
 
 		FinalizeImageView();
 		FinalizeSampler();
 
-		TR_CORE_TRACE("VulkanTexture2D: created solid ({},{},{},{}) 1x1", r, g, b, a);
+		TR_CORE_TRACE("VulkanTexture2D: created solid ({},{},{},{}) 1×1 (format={})", r, g, b, a, static_cast<uint32_t>(format));
 	}
 
 	void VulkanTexture2D::AllocateImage(VulkanAllocator& allocator, uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format)
@@ -127,8 +205,8 @@ namespace Trinity
 		l_ViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		l_ViewCreateInfo.image = m_Image;
 		l_ViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		l_ViewCreateInfo.format = m_Format;
-		l_ViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		l_ViewCreateInfo.format = m_VkFormat;
+		l_ViewCreateInfo.subresourceRange.aspectMask = TextureFormatToAspectFlags(m_TextureFormat);
 		l_ViewCreateInfo.subresourceRange.baseMipLevel = 0;
 		l_ViewCreateInfo.subresourceRange.levelCount = m_MipLevels;
 		l_ViewCreateInfo.subresourceRange.baseArrayLayer = 0;
@@ -155,7 +233,6 @@ namespace Trinity
 		l_SamplerCreateInfo.minLod = 0.0f;
 		l_SamplerCreateInfo.maxLod = static_cast<float>(m_MipLevels);
 		l_SamplerCreateInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-		l_SamplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
 
 		Utilities::VulkanUtilities::VKCheck(vkCreateSampler(m_Device, &l_SamplerCreateInfo, m_HostAllocator, &m_Sampler), "VulkanTexture2D: vkCreateSampler failed");
 	}
@@ -189,21 +266,12 @@ namespace Trinity
 		m_Device = VK_NULL_HANDLE;
 		m_HostAllocator = nullptr;
 		m_Allocator = nullptr;
-		m_Format = VK_FORMAT_UNDEFINED;
+		m_VkFormat = VK_FORMAT_UNDEFINED;
+		m_TextureFormat = TextureFormat::RGBA8_SRGB;
 		m_Width = 0;
 		m_Height = 0;
 		m_MipLevels = 0;
 		m_Path.clear();
-	}
-
-	VkFormat VulkanTexture2D::ToVkFormat(TextureFormat format)
-	{
-		switch (format)
-		{
-		case TextureFormat::RGBA8_SRGB:  return VK_FORMAT_R8G8B8A8_SRGB;
-		case TextureFormat::RGBA8_UNORM: return VK_FORMAT_R8G8B8A8_UNORM;
-		default:                         return VK_FORMAT_R8G8B8A8_SRGB;
-		}
 	}
 
 	uint32_t VulkanTexture2D::ComputeMipLevels(uint32_t width, uint32_t height)

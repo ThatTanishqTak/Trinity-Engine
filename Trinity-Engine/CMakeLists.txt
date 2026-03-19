@@ -177,8 +177,6 @@ set(TRINITY_ENGINE_SOURCES
     src/Trinity/Renderer/Vulkan/VulkanTexture.h
     src/Trinity/Renderer/Vulkan/VulkanUploadContext.cpp
     src/Trinity/Renderer/Vulkan/VulkanUploadContext.h
-    src/Trinity/trpch.cpp
-    src/Trinity/trpch.h
     src/Trinity/Utilities/FileManagement.cpp
     src/Trinity/Utilities/FileManagement.h
     src/Trinity/Utilities/Log.cpp
@@ -191,10 +189,6 @@ set(TRINITY_ENGINE_SOURCES
 
 add_library(${PROJECT_NAME} STATIC)
 target_sources(${PROJECT_NAME} PRIVATE ${TRINITY_ENGINE_SOURCES})
-
-target_precompile_headers(${PROJECT_NAME} PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/Trinity/trpch.h
-)
 
 target_include_directories(${PROJECT_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src

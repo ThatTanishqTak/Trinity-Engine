@@ -2,6 +2,7 @@
 
 #include "Trinity/Renderer/Vulkan/VulkanContext.h"
 #include "Trinity/Renderer/Vulkan/VulkanDevice.h"
+#include "Trinity/Renderer/Vulkan/VulkanTexture.h"
 
 #include "Trinity/Utilities/Log.h"
 #include "Trinity/Utilities/VulkanUtilities.h"
@@ -23,7 +24,7 @@ namespace Trinity
 			CreateAttachments();
 		}
 
-		TR_CORE_TRACE("VulkanGeometryBuffer Initialized ({}x{})", m_Width, m_Height);
+		TR_CORE_TRACE("VulkanGeometryBuffer Initialized ({}×{})", m_Width, m_Height);
 	}
 
 	void VulkanGeometryBuffer::Shutdown()
@@ -56,14 +57,16 @@ namespace Trinity
 			CreateAttachments();
 		}
 
-		TR_CORE_TRACE("VulkanGeometryBuffer Recreated ({}x{})", m_Width, m_Height);
+		TR_CORE_TRACE("VulkanGeometryBuffer Recreated ({}×{})", m_Width, m_Height);
 	}
 
 	void VulkanGeometryBuffer::CreateAttachments()
 	{
-		CreateAttachment(AlbedoFormat, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, m_AlbedoImage, m_AlbedoAllocation, m_AlbedoView);
-		CreateAttachment(NormalFormat, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, m_NormalImage, m_NormalAllocation, m_NormalView);
-		CreateAttachment(MaterialFormat, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, m_MaterialImage, m_MaterialAllocation, m_MaterialView);
+		constexpr VkImageUsageFlags l_ColorUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+
+		CreateAttachment(AlbedoFormat, l_ColorUsage, m_AlbedoImage, m_AlbedoAllocation, m_AlbedoView);
+		CreateAttachment(NormalFormat, l_ColorUsage, m_NormalImage, m_NormalAllocation, m_NormalView);
+		CreateAttachment(MaterialFormat, l_ColorUsage, m_MaterialImage, m_MaterialAllocation, m_MaterialView);
 	}
 
 	void VulkanGeometryBuffer::DestroyAttachments()
@@ -74,28 +77,33 @@ namespace Trinity
 		}
 
 		auto l_DestroyOne = [&](VkImage& image, VmaAllocation& allocation, VkImageView& view)
+		{
+			if (view != VK_NULL_HANDLE)
 			{
-				if (view != VK_NULL_HANDLE)
-				{
-					vkDestroyImageView(m_Device, view, m_HostAllocator);
-					view = VK_NULL_HANDLE;
-				}
+				vkDestroyImageView(m_Device, view, m_HostAllocator);
+				view = VK_NULL_HANDLE;
+			}
 
-				if (image != VK_NULL_HANDLE)
-				{
-					m_Allocator->DestroyImage(image, allocation);
-					image = VK_NULL_HANDLE;
-					allocation = VK_NULL_HANDLE;
-				}
-			};
+			if (image != VK_NULL_HANDLE)
+			{
+				m_Allocator->DestroyImage(image, allocation);
+				image = VK_NULL_HANDLE;
+				allocation = VK_NULL_HANDLE;
+			}
+		};
 
 		l_DestroyOne(m_AlbedoImage, m_AlbedoAllocation, m_AlbedoView);
 		l_DestroyOne(m_NormalImage, m_NormalAllocation, m_NormalView);
 		l_DestroyOne(m_MaterialImage, m_MaterialAllocation, m_MaterialView);
+
+		m_bInitialized = false;
 	}
 
-	void VulkanGeometryBuffer::CreateAttachment(VkFormat format, VkImageUsageFlags usage, VkImage& outImage, VmaAllocation& outAllocation, VkImageView& outView)
+	void VulkanGeometryBuffer::CreateAttachment(TextureFormat format, VkImageUsageFlags usage, VkImage& outImage, VmaAllocation& outAllocation, VkImageView& outView)
 	{
+		const VkFormat l_VkFormat = TextureFormatToVkFormat(format);
+		const VkImageAspectFlags l_Aspect = TextureFormatToAspectFlags(format);
+
 		VkImageCreateInfo l_ImageInfo{};
 		l_ImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 		l_ImageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -104,7 +112,7 @@ namespace Trinity
 		l_ImageInfo.extent.depth = 1;
 		l_ImageInfo.mipLevels = 1;
 		l_ImageInfo.arrayLayers = 1;
-		l_ImageInfo.format = format;
+		l_ImageInfo.format = l_VkFormat;
 		l_ImageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 		l_ImageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		l_ImageInfo.usage = usage;
@@ -117,8 +125,8 @@ namespace Trinity
 		l_ViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		l_ViewInfo.image = outImage;
 		l_ViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		l_ViewInfo.format = format;
-		l_ViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		l_ViewInfo.format = l_VkFormat;
+		l_ViewInfo.subresourceRange.aspectMask = l_Aspect;
 		l_ViewInfo.subresourceRange.baseMipLevel = 0;
 		l_ViewInfo.subresourceRange.levelCount = 1;
 		l_ViewInfo.subresourceRange.baseArrayLayer = 0;
@@ -135,15 +143,11 @@ namespace Trinity
 		l_Barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		l_Barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		l_Barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		l_Barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		l_Barrier.subresourceRange.baseMipLevel = 0;
-		l_Barrier.subresourceRange.levelCount = 1;
-		l_Barrier.subresourceRange.baseArrayLayer = 0;
-		l_Barrier.subresourceRange.layerCount = 1;
+		l_Barrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
 		l_Barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 		l_Barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-		VkImage l_Images[] = { m_AlbedoImage, m_NormalImage, m_MaterialImage };
+		const VkImage l_Images[] = { m_AlbedoImage, m_NormalImage, m_MaterialImage };
 		for (VkImage it_Image : l_Images)
 		{
 			l_Barrier.image = it_Image;
@@ -153,7 +157,7 @@ namespace Trinity
 
 	void VulkanGeometryBuffer::TransitionToAttachment(VkCommandBuffer commandBuffer)
 	{
-		VkImageLayout l_OldLayout = m_bInitialized ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED;
+		const VkImageLayout l_OldLayout = m_bInitialized ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED;
 
 		m_bInitialized = true;
 
@@ -163,19 +167,17 @@ namespace Trinity
 		l_Barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		l_Barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		l_Barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		l_Barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		l_Barrier.subresourceRange.baseMipLevel = 0;
-		l_Barrier.subresourceRange.levelCount = 1;
-		l_Barrier.subresourceRange.baseArrayLayer = 0;
-		l_Barrier.subresourceRange.layerCount = 1;
-		l_Barrier.srcAccessMask = m_bInitialized ? VK_ACCESS_SHADER_READ_BIT : 0;
+		l_Barrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+		l_Barrier.srcAccessMask = m_bInitialized ? VK_ACCESS_SHADER_READ_BIT : 0u;
 		l_Barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-		VkImage l_Images[] = { m_AlbedoImage, m_NormalImage, m_MaterialImage };
+		const VkPipelineStageFlags l_SrcStage = m_bInitialized ? VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+
+		const VkImage l_Images[] = { m_AlbedoImage, m_NormalImage, m_MaterialImage };
 		for (VkImage it_Image : l_Images)
 		{
 			l_Barrier.image = it_Image;
-			vkCmdPipelineBarrier(commandBuffer, m_bInitialized ? VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT : VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &l_Barrier);
+			vkCmdPipelineBarrier(commandBuffer, l_SrcStage, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &l_Barrier);
 		}
 	}
 }

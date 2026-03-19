@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Trinity/Renderer/Texture.h"
 #include "Trinity/Renderer/Vulkan/VulkanAllocator.h"
 
 #include <vulkan/vulkan.h>
@@ -15,9 +16,9 @@ namespace Trinity
 	class VulkanGeometryBuffer
 	{
 	public:
-		static constexpr VkFormat AlbedoFormat = VK_FORMAT_R8G8B8A8_SRGB;
-		static constexpr VkFormat NormalFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
-		static constexpr VkFormat MaterialFormat = VK_FORMAT_R8G8B8A8_UNORM;
+		static constexpr TextureFormat AlbedoFormat = TextureFormat::RGBA8_SRGB;
+		static constexpr TextureFormat NormalFormat = TextureFormat::RGBA16F;
+		static constexpr TextureFormat MaterialFormat = TextureFormat::RGBA8_UNORM;
 
 	public:
 		void Initialize(const VulkanContext& context, const VulkanDevice& device, VulkanAllocator& allocator, uint32_t width, uint32_t height);
@@ -42,7 +43,7 @@ namespace Trinity
 		void CreateAttachments();
 		void DestroyAttachments();
 
-		void CreateAttachment(VkFormat format, VkImageUsageFlags usage, VkImage& outImage, VmaAllocation& outAllocation, VkImageView& outView);
+		void CreateAttachment(TextureFormat format, VkImageUsageFlags usage, VkImage& outImage, VmaAllocation& outAllocation, VkImageView& outView);
 
 	private:
 		VulkanAllocator* m_Allocator = nullptr;
