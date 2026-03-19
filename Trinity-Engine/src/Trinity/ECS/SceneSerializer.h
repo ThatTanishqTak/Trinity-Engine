@@ -15,6 +15,9 @@ namespace Trinity
         void Serialize(const std::string& filePath);
         bool Deserialize(const std::string& filePath);
 
+        std::string SerializeToString();
+        bool DeserializeFromString(const std::string& data);
+
     private:
         Scene& m_Scene;
     };

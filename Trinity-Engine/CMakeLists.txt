@@ -80,6 +80,7 @@ endblock()
 add_subdirectory(vendor/imgui)
 add_subdirectory(vendor/stb)
 add_subdirectory(vendor/VulkanMemoryAllocator)
+add_subdirectory(vendor/imguizmo)
 
 #add_compile_definitions(TR_ENABLE_SHADER_COMPILATION)
 
@@ -93,6 +94,8 @@ set(TRINITY_ENGINE_SOURCES
     src/Trinity/Assets/BuiltInAssets.h
     src/Trinity/Assets/MeshAsset.cpp
     src/Trinity/Assets/MeshAsset.h
+    src/Trinity/Assets/AssetRegistry.cpp
+    src/Trinity/Assets/AssetRegistry.h
     src/Trinity/Camera/Camera.h
     src/Trinity/Camera/EditorCamera.cpp
     src/Trinity/Camera/EditorCamera.h

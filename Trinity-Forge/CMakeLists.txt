@@ -4,6 +4,8 @@ set(TRINITY_FORGE_SOURCES
     src/Forge/Forge.cpp
     src/Forge/ForgeLayer.cpp
     src/Forge/ForgeLayer.h
+    src/Forge/Panels/ContentBrowserPanel.cpp
+    src/Forge/Panels/ContentBrowserPanel.h
 )
 
 add_executable(${PROJECT_NAME})
@@ -12,6 +14,7 @@ target_sources(${PROJECT_NAME} PRIVATE ${TRINITY_FORGE_SOURCES})
 target_link_libraries(${PROJECT_NAME} PRIVATE
     TrinityEngine
     imgui
+    imguizmo
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

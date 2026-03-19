@@ -26,3 +26,6 @@
 [submodule "Trinity-Engine/vendor/assimp"]
 	path = Trinity-Engine/vendor/assimp
 	url = https://github.com/ThatTanishqTak/assimp.git
+[submodule "Trinity-Engine/vendor/ImGuizmo"]
+	path = Trinity-Engine/vendor/ImGuizmo
+	url = https://github.com/ThatTanishqTak/ImGuizmo.git

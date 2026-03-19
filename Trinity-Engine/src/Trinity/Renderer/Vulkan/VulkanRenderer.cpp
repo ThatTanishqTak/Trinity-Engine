@@ -350,9 +350,9 @@ namespace Trinity
 		TransitionImageResource(commandBuffer, m_Swapchain.GetImages()[m_CurrentImageIndex], colorSubresourceRange, colorAttachmentWriteState);
 
 		VkClearValue l_ClearColor{};
-		l_ClearColor.color.float32[0] = 0.005f;
-		l_ClearColor.color.float32[1] = 0.005f;
-		l_ClearColor.color.float32[2] = 0.005f;
+		l_ClearColor.color.float32[0] = 0.01f;
+		l_ClearColor.color.float32[1] = 0.01f;
+		l_ClearColor.color.float32[2] = 0.01f;
 		l_ClearColor.color.float32[3] = 1.0f;
 
 		VkRenderingAttachmentInfo l_ColorAttachmentInfo{};
@@ -1473,6 +1473,13 @@ namespace Trinity
 			return;
 		}
 
+		if (m_ScenePassRecording)
+		{
+			const VkCommandBuffer l_EndCB = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
+			vkCmdEndRendering(l_EndCB);
+			m_ScenePassRecording = false;
+		}
+
 		m_CurrentLightSpaceMatrix = lightSpaceMatrix;
 		const VkCommandBuffer l_CommandBuffer = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
 
@@ -1481,8 +1488,8 @@ namespace Trinity
 			l_Barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 			l_Barrier.srcStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
 			l_Barrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-			l_Barrier.dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-			l_Barrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+			l_Barrier.dstStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT;
+			l_Barrier.dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 			l_Barrier.oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 			l_Barrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 			l_Barrier.image = m_ShadowMapImage;
@@ -1561,12 +1568,12 @@ namespace Trinity
 
 		const VkCommandBuffer l_CommandBuffer = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
 
-		VkBuffer l_VB = reinterpret_cast<VkBuffer>(vertexBuffer.GetNativeHandle());
-		VkBuffer l_IB = reinterpret_cast<VkBuffer>(indexBuffer.GetNativeHandle());
+		VkBuffer l_VertexBuffer = reinterpret_cast<VkBuffer>(vertexBuffer.GetNativeHandle());
+		VkBuffer l_IndexBuffer = reinterpret_cast<VkBuffer>(indexBuffer.GetNativeHandle());
 		VkDeviceSize l_Off = 0;
 
-		vkCmdBindVertexBuffers(l_CommandBuffer, 0, 1, &l_VB, &l_Off);
-		vkCmdBindIndexBuffer(l_CommandBuffer, l_IB, 0, ToVkIndexType(indexBuffer.GetIndexType()));
+		vkCmdBindVertexBuffers(l_CommandBuffer, 0, 1, &l_VertexBuffer, &l_Off);
+		vkCmdBindIndexBuffer(l_CommandBuffer, l_IndexBuffer, 0, ToVkIndexType(indexBuffer.GetIndexType()));
 
 		ShadowPushConstants l_PushConstantRange{};
 		l_PushConstantRange.LightSpaceModelViewProjection = lightSpaceMVP;
@@ -1684,11 +1691,11 @@ namespace Trinity
 		const VkDescriptorSet l_TexSet = BuildTextureDescriptorSet(l_View, l_Sampler);
 		vkCmdBindDescriptorSets(l_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_GBufferPipelineLayout, 0, 1, &l_TexSet, 0, nullptr);
 
-		VkBuffer l_VB = reinterpret_cast<VkBuffer>(vertexBuffer.GetNativeHandle());
-		VkBuffer l_IB = reinterpret_cast<VkBuffer>(indexBuffer.GetNativeHandle());
+		VkBuffer l_VertexBuffer = reinterpret_cast<VkBuffer>(vertexBuffer.GetNativeHandle());
+		VkBuffer l_IndexBuffer = reinterpret_cast<VkBuffer>(indexBuffer.GetNativeHandle());
 		VkDeviceSize l_Off = 0;
-		vkCmdBindVertexBuffers(l_CommandBuffer, 0, 1, &l_VB, &l_Off);
-		vkCmdBindIndexBuffer(l_CommandBuffer, l_IB, 0, ToVkIndexType(indexBuffer.GetIndexType()));
+		vkCmdBindVertexBuffers(l_CommandBuffer, 0, 1, &l_VertexBuffer, &l_Off);
+		vkCmdBindIndexBuffer(l_CommandBuffer, l_IndexBuffer, 0, ToVkIndexType(indexBuffer.GetIndexType()));
 
 		GeometryBufferPushConstants l_PushConstantRange{};
 		l_PushConstantRange.ModelViewProjection = viewProjection * model;

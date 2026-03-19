@@ -388,4 +388,141 @@ namespace Trinity
 
         return true;
     }
+
+    std::string SceneSerializer::SerializeToString()
+    {
+        YAML::Emitter l_Out;
+        l_Out << YAML::BeginMap;
+        l_Out << YAML::Key << "Scene" << YAML::Value << "Untitled";
+        l_Out << YAML::Key << "Entities" << YAML::Value << YAML::BeginSeq;
+
+        auto& a_Registry = m_Scene.GetRegistry();
+        a_Registry.view<IDComponent>().each([&](entt::entity it_Handle, const IDComponent&)
+        {
+            Entity l_Entity(it_Handle, &a_Registry);
+            if (!l_Entity)
+            {
+                return;
+            }
+            SerializeEntity(l_Out, l_Entity);
+        });
+
+        l_Out << YAML::EndSeq;
+        l_Out << YAML::EndMap;
+
+        return std::string(l_Out.c_str());
+    }
+
+    bool SceneSerializer::DeserializeFromString(const std::string& data)
+    {
+        YAML::Node l_Root;
+        try
+        {
+            l_Root = YAML::Load(data);
+        }
+        catch (const YAML::Exception& e)
+        {
+            TR_CORE_ERROR("SceneSerializer::DeserializeFromString: YAML parse error: {}", e.what());
+            return false;
+        }
+
+        if (!l_Root["Scene"])
+        {
+            TR_CORE_ERROR("SceneSerializer::DeserializeFromString: missing 'Scene' key");
+            return false;
+        }
+
+        const YAML::Node l_Entities = l_Root["Entities"];
+        if (!l_Entities)
+        {
+            return true;
+        }
+
+        for (const YAML::Node& it_EntityNode : l_Entities)
+        {
+            const uint64_t l_ID = it_EntityNode["Entity"].as<uint64_t>();
+
+            std::string l_Name = "Entity";
+            if (const YAML::Node& l_TagNode = it_EntityNode["TagComponent"])
+            {
+                l_Name = l_TagNode["Tag"].as<std::string>();
+            }
+
+            Entity l_Entity = m_Scene.CreateEntity(l_Name);
+            l_Entity.GetComponent<IDComponent>().ID = l_ID;
+
+            if (const YAML::Node& l_TransformNode = it_EntityNode["TransformComponent"])
+            {
+                TransformComponent& l_Transform = l_Entity.GetComponent<TransformComponent>();
+                l_Transform.Translation = l_TransformNode["Translation"].as<glm::vec3>();
+                l_Transform.Rotation = l_TransformNode["Rotation"].as<glm::vec3>();
+                l_Transform.Scale = l_TransformNode["Scale"].as<glm::vec3>();
+            }
+
+            if (const YAML::Node& l_MeshNode = it_EntityNode["MeshRendererComponent"])
+            {
+                MeshRendererComponent& l_Mesh = l_Entity.AddComponent<MeshRendererComponent>();
+                l_Mesh.Mesh = AssetHandle<MeshAsset>(l_MeshNode["MeshUUID"].as<uint64_t>());
+                l_Mesh.Color = l_MeshNode["Color"].as<glm::vec4>();
+            }
+
+            if (const YAML::Node& l_MaterialNode = it_EntityNode["MaterialComponent"])
+            {
+                MaterialComponent& l_Material = l_Entity.AddComponent<MaterialComponent>();
+                const std::string l_MatName = l_MaterialNode["Name"].as<std::string>();
+                if (!l_MatName.empty())
+                {
+                    l_Material.Mat = std::make_shared<Material>(l_MatName);
+                }
+            }
+
+            if (const YAML::Node& l_CameraNode = it_EntityNode["CameraComponent"])
+            {
+                CameraComponent& l_Camera = l_Entity.AddComponent<CameraComponent>();
+                l_Camera.Projection = static_cast<ProjectionType>(l_CameraNode["Projection"].as<int>());
+                l_Camera.FieldOfViewDegrees = l_CameraNode["FieldOfViewDegrees"].as<float>();
+                l_Camera.NearClip = l_CameraNode["NearClip"].as<float>();
+                l_Camera.FarClip = l_CameraNode["FarClip"].as<float>();
+                l_Camera.OrthoSize = l_CameraNode["OrthoSize"].as<float>();
+                l_Camera.OrthoNear = l_CameraNode["OrthoNear"].as<float>();
+                l_Camera.OrthoFar = l_CameraNode["OrthoFar"].as<float>();
+                l_Camera.Primary = l_CameraNode["Primary"].as<bool>();
+                l_Camera.FixedAspectRatio = l_CameraNode["FixedAspectRatio"].as<bool>();
+            }
+
+            if (const YAML::Node& l_LightNode = it_EntityNode["LightComponent"])
+            {
+                LightComponent& l_Light = l_Entity.AddComponent<LightComponent>();
+                l_Light.Type = static_cast<LightType>(l_LightNode["Type"].as<int>());
+                l_Light.Color = l_LightNode["Color"].as<glm::vec3>();
+                l_Light.Intensity = l_LightNode["Intensity"].as<float>();
+                l_Light.Range = l_LightNode["Range"].as<float>();
+                l_Light.InnerConeAngleDegrees = l_LightNode["InnerConeAngleDegrees"].as<float>();
+                l_Light.OuterConeAngleDegrees = l_LightNode["OuterConeAngleDegrees"].as<float>();
+                l_Light.CastShadows = l_LightNode["CastShadows"].as<bool>();
+            }
+
+            if (const YAML::Node& l_RigidBodyNode = it_EntityNode["RigidBodyComponent"])
+            {
+                RigidBodyComponent& l_RigidBody = l_Entity.AddComponent<RigidBodyComponent>();
+                l_RigidBody.Type = static_cast<RigidBodyType>(l_RigidBodyNode["Type"].as<int>());
+                l_RigidBody.Mass = l_RigidBodyNode["Mass"].as<float>();
+                l_RigidBody.LinearDrag = l_RigidBodyNode["LinearDrag"].as<float>();
+                l_RigidBody.AngularDrag = l_RigidBodyNode["AngularDrag"].as<float>();
+                l_RigidBody.UseGravity = l_RigidBodyNode["UseGravity"].as<bool>();
+                l_RigidBody.IsKinematic = l_RigidBodyNode["IsKinematic"].as<bool>();
+                l_RigidBody.LinearVelocity = l_RigidBodyNode["LinearVelocity"].as<glm::vec3>();
+                l_RigidBody.AngularVelocity = l_RigidBodyNode["AngularVelocity"].as<glm::vec3>();
+            }
+
+            if (const YAML::Node& l_ScriptNode = it_EntityNode["ScriptComponent"])
+            {
+                ScriptComponent& l_Script = l_Entity.AddComponent<ScriptComponent>();
+                l_Script.ScriptPath = l_ScriptNode["ScriptPath"].as<std::string>();
+                l_Script.Active = l_ScriptNode["Active"].as<bool>();
+            }
+        }
+
+        return true;
+    }
 }
