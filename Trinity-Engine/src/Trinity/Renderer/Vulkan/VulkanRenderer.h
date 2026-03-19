@@ -126,16 +126,16 @@ namespace Trinity
 		void EnsurePrimitiveUploaded(Geometry::PrimitiveType primitive);
 		void ValidateSceneColorPolicy() const;
 
-		void InitDeferredResources();
+		void InitializeDeferredResources();
 		void ShutdownDeferredResources();
 		void RecreateDeferredResources();
 
 		void CreateShadowPipeline();
-		void CreateGBufferPipeline();
+		void CreateGeometryBufferPipeline();
 		void CreateLightingPipeline();
 		void DestroyDeferredPipelines();
 
-		VkDescriptorSet BuildGBufferDescriptorSet();
+		VkDescriptorSet BuildGeometryBufferDescriptorSet();
 		VkDescriptorSet BuildTextureDescriptorSet(VkImageView imageView, VkSampler sampler);
 
 	private:

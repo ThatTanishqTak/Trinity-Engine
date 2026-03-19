@@ -38,11 +38,11 @@ void ForgeLayer::OnInitialize()
 
     // Demo entities
     {
-        auto l_Sun = l_Scene->CreateEntity("Directional Light");
+        auto l_Sun = l_Scene->CreateEntity("Point Light");
         auto& l_Light = l_Sun.AddComponent<Trinity::LightComponent>();
-        l_Light.Type = Trinity::LightType::Directional;
-        l_Light.Color = glm::vec3(1.0f);
-        l_Light.Intensity = 1.0f;
+        l_Sun.Type = Trinity::LightType::Point;
+        l_Sun.Color = glm::vec3(1.0f);
+        l_Sun.Intensity = 100.0f;
         l_Sun.GetComponent<Trinity::TransformComponent>().Rotation = glm::vec3(-0.8f, 0.5f, 0.0f);
 
         auto l_CubeA = l_Scene->CreateEntity("Cube A");
@@ -106,9 +106,9 @@ void ForgeLayer::OnImGuiRender()
 
     l_WindowFlags |= ImGuiWindowFlags_NoTitleBar;
     l_WindowFlags |= ImGuiWindowFlags_NoCollapse;
-    l_WindowFlags |= ImGuiWindowFlags_NoResize;
-    l_WindowFlags |= ImGuiWindowFlags_NoMove;
-    l_WindowFlags |= ImGuiWindowFlags_NoBringToFrontOnFocus;
+    //l_WindowFlags |= ImGuiWindowFlags_NoResize;
+    //l_WindowFlags |= ImGuiWindowFlags_NoMove;
+    //l_WindowFlags |= ImGuiWindowFlags_NoBringToFrontOnFocus;
     l_WindowFlags |= ImGuiWindowFlags_NoNavFocus;
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
