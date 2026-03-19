@@ -14,11 +14,12 @@ layout(push_constant) uniform PushConstants
 {
     mat4 u_ModelViewProjection;
     mat4 u_Model;
+    vec4 u_Color; 
 } pc;
 
 void main()
 {
-    vec4 l_Albedo = texture(u_AlbedoTexture, v_UV);
+    vec4 l_Albedo = texture(u_AlbedoTexture, v_UV) * pc.u_Color;
     vec3 l_N = normalize(v_WorldNormal);
 
     o_Albedo = l_Albedo;

@@ -28,10 +28,11 @@ namespace Trinity
 	{
 		glm::mat4 ModelViewProjection;
 		glm::mat4 Model;
+		glm::vec4 Color;
 	};
 
 	static_assert(sizeof(GeometryBufferPushConstants) % 4 == 0);
-	static_assert(sizeof(GeometryBufferPushConstants) <= 128);
+	static_assert(sizeof(GeometryBufferPushConstants) <= 144);
 
 	struct ShadowPushConstants
 	{

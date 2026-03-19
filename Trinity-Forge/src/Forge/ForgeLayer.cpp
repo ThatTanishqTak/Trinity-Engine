@@ -38,6 +38,13 @@ void ForgeLayer::OnInitialize()
 
     // Demo entities
     {
+        auto l_Sun = l_Scene->CreateEntity("Directional Light");
+        auto& l_Light = l_Sun.AddComponent<Trinity::LightComponent>();
+        l_Light.Type = Trinity::LightType::Directional;
+        l_Light.Color = glm::vec3(1.0f);
+        l_Light.Intensity = 1.0f;
+        l_Sun.GetComponent<Trinity::TransformComponent>().Rotation = glm::vec3(-0.8f, 0.5f, 0.0f);
+
         auto l_CubeA = l_Scene->CreateEntity("Cube A");
         l_CubeA.AddComponent<Trinity::MeshRendererComponent>(Trinity::BuiltIn::Cube(), glm::vec4(1, 0, 0, 1));
         l_CubeA.GetComponent<Trinity::TransformComponent>().Translation = { 0.0f, 0.0f, 0.0f };
