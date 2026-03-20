@@ -6,101 +6,59 @@
 
 namespace Trinity
 {
-	MoltenVKRenderer::MoltenVKRenderer() : Renderer(RendererAPI::MOLTENVK)
-	{
+    MoltenVKRenderer::MoltenVKRenderer() : Renderer(RendererAPI::MOLTENVK)
+    {
 
-	}
+    }
 
-	MoltenVKRenderer::~MoltenVKRenderer()
-	{
+    MoltenVKRenderer::~MoltenVKRenderer() = default;
 
-	}
+    void MoltenVKRenderer::SetWindow(Window& window)
+    {
+        (void)window;
+    }
 
-	void MoltenVKRenderer::SetWindow(Window& window)
-	{
-		(void)window;
-	}
+    void MoltenVKRenderer::Initialize()
+    {
+        TR_CORE_TRACE("Initializing MoltenVK (stub)");
+        TR_CORE_TRACE("MoltenVK Initialized (stub)");
+    }
 
-	void MoltenVKRenderer::Initialize()
-	{
-		TR_CORE_TRACE("Initializing MoltenVK");
+    void MoltenVKRenderer::Shutdown()
+    {
+        TR_CORE_TRACE("Shutting Down MoltenVK (stub)");
+        TR_CORE_TRACE("MoltenVK Shutdown Complete (stub)");
+    }
 
+    void MoltenVKRenderer::Resize(uint32_t width, uint32_t height)
+    {
+        (void)width;
+        (void)height;
+    }
 
+    void MoltenVKRenderer::BeginFrame()
+    {
 
-		TR_CORE_TRACE("MoltenVK Initialized");
-	}
+    }
 
-	void MoltenVKRenderer::Shutdown()
-	{
-		TR_CORE_TRACE("Shutting Down MoltenVK");
+    void MoltenVKRenderer::EndFrame()
+    {
 
+    }
 
+    void MoltenVKRenderer::RenderImGui(ImGuiLayer& imGuiLayer)
+    {
+        (void)imGuiLayer;
+    }
+    
+    void MoltenVKRenderer::SetSceneViewportSize(uint32_t width, uint32_t height)
+    {
+        (void)width;
+        (void)height;
+    }
 
-		TR_CORE_TRACE("MoltenVK Shutdown Complete");
-	}
-
-	void MoltenVKRenderer::Resize(uint32_t width, uint32_t height)
-	{
-		(void)width;
-		(void)height;
-	}
-
-	void MoltenVKRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color)
-	{
-		DrawMesh(primitive, position, color, glm::mat4(1.0f));
-	}
-
-	void MoltenVKRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& viewProjection)
-	{
-		(void)primitive;
-		(void)position;
-		(void)color;
-		(void)viewProjection;
-	}
-
-	void MoltenVKRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& view, const glm::mat4& projection)
-	{
-		DrawMesh(primitive, position, color, projection * view);
-	}
-
-	void MoltenVKRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::mat4& model, const glm::vec4& color, const glm::mat4& viewProjection)
-	{
-
-	}
-
-	void MoltenVKRenderer::DrawMesh(VertexBuffer& vertexBuffer, IndexBuffer& indexBuffer, uint32_t indexCount, const glm::mat4& model, const glm::vec4& color, const glm::mat4& viewProjection)
-	{
-		(void)vertexBuffer;
-		(void)indexBuffer;
-		(void)indexCount;
-		(void)model;
-		(void)color;
-		(void)viewProjection;
-	}
-
-	void MoltenVKRenderer::BeginFrame()
-	{
-
-	}
-
-	void MoltenVKRenderer::EndFrame()
-	{
-
-	}
-
-	void MoltenVKRenderer::RenderImGui(ImGuiLayer& imGuiLayer)
-	{
-		(void)imGuiLayer;
-	}
-
-	void MoltenVKRenderer::SetSceneViewportSize(uint32_t width, uint32_t height)
-	{
-		(void)width;
-		(void)height;
-	}
-
-	void* MoltenVKRenderer::GetSceneViewportHandle() const
-	{
-		return nullptr;
-	}
+    void* MoltenVKRenderer::GetSceneViewportHandle() const
+    {
+        return nullptr;
+    }
 }

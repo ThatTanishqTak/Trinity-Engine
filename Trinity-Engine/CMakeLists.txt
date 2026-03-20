@@ -188,6 +188,20 @@ set(TRINITY_ENGINE_SOURCES
     src/Trinity/Utilities/Time.h
     src/Trinity/Utilities/VulkanUtilities.cpp
     src/Trinity/Utilities/VulkanUtilities.h
+    src/Trinity/Renderer/RenderPass.h
+    src/Trinity/Renderer/Vulkan/VulkanPassContext.h
+    src/Trinity/Renderer/Vulkan/VulkanFrameContext.h
+    src/Trinity/Renderer/Vulkan/VulkanRenderPass.h
+    src/Trinity/Renderer/Vulkan/VulkanRenderGraph.h
+    src/Trinity/Renderer/Vulkan/VulkanRenderGraph.cpp
+    src/Trinity/Renderer/Vulkan/Passes/VulkanShadowPass.h
+    src/Trinity/Renderer/Vulkan/Passes/VulkanShadowPass.cpp
+    src/Trinity/Renderer/Vulkan/Passes/VulkanGeometryPass.h
+    src/Trinity/Renderer/Vulkan/Passes/VulkanGeometryPass.cpp
+    src/Trinity/Renderer/Vulkan/Passes/VulkanLightingPass.h
+    src/Trinity/Renderer/Vulkan/Passes/VulkanLightingPass.cpp
+    src/Trinity/Renderer/Vulkan/Passes/VulkanPostProcessPass.h
+    src/Trinity/Renderer/Vulkan/Passes/VulkanPostProcessPass.cpp
 )
 
 add_library(${PROJECT_NAME} STATIC)

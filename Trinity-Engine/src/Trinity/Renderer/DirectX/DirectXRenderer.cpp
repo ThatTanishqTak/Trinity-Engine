@@ -6,101 +6,59 @@
 
 namespace Trinity
 {
-	DirectXRenderer::DirectXRenderer() : Renderer(RendererAPI::DIRECTX)
-	{
+    DirectXRenderer::DirectXRenderer() : Renderer(RendererAPI::DIRECTX)
+    {
 
-	}
+    }
 
-	DirectXRenderer::~DirectXRenderer()
-	{
+    DirectXRenderer::~DirectXRenderer() = default;
 
-	}
+    void DirectXRenderer::SetWindow(Window& window)
+    {
+        (void)window;
+    }
 
-	void DirectXRenderer::SetWindow(Window& window)
-	{
-		(void)window;
-	}
+    void DirectXRenderer::Initialize()
+    {
+        TR_CORE_TRACE("Initializing DirectX (stub)");
+        TR_CORE_TRACE("DirectX Initialized (stub)");
+    }
 
-	void DirectXRenderer::Initialize()
-	{
-		TR_CORE_TRACE("Initializing DirectX");
+    void DirectXRenderer::Shutdown()
+    {
+        TR_CORE_TRACE("Shutting Down DirectX (stub)");
+        TR_CORE_TRACE("DirectX Shutdown Complete (stub)");
+    }
 
+    void DirectXRenderer::Resize(uint32_t width, uint32_t height)
+    {
+        (void)width;
+        (void)height;
+    }
+    
+    void DirectXRenderer::BeginFrame()
+    {
 
+    }
+    
+    void DirectXRenderer::EndFrame()
+    {
 
-		TR_CORE_TRACE("DirectX Initialized");
-	}
+    }
 
-	void DirectXRenderer::Shutdown()
-	{
-		TR_CORE_TRACE("Shutting Down DirectX");
+    void DirectXRenderer::RenderImGui(ImGuiLayer& imGuiLayer)
+    {
+        (void)imGuiLayer;
+    }
 
-
-
-		TR_CORE_TRACE("DirectX Shutdown Complete");
-	}
-
-	void DirectXRenderer::Resize(uint32_t width, uint32_t height)
-	{
-		(void)width;
-		(void)height;
-	}
-
-	void DirectXRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::mat4& model, const glm::vec4& color, const glm::mat4& viewProjection)
-	{
-
-	}
-
-	void DirectXRenderer::DrawMesh(VertexBuffer& vertexBuffer, IndexBuffer& indexBuffer, uint32_t indexCount, const glm::mat4& model, const glm::vec4& color, const glm::mat4& viewProjection)
-	{
-		(void)vertexBuffer;
-		(void)indexBuffer;
-		(void)indexCount;
-		(void)model;
-		(void)color;
-		(void)viewProjection;
-	}
-
-	void DirectXRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color)
-	{
-		DrawMesh(primitive, position, color, glm::mat4(1.0f));
-	}
-
-	void DirectXRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& viewProjection)
-	{
-		(void)primitive;
-		(void)position;
-		(void)color;
-		(void)viewProjection;
-	}
-
-	void DirectXRenderer::DrawMesh(Geometry::PrimitiveType primitive, const glm::vec3& position, const glm::vec4& color, const glm::mat4& view, const glm::mat4& projection)
-	{
-		DrawMesh(primitive, position, color, projection * view);
-	}
-
-	void DirectXRenderer::BeginFrame()
-	{
-
-	}
-
-	void DirectXRenderer::EndFrame()
-	{
-
-	}
-
-	void DirectXRenderer::RenderImGui(ImGuiLayer& imGuiLayer)
-	{
-		(void)imGuiLayer;
-	}
-
-	void DirectXRenderer::SetSceneViewportSize(uint32_t width, uint32_t height)
-	{
-		(void)width;
-		(void)height;
-	}
-
-	void* DirectXRenderer::GetSceneViewportHandle() const
-	{
-		return nullptr;
-	}
+    void DirectXRenderer::SetSceneViewportSize(uint32_t width, uint32_t height)
+    {
+        (void)width;
+        (void)height;
+    }
+    
+    void* DirectXRenderer::GetSceneViewportHandle() const
+    {
+        return nullptr;
+    }
 }
