@@ -218,14 +218,42 @@ namespace Trinity
 		}
 	}
 
+	void RenderCommand::BeginPostProcessPass()
+	{
+		if (s_Renderer)
+		{
+			s_Renderer->BeginPostProcessPass();
+		}
+	}
+
+	void RenderCommand::EndPostProcessPass()
+	{
+		if (s_Renderer)
+		{
+			s_Renderer->EndPostProcessPass();
+		}
+	}
+
+	void RenderCommand::DrawPostProcessQuad()
+	{
+		if (s_Renderer)
+		{
+			s_Renderer->DrawPostProcessQuad();
+		}
+	}
+
 	std::string RenderCommand::ApiToString(RendererAPI api)
 	{
 		switch (api)
 		{
-		case RendererAPI::VULKAN:   return "Vulkan";
-		case RendererAPI::MOLTENVK: return "MoltenVK";
-		case RendererAPI::DIRECTX:  return "DirectX 12";
-		default:                    return "None";
+			case RendererAPI::VULKAN:
+				return "Vulkan";
+			case RendererAPI::MOLTENVK:
+				return "MoltenVK";
+			case RendererAPI::DIRECTX:
+				return "DirectX 12";
+			default:
+				return "None";
 		}
 	}
 }

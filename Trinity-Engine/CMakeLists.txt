@@ -237,6 +237,8 @@ set(TRINITY_SHADER_SOURCES
     ${SHADER_SOURCE_DIR}/Shadow.vert
     ${SHADER_SOURCE_DIR}/Simple.frag
     ${SHADER_SOURCE_DIR}/Simple.vert
+    ${SHADER_SOURCE_DIR}/PostProcess.frag
+    ${SHADER_SOURCE_DIR}/PostProcess.vert
 )
 
 set(TRINITY_SHADER_INCLUDE_SOURCES

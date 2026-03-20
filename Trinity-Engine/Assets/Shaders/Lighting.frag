@@ -33,7 +33,7 @@ layout(push_constant) uniform PushConstants
     uint u_ColorOutputTransfer;
     float u_CameraNear;
     float u_CameraFar;
-    uint _pad;
+    float u_Exposure;
 } pc;
 
 layout(location = 0) in vec2 v_UV;
@@ -43,7 +43,19 @@ vec3 ReconstructWorldPosition(vec2 uv, float depth)
 {
     vec4 l_ClipPos  = vec4(uv * 2.0 - 1.0, depth, 1.0);
     vec4 l_WorldPos = pc.u_InvViewProjection * l_ClipPos;
+
     return l_WorldPos.xyz / l_WorldPos.w;
+}
+
+vec3 AcesFilmic(vec3 x)
+{
+    const float l_A = 2.51;
+    const float l_B = 0.03;
+    const float l_C = 2.43;
+    const float l_D = 0.59;
+    const float l_E = 0.14;
+
+    return clamp((x * (l_A * x + l_B)) / (x * (l_C * x + l_D) + l_E), 0.0, 1.0);
 }
 
 void main()
@@ -105,18 +117,18 @@ void main()
         }
         else
         {
-            vec3  l_LightPos  = l_Light.PositionAndType.xyz;
-            vec3  l_LightDir  = normalize(l_Light.DirectionAndIntensity.xyz);
-            vec3  l_ToLight   = l_LightPos - l_WorldPos;
-            float l_Dist      = length(l_ToLight);
-            l_L               = l_ToLight / max(l_Dist, 0.0001);
+            vec3  l_LightPos = l_Light.PositionAndType.xyz;
+            vec3  l_LightDir = normalize(l_Light.DirectionAndIntensity.xyz);
+            vec3  l_ToLight = l_LightPos - l_WorldPos;
+            float l_Dist = length(l_ToLight);
+            l_L = l_ToLight / max(l_Dist, 0.0001);
 
-            float l_CosAngle     = dot(-l_L, l_LightDir);
-            float l_InnerCos     = l_Light.SpotAngles.x;
-            float l_OuterCos     = l_Light.SpotAngles.y;
-            float l_SpotFactor   = clamp((l_CosAngle - l_OuterCos) / max(l_InnerCos - l_OuterCos, 0.0001), 0.0, 1.0);
-            float l_FallOff      = clamp(1.0 - pow(l_Dist / max(l_Range, 0.0001), 4.0), 0.0, 1.0);
-            l_Attenuation        = l_Intensity * l_SpotFactor * l_FallOff * l_FallOff / (l_Dist * l_Dist + 1.0);
+            float l_CosAngle = dot(-l_L, l_LightDir);
+            float l_InnerCos = l_Light.SpotAngles.x;
+            float l_OuterCos = l_Light.SpotAngles.y;
+            float l_SpotFactor = clamp((l_CosAngle - l_OuterCos) / max(l_InnerCos - l_OuterCos, 0.0001), 0.0, 1.0);
+            float l_FallOff = clamp(1.0 - pow(l_Dist / max(l_Range, 0.0001), 4.0), 0.0, 1.0);
+            l_Attenuation = l_Intensity * l_SpotFactor * l_FallOff * l_FallOff / (l_Dist * l_Dist + 1.0);
         }
 
         l_Lo += CookTorranceBRDF(l_Albedo, l_Metalness, l_Roughness, l_N, l_V, l_L, l_Color, l_Attenuation);
@@ -125,5 +137,8 @@ void main()
     const vec3 l_Ambient = vec3(0.15) * l_Albedo;
     vec3 l_FinalColor = l_Ambient + l_Lo;
 
-    o_Color = ApplySceneColorOutput(vec4(l_FinalColor, 1.0), pc.u_ColorOutputTransfer);
+    vec3 l_Exposed    = l_FinalColor * pc.u_Exposure;
+    vec3 l_ToneMapped = AcesFilmic(l_Exposed);
+
+    o_Color = ApplySceneColorOutput(vec4(l_ToneMapped, 1.0), pc.u_ColorOutputTransfer);
 }

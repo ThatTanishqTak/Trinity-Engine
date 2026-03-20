@@ -84,6 +84,10 @@ namespace Trinity
 		virtual void UploadLights(const void* lightData, uint32_t byteSize) {}
 		virtual void DrawLightingQuad(const glm::mat4& invViewProjection, const glm::vec3& cameraPosition, float cameraNear, float cameraFar) {}
 
+		virtual void BeginPostProcessPass() {}
+		virtual void EndPostProcessPass() {}
+		virtual void DrawPostProcessQuad() {}
+
 	protected:
 		explicit Renderer(RendererAPI api) : m_CurrentAPI(api) {}
 

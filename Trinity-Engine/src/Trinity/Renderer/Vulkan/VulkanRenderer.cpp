@@ -171,7 +171,7 @@ namespace Trinity
 
 	void* VulkanRenderer::GetSceneViewportHandle() const
 	{
-		return m_SceneViewportHandle;
+		return m_PostProcessHandle;
 	}
 
 	void VulkanRenderer::RecreateSwapchain(uint32_t width, uint32_t height)
@@ -290,11 +290,80 @@ namespace Trinity
 
 		Utilities::VulkanUtilities::VKCheck(vkCreateImageView(m_Device.GetDevice(), &l_DepthViewCreateInfo, m_Context.GetAllocator(), &m_SceneViewportDepthImageView), "Failed vkCreateImageView");
 
+		VkImageCreateInfo l_PostProcessImageInfo{};
+		l_PostProcessImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+		l_PostProcessImageInfo.imageType = VK_IMAGE_TYPE_2D;
+		l_PostProcessImageInfo.extent.width = m_SceneViewportWidth;
+		l_PostProcessImageInfo.extent.height = m_SceneViewportHeight;
+		l_PostProcessImageInfo.extent.depth = 1;
+		l_PostProcessImageInfo.mipLevels = 1;
+		l_PostProcessImageInfo.arrayLayers = 1;
+		l_PostProcessImageInfo.format = m_Swapchain.GetImageFormat();
+		l_PostProcessImageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+		l_PostProcessImageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		l_PostProcessImageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+		l_PostProcessImageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+		l_PostProcessImageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		m_Allocator.CreateImage(l_PostProcessImageInfo, m_PostProcessImage, m_PostProcessImageAllocation);
+
+		VkImageViewCreateInfo l_PostProcessViewInfo{};
+		l_PostProcessViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		l_PostProcessViewInfo.image = m_PostProcessImage;
+		l_PostProcessViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		l_PostProcessViewInfo.format = m_Swapchain.GetImageFormat();
+		l_PostProcessViewInfo.subresourceRange = BuildColorSubresourceRange();
+
+		Utilities::VulkanUtilities::VKCheck(vkCreateImageView(m_Device.GetDevice(), &l_PostProcessViewInfo, m_Context.GetAllocator(), &m_PostProcessImageView), "Failed vkCreateImageView (PostProcess)");
+
+		VkSamplerCreateInfo l_PostProcessSamplerInfo{};
+		l_PostProcessSamplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+		l_PostProcessSamplerInfo.magFilter = VK_FILTER_LINEAR;
+		l_PostProcessSamplerInfo.minFilter = VK_FILTER_LINEAR;
+		l_PostProcessSamplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+		l_PostProcessSamplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		l_PostProcessSamplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		l_PostProcessSamplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		l_PostProcessSamplerInfo.maxAnisotropy = 1.0f;
+
+		Utilities::VulkanUtilities::VKCheck(vkCreateSampler(m_Device.GetDevice(), &l_PostProcessSamplerInfo, m_Context.GetAllocator(), &m_PostProcessSampler), "Failed vkCreateSampler (PostProcess)");
+
+		m_PostProcessHandle = ImGui_ImplVulkan_AddTexture(m_PostProcessSampler, m_PostProcessImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
 		RecreateDeferredResources();
 	}
 
 	void VulkanRenderer::DestroySceneViewportTarget()
 	{
+		if (m_PostProcessHandle != nullptr)
+		{
+			if (ImGui::GetCurrentContext() != nullptr)
+			{
+				ImGui_ImplVulkan_RemoveTexture((VkDescriptorSet)m_PostProcessHandle);
+			}
+			m_PostProcessHandle = nullptr;
+		}
+
+		if (m_PostProcessSampler != VK_NULL_HANDLE)
+		{
+			vkDestroySampler(m_Device.GetDevice(), m_PostProcessSampler, m_Context.GetAllocator());
+			m_PostProcessSampler = VK_NULL_HANDLE;
+		}
+
+		if (m_PostProcessImageView != VK_NULL_HANDLE)
+		{
+			vkDestroyImageView(m_Device.GetDevice(), m_PostProcessImageView, m_Context.GetAllocator());
+			m_PostProcessImageView = VK_NULL_HANDLE;
+		}
+
+		if (m_PostProcessImage != VK_NULL_HANDLE)
+		{
+			m_ResourceStateTracker.ForgetImage(m_PostProcessImage);
+			m_Allocator.DestroyImage(m_PostProcessImage, m_PostProcessImageAllocation);
+			m_PostProcessImage = VK_NULL_HANDLE;
+			m_PostProcessImageAllocation = VK_NULL_HANDLE;
+		}
+
 		if (m_SceneViewportHandle != nullptr)
 		{
 			if (ImGui::GetCurrentContext() != nullptr)
@@ -897,6 +966,7 @@ namespace Trinity
 		CreateShadowPipeline();
 		CreateGeometryBufferPipeline();
 		CreateLightingPipeline();
+		CreatePostProcessPipeline();
 
 		TR_CORE_TRACE("VulkanRenderer: deferred resources initialized");
 	}
@@ -907,6 +977,35 @@ namespace Trinity
 		if (l_Device == VK_NULL_HANDLE)
 		{
 			return;
+		}
+
+		if (m_PostProcessHandle != nullptr)
+		{
+			if (ImGui::GetCurrentContext() != nullptr)
+			{
+				ImGui_ImplVulkan_RemoveTexture((VkDescriptorSet)m_PostProcessHandle);
+			}
+			m_PostProcessHandle = nullptr;
+		}
+
+		if (m_PostProcessSampler != VK_NULL_HANDLE)
+		{
+			vkDestroySampler(m_Device.GetDevice(), m_PostProcessSampler, m_Context.GetAllocator());
+			m_PostProcessSampler = VK_NULL_HANDLE;
+		}
+
+		if (m_PostProcessImageView != VK_NULL_HANDLE)
+		{
+			vkDestroyImageView(m_Device.GetDevice(), m_PostProcessImageView, m_Context.GetAllocator());
+			m_PostProcessImageView = VK_NULL_HANDLE;
+		}
+
+		if (m_PostProcessImage != VK_NULL_HANDLE)
+		{
+			m_ResourceStateTracker.ForgetImage(m_PostProcessImage);
+			m_Allocator.DestroyImage(m_PostProcessImage, m_PostProcessImageAllocation);
+			m_PostProcessImage = VK_NULL_HANDLE;
+			m_PostProcessImageAllocation = VK_NULL_HANDLE;
 		}
 
 		m_LightingUBOs.clear();
@@ -995,7 +1094,7 @@ namespace Trinity
 		l_LayoutInfo.pPushConstantRanges = &l_PushConstantRange;
 		Utilities::VulkanUtilities::VKCheck(vkCreatePipelineLayout(m_Device.GetDevice(), &l_LayoutInfo, m_Context.GetAllocator(), &m_ShadowPipelineLayout), "Shadow: vkCreatePipelineLayout failed");
 
-		auto l_CreateModule = [&](const std::vector<uint32_t>& spv) -> VkShaderModule
+		auto a_CreateModule = [&](const std::vector<uint32_t>& spv) -> VkShaderModule
 			{
 				VkShaderModuleCreateInfo l_Info{};
 				l_Info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -1007,8 +1106,8 @@ namespace Trinity
 				return l_ShaderModule;
 			};
 
-		const VkShaderModule l_VertexShaderModule = l_CreateModule(l_VertexShaderSPV);
-		const VkShaderModule l_FragmentShaderModule = l_CreateModule(l_FragmentShaderSPV);
+		const VkShaderModule l_VertexShaderModule = a_CreateModule(l_VertexShaderSPV);
+		const VkShaderModule l_FragmentShaderModule = a_CreateModule(l_FragmentShaderSPV);
 
 		VkPipelineShaderStageCreateInfo l_Stages[2]{};
 		l_Stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -1134,7 +1233,7 @@ namespace Trinity
 		l_LayoutInfo.pPushConstantRanges = &l_PushConstantRange;
 		Utilities::VulkanUtilities::VKCheck(vkCreatePipelineLayout(m_Device.GetDevice(), &l_LayoutInfo, m_Context.GetAllocator(), &m_GBufferPipelineLayout), "GeometryBuffer: vkCreatePipelineLayout failed");
 
-		auto l_CreateModule = [&](const std::vector<uint32_t>& spv) -> VkShaderModule
+		auto a_CreateModule = [&](const std::vector<uint32_t>& spv) -> VkShaderModule
 			{
 				VkShaderModuleCreateInfo l_Info{};
 				l_Info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -1146,8 +1245,8 @@ namespace Trinity
 				return l_ShaderModule;
 			};
 
-		const VkShaderModule l_VertexShaderModule = l_CreateModule(l_VertexShaderSPV);
-		const VkShaderModule l_FragmentShaderModule = l_CreateModule(l_FragmentShaderSPV);
+		const VkShaderModule l_VertexShaderModule = a_CreateModule(l_VertexShaderSPV);
+		const VkShaderModule l_FragmentShaderModule = a_CreateModule(l_FragmentShaderSPV);
 
 		VkPipelineShaderStageCreateInfo l_Stages[2]{};
 		l_Stages[0] = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0, VK_SHADER_STAGE_VERTEX_BIT,   l_VertexShaderModule, "main" };
@@ -1285,7 +1384,7 @@ namespace Trinity
 		l_LayoutInfo.pPushConstantRanges = &l_PushConstantRange;
 		Utilities::VulkanUtilities::VKCheck(vkCreatePipelineLayout(m_Device.GetDevice(), &l_LayoutInfo, m_Context.GetAllocator(), &m_LightingPipelineLayout), "Lighting: vkCreatePipelineLayout failed");
 
-		auto l_CreateModule = [&](const std::vector<uint32_t>& spv) -> VkShaderModule
+		auto a_CreateModule = [&](const std::vector<uint32_t>& spv) -> VkShaderModule
 			{
 				VkShaderModuleCreateInfo l_Info{};
 				l_Info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -1297,8 +1396,8 @@ namespace Trinity
 				return l_ShaderModule;
 			};
 
-		const VkShaderModule l_VertexShaderModule = l_CreateModule(l_VertexShaderSPV);
-		const VkShaderModule l_FragmentShaderModule = l_CreateModule(l_FragmentShaderSPV);
+		const VkShaderModule l_VertexShaderModule = a_CreateModule(l_VertexShaderSPV);
+		const VkShaderModule l_FragmentShaderModule = a_CreateModule(l_FragmentShaderSPV);
 
 		VkPipelineShaderStageCreateInfo l_Stages[2]{};
 		l_Stages[0] = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0, VK_SHADER_STAGE_VERTEX_BIT,   l_VertexShaderModule, "main" };
@@ -1370,6 +1469,118 @@ namespace Trinity
 		vkDestroyShaderModule(m_Device.GetDevice(), l_FragmentShaderModule, m_Context.GetAllocator());
 	}
 
+	void VulkanRenderer::CreatePostProcessPipeline()
+	{
+		m_ShaderLibrary.Load("PostProcess.vert", "Assets/Shaders/PostProcess.vert.spv", ShaderStage::Vertex);
+		m_ShaderLibrary.Load("PostProcess.frag", "Assets/Shaders/PostProcess.frag.spv", ShaderStage::Fragment);
+
+		const std::vector<uint32_t>& l_VertSpirV = *m_ShaderLibrary.GetSpirV("PostProcess.vert");
+		const std::vector<uint32_t>& l_FragSpirV = *m_ShaderLibrary.GetSpirV("PostProcess.frag");
+
+		VkDescriptorSetLayoutBinding l_Binding{};
+		l_Binding.binding = 0;
+		l_Binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		l_Binding.descriptorCount = 1;
+		l_Binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+		VkDescriptorSetLayoutCreateInfo l_SetLayoutInfo{};
+		l_SetLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		l_SetLayoutInfo.bindingCount = 1;
+		l_SetLayoutInfo.pBindings = &l_Binding;
+		Utilities::VulkanUtilities::VKCheck(vkCreateDescriptorSetLayout(m_Device.GetDevice(), &l_SetLayoutInfo, m_Context.GetAllocator(), &m_PostProcessSetLayout), "PostProcess: vkCreateDescriptorSetLayout failed");
+
+		VkPipelineLayoutCreateInfo l_LayoutInfo{};
+		l_LayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		l_LayoutInfo.setLayoutCount = 1;
+		l_LayoutInfo.pSetLayouts = &m_PostProcessSetLayout;
+		Utilities::VulkanUtilities::VKCheck(vkCreatePipelineLayout(m_Device.GetDevice(), &l_LayoutInfo, m_Context.GetAllocator(), &m_PostProcessPipelineLayout), "PostProcess: vkCreatePipelineLayout failed");
+
+		auto a_CreateModule = [&](const std::vector<uint32_t>& spv) -> VkShaderModule
+		{
+			VkShaderModuleCreateInfo l_Info{};
+			l_Info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+			l_Info.codeSize = spv.size() * 4;
+			l_Info.pCode = spv.data();
+			VkShaderModule l_Module = VK_NULL_HANDLE;
+			Utilities::VulkanUtilities::VKCheck(vkCreateShaderModule(m_Device.GetDevice(), &l_Info, m_Context.GetAllocator(), &l_Module), "PostProcess: vkCreateShaderModule failed");
+
+			return l_Module;
+		};
+
+		const VkShaderModule l_VertModule = a_CreateModule(l_VertSpirV);
+		const VkShaderModule l_FragModule = a_CreateModule(l_FragSpirV);
+
+		VkPipelineShaderStageCreateInfo l_Stages[2]{};
+		l_Stages[0] = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0, VK_SHADER_STAGE_VERTEX_BIT,   l_VertModule, "main" };
+		l_Stages[1] = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0, VK_SHADER_STAGE_FRAGMENT_BIT, l_FragModule, "main" };
+
+		VkPipelineVertexInputStateCreateInfo l_VertexInput{};
+		l_VertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+
+		VkPipelineInputAssemblyStateCreateInfo l_InputAssembly{};
+		l_InputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+		l_InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+
+		VkPipelineViewportStateCreateInfo l_ViewportState{};
+		l_ViewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+		l_ViewportState.viewportCount = 1;
+		l_ViewportState.scissorCount = 1;
+
+		VkPipelineRasterizationStateCreateInfo l_Rasterization{};
+		l_Rasterization.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+		l_Rasterization.polygonMode = VK_POLYGON_MODE_FILL;
+		l_Rasterization.cullMode = VK_CULL_MODE_NONE;
+		l_Rasterization.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+		l_Rasterization.lineWidth = 1.0f;
+
+		VkPipelineMultisampleStateCreateInfo l_Multisample{};
+		l_Multisample.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+		l_Multisample.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+		VkPipelineDepthStencilStateCreateInfo l_DepthStencil{};
+		l_DepthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+
+		VkPipelineColorBlendAttachmentState l_BlendAtt{};
+		l_BlendAtt.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+
+		VkPipelineColorBlendStateCreateInfo l_Blend{};
+		l_Blend.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+		l_Blend.attachmentCount = 1;
+		l_Blend.pAttachments = &l_BlendAtt;
+
+		const VkDynamicState l_DynamicStates[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+		VkPipelineDynamicStateCreateInfo l_Dynamic{};
+		l_Dynamic.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+		l_Dynamic.dynamicStateCount = 2;
+		l_Dynamic.pDynamicStates = l_DynamicStates;
+
+		const VkFormat l_ColorFormat = m_Swapchain.GetImageFormat();
+		VkPipelineRenderingCreateInfo l_RenderingInfo{};
+		l_RenderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+		l_RenderingInfo.colorAttachmentCount = 1;
+		l_RenderingInfo.pColorAttachmentFormats = &l_ColorFormat;
+
+		VkGraphicsPipelineCreateInfo l_PipelineInfo{};
+		l_PipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+		l_PipelineInfo.pNext = &l_RenderingInfo;
+		l_PipelineInfo.stageCount = 2;
+		l_PipelineInfo.pStages = l_Stages;
+		l_PipelineInfo.pVertexInputState = &l_VertexInput;
+		l_PipelineInfo.pInputAssemblyState = &l_InputAssembly;
+		l_PipelineInfo.pViewportState = &l_ViewportState;
+		l_PipelineInfo.pRasterizationState = &l_Rasterization;
+		l_PipelineInfo.pMultisampleState = &l_Multisample;
+		l_PipelineInfo.pDepthStencilState = &l_DepthStencil;
+		l_PipelineInfo.pColorBlendState = &l_Blend;
+		l_PipelineInfo.pDynamicState = &l_Dynamic;
+		l_PipelineInfo.layout = m_PostProcessPipelineLayout;
+
+		Utilities::VulkanUtilities::VKCheck(vkCreateGraphicsPipelines(m_Device.GetDevice(), VK_NULL_HANDLE, 1, &l_PipelineInfo, m_Context.GetAllocator(), &m_PostProcessPipeline), "PostProcess: vkCreateGraphicsPipelines failed");
+
+		vkDestroyShaderModule(m_Device.GetDevice(), l_VertModule, m_Context.GetAllocator());
+		vkDestroyShaderModule(m_Device.GetDevice(), l_FragModule, m_Context.GetAllocator());
+	}
+
 	void VulkanRenderer::DestroyDeferredPipelines()
 	{
 		const VkDevice l_Device = m_Device.GetDevice();
@@ -1405,6 +1616,7 @@ namespace Trinity
 		l_Destroy(m_ShadowPipeline, m_ShadowPipelineLayout, m_ShadowTextureSetLayout);
 		l_Destroy(m_GBufferPipeline, m_GBufferPipelineLayout, m_GBufferTextureSetLayout);
 		l_Destroy(m_LightingPipeline, m_LightingPipelineLayout, m_LightingGBufferSetLayout, &m_LightingUBOSetLayout);
+		l_Destroy(m_PostProcessPipeline, m_PostProcessPipelineLayout, m_PostProcessSetLayout);
 	}
 
 	VkDescriptorSet VulkanRenderer::BuildTextureDescriptorSet(VkImageView imageView, VkSampler sampler)
@@ -1812,7 +2024,90 @@ namespace Trinity
 		l_PushConstantRange.ColorOutputTransfer = static_cast<uint32_t>(l_ColorPolicy.SceneOutputTransfer);
 		l_PushConstantRange.CameraNear = cameraNear;
 		l_PushConstantRange.CameraFar = cameraFar;
+		l_PushConstantRange.Exposure = m_Exposure;
 		vkCmdPushConstants(l_CommandBuffer, m_LightingPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(LightingPushConstants), &l_PushConstantRange);
+
+		vkCmdDraw(l_CommandBuffer, 3, 1, 0, 0);
+	}
+
+	void VulkanRenderer::BeginPostProcessPass()
+	{
+		if (!m_FrameBegun || m_PostProcessImage == VK_NULL_HANDLE || m_SceneViewportImage == VK_NULL_HANDLE)
+		{
+			return;
+		}
+
+		const VkCommandBuffer l_CommandBuffer = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
+
+		TransitionImageResource(l_CommandBuffer, m_PostProcessImage, BuildColorSubresourceRange(), BuildTransitionState(ImageTransitionPreset::ColorAttachmentWrite));
+
+		VkClearValue l_Clear{};
+		VkRenderingAttachmentInfo l_ColorAtt{};
+		l_ColorAtt.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+		l_ColorAtt.imageView = m_PostProcessImageView;
+		l_ColorAtt.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		l_ColorAtt.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		l_ColorAtt.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		l_ColorAtt.clearValue = l_Clear;
+
+		VkRenderingInfo l_RenderingInfo{};
+		l_RenderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+		l_RenderingInfo.renderArea = { { 0, 0 }, { m_SceneViewportWidth, m_SceneViewportHeight } };
+		l_RenderingInfo.layerCount = 1;
+		l_RenderingInfo.colorAttachmentCount = 1;
+		l_RenderingInfo.pColorAttachments = &l_ColorAtt;
+
+		vkCmdBeginRendering(l_CommandBuffer, &l_RenderingInfo);
+
+		VkViewport l_Viewport{ 0.0f, 0.0f, static_cast<float>(m_SceneViewportWidth), static_cast<float>(m_SceneViewportHeight), 0.0f, 1.0f };
+		VkRect2D   l_Scissor{ { 0, 0 }, { m_SceneViewportWidth, m_SceneViewportHeight } };
+		vkCmdSetViewport(l_CommandBuffer, 0, 1, &l_Viewport);
+		vkCmdSetScissor(l_CommandBuffer, 0, 1, &l_Scissor);
+		vkCmdBindPipeline(l_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_PostProcessPipeline);
+
+		m_PostProcessPassRecording = true;
+	}
+
+	void VulkanRenderer::EndPostProcessPass()
+	{
+		if (!m_PostProcessPassRecording)
+		{
+			return;
+		}
+
+		const VkCommandBuffer l_CommandBuffer = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
+		vkCmdEndRendering(l_CommandBuffer);
+		TransitionImageResource(l_CommandBuffer, m_PostProcessImage, BuildColorSubresourceRange(), BuildTransitionState(ImageTransitionPreset::ShaderReadOnly));
+		m_PostProcessPassRecording = false;
+	}
+
+	void VulkanRenderer::DrawPostProcessQuad()
+	{
+		if (!m_PostProcessPassRecording)
+		{
+			return;
+		}
+
+		const VkCommandBuffer l_CommandBuffer = m_Command.GetCommandBuffer(m_CurrentFrameIndex);
+
+		// Build a one-shot descriptor set that binds m_SceneViewportImage as the input
+		const VkDescriptorSet l_Set = m_DescriptorAllocator.Allocate(m_CurrentFrameIndex, m_PostProcessSetLayout);
+
+		VkDescriptorImageInfo l_ImageInfo{};
+		l_ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		l_ImageInfo.imageView = m_SceneViewportImageView;
+		l_ImageInfo.sampler = m_PostProcessSampler;
+
+		VkWriteDescriptorSet l_Write{};
+		l_Write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		l_Write.dstSet = l_Set;
+		l_Write.dstBinding = 0;
+		l_Write.descriptorCount = 1;
+		l_Write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		l_Write.pImageInfo = &l_ImageInfo;
+
+		vkUpdateDescriptorSets(m_Device.GetDevice(), 1, &l_Write, 0, nullptr);
+		vkCmdBindDescriptorSets(l_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_PostProcessPipelineLayout, 0, 1, &l_Set, 0, nullptr);
 
 		vkCmdDraw(l_CommandBuffer, 3, 1, 0, 0);
 	}

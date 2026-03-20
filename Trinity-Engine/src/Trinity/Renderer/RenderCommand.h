@@ -52,6 +52,10 @@ namespace Trinity
 		static void UploadLights(const void* lightData, uint32_t byteSize);
 		static void DrawLightingQuad(const glm::mat4& invViewProjection, const glm::vec3& cameraPosition, float cameraNear, float cameraFar);
 
+		static void BeginPostProcessPass();
+		static void EndPostProcessPass();
+		static void DrawPostProcessQuad();
+
 	private:
 		static std::string ApiToString(RendererAPI api);
 	};

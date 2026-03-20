@@ -49,7 +49,7 @@ namespace Trinity
 		uint32_t  ColorOutputTransfer = static_cast<uint32_t>(ColorTransferMode::None);
 		float CameraNear = 0.01f;
 		float CameraFar = 1000.0f;
-		uint32_t _Pad = 0;
+		float Exposure = 1.0f;
 	};
 
 	static_assert(sizeof(LightingPushConstants) % 4 == 0);

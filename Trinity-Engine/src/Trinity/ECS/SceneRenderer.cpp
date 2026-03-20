@@ -33,6 +33,7 @@ namespace Trinity
 		SubmitShadowPasses(scene);
 		SubmitGeometryPass(scene, view, projection);
 		SubmitLightingPass(view, projection, cameraPosition, cameraNear, cameraFar);
+		SubmitPostProcessPass();
 	}
 
 	void SceneRenderer::Render(Scene& scene)
@@ -224,6 +225,13 @@ namespace Trinity
 		RenderCommand::DrawLightingQuad(l_InvVP, cameraPosition, cameraNear, cameraFar);
 
 		RenderCommand::EndLightingPass();
+	}
+
+	void SceneRenderer::SubmitPostProcessPass()
+	{
+		RenderCommand::BeginPostProcessPass();
+		RenderCommand::DrawPostProcessQuad();
+		RenderCommand::EndPostProcessPass();
 	}
 
 	const SceneRenderer::RenderStats& SceneRenderer::GetStats()

@@ -33,6 +33,7 @@ namespace Trinity
 		static void SubmitShadowPasses(Scene& scene);
 		static void SubmitGeometryPass(Scene& scene, const glm::mat4& view, const glm::mat4& projection);
 		static void SubmitLightingPass(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& cameraPosition, float cameraNear, float cameraFar);
+		static void SubmitPostProcessPass();
 
 	private:
 		static RenderStats s_Stats;

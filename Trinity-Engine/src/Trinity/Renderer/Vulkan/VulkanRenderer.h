@@ -51,6 +51,9 @@ namespace Trinity
 		void SetWindow(Window& window) override;
 		void SetConfiguration(const Configuration& configuration);
 
+		void SetExposure(float exposure) { m_Exposure = exposure; }
+		float GetExposure() const { return m_Exposure; }
+
 		void Initialize() override;
 		void Shutdown() override;
 
@@ -83,6 +86,10 @@ namespace Trinity
 		void EndLightingPass() override;
 		void UploadLights(const void* lightData, uint32_t byteSize) override;
 		void DrawLightingQuad(const glm::mat4& invViewProjection, const glm::vec3& cameraPosition, float cameraNear, float cameraFar) override;
+
+		void BeginPostProcessPass() override;
+		void EndPostProcessPass() override;
+		void DrawPostProcessQuad() override;
 
 		VkInstance GetVulkanInstance() const { return m_Context.GetInstance(); }
 		VkAllocationCallbacks* GetVulkanAllocator() const { return m_Context.GetAllocator(); }
@@ -133,6 +140,7 @@ namespace Trinity
 		void CreateShadowPipeline();
 		void CreateGeometryBufferPipeline();
 		void CreateLightingPipeline();
+		void CreatePostProcessPipeline();
 		void DestroyDeferredPipelines();
 
 		VkDescriptorSet BuildGeometryBufferDescriptorSet();
@@ -178,6 +186,8 @@ namespace Trinity
 
 		Configuration m_Configuration{};
 
+		float m_Exposure = 1.0f;
+
 		uint32_t m_SceneViewportWidth = 0;
 		uint32_t m_SceneViewportHeight = 0;
 		VkImage m_SceneViewportImage = VK_NULL_HANDLE;
@@ -214,6 +224,17 @@ namespace Trinity
 		VkPipelineLayout m_LightingPipelineLayout = VK_NULL_HANDLE;
 		VkDescriptorSetLayout m_LightingGBufferSetLayout = VK_NULL_HANDLE;
 		VkDescriptorSetLayout m_LightingUBOSetLayout = VK_NULL_HANDLE;
+
+		VkPipeline m_PostProcessPipeline = VK_NULL_HANDLE;
+		VkPipelineLayout m_PostProcessPipelineLayout = VK_NULL_HANDLE;
+		VkDescriptorSetLayout m_PostProcessSetLayout = VK_NULL_HANDLE;
+
+		VkImage m_PostProcessImage = VK_NULL_HANDLE;
+		VmaAllocation m_PostProcessImageAllocation = VK_NULL_HANDLE;
+		VkImageView m_PostProcessImageView = VK_NULL_HANDLE;
+		VkSampler m_PostProcessSampler = VK_NULL_HANDLE;
+		void* m_PostProcessHandle = nullptr;
+		bool m_PostProcessPassRecording = false;
 
 		std::vector<VkDescriptorPool> m_LightingDescriptorPools;
 		std::vector<VulkanUniformBuffer> m_LightingUBOs;

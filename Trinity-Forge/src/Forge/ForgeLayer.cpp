@@ -114,7 +114,7 @@ void ForgeLayer::OnInitialize()
     {
         auto l_Sun = l_Scene->CreateEntity("Directional Light");
         auto& l_Light = l_Sun.AddComponent<Trinity::LightComponent>();
-        l_Light.Type = Trinity::LightType::Directional;
+        l_Light.Type = Trinity::LightType::Point;
         l_Light.Color = glm::vec3(1.0f);
         l_Light.Intensity = 5.0f;
         l_Light.CastShadows = true;
@@ -127,13 +127,6 @@ void ForgeLayer::OnInitialize()
         auto l_CubeB = l_Scene->CreateEntity("Cube B");
         l_CubeB.AddComponent<Trinity::MeshRendererComponent>(Trinity::BuiltIn::Cube(), glm::vec4(0.2f, 0.7f, 0.3f, 1.0f));
         l_CubeB.GetComponent<Trinity::TransformComponent>().Translation = { 0.0f, 0.0f, 0.0f };
-
-        auto l_Quad = l_Scene->CreateEntity("Ground Quad");
-        l_Quad.AddComponent<Trinity::MeshRendererComponent>(Trinity::BuiltIn::Quad(), glm::vec4(0.5f, 0.5f, 0.5f, 1.0f));
-        auto& a_QuadTransform = l_Quad.GetComponent<Trinity::TransformComponent>();
-        a_QuadTransform.Translation = { 0.0f, -1.0f, 0.0f };
-        a_QuadTransform.Rotation = glm::vec3(glm::radians(-90.0f), 0.0f, 0.0f);
-        a_QuadTransform.Scale = glm::vec3(10.0f, 10.0f, 1.0f);
     }
 
     LoadScene(std::move(l_Scene));
