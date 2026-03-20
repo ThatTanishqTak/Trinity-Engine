@@ -18,11 +18,9 @@ namespace Trinity
 
         m_DescriptorAllocator.Initialize(m_Device, m_HostAllocator, m_FramesInFlight, s_MaxTextureDescriptorsPerFrame);
         m_WhiteTexture.CreateSolid(*m_Allocator, *m_UploadContext, m_Device, m_HostAllocator, 255, 255, 255, 255);
-        m_GBuffer.Initialize(*reinterpret_cast<VulkanContext*>(nullptr), *reinterpret_cast<VulkanDevice*>(nullptr), *m_Allocator, 0, 0);
+        m_GBuffer.Initialize(m_Device, m_HostAllocator, *m_Allocator, 0, 0);
 
-        // NOTE: GBuffer and depth image are sized to viewport — allocated in Recreate.
-        // VulkanGeometryBuffer::Initialize with zero dimensions allocates no images.
-
+        // GBuffer images are allocated on the first Recreate call once a valid viewport size is known.
         CreatePipeline();
 
         TR_CORE_TRACE("VulkanGeometryPass Initialized");
@@ -277,6 +275,7 @@ namespace Trinity
             l_Info.pCode = spv.data();
             VkShaderModule l_Module = VK_NULL_HANDLE;
             Utilities::VulkanUtilities::VKCheck(vkCreateShaderModule(m_Device, &l_Info, m_HostAllocator, &l_Module), "VulkanGeometryPass: vkCreateShaderModule failed");
+
             return l_Module;
         };
 

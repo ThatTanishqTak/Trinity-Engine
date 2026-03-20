@@ -22,6 +22,8 @@ namespace Trinity
 
 	public:
 		void Initialize(const VulkanContext& context, const VulkanDevice& device, VulkanAllocator& allocator, uint32_t width, uint32_t height);
+		void Initialize(VkDevice device, VkAllocationCallbacks* hostAllocator, VulkanAllocator& allocator, uint32_t width, uint32_t height);
+
 		void Shutdown();
 		void Recreate(uint32_t width, uint32_t height);
 

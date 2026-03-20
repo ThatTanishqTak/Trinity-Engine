@@ -11,11 +11,18 @@
 
 namespace Trinity
 {
+	// Original overload — delegates to the raw-handle overload.
 	void VulkanGeometryBuffer::Initialize(const VulkanContext& context, const VulkanDevice& device, VulkanAllocator& allocator, uint32_t width, uint32_t height)
 	{
+		Initialize(device.GetDevice(), context.GetAllocator(), allocator, width, height);
+	}
+
+	// Raw-handle overload — the real implementation.
+	void VulkanGeometryBuffer::Initialize(VkDevice device, VkAllocationCallbacks* hostAllocator, VulkanAllocator& allocator, uint32_t width, uint32_t height)
+	{
 		m_Allocator = &allocator;
-		m_Device = device.GetDevice();
-		m_HostAllocator = context.GetAllocator();
+		m_Device = device;
+		m_HostAllocator = hostAllocator;
 		m_Width = width;
 		m_Height = height;
 
