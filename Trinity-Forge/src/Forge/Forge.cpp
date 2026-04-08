@@ -24,7 +24,6 @@ namespace Trinity
         l_Specification.Title = "Forge";
         l_Specification.Width = 1920;
         l_Specification.Height = 1080;
-        l_Specification.RendererAPI = RendererAPI::VULKAN;
 
         TR_INFO("------- APPLICATION CREATED -------");
 

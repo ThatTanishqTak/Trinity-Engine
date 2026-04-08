@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Trinity/Layer/LayerStack.h"
-#include "Trinity/Renderer/RenderCommand.h"
 
 #include <atomic>
 #include <cstdint>
@@ -12,14 +11,12 @@ namespace Trinity
 {
     class Window;
     class Event;
-    class ImGuiLayer;
 
     struct ApplicationSpecification
     {
         std::string Title = "Trinity-Application";
         uint32_t Width = 1280;
         uint32_t Height = 720;
-        RendererAPI RendererAPI = Trinity::RendererAPI::VULKAN;
     };
 
     class Application
@@ -47,7 +44,6 @@ namespace Trinity
         ApplicationSpecification m_Specification;
 
         std::unique_ptr<Window> m_Window;
-        std::unique_ptr<ImGuiLayer> m_ImGuiLayer;
 
         static Application* s_Instance;
     };

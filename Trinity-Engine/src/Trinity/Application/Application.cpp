@@ -1,19 +1,14 @@
 #include "Trinity/Application/Application.h"
+
 #include "Trinity/Layer/Layer.h"
-#include "Trinity/ImGui/ImGuiLayer.h"
 
 #include "Trinity/Utilities/Log.h"
 #include "Trinity/Utilities/Time.h"
 
 #include "Trinity/Platform/Window.h"
-#include "Trinity/Assets/AssetManager.h"
 
 #include "Trinity/Events/Event.h"
 #include "Trinity/Events/EventQueue.h"
-#include "Trinity/Events/ApplicationEvent.h"
-#include "Trinity/Events/KeyEvent.h"
-#include "Trinity/Events/MouseEvent.h"
-#include "Trinity/Events/GamepadEvent.h"
 
 #include "Trinity/Input/Input.h"
 
@@ -51,12 +46,6 @@ namespace Trinity
         m_Window = Window::Create();
         m_Window->Initialize(l_WindowProperties);
 
-        RenderCommand::Initialize(*m_Window, m_Specification.RendererAPI);
-        AssetManager::Get().Initialize();
-
-        m_ImGuiLayer = std::make_unique<ImGuiLayer>();
-        m_ImGuiLayer->Initialize(*m_Window);
-
         TR_CORE_INFO("------- APPLICATION INITIALIZED -------");
     }
 
@@ -64,12 +53,7 @@ namespace Trinity
     {
         TR_CORE_INFO("------- SHUTTING DOWN APPLICATION -------");
 
-        m_ImGuiLayer->Shutdown();
-        m_ImGuiLayer.reset();
-
         m_LayerStack.Shutdown();
-        AssetManager::Get().Shutdown();
-        RenderCommand::Shutdown();
 
         m_Window->Shutdown();
         m_Window.reset();
@@ -104,24 +88,12 @@ namespace Trinity
     void Application::OnEvent(Event& e)
     {
         Input::OnEvent(e);
-        if (!e.Handled)
-        {
-            m_ImGuiLayer->OnEvent(e);
-        }
-
-        if (e.GetEventType() == EventType::WindowResize)
-        {
-            auto& a_Resize = static_cast<WindowResizeEvent&>(e);
-            RenderCommand::Resize(a_Resize.GetWidth(), a_Resize.GetHeight());
-        }
 
         for (auto it = m_LayerStack.end(); it != m_LayerStack.begin(); )
         {
             (*--it)->OnEvent(e);
             if (e.Handled)
             {
-                //TR_CORE_TRACE(e.ToString());
-
                 break;
             }
         }
@@ -161,32 +133,7 @@ namespace Trinity
             {
                 constexpr auto l_MinimizedSleep = std::chrono::milliseconds(16);
                 std::this_thread::sleep_for(l_MinimizedSleep);
-
-                continue;
             }
-
-            for (const std::unique_ptr<Layer>& it_Layer : m_LayerStack)
-            {
-                it_Layer->OnUpdate(Utilities::Time::DeltaTime());
-            }
-
-            RenderCommand::BeginFrame();
-
-            for (const std::unique_ptr<Layer>& it_Layer : m_LayerStack)
-            {
-                it_Layer->OnRender();
-            }
-
-            m_ImGuiLayer->BeginFrame();
-
-            for (const std::unique_ptr<Layer>& it_Layer : m_LayerStack)
-            {
-                it_Layer->OnImGuiRender();
-            }
-
-            m_ImGuiLayer->EndFrame();
-
-            RenderCommand::EndFrame();
         }
     }
 
