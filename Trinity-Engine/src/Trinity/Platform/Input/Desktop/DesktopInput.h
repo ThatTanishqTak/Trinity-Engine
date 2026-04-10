@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Trinity/Input/InputCodes.h"
+#include "Trinity/Platform/Input/Desktop/DesktopInputCodes.h"
 
 #include <glm/vec2.hpp>
 #include <unordered_map>
@@ -21,7 +21,7 @@ namespace Trinity
     class GamepadButtonReleasedEvent;
     class GamepadAxisMovedEvent;
 
-    class Input
+    class DesktopInput
     {
     public:
         using Vector2 = glm::vec2;

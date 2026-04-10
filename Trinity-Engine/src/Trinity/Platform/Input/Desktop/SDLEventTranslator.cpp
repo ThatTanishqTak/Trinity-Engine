@@ -1,4 +1,4 @@
-#include "Trinity/Platform/SDL/SDLEventTranslator.h"
+#include "Trinity/Platform/Input/Desktop/SDLEventTranslator.h"
 
 namespace Trinity
 {

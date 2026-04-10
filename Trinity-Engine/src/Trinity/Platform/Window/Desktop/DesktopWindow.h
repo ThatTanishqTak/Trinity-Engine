@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Trinity/Events/EventQueue.h"
-#include "Trinity/Platform/Window.h"
+#include "Trinity/Platform/Window/Window.h"
 
 #include <SDL3/SDL.h>
 
@@ -10,11 +10,11 @@
 
 namespace Trinity
 {
-    class WindowsWindow final : public Window
+    class DesktopWindow final : public Window
     {
     public:
-        WindowsWindow();
-        ~WindowsWindow() override;
+        DesktopWindow();
+        ~DesktopWindow() override;
 
         void Initialize(const WindowProperties& properties = WindowProperties()) override;
         void Shutdown() override;

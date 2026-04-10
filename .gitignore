@@ -3,3 +3,10 @@
 /bin-int
 /out
 /build
+
+/Trinity-Engine/src/Trinity/Platform/Window/PlayStation
+/Trinity-Engine/src/Trinity/Platform/Input/PlayStation
+/Trinity-Engine/src/Trinity/Platform/Window/Nintendo
+/Trinity-Engine/src/Trinity/Platform/Input/Nintendo
+
+/Trinity-Engine/shaders/compiled

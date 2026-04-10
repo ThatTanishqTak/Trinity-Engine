@@ -1,13 +1,13 @@
 #pragma once
 
+#include "Trinity/Events/Event.h"
+
 #include <deque>
 #include <memory>
 #include <mutex>
 
 namespace Trinity
 {
-    class Event;
-
     class EventQueue
     {
     public:

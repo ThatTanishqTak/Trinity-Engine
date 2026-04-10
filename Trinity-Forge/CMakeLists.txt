@@ -1,4 +1,8 @@
-project(TrinityForge)
+project(TrinityForge LANGUAGES CXX)
+
+if(NOT Trinity_Platform STREQUAL "Desktop")
+    message(FATAL_ERROR "TrinityForge can only be built for Trinity_Platform=Desktop.")
+endif()
 
 file(GLOB_RECURSE TRINITY_FORGE_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h

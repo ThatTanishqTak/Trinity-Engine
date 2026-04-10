@@ -5,12 +5,12 @@
 #include "Trinity/Utilities/Log.h"
 #include "Trinity/Utilities/Time.h"
 
-#include "Trinity/Platform/Window.h"
+#include "Trinity/Platform/Window/Window.h"
 
 #include "Trinity/Events/Event.h"
 #include "Trinity/Events/EventQueue.h"
 
-#include "Trinity/Input/Input.h"
+#include "Trinity/Platform/Input/Desktop/DesktopInput.h"
 
 #include <atomic>
 #include <chrono>
@@ -87,7 +87,7 @@ namespace Trinity
 
     void Application::OnEvent(Event& e)
     {
-        Input::OnEvent(e);
+        DesktopInput::OnEvent(e);
 
         for (auto it = m_LayerStack.end(); it != m_LayerStack.begin(); )
         {
@@ -106,7 +106,7 @@ namespace Trinity
         while (s_Running)
         {
             Utilities::Time::Update();
-            Input::BeginFrame();
+            DesktopInput::BeginFrame();
 
             m_Window->OnUpdate();
 

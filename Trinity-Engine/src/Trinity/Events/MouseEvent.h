@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Trinity/Events/Event.h"
-#include "Trinity/Input/InputCodes.h"
+#include "Trinity/Platform/Input/Desktop/DesktopInputCodes.h"
 
 #include <sstream>
 

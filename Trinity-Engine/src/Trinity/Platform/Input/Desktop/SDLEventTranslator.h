@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Trinity/Input/InputCodes.h"
+#include "Trinity/Platform/Input/Desktop/DesktopInputCodes.h"
 
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_gamepad.h>

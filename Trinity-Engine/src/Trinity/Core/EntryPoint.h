@@ -3,7 +3,7 @@
 #include "Trinity/Application/Application.h"
 #include "Trinity/Utilities/Log.h"
 #include "Trinity/Utilities/Time.h"
-#include "Trinity/Platform/Window.h"
+#include "Trinity/Platform/Window/Window.h"
 
 #include <memory>
 

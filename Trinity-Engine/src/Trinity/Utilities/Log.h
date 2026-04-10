@@ -69,6 +69,7 @@ namespace Trinity
 
 // Core log macros
 #define TR_CORE_TRACE(...) ::Trinity::Utilities::Log::GetCoreLogger()->trace(__VA_ARGS__)
+#define TR_CORE_DEBUG(...) ::Trinity::Utilities::Log::GetCoreLogger()->debug(__VA_ARGS__)
 #define TR_CORE_INFO(...)  ::Trinity::Utilities::Log::GetCoreLogger()->info(__VA_ARGS__)
 #define TR_CORE_WARN(...)  ::Trinity::Utilities::Log::GetCoreLogger()->warn(__VA_ARGS__)
 #define TR_CORE_ERROR(...) ::Trinity::Utilities::Log::GetCoreLogger()->error(__VA_ARGS__)
@@ -76,6 +77,7 @@ namespace Trinity
 
 // Client log macros
 #define TR_TRACE(...) ::Trinity::Utilities::Log::GetClientLogger()->trace(__VA_ARGS__)
+#define TR_DEBUG(...) ::Trinity::Utilities::Log::GetClientLogger()->debug(__VA_ARGS__)
 #define TR_INFO(...)  ::Trinity::Utilities::Log::GetClientLogger()->info(__VA_ARGS__)
 #define TR_WARN(...)  ::Trinity::Utilities::Log::GetClientLogger()->warn(__VA_ARGS__)
 #define TR_ERROR(...) ::Trinity::Utilities::Log::GetClientLogger()->error(__VA_ARGS__)

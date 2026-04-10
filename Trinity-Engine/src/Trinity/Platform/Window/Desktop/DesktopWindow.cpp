@@ -1,32 +1,32 @@
-#include "Trinity/Platform/Windows/WindowsWindow.h"
+#include "Trinity/Platform/Window/Desktop/DesktopWindow.h"
 
 #include "Trinity/Events/ApplicationEvent.h"
 #include "Trinity/Events/Event.h"
 #include "Trinity/Events/GamepadEvent.h"
 #include "Trinity/Events/KeyEvent.h"
 #include "Trinity/Events/MouseEvent.h"
-#include "Trinity/Platform/SDL/SDLEventTranslator.h"
+#include "Trinity/Platform/Input/Desktop/SDLEventTranslator.h"
 #include "Trinity/Utilities/Log.h"
 
 #include <memory>
 
 namespace Trinity
 {
-    WindowsWindow::WindowsWindow()
+    DesktopWindow::DesktopWindow()
     {
 
     }
 
-    WindowsWindow::~WindowsWindow()
+    DesktopWindow::~DesktopWindow()
     {
 
     }
 
-    void WindowsWindow::Initialize(const WindowProperties& properties)
+    void DesktopWindow::Initialize(const WindowProperties& properties)
     {
         if (m_Initialized)
         {
-            TR_CORE_WARN("WindowsWindow::Initialize called more than once. Ignoring.");
+            TR_CORE_WARN("DesktopWindow::Initialize called more than once. Ignoring.");
 
             return;
         }
@@ -69,7 +69,7 @@ namespace Trinity
         m_Initialized = true;
     }
 
-    void WindowsWindow::Shutdown()
+    void DesktopWindow::Shutdown()
     {
         if (!m_Initialized)
         {
@@ -91,7 +91,7 @@ namespace Trinity
         SDL_QuitSubSystem(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD);
     }
 
-    void WindowsWindow::OnUpdate()
+    void DesktopWindow::OnUpdate()
     {
         if (!m_Initialized)
         {
@@ -255,7 +255,7 @@ namespace Trinity
         }
     }
 
-    void WindowsWindow::OnEvent(Event& e)
+    void DesktopWindow::OnEvent(Event& e)
     {
         EventDispatcher l_Dispatcher(e);
 
@@ -281,12 +281,12 @@ namespace Trinity
             });
     }
 
-    void WindowsWindow::SetVSync(bool enabled)
+    void DesktopWindow::SetVSync(bool enabled)
     {
         m_Data.VSync = enabled;
     }
 
-    void WindowsWindow::SetCursorVisible(bool visible)
+    void DesktopWindow::SetCursorVisible(bool visible)
     {
         if (m_CursorVisible == visible)
         {
@@ -305,7 +305,7 @@ namespace Trinity
         }
     }
 
-    void WindowsWindow::SetCursorLocked(bool locked)
+    void DesktopWindow::SetCursorLocked(bool locked)
     {
         if (m_CursorLocked == locked)
         {
@@ -332,7 +332,7 @@ namespace Trinity
         }
     }
 
-    NativeWindowHandle WindowsWindow::GetNativeHandle() const
+    NativeWindowHandle DesktopWindow::GetNativeHandle() const
     {
         NativeWindowHandle l_Handle{};
         l_Handle.Window = m_WindowHandle;
