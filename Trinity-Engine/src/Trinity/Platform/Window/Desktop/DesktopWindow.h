@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <string>
+#include <unordered_map>
 
 namespace Trinity
 {
@@ -54,6 +55,7 @@ namespace Trinity
     private:
         SDL_Window* m_WindowHandle = nullptr;
         uint32_t m_WindowID = 0;
+        std::unordered_map<int, SDL_Gamepad*> m_Gamepads{};
 
         float m_CursorRestoreX = 0.0f;
         float m_CursorRestoreY = 0.0f;

@@ -1,9 +1,14 @@
 #include "Trinity/Platform/Window/Window.h"
 
+#if defined(TRINITY_PLATFORM_DESKTOP)
 #include "Trinity/Platform/Window/Desktop/DesktopWindow.h"
+#elif defined(TRINITY_PLATFORM_PLAYSTATION)
 #include "Trinity/Platform/Window/PlayStation/PlayStationWindow.h"
+#elif defined(TRINITY_PLATFORM_XBOX)
 #include "Trinity/Platform/Window/Xbox/XboxWindow.h"
+#elif defined(TRINITY_PLATFORM_NINTENDO)
 #include "Trinity/Platform/Window/Nintendo/NintendoWindow.h"
+#endif
 
 namespace Trinity
 {

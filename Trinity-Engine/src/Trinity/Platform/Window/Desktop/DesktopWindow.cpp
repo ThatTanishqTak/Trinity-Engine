@@ -79,6 +79,15 @@ namespace Trinity
         SetCursorLocked(false);
         SetCursorVisible(true);
 
+        for (auto& it_Gamepad : m_Gamepads)
+        {
+            if (it_Gamepad.second != nullptr)
+            {
+                SDL_CloseGamepad(it_Gamepad.second);
+            }
+        }
+        m_Gamepads.clear();
+
         if (m_WindowHandle != nullptr)
         {
             SDL_DestroyWindow(m_WindowHandle);
@@ -210,6 +219,15 @@ namespace Trinity
                 if (l_Gamepad != nullptr)
                 {
                     const int l_GamepadID = static_cast<int>(l_Event.gdevice.which);
+                    auto a_GamePad = m_Gamepads.find(l_GamepadID);
+                    if (a_GamePad != m_Gamepads.end())
+                    {
+                        if (a_GamePad->second != nullptr)
+                        {
+                            SDL_CloseGamepad(a_GamePad->second);
+                        }
+                    }
+
                     const char* l_Name = SDL_GetGamepadName(l_Gamepad);
                     m_EventQueue.PushEvent(std::make_unique<GamepadConnectedEvent>(l_GamepadID, l_Name != nullptr ? l_Name : "", true));
                 }
@@ -220,6 +238,16 @@ namespace Trinity
             if (l_Event.type == SDL_EVENT_GAMEPAD_REMOVED)
             {
                 const int l_GamepadID = static_cast<int>(l_Event.gdevice.which);
+                auto a_GamePad = m_Gamepads.find(l_GamepadID);
+                if (a_GamePad != m_Gamepads.end())
+                {
+                    if (a_GamePad->second != nullptr)
+                    {
+                        SDL_CloseGamepad(a_GamePad->second);
+                    }
+                    m_Gamepads.erase(a_GamePad);
+                }
+
                 m_EventQueue.PushEvent(std::make_unique<GamepadDisconnectedEvent>(l_GamepadID));
 
                 continue;
