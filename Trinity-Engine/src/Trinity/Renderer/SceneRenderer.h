@@ -2,6 +2,7 @@
 
 #include "Trinity/Renderer/Camera/Camera.h"
 
+#include <cstdint>
 #include <memory>
 #include <vector>
 
@@ -18,7 +19,7 @@ namespace Trinity
 
 	struct DirectionalLight
 	{
-		float Directiom[3] = { 0.0f, 0.0f, 0.0f };
+		float Direction[3] = { 0.0f, -1.0f, 0.0f };
 		float Intensity = 1.0f;
 		float Color[3] = { 1.0f, 1.0f, 1.0f };
 	};
@@ -52,12 +53,12 @@ namespace Trinity
 		void Render();
 		void OnResize(uint32_t width, uint32_t height);
 
-		std::shared_ptr<Texture> GetFinalTexture() const;
-		const SceneRendererStats& GetRendererStats() const;
+		std::shared_ptr<Texture> GetFinalOutput() const;
+		const SceneRendererStats& GetStats() const;
 
 	private:
-		struct Impl;
-		std::unique_ptr<Impl> m_Impl;
+		struct Implementation;
+		std::unique_ptr<Implementation> m_Implementation;
 
 		std::vector<MeshDrawCommand> m_DrawList;
 		Camera m_Camera;

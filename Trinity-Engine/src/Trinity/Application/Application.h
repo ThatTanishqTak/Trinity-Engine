@@ -11,7 +11,6 @@ namespace Trinity
 {
     class Window;
     class Event;
-    class Renderer;
 
     struct ApplicationSpecification
     {

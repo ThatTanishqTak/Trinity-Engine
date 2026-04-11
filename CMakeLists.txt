@@ -35,6 +35,7 @@ endif()
 target_compile_definitions(TrinityConfig INTERFACE
     $<$<CONFIG:Debug>:TRINITY_DEBUG>
     $<$<CONFIG:Release>:TRINITY_RELEASE>
+    GLM_FORCE_DEPTH_ZERO_TO_ONE
 )
 
 if(Trinity_Platform STREQUAL "Desktop")
