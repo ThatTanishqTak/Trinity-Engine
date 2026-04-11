@@ -2,8 +2,5 @@
 
 namespace Trinity
 {
-	class MoltenVKRenderer
-	{
 
-	};
 }

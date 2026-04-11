@@ -2,8 +2,9 @@
 
 namespace Trinity
 {
-	class DirectXRenderer
+	class VulkanRendererAPI
 	{
+	public:
 
 	};
 }

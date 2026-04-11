@@ -4,7 +4,7 @@
 
 namespace Trinity
 {
-	struct SceneRenderer::Impl
+	struct SceneRenderer::Implementation
 	{
 		SceneRendererStats Stats;
 		bool SceneActive = false;
@@ -14,7 +14,7 @@ namespace Trinity
 	{
 		m_Width = width;
 		m_Height = height;
-		m_Implementation = std::make_unique<Impl>();
+		m_Implementation = std::make_unique<Implementation>();
 	}
 
 	void SceneRenderer::Shutdown()
