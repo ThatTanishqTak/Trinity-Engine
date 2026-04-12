@@ -27,11 +27,12 @@ namespace Trinity
     {
         m_MaxFramesInFlight = specification.MaxFramesInFlight;
 
-        m_Device.Initialize(window, specification.EnableValidation);
+        m_Instance.Initialize(window, specification.EnableValidation);
+        m_Device.Initialize(m_Instance, specification.EnableValidation);
 
-        if (specification.EnableValidation)
+        if (m_Instance.IsValidationEnabled())
         {
-            m_Debug.Initialize(m_Device.GetInstance());
+            m_Debug.Initialize(m_Instance.GetInstance());
         }
 
         m_Allocator.Initialize(m_Device);
@@ -52,6 +53,7 @@ namespace Trinity
         m_Allocator.Shutdown();
         m_Debug.Shutdown();
         m_Device.Shutdown();
+        m_Instance.Shutdown();
 
         TR_CORE_INFO("Vulkan renderer shut down.");
     }

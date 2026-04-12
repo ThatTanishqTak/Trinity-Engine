@@ -1,10 +1,7 @@
 #include "Trinity/Renderer/Vulkan/VulkanDevice.h"
 
-#include "Trinity/Renderer/Vulkan/VulkanDebug.h"
+#include "Trinity/Renderer/Vulkan/VulkanInstance.h"
 #include "Trinity/Renderer/Vulkan/VulkanUtilities.h"
-#include "Trinity/Platform/Window/Window.h"
-
-#include <SDL3/SDL_vulkan.h>
 
 #include <set>
 #include <string>
@@ -15,12 +12,10 @@ namespace Trinity
     static const std::vector<const char*> s_ValidationLayers = { "VK_LAYER_KHRONOS_validation" };
     static const std::vector<const char*> s_DeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
-    void VulkanDevice::Initialize(Window& window, bool enableValidation)
+    void VulkanDevice::Initialize(const VulkanInstance& instance, bool enableValidation)
     {
-        m_ValidationEnabled = enableValidation;
+        m_Instance = &instance;
 
-        CreateInstance(enableValidation);
-        CreateSurface(window);
         PickPhysicalDevice();
         CreateLogicalDevice(enableValidation);
 
@@ -35,91 +30,25 @@ namespace Trinity
             m_Device = VK_NULL_HANDLE;
         }
 
-        if (m_Surface != VK_NULL_HANDLE)
-        {
-            vkDestroySurfaceKHR(m_Instance, m_Surface, nullptr);
-            m_Surface = VK_NULL_HANDLE;
-        }
-
-        if (m_Instance != VK_NULL_HANDLE)
-        {
-            vkDestroyInstance(m_Instance, nullptr);
-            m_Instance = VK_NULL_HANDLE;
-        }
+        m_Instance = nullptr;
     }
 
-    void VulkanDevice::CreateInstance(bool enableValidation)
+    VkInstance VulkanDevice::GetInstance() const
     {
-        if (enableValidation && !CheckValidationLayerSupport())
-        {
-            TR_CORE_WARN("Validation layers requested but not available. Disabling.");
-            m_ValidationEnabled = false;
-            enableValidation = false;
-        }
-
-        VkApplicationInfo l_AppInfo{};
-        l_AppInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-        l_AppInfo.pApplicationName = "Trinity Engine";
-        l_AppInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-        l_AppInfo.pEngineName = "Trinity";
-        l_AppInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-        l_AppInfo.apiVersion = VK_API_VERSION_1_3;
-
-        uint32_t l_SDLExtensionCount = 0;
-        const char* const* l_SDLExtensions = SDL_Vulkan_GetInstanceExtensions(&l_SDLExtensionCount);
-
-        std::vector<const char*> l_Extensions(l_SDLExtensions, l_SDLExtensions + l_SDLExtensionCount);
-
-        if (enableValidation)
-        {
-            l_Extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-        }
-
-        VkInstanceCreateInfo l_CreateInfo{};
-        l_CreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-        l_CreateInfo.pApplicationInfo = &l_AppInfo;
-        l_CreateInfo.enabledExtensionCount = static_cast<uint32_t>(l_Extensions.size());
-        l_CreateInfo.ppEnabledExtensionNames = l_Extensions.data();
-
-#ifdef __APPLE__
-        l_CreateInfo.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
-        l_Extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
-        l_CreateInfo.enabledExtensionCount = static_cast<uint32_t>(l_Extensions.size());
-        l_CreateInfo.ppEnabledExtensionNames = l_Extensions.data();
-#endif
-
-        VkDebugUtilsMessengerCreateInfoEXT l_DebugCreateInfo{};
-        if (enableValidation)
-        {
-            l_CreateInfo.enabledLayerCount = static_cast<uint32_t>(s_ValidationLayers.size());
-            l_CreateInfo.ppEnabledLayerNames = s_ValidationLayers.data();
-
-            VulkanDebug::PopulateCreateInfo(l_DebugCreateInfo);
-            l_CreateInfo.pNext = &l_DebugCreateInfo;
-        }
-        else
-        {
-            l_CreateInfo.enabledLayerCount = 0;
-            l_CreateInfo.pNext = nullptr;
-        }
-
-        VulkanUtilities::VKCheck(vkCreateInstance(&l_CreateInfo, nullptr, &m_Instance), "Failed vkCreateInstance");
+        return m_Instance ? m_Instance->GetInstance() : VK_NULL_HANDLE;
     }
 
-    void VulkanDevice::CreateSurface(Window& window)
+    VkSurfaceKHR VulkanDevice::GetSurface() const
     {
-        NativeWindowHandle l_Handle = window.GetNativeHandle();
-        if (!SDL_Vulkan_CreateSurface(l_Handle.Window, m_Instance, nullptr, &m_Surface))
-        {
-            TR_CORE_CRITICAL("Failed to create Vulkan surface: {}", SDL_GetError());
-            std::abort();
-        }
+        return m_Instance ? m_Instance->GetSurface() : VK_NULL_HANDLE;
     }
 
     void VulkanDevice::PickPhysicalDevice()
     {
+        VkInstance l_Instance = GetInstance();
+
         uint32_t l_DeviceCount = 0;
-        vkEnumeratePhysicalDevices(m_Instance, &l_DeviceCount, nullptr);
+        vkEnumeratePhysicalDevices(l_Instance, &l_DeviceCount, nullptr);
 
         if (l_DeviceCount == 0)
         {
@@ -128,7 +57,7 @@ namespace Trinity
         }
 
         std::vector<VkPhysicalDevice> l_Devices(l_DeviceCount);
-        vkEnumeratePhysicalDevices(m_Instance, &l_DeviceCount, l_Devices.data());
+        vkEnumeratePhysicalDevices(l_Instance, &l_DeviceCount, l_Devices.data());
 
         // Prefer discrete GPU
         for (const auto& l_Device : l_Devices)
@@ -227,6 +156,8 @@ namespace Trinity
     {
         QueueFamilyIndices l_Indices;
 
+        VkSurfaceKHR l_Surface = GetSurface();
+
         uint32_t l_QueueFamilyCount = 0;
         vkGetPhysicalDeviceQueueFamilyProperties(device, &l_QueueFamilyCount, nullptr);
 
@@ -241,7 +172,7 @@ namespace Trinity
             }
 
             VkBool32 l_PresentSupport = false;
-            vkGetPhysicalDeviceSurfaceSupportKHR(device, i, m_Surface, &l_PresentSupport);
+            vkGetPhysicalDeviceSurfaceSupportKHR(device, i, l_Surface, &l_PresentSupport);
 
             if (l_PresentSupport)
             {
@@ -261,22 +192,24 @@ namespace Trinity
     {
         SwapchainSupportDetails l_Details;
 
-        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_PhysicalDevice, m_Surface, &l_Details.Capabilities);
+        VkSurfaceKHR l_Surface = GetSurface();
+
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_PhysicalDevice, l_Surface, &l_Details.Capabilities);
 
         uint32_t l_FormatCount = 0;
-        vkGetPhysicalDeviceSurfaceFormatsKHR(m_PhysicalDevice, m_Surface, &l_FormatCount, nullptr);
+        vkGetPhysicalDeviceSurfaceFormatsKHR(m_PhysicalDevice, l_Surface, &l_FormatCount, nullptr);
         if (l_FormatCount != 0)
         {
             l_Details.Formats.resize(l_FormatCount);
-            vkGetPhysicalDeviceSurfaceFormatsKHR(m_PhysicalDevice, m_Surface, &l_FormatCount, l_Details.Formats.data());
+            vkGetPhysicalDeviceSurfaceFormatsKHR(m_PhysicalDevice, l_Surface, &l_FormatCount, l_Details.Formats.data());
         }
 
         uint32_t l_PresentModeCount = 0;
-        vkGetPhysicalDeviceSurfacePresentModesKHR(m_PhysicalDevice, m_Surface, &l_PresentModeCount, nullptr);
+        vkGetPhysicalDeviceSurfacePresentModesKHR(m_PhysicalDevice, l_Surface, &l_PresentModeCount, nullptr);
         if (l_PresentModeCount != 0)
         {
             l_Details.PresentModes.resize(l_PresentModeCount);
-            vkGetPhysicalDeviceSurfacePresentModesKHR(m_PhysicalDevice, m_Surface, &l_PresentModeCount, l_Details.PresentModes.data());
+            vkGetPhysicalDeviceSurfacePresentModesKHR(m_PhysicalDevice, l_Surface, &l_PresentModeCount, l_Details.PresentModes.data());
         }
 
         return l_Details;
@@ -287,22 +220,24 @@ namespace Trinity
         QueueFamilyIndices l_Indices = FindQueueFamilies(device);
         bool l_ExtensionsSupported = CheckDeviceExtensionSupport(device);
 
+        VkSurfaceKHR l_Surface = GetSurface();
+
         bool l_SwapchainAdequate = false;
         if (l_ExtensionsSupported)
         {
             SwapchainSupportDetails l_SwapchainSupport;
-            vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, m_Surface, &l_SwapchainSupport.Capabilities);
+            vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, l_Surface, &l_SwapchainSupport.Capabilities);
 
             uint32_t l_FormatCount = 0;
-            vkGetPhysicalDeviceSurfaceFormatsKHR(device, m_Surface, &l_FormatCount, nullptr);
+            vkGetPhysicalDeviceSurfaceFormatsKHR(device, l_Surface, &l_FormatCount, nullptr);
             l_SwapchainSupport.Formats.resize(l_FormatCount);
             if (l_FormatCount > 0)
             {
-                vkGetPhysicalDeviceSurfaceFormatsKHR(device, m_Surface, &l_FormatCount, l_SwapchainSupport.Formats.data());
+                vkGetPhysicalDeviceSurfaceFormatsKHR(device, l_Surface, &l_FormatCount, l_SwapchainSupport.Formats.data());
             }
 
             uint32_t l_PresentModeCount = 0;
-            vkGetPhysicalDeviceSurfacePresentModesKHR(device, m_Surface, &l_PresentModeCount, nullptr);
+            vkGetPhysicalDeviceSurfacePresentModesKHR(device, l_Surface, &l_PresentModeCount, nullptr);
 
             l_SwapchainAdequate = !l_SwapchainSupport.Formats.empty() && l_PresentModeCount > 0;
         }
@@ -329,34 +264,5 @@ namespace Trinity
         }
 
         return l_RequiredExtensions.empty();
-    }
-
-    bool VulkanDevice::CheckValidationLayerSupport() const
-    {
-        uint32_t l_LayerCount = 0;
-        vkEnumerateInstanceLayerProperties(&l_LayerCount, nullptr);
-
-        std::vector<VkLayerProperties> l_AvailableLayers(l_LayerCount);
-        vkEnumerateInstanceLayerProperties(&l_LayerCount, l_AvailableLayers.data());
-
-        for (const char* l_LayerName : s_ValidationLayers)
-        {
-            bool l_Found = false;
-            for (const auto& l_LayerProperties : l_AvailableLayers)
-            {
-                if (strcmp(l_LayerName, l_LayerProperties.layerName) == 0)
-                {
-                    l_Found = true;
-                    break;
-                }
-            }
-
-            if (!l_Found)
-            {
-                return false;
-            }
-        }
-
-        return true;
     }
 }

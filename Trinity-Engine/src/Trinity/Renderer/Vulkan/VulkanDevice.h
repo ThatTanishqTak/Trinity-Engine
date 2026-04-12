@@ -8,7 +8,7 @@
 
 namespace Trinity
 {
-	class Window;
+	class VulkanInstance;
 
 	struct QueueFamilyIndices
 	{
@@ -31,13 +31,13 @@ namespace Trinity
 		VulkanDevice() = default;
 		~VulkanDevice() = default;
 
-		void Initialize(Window& window, bool enableValidation);
+		void Initialize(const VulkanInstance& instance, bool enableValidation);
 		void Shutdown();
 
-		VkInstance GetInstance() const { return m_Instance; }
+		VkInstance GetInstance() const;
+		VkSurfaceKHR GetSurface() const;
 		VkPhysicalDevice GetPhysicalDevice() const { return m_PhysicalDevice; }
 		VkDevice GetDevice() const { return m_Device; }
-		VkSurfaceKHR GetSurface() const { return m_Surface; }
 		VkQueue GetGraphicsQueue() const { return m_GraphicsQueue; }
 		VkQueue GetPresentQueue() const { return m_PresentQueue; }
 		const QueueFamilyIndices& GetQueueFamilyIndices() const { return m_QueueFamilyIndices; }
@@ -47,18 +47,14 @@ namespace Trinity
 		QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device) const;
 
 	private:
-		void CreateInstance(bool enableValidation);
-		void CreateSurface(Window& window);
 		void PickPhysicalDevice();
 		void CreateLogicalDevice(bool enableValidation);
 
 		bool IsDeviceSuitable(VkPhysicalDevice device) const;
 		bool CheckDeviceExtensionSupport(VkPhysicalDevice device) const;
-		bool CheckValidationLayerSupport() const;
 
 	private:
-		VkInstance m_Instance = VK_NULL_HANDLE;
-		VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
+		const VulkanInstance* m_Instance = nullptr;
 		VkPhysicalDevice m_PhysicalDevice = VK_NULL_HANDLE;
 		VkDevice m_Device = VK_NULL_HANDLE;
 
@@ -67,6 +63,5 @@ namespace Trinity
 
 		QueueFamilyIndices m_QueueFamilyIndices;
 		VkPhysicalDeviceProperties m_Properties{};
-		bool m_ValidationEnabled = false;
 	};
 }

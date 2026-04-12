@@ -6,6 +6,7 @@
 #include "Trinity/Renderer/Vulkan/VulkanCommandPool.h"
 #include "Trinity/Renderer/Vulkan/VulkanDebug.h"
 #include "Trinity/Renderer/Vulkan/VulkanDevice.h"
+#include "Trinity/Renderer/Vulkan/VulkanInstance.h"
 #include "Trinity/Renderer/Vulkan/VulkanSwapchain.h"
 #include "Trinity/Renderer/Vulkan/VulkanSyncObjects.h"
 
@@ -49,18 +50,19 @@ namespace Trinity
     private:
         void TransitionImageLayout(VkCommandBuffer cmd, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout) const;
 
-	private:
-		VulkanDevice m_Device;
-		VulkanDebug m_Debug;
-		VulkanAllocator m_Allocator;
-		VulkanSwapchain m_Swapchain;
-		VulkanCommandPool m_CommandPool;
-		VulkanSyncObjects m_SyncObjects;
+    private:
+        VulkanInstance m_Instance;
+        VulkanDevice m_Device;
+        VulkanDebug m_Debug;
+        VulkanAllocator m_Allocator;
+        VulkanSwapchain m_Swapchain;
+        VulkanCommandPool m_CommandPool;
+        VulkanSyncObjects m_SyncObjects;
 
-		uint32_t m_MaxFramesInFlight = 2;
-		uint32_t m_CurrentFrameIndex = 0;
-		uint32_t m_CurrentImageIndex = 0;
-		bool m_FramebufferResized = false;
-		bool m_FrameStarted = false;
-	};
+        uint32_t m_MaxFramesInFlight = 2;
+        uint32_t m_CurrentFrameIndex = 0;
+        uint32_t m_CurrentImageIndex = 0;
+        bool m_FramebufferResized = false;
+        bool m_FrameStarted = false;
+    };
 }
