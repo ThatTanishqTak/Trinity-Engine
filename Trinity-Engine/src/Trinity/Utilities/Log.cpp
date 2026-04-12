@@ -5,7 +5,7 @@
 
 namespace Trinity
 {
-    namespace Utilities
+    namespace CoreUtilities
     {
         std::shared_ptr<spdlog::logger> Log::s_CoreLogger;
         std::shared_ptr<spdlog::logger> Log::s_ClientLogger;

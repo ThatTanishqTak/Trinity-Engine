@@ -2,7 +2,7 @@
 
 namespace Trinity
 {
-    namespace Utilities
+    namespace CoreUtilities
     {
         class Time
         {

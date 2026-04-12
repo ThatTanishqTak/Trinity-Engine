@@ -17,8 +17,8 @@ int main(int argc, char* argv[])
     (void)argc;
     (void)argv;
 
-    Trinity::Utilities::Log::Initialize();
-    Trinity::Utilities::Time::Initialize();
+    Trinity::CoreUtilities::Log::Initialize();
+    Trinity::CoreUtilities::Time::Initialize();
 
     Trinity::ApplicationSpecification l_Specification;
     std::unique_ptr<Trinity::Application> l_Application(Trinity::CreateApplication(l_Specification));

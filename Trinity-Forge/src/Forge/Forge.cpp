@@ -1,4 +1,5 @@
 #include "Forge/ForgeLayer.h"
+
 #include "Trinity/Core/EntryPoint.h"
 
 #include <memory>
@@ -14,19 +15,16 @@ public:
     ~ForgeApp() override = default;
 };
 
-namespace Trinity
+Trinity::Application* Trinity::CreateApplication(const Trinity::ApplicationSpecification& specification)
 {
-    Application* CreateApplication(const ApplicationSpecification& specification)
-    {
-        TR_INFO("------- CREATING APPLICATION -------");
+    TR_INFO("------- CREATING APPLICATION -------");
 
-        ApplicationSpecification l_Specification = specification;
-        l_Specification.Title = "Forge";
-        l_Specification.Width = 1920;
-        l_Specification.Height = 1080;
+    Trinity::ApplicationSpecification l_Specification = specification;
+    l_Specification.Title = "Forge";
+    l_Specification.Width = 1920;
+    l_Specification.Height = 1080;
 
-        TR_INFO("------- APPLICATION CREATED -------");
+    TR_INFO("------- APPLICATION CREATED -------");
 
-        return new ForgeApp(l_Specification);
-    }
+    return new ForgeApp(l_Specification);
 }

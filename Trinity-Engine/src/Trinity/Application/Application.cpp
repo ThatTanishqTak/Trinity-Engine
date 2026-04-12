@@ -105,7 +105,7 @@ namespace Trinity
     {
         while (s_Running)
         {
-            Utilities::Time::Update();
+            CoreUtilities::Time::Update();
             DesktopInput::BeginFrame();
 
             m_Window->OnUpdate();

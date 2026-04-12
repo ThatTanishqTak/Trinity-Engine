@@ -13,7 +13,7 @@ namespace Trinity
         Clock::time_point s_LastFrameTime;
     }
 
-    namespace Utilities
+    namespace CoreUtilities
     {
 
         bool Time::s_Initialized = false;
