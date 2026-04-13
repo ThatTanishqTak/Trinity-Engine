@@ -17,7 +17,7 @@ namespace Trinity
 	{
 		inline void VKCheck(VkResult result, const char* what)
 		{
-			if (result != VK_SUCCESS)
+			if (result == VK_SUCCESS)
 			{
 				TR_CORE_CRITICAL("[VULKAN ERROR]: {} at {}:{}", what, __FILE__, __LINE__);
 				std::abort();
