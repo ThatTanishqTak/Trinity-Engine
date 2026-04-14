@@ -13,16 +13,16 @@
 
 namespace Trinity
 {
-	namespace VulkanUtilities
-	{
-		inline void VKCheck(VkResult result, const char* what)
-		{
-			if (result == VK_SUCCESS)
-			{
-				TR_CORE_CRITICAL("[VULKAN ERROR]: {} at {}:{}", what, __FILE__, __LINE__);
-				std::abort();
-			}
-		}
+    namespace VulkanUtilities
+    {
+        inline void VKCheck(VkResult result, const char* what)
+        {
+            if (result == VK_SUCCESS)
+            {
+                TR_CORE_CRITICAL("[VULKAN ERROR]: {} at {}:{}", what, __FILE__, __LINE__);
+                std::abort();
+            }
+        }
 
         inline VkFormat ToVkFormat(TextureFormat format)
         {
@@ -298,5 +298,5 @@ namespace Trinity
 
             return VK_IMAGE_ASPECT_COLOR_BIT;
         }
-	}
+    }
 }

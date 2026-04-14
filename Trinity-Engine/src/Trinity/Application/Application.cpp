@@ -7,10 +7,13 @@
 
 #include "Trinity/Platform/Window/Window.h"
 
+#include "Trinity/Events/ApplicationEvent.h"
 #include "Trinity/Events/Event.h"
 #include "Trinity/Events/EventQueue.h"
 
 #include "Trinity/Platform/Input/Desktop/DesktopInput.h"
+
+#include "Trinity/Renderer/Renderer.h"
 
 #include <atomic>
 #include <chrono>
@@ -46,6 +49,17 @@ namespace Trinity
         m_Window = Window::Create();
         m_Window->Initialize(l_WindowProperties);
 
+        RendererSpecification l_RendererSpecification;
+        l_RendererSpecification.Backend = RendererBackend::Vulkan;
+        l_RendererSpecification.MaxFramesInFlight = 2;
+#ifdef TRINITY_DEBUG
+        l_RendererSpecification.EnableValidation = true;
+#elif
+        l_RendererSpecification.EnableValidation = false;
+#endif
+
+        Renderer::Initialize(*m_Window, l_RendererSpecification);
+
         TR_CORE_INFO("------- APPLICATION INITIALIZED -------");
     }
 
@@ -53,7 +67,11 @@ namespace Trinity
     {
         TR_CORE_INFO("------- SHUTTING DOWN APPLICATION -------");
 
+        Renderer::WaitIdle();
+
         m_LayerStack.Shutdown();
+
+        Renderer::Shutdown();
 
         m_Window->Shutdown();
         m_Window.reset();
@@ -88,6 +106,14 @@ namespace Trinity
     void Application::OnEvent(Event& e)
     {
         DesktopInput::OnEvent(e);
+
+        EventDispatcher l_Dispatcher(e);
+        l_Dispatcher.Dispatch<WindowResizeEvent>([](WindowResizeEvent& resize) -> bool
+        {
+            Renderer::OnWindowResize(resize.GetWidth(), resize.GetHeight());
+
+            return false;
+        });
 
         for (auto it = m_LayerStack.end(); it != m_LayerStack.begin(); )
         {
@@ -133,6 +159,22 @@ namespace Trinity
             {
                 constexpr auto l_MinimizedSleep = std::chrono::milliseconds(16);
                 std::this_thread::sleep_for(l_MinimizedSleep);
+            }
+
+            for (const std::unique_ptr<Layer>& it_Layer : m_LayerStack)
+            {
+                it_Layer->OnUpdate(CoreUtilities::Time::DeltaTime());
+            }
+
+            if (Renderer::BeginFrame())
+            {
+                for (const std::unique_ptr<Layer>& it_Layer : m_LayerStack)
+                {
+                    it_Layer->OnRender();
+                }
+
+                Renderer::EndFrame();
+                Renderer::Present();
             }
         }
     }

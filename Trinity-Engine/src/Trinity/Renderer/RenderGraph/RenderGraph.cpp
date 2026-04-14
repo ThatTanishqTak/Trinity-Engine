@@ -122,7 +122,7 @@ namespace Trinity
         std::vector<uint32_t> l_LastWriter(l_ResourceCount, l_InvalidPass);
         std::vector<std::vector<uint32_t>> l_ActiveReaders(l_ResourceCount);
 
-        auto l_AddDep = [&](uint32_t from, uint32_t to)
+        auto a_AddDependency = [&](uint32_t from, uint32_t to)
         {
             if (from == to)
             {
@@ -149,7 +149,7 @@ namespace Trinity
 
                 if (l_LastWriter[it_Handle.Index] != l_InvalidPass)
                 {
-                    l_AddDep(l_LastWriter[it_Handle.Index], i);
+                    a_AddDependency(l_LastWriter[it_Handle.Index], i);
                 }
             }
 
@@ -162,12 +162,12 @@ namespace Trinity
 
                 if (l_LastWriter[it_Handle.Index] != l_InvalidPass)
                 {
-                    l_AddDep(l_LastWriter[it_Handle.Index], i);
+                    a_AddDependency(l_LastWriter[it_Handle.Index], i);
                 }
 
                 for (uint32_t l_Reader : l_ActiveReaders[it_Handle.Index])
                 {
-                    l_AddDep(l_Reader, i);
+                    a_AddDependency(l_Reader, i);
                 }
             }
 

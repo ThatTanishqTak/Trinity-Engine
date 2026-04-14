@@ -51,6 +51,8 @@ namespace Trinity
         void TransitionImageLayout(VkCommandBuffer cmd, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout) const;
 
     private:
+        Window* m_Window = nullptr;
+
         VulkanInstance m_Instance;
         VulkanDevice m_Device;
         VulkanDebug m_Debug;
