@@ -45,7 +45,7 @@ namespace Trinity
         m_Data.Resizable = properties.Resizable;
         m_Data.Minimized = (properties.Width == 0 || properties.Height == 0);
 
-        SDL_WindowFlags l_WindowFlags = SDL_WINDOW_VULKAN | SDL_WINDOW_MAXIMIZED;
+        SDL_WindowFlags l_WindowFlags = SDL_WINDOW_VULKAN;
         if (m_Data.Resizable)
         {
             l_WindowFlags |= SDL_WINDOW_RESIZABLE;
