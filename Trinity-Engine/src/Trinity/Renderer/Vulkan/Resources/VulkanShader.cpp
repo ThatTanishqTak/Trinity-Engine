@@ -42,11 +42,16 @@ namespace Trinity
 
     std::vector<uint32_t> VulkanShader::ReadSpvFile(const std::string& path) const
     {
-        std::ifstream l_File(path, std::ios::ate | std::ios::binary);
+#ifdef TRINITY_SHADER_DIR
+        std::string l_FullPath = std::string(TRINITY_SHADER_DIR) + path;
+#else
+        std::string l_FullPath = path;
+#endif
+        std::ifstream l_File(l_FullPath, std::ios::ate | std::ios::binary);
 
         if (!l_File.is_open())
         {
-            TR_CORE_ERROR("Failed to open shader file: {}", path);
+            TR_CORE_ERROR("Failed to open shader file: {}", l_FullPath);
             return {};
         }
 

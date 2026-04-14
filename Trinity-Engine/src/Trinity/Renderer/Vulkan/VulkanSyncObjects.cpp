@@ -6,12 +6,12 @@
 
 namespace Trinity
 {
-    void VulkanSyncObjects::Initialize(VkDevice device, uint32_t framesInFlight)
+    void VulkanSyncObjects::Initialize(VkDevice device, uint32_t framesInFlight, uint32_t imageCount)
     {
         m_Device = device;
 
         m_ImageAvailableSemaphores.resize(framesInFlight);
-        m_RenderFinishedSemaphores.resize(framesInFlight);
+        m_RenderFinishedSemaphores.resize(imageCount);
         m_InFlightFences.resize(framesInFlight);
 
         VkSemaphoreCreateInfo l_SemaphoreInfo{};
@@ -24,11 +24,15 @@ namespace Trinity
         for (uint32_t i = 0; i < framesInFlight; i++)
         {
             VulkanUtilities::VKCheck(vkCreateSemaphore(device, &l_SemaphoreInfo, nullptr, &m_ImageAvailableSemaphores[i]), "Failed vkCreateSemaphore");
-            VulkanUtilities::VKCheck(vkCreateSemaphore(device, &l_SemaphoreInfo, nullptr, &m_RenderFinishedSemaphores[i]), "Failed vkCreateSemaphore");
             VulkanUtilities::VKCheck(vkCreateFence(device, &l_FenceInfo, nullptr, &m_InFlightFences[i]), "Failed vkCreateFence");
         }
 
-        TR_CORE_INFO("Vulkan sync objects created ({} frames in flight).", framesInFlight);
+        for (uint32_t i = 0; i < imageCount; i++)
+        {
+            VulkanUtilities::VKCheck(vkCreateSemaphore(device, &l_SemaphoreInfo, nullptr, &m_RenderFinishedSemaphores[i]), "Failed vkCreateSemaphore");
+        }
+
+        TR_CORE_INFO("Vulkan sync objects created ({} frames in flight, {} render semaphores).", framesInFlight, imageCount);
     }
 
     void VulkanSyncObjects::Shutdown()
@@ -41,8 +45,12 @@ namespace Trinity
         for (size_t i = 0; i < m_InFlightFences.size(); i++)
         {
             vkDestroySemaphore(m_Device, m_ImageAvailableSemaphores[i], nullptr);
-            vkDestroySemaphore(m_Device, m_RenderFinishedSemaphores[i], nullptr);
             vkDestroyFence(m_Device, m_InFlightFences[i], nullptr);
+        }
+
+        for (size_t i = 0; i < m_RenderFinishedSemaphores.size(); i++)
+        {
+            vkDestroySemaphore(m_Device, m_RenderFinishedSemaphores[i], nullptr);
         }
 
         m_ImageAvailableSemaphores.clear();

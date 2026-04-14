@@ -1,8 +1,12 @@
 /.vs
+/.claude
 /bin
 /bin-int
 /out
 /build
+
+CLAUDE.md
+Roadmap.md
 
 /Trinity-Engine/src/Trinity/Platform/Window/PlayStation
 /Trinity-Engine/src/Trinity/Platform/Input/PlayStation

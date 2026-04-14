@@ -44,6 +44,7 @@ namespace Trinity
         VulkanDevice& GetDevice() { return m_Device; }
         VulkanAllocator& GetAllocator() { return m_Allocator; }
         VulkanCommandPool& GetCommandPool() { return m_CommandPool; }
+        VulkanSwapchain& GetSwapchain() { return m_Swapchain; }
         VkCommandBuffer GetCurrentCommandBuffer() const;
         uint32_t GetCurrentImageIndex() const { return m_CurrentImageIndex; }
 

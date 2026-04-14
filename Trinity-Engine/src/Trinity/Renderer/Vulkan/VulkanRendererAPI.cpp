@@ -38,7 +38,7 @@ namespace Trinity
         m_Allocator.Initialize(m_Device);
         m_Swapchain.Initialize(m_Device, window.GetWidth(), window.GetHeight(), true);
         m_CommandPool.Initialize(m_Device, m_MaxFramesInFlight);
-        m_SyncObjects.Initialize(m_Device.GetDevice(), m_MaxFramesInFlight);
+        m_SyncObjects.Initialize(m_Device.GetDevice(), m_MaxFramesInFlight, m_Swapchain.GetImageCount());
 
         TR_CORE_INFO("Vulkan renderer initialized.");
     }
@@ -67,6 +67,8 @@ namespace Trinity
         if (l_Result == VK_ERROR_OUT_OF_DATE_KHR)
         {
             m_FramebufferResized = false;
+            m_Swapchain.Recreate(m_Swapchain.GetExtent().width, m_Swapchain.GetExtent().height);
+
             return false;
         }
 
@@ -108,7 +110,7 @@ namespace Trinity
     void VulkanRendererAPI::Present()
     {
         VkSemaphore l_WaitSemaphores[] = { m_SyncObjects.GetImageAvailableSemaphore(m_CurrentFrameIndex) };
-        VkSemaphore l_SignalSemaphores[] = { m_SyncObjects.GetRenderFinishedSemaphore(m_CurrentFrameIndex) };
+        VkSemaphore l_SignalSemaphores[] = { m_SyncObjects.GetRenderFinishedSemaphore(m_CurrentImageIndex) };
         VkPipelineStageFlags l_WaitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
         VkCommandBuffer l_Cmd = m_CommandPool.GetCommandBuffer(m_CurrentFrameIndex);
@@ -163,8 +165,6 @@ namespace Trinity
         }
 
         m_FramebufferResized = true;
-        vkDeviceWaitIdle(m_Device.GetDevice());
-        m_Swapchain.Recreate(width, height);
     }
 
     uint32_t VulkanRendererAPI::GetSwapchainWidth() const

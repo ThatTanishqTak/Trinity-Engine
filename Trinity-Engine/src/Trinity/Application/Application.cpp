@@ -1,5 +1,6 @@
 #include "Trinity/Application/Application.h"
 
+#include "Trinity/ImGui/ImGuiLayer.h"
 #include "Trinity/Layer/Layer.h"
 
 #include "Trinity/Utilities/Log.h"
@@ -54,11 +55,15 @@ namespace Trinity
         l_RendererSpecification.MaxFramesInFlight = 2;
 #ifdef TRINITY_DEBUG
         l_RendererSpecification.EnableValidation = true;
-#elif
+#else
         l_RendererSpecification.EnableValidation = false;
 #endif
 
         Renderer::Initialize(*m_Window, l_RendererSpecification);
+
+        auto a_ImGuiLayer = std::make_unique<ImGuiLayer>();
+        m_ImGuiLayer = a_ImGuiLayer.get();
+        PushOverlay(std::move(a_ImGuiLayer));
 
         TR_CORE_INFO("------- APPLICATION INITIALIZED -------");
     }
@@ -157,8 +162,8 @@ namespace Trinity
 
             if (m_Window->IsMinimized())
             {
-                constexpr auto l_MinimizedSleep = std::chrono::milliseconds(16);
-                std::this_thread::sleep_for(l_MinimizedSleep);
+                constexpr auto a_MinimizedSleep = std::chrono::milliseconds(16);
+                std::this_thread::sleep_for(a_MinimizedSleep);
             }
 
             for (const std::unique_ptr<Layer>& it_Layer : m_LayerStack)
@@ -172,6 +177,15 @@ namespace Trinity
                 {
                     it_Layer->OnRender();
                 }
+
+                m_ImGuiLayer->Begin();
+
+                for (const std::unique_ptr<Layer>& it_Layer : m_LayerStack)
+                {
+                    it_Layer->OnImGuiRender();
+                }
+
+                m_ImGuiLayer->End();
 
                 Renderer::EndFrame();
                 Renderer::Present();
