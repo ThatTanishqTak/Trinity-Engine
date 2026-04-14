@@ -17,6 +17,7 @@
 #include "Trinity/Renderer/Renderer.h"
 
 #include <atomic>
+#include <cassert>
 #include <chrono>
 #include <cstdlib>
 #include <memory>
@@ -34,7 +35,7 @@ namespace Trinity
 
         if (s_Instance != nullptr)
         {
-            TR_CORE_CRITICAL("Application instance already exists.");
+            TR_CORE_CRITICAL("Application instance already exists");
 
             std::abort();
         }
@@ -178,6 +179,7 @@ namespace Trinity
                     it_Layer->OnRender();
                 }
 
+                assert(m_ImGuiLayer && "ImGuiLayer not initialized");
                 m_ImGuiLayer->Begin();
 
                 for (const std::unique_ptr<Layer>& it_Layer : m_LayerStack)

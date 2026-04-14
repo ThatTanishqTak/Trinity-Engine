@@ -33,8 +33,8 @@ namespace Trinity
     private:
         void PushDockspace();
 
-        struct Impl;
-        std::unique_ptr<Impl> m_Impl;
+        struct Implementation;
+        std::unique_ptr<Implementation> m_Implementation;
 
         std::function<void()> m_MenuBarCallback;
 

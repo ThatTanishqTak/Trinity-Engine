@@ -32,7 +32,7 @@ namespace Trinity
             VulkanUtilities::VKCheck(vkCreateSemaphore(device, &l_SemaphoreInfo, nullptr, &m_RenderFinishedSemaphores[i]), "Failed vkCreateSemaphore");
         }
 
-        TR_CORE_INFO("Vulkan sync objects created ({} frames in flight, {} render semaphores).", framesInFlight, imageCount);
+        TR_CORE_INFO("Vulkan sync objects created ({} frames in flight, {} render semaphores)", framesInFlight, imageCount);
     }
 
     void VulkanSyncObjects::Shutdown()

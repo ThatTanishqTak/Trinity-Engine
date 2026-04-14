@@ -3,6 +3,8 @@
 #include "Trinity/Renderer/Vulkan/VulkanDevice.h"
 #include "Trinity/Renderer/Vulkan/VulkanUtilities.h"
 
+#include <limits>
+
 namespace Trinity
 {
     void VulkanCommandPool::Initialize(VulkanDevice& device, uint32_t framesInFlight)
@@ -26,7 +28,7 @@ namespace Trinity
 
         VulkanUtilities::VKCheck(vkAllocateCommandBuffers(device.GetDevice(), &l_AllocInfo, m_CommandBuffers.data()), "Failed vkAllocateCommandBuffers");
 
-        TR_CORE_INFO("Vulkan command pool created ({} command buffers).", framesInFlight);
+        TR_CORE_INFO("Vulkan command pool created ({} command buffers)", framesInFlight);
     }
 
     void VulkanCommandPool::Shutdown()
@@ -88,9 +90,16 @@ namespace Trinity
         l_SubmitInfo.commandBufferCount = 1;
         l_SubmitInfo.pCommandBuffers = &commandBuffer;
 
-        VulkanUtilities::VKCheck(vkQueueSubmit(m_Device->GetGraphicsQueue(), 1, &l_SubmitInfo, VK_NULL_HANDLE), "Failed vkQueueSubmit");
-        vkQueueWaitIdle(m_Device->GetGraphicsQueue());
+        VkFenceCreateInfo l_FenceInfo{};
+        l_FenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 
+        VkFence l_Fence = VK_NULL_HANDLE;
+        VulkanUtilities::VKCheck(vkCreateFence(m_Device->GetDevice(), &l_FenceInfo, nullptr, &l_Fence), "Failed vkCreateFence");
+
+        VulkanUtilities::VKCheck(vkQueueSubmit(m_Device->GetGraphicsQueue(), 1, &l_SubmitInfo, l_Fence), "Failed vkQueueSubmit");
+        VulkanUtilities::VKCheck(vkWaitForFences(m_Device->GetDevice(), 1, &l_Fence, VK_TRUE, std::numeric_limits<uint64_t>::max()), "Failed vkWaitForFences");
+
+        vkDestroyFence(m_Device->GetDevice(), l_Fence, nullptr);
         vkFreeCommandBuffers(m_Device->GetDevice(), m_CommandPool, 1, &commandBuffer);
     }
 }

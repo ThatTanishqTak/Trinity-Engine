@@ -15,7 +15,7 @@
 
 namespace Trinity
 {
-    void ImGuiLayer::Impl::Initialize(SDL_Window* window, VulkanRendererAPI& api)
+    void ImGuiLayer::Implementation::Initialize(SDL_Window* window, VulkanRendererAPI& api)
     {
         Device = api.GetDevice().GetDevice();
 
@@ -46,10 +46,10 @@ namespace Trinity
         ImGui_ImplSDL3_InitForVulkan(window);
         ImGui_ImplVulkan_Init(&l_VulkanInfo);
 
-        TR_CORE_INFO("ImGui Vulkan backend initialized.");
+        TR_CORE_INFO("ImGui Vulkan backend initialized");
     }
 
-    void ImGuiLayer::Impl::Shutdown()
+    void ImGuiLayer::Implementation::Shutdown()
     {
         ImGui_ImplVulkan_Shutdown();
         ImGui_ImplSDL3_Shutdown();
@@ -67,21 +67,21 @@ namespace Trinity
         }
     }
 
-    void ImGuiLayer::Impl::NewFrame()
+    void ImGuiLayer::Implementation::NewFrame()
     {
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplSDL3_NewFrame();
     }
 
-    void ImGuiLayer::Impl::Render()
+    void ImGuiLayer::Implementation::Render()
     {
-        auto& l_API = static_cast<VulkanRendererAPI&>(Renderer::GetAPI());
+        auto& a_API = static_cast<VulkanRendererAPI&>(Renderer::GetAPI());
 
-        VkCommandBuffer l_Cmd = l_API.GetCurrentCommandBuffer();
-        uint32_t        l_ImageIndex = l_API.GetCurrentImageIndex();
-        VkImageView     l_ImageView = l_API.GetSwapchain().GetImageView(l_ImageIndex);
-        uint32_t        l_Width = l_API.GetSwapchainWidth();
-        uint32_t        l_Height = l_API.GetSwapchainHeight();
+        VkCommandBuffer l_Cmd = a_API.GetCurrentCommandBuffer();
+        uint32_t l_ImageIndex = a_API.GetCurrentImageIndex();
+        VkImageView l_ImageView = a_API.GetSwapchain().GetImageView(l_ImageIndex);
+        uint32_t l_Width = a_API.GetSwapchainWidth();
+        uint32_t l_Height = a_API.GetSwapchainHeight();
 
         VkRenderingAttachmentInfo l_ColorAttachment{};
         l_ColorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
@@ -102,28 +102,26 @@ namespace Trinity
         vkCmdEndRendering(l_Cmd);
     }
 
-    void ImGuiLayer::Impl::ProcessPlatformEvent(const void* sdlEvent)
+    void ImGuiLayer::Implementation::ProcessPlatformEvent(const void* sdlEvent)
     {
         ImGui_ImplSDL3_ProcessEvent(static_cast<const SDL_Event*>(sdlEvent));
     }
 
-    uint64_t ImGuiLayer::Impl::RegisterTexture(uint64_t opaqueImageViewHandle)
+    uint64_t ImGuiLayer::Implementation::RegisterTexture(uint64_t opaqueImageViewHandle)
     {
         VkImageView l_View = reinterpret_cast<VkImageView>(opaqueImageViewHandle);
-        ImTextureID l_ID = (ImTextureID)ImGui_ImplVulkan_AddTexture(DefaultSampler, l_View, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        VkDescriptorSet l_Set = ImGui_ImplVulkan_AddTexture(DefaultSampler, l_View, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-        static_cast<uint64_t>(l_ID);
-
-        return l_ID;
+        return reinterpret_cast<uint64_t>(l_Set);
     }
 
-    void ImGuiLayer::Impl::UnregisterTexture(uint64_t textureID)
+    void ImGuiLayer::Implementation::UnregisterTexture(uint64_t textureID)
     {
-        auto l_Set = reinterpret_cast<VkDescriptorSet>(reinterpret_cast<void*>(textureID));
-        ImGui_ImplVulkan_RemoveTexture(l_Set);
+        auto a_Set = reinterpret_cast<VkDescriptorSet>(reinterpret_cast<void*>(textureID));
+        ImGui_ImplVulkan_RemoveTexture(a_Set);
     }
 
-    void ImGuiLayer::Impl::CreateDescriptorPool()
+    void ImGuiLayer::Implementation::CreateDescriptorPool()
     {
         VkDescriptorPoolSize l_PoolSizes[] =
         {
@@ -150,7 +148,7 @@ namespace Trinity
         VulkanUtilities::VKCheck(vkCreateDescriptorPool(Device, &l_PoolInfo, nullptr, &DescriptorPool), "Failed vkCreateDescriptorPool (ImGui)");
     }
 
-    void ImGuiLayer::Impl::CreateDefaultSampler()
+    void ImGuiLayer::Implementation::CreateDefaultSampler()
     {
         VkSamplerCreateInfo l_SamplerInfo{};
         l_SamplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;

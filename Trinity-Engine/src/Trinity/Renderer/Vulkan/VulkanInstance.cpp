@@ -21,7 +21,7 @@ namespace Trinity
         CreateInstance(enableValidation);
         CreateSurface(window);
 
-        TR_CORE_INFO("Vulkan instance initialized.");
+        TR_CORE_INFO("Vulkan instance initialized");
     }
 
     void VulkanInstance::Shutdown()
@@ -66,6 +66,10 @@ namespace Trinity
             l_Extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
         }
 
+#ifdef __APPLE__
+        l_Extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+#endif
+
         VkInstanceCreateInfo l_CreateInfo{};
         l_CreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
         l_CreateInfo.pApplicationInfo = &l_AppInfo;
@@ -74,9 +78,6 @@ namespace Trinity
 
 #ifdef __APPLE__
         l_CreateInfo.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
-        l_Extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
-        l_CreateInfo.enabledExtensionCount = static_cast<uint32_t>(l_Extensions.size());
-        l_CreateInfo.ppEnabledExtensionNames = l_Extensions.data();
 #endif
 
         VkDebugUtilsMessengerCreateInfoEXT l_DebugCreateInfo{};

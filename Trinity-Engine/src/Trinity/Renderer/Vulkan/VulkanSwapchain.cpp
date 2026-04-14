@@ -16,7 +16,7 @@ namespace Trinity
         CreateSwapchain(width, height);
         CreateImageViews();
 
-        TR_CORE_INFO("Vulkan swapchain created ({}x{}, {} images).", m_Extent.width, m_Extent.height, m_Images.size());
+        TR_CORE_INFO("Vulkan swapchain created ({}x{}, {} images)", m_Extent.width, m_Extent.height, m_Images.size());
     }
 
     void VulkanSwapchain::Shutdown()
@@ -38,7 +38,7 @@ namespace Trinity
         CreateSwapchain(width, height);
         CreateImageViews();
 
-        TR_CORE_DEBUG("Swapchain recreated ({}x{}).", m_Extent.width, m_Extent.height);
+        TR_CORE_DEBUG("Swapchain recreated ({}x{})", m_Extent.width, m_Extent.height);
     }
 
     void VulkanSwapchain::CreateSwapchain(uint32_t width, uint32_t height)

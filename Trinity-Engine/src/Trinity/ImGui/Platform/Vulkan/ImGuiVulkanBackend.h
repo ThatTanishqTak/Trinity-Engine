@@ -15,11 +15,11 @@ namespace Trinity
 {
     class VulkanRendererAPI;
 
-    struct ImGuiLayer::Impl
+    struct ImGuiLayer::Implementation
     {
-        VkDevice         Device         = VK_NULL_HANDLE;
+        VkDevice Device = VK_NULL_HANDLE;
         VkDescriptorPool DescriptorPool = VK_NULL_HANDLE;
-        VkSampler        DefaultSampler = VK_NULL_HANDLE;
+        VkSampler DefaultSampler = VK_NULL_HANDLE;
 
         void Initialize(SDL_Window* window, VulkanRendererAPI& api);
         void Shutdown();
@@ -29,7 +29,7 @@ namespace Trinity
         void ProcessPlatformEvent(const void* sdlEvent);
 
         uint64_t RegisterTexture(uint64_t opaqueImageViewHandle);
-        void     UnregisterTexture(uint64_t textureID);
+        void UnregisterTexture(uint64_t textureID);
 
         VkSampler GetDefaultSampler() const { return DefaultSampler; }
 

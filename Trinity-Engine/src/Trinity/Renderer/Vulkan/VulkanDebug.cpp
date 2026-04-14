@@ -47,12 +47,20 @@ namespace Trinity
 
         if (a_CreateFunction != nullptr)
         {
-            a_CreateFunction(instance, &l_CreateInfo, nullptr, &m_DebugMessenger);
-            TR_CORE_INFO("Vulkan debug messenger created.");
+            VkResult l_Result = a_CreateFunction(instance, &l_CreateInfo, nullptr, &m_DebugMessenger);
+
+            if (l_Result == VK_SUCCESS)
+            {
+                TR_CORE_INFO("Vulkan debug messenger created");
+            }
+            else
+            {
+                TR_CORE_ERROR("Failed to create Vulkan debug messenger (VkResult: {})", static_cast<int>(l_Result));
+            }
         }
         else
         {
-            TR_CORE_WARN("vkCreateDebugUtilsMessengerEXT not available.");
+            TR_CORE_WARN("vkCreateDebugUtilsMessengerEXT not available");
         }
     }
 

@@ -37,7 +37,7 @@ namespace Trinity
 
         VulkanUtilities::VKCheck(vmaCreateAllocator(&l_AllocatorInfo, &m_Allocator), "Failed vmaCreateAllocator");
 
-        TR_CORE_INFO("VMA allocator initialized.");
+        TR_CORE_INFO("VMA allocator initialized");
     }
 
     void VulkanAllocator::Shutdown()

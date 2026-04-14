@@ -40,7 +40,7 @@ namespace Trinity
         m_CommandPool.Initialize(m_Device, m_MaxFramesInFlight);
         m_SyncObjects.Initialize(m_Device.GetDevice(), m_MaxFramesInFlight, m_Swapchain.GetImageCount());
 
-        TR_CORE_INFO("Vulkan renderer initialized.");
+        TR_CORE_INFO("Vulkan renderer initialized");
     }
 
     void VulkanRendererAPI::Shutdown()
@@ -55,7 +55,7 @@ namespace Trinity
         m_Device.Shutdown();
         m_Instance.Shutdown();
 
-        TR_CORE_INFO("Vulkan renderer shut down.");
+        TR_CORE_INFO("Vulkan renderer shut down");
     }
 
     bool VulkanRendererAPI::BeginFrame()
