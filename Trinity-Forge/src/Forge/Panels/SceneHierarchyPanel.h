@@ -1,8 +1,7 @@
 #pragma once
 
 #include "Forge/Panels/Panel.h"
-
-struct SelectionContext;
+#include "Forge/SelectionContext.h"
 
 namespace Forge
 {
@@ -14,6 +13,10 @@ namespace Forge
         void OnRender() override;
 
     private:
-        SelectionContext* m_Context = nullptr;
+        void RenderEntityNode(entt::entity entity);
+
+        SelectionContext* m_Context        = nullptr;
+        entt::entity     m_RenameTarget    = entt::null;
+        bool             m_RenameRequested = false;
     };
 }

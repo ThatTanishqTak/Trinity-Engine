@@ -6,9 +6,9 @@
 
 namespace Forge
 {
-    RendererStatsPanel::RendererStatsPanel(std::string name)
-        : Panel(std::move(name))
+    RendererStatsPanel::RendererStatsPanel(std::string name) : Panel(std::move(name))
     {
+
     }
 
     void RendererStatsPanel::OnRender()
@@ -16,9 +16,7 @@ namespace Forge
         ImGui::Begin(m_Name.c_str(), &m_Open);
 
         ImGui::Text("Backend: Vulkan");
-        ImGui::Text("Frame Index: %u / %u",
-            Trinity::Renderer::GetCurrentFrameIndex(),
-            Trinity::Renderer::GetMaxFramesInFlight());
+        ImGui::Text("Frame Index: %u / %u", Trinity::Renderer::GetCurrentFrameIndex(), Trinity::Renderer::GetMaxFramesInFlight());
 
         ImGui::End();
     }

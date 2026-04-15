@@ -4,9 +4,9 @@
 
 namespace Forge
 {
-    InspectorPanel::InspectorPanel(std::string name, SelectionContext* context)
-        : Panel(std::move(name)), m_Context(context)
+    InspectorPanel::InspectorPanel(std::string name, SelectionContext* context) : Panel(std::move(name)), m_Context(context)
     {
+
     }
 
     void InspectorPanel::OnRender()

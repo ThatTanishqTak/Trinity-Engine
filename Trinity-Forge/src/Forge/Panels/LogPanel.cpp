@@ -4,9 +4,9 @@
 
 namespace Forge
 {
-    LogPanel::LogPanel(std::string name)
-        : Panel(std::move(name))
+    LogPanel::LogPanel(std::string name) : Panel(std::move(name))
     {
+
     }
 
     void LogPanel::OnRender()

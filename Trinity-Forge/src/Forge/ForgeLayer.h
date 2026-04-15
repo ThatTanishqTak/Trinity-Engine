@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Forge/SelectionContext.h"
 #include "Forge/Panels/PanelManager.h"
 #include "Forge/Panels/ViewportPanel.h"
 #include "Forge/Panels/SceneHierarchyPanel.h"
@@ -9,20 +10,12 @@
 #include "Forge/Panels/LogPanel.h"
 
 #include "Trinity/Layer/Layer.h"
-
-#include <entt/entt.hpp>
+#include "Trinity/Scene/Scene.h"
 
 namespace Trinity
 {
     class Event;
-    class Scene;
 }
-
-struct SelectionContext
-{
-    entt::entity SelectedEntity = entt::null;
-    Trinity::Scene* ActiveScene = nullptr;  // Gap: Scene system (Phase 18)
-};
 
 class ForgeLayer : public Trinity::Layer
 {
@@ -43,8 +36,10 @@ public:
 private:
     void RenderMenuBar();
 
+    Trinity::Scene m_Scene;
+
     Forge::PanelManager m_PanelManager;
-    SelectionContext m_SelectionContext;
+    SelectionContext     m_SelectionContext;
 
     Forge::ViewportPanel*        m_ViewportPanel  = nullptr;
     Forge::SceneHierarchyPanel*  m_HierarchyPanel = nullptr;
@@ -52,4 +47,6 @@ private:
     Forge::ContentBrowserPanel*  m_ContentPanel   = nullptr;
     Forge::RendererStatsPanel*   m_StatsPanel     = nullptr;
     Forge::LogPanel*             m_LogPanel       = nullptr;
+
+    bool m_ShowAboutPopup = false;
 };

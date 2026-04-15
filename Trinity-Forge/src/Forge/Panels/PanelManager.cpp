@@ -6,6 +6,7 @@ namespace Forge
 {
     void PanelManager::Initialize()
     {
+
     }
 
     void PanelManager::Shutdown()

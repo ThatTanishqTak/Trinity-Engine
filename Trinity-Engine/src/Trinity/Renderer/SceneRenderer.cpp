@@ -10,6 +10,9 @@ namespace Trinity
 		bool SceneActive = false;
 	};
 
+	SceneRenderer::SceneRenderer() = default;
+	SceneRenderer::~SceneRenderer() = default;
+
 	void SceneRenderer::Initialize(uint32_t width, uint32_t height)
 	{
 		m_Width = width;

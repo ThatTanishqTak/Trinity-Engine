@@ -4,9 +4,9 @@
 
 namespace Forge
 {
-    ContentBrowserPanel::ContentBrowserPanel(std::string name)
-        : Panel(std::move(name))
+    ContentBrowserPanel::ContentBrowserPanel(std::string name) : Panel(std::move(name))
     {
+
     }
 
     void ContentBrowserPanel::OnRender()

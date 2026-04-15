@@ -43,6 +43,9 @@ namespace Trinity
 	class SceneRenderer
 	{
 	public:
+		SceneRenderer();
+		~SceneRenderer();
+
 		void Initialize(uint32_t width, uint32_t height);
 		void Shutdown();
 

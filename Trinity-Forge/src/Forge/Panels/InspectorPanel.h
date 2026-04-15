@@ -1,8 +1,7 @@
 #pragma once
 
 #include "Forge/Panels/Panel.h"
-
-struct SelectionContext;
+#include "Forge/SelectionContext.h"
 
 namespace Forge
 {
