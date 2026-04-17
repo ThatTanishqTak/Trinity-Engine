@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Trinity/Renderer/Camera/Camera.h"
+#include "Trinity/Renderer/Mesh.h"
 
 #include <cstdint>
 #include <memory>
@@ -12,8 +13,7 @@ namespace Trinity
 
 	struct MeshDrawCommand
 	{
-		uint64_t MeshHandle = 0;
-		uint64_t MaterialHandle = 0;
+		std::shared_ptr<Mesh> MeshRef;
 		float Transform[16] = {};
 	};
 

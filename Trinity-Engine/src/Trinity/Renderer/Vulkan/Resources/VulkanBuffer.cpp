@@ -1,5 +1,6 @@
 #include "Trinity/Renderer/Vulkan/Resources/VulkanBuffer.h"
 
+#include "Trinity/Renderer/Renderer.h"
 #include "Trinity/Renderer/Vulkan/VulkanUtilities.h"
 
 #include <cstring>
@@ -42,6 +43,8 @@ namespace Trinity
 
     VulkanBuffer::~VulkanBuffer()
     {
+        Renderer::WaitIdle();
+
         if (m_MappedData != nullptr)
         {
             vmaUnmapMemory(m_Allocator, m_Allocation);

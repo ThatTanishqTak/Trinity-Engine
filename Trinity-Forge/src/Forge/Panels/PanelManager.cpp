@@ -30,6 +30,17 @@ namespace Forge
         }
     }
 
+    void PanelManager::PreRenderPanels()
+    {
+        for (auto& it_Panel : m_Panels)
+        {
+            if (it_Panel->IsOpen())
+            {
+                it_Panel->OnPreRender();
+            }
+        }
+    }
+
     void PanelManager::RenderPanels()
     {
         for (auto& it_Panel : m_Panels)

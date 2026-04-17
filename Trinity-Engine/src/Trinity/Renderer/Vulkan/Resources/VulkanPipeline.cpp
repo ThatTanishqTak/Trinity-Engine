@@ -74,7 +74,7 @@ namespace Trinity
         l_Rasterizer.polygonMode = specification.WireframeMode ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
         l_Rasterizer.lineWidth = 1.0f;
         l_Rasterizer.cullMode = VulkanUtilities::ToVkCullMode(specification.CullingMode);
-        l_Rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        l_Rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;  // Y-flip in projection (P[1][1]*=-1) inverts apparent winding
         l_Rasterizer.depthBiasEnable = VK_FALSE;
 
         // Multisampling
@@ -117,8 +117,20 @@ namespace Trinity
         l_ColorBlending.pAttachments = l_ColorBlendAttachments.data();
 
         // Pipeline layout
+        std::vector<VkPushConstantRange> l_PushRanges;
+        for (const auto& it_Range : specification.PushConstants)
+        {
+            VkPushConstantRange l_Range{};
+            l_Range.stageFlags = VulkanUtilities::ToVkShaderStage(it_Range.Stage);
+            l_Range.offset = it_Range.Offset;
+            l_Range.size = it_Range.Size;
+            l_PushRanges.push_back(l_Range);
+        }
+
         VkPipelineLayoutCreateInfo l_PipelineLayoutInfo{};
         l_PipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        l_PipelineLayoutInfo.pushConstantRangeCount = static_cast<uint32_t>(l_PushRanges.size());
+        l_PipelineLayoutInfo.pPushConstantRanges = l_PushRanges.empty() ? nullptr : l_PushRanges.data();
 
         VulkanUtilities::VKCheck(vkCreatePipelineLayout(m_Device, &l_PipelineLayoutInfo, nullptr, &m_PipelineLayout), "Failed vkCreatePipelineLayout");
 

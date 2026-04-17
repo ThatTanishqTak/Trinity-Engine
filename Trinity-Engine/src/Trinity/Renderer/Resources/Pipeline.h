@@ -63,11 +63,19 @@ namespace Trinity
 		uint32_t Offset = 0;
 	};
 
+	struct PushConstantRange
+	{
+		ShaderStage Stage = ShaderStage::Vertex;
+		uint32_t Offset = 0;
+		uint32_t Size = 0;
+	};
+
 	struct PipelineSpecification
 	{
 		std::shared_ptr<Shader> PipelineShader;
 		std::vector<VertexAttribute> VertexAttributes;
 		uint32_t VertexStride = 0;
+		std::vector<PushConstantRange> PushConstants;
 
 		PrimitiveTopology Topology = PrimitiveTopology::TriangleList;
 		CullMode CullingMode = CullMode::Back;

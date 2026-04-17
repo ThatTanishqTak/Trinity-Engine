@@ -13,7 +13,7 @@ namespace Trinity
     class VulkanGeometryPass final : public RenderPass
     {
     public:
-        VulkanGeometryPass(VulkanRendererAPI& renderer);
+        VulkanGeometryPass(VulkanRendererAPI& renderer, uint32_t width, uint32_t height);
         ~VulkanGeometryPass() override = default;
 
         void Begin(uint32_t width, uint32_t height) override;

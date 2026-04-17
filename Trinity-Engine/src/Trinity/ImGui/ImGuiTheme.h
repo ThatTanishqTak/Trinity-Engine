@@ -6,5 +6,6 @@ namespace Trinity
     {
     public:
         static void SetDarkTheme();
+        static void LoadFonts();
     };
 }

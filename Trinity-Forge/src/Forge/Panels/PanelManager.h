@@ -22,10 +22,12 @@ namespace Forge
             T* l_Ptr = l_Panel.get();
             l_Panel->OnInitialize();
             m_Panels.push_back(std::move(l_Panel));
+
             return l_Ptr;
         }
 
         void UpdatePanels(float deltaTime);
+        void PreRenderPanels();
         void RenderPanels();
         void RenderViewMenu();
 

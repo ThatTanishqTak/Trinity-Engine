@@ -34,6 +34,7 @@ public:
     void OnEvent(Trinity::Event& e) override;
 
 private:
+    void NewScene();
     void RenderMenuBar();
 
     Trinity::Scene m_Scene;
@@ -48,5 +49,9 @@ private:
     Forge::RendererStatsPanel*   m_StatsPanel     = nullptr;
     Forge::LogPanel*             m_LogPanel       = nullptr;
 
-    bool m_ShowAboutPopup = false;
+    bool        m_ShowAboutPopup  = false;
+    EditorState m_LastEditorState = EditorState::Edit;
+
+    // Scene snapshot for Play/Stop restore — gap until Phase 18 SceneSerializer
+    // std::string m_SceneSnapshot;
 };

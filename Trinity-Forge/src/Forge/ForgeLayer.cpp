@@ -6,6 +6,7 @@
 #include "Trinity/Renderer/Renderer.h"
 
 #include <imgui.h>
+#include <ImGuizmo.h>
 
 ForgeLayer::ForgeLayer() : Trinity::Layer("ForgeLayer")
 {
@@ -39,15 +40,39 @@ void ForgeLayer::OnShutdown()
 
 void ForgeLayer::OnUpdate(float deltaTime)
 {
+    // Detect state transitions and react
+    if (m_SelectionContext.State != m_LastEditorState)
+    {
+        const EditorState l_Previous = m_LastEditorState;
+        const EditorState l_Current = m_SelectionContext.State;
+
+        if (l_Current == EditorState::Play && l_Previous == EditorState::Edit)
+        {
+            // Gap: m_SceneSnapshot = SceneSerializer::Serialize(m_Scene);
+            // Gap: Scene::OnPhysicsStart(), Scene::OnAudioStart(), ScriptEngine::OnRuntimeStart()
+        }
+        else if (l_Current == EditorState::Edit && (l_Previous == EditorState::Play || l_Previous == EditorState::Pause))
+        {
+            // Gap: SceneSerializer::Deserialize(m_SceneSnapshot, m_Scene);
+            // Gap: Scene::OnPhysicsStop(), Scene::OnAudioStop(), ScriptEngine::OnRuntimeStop()
+            m_SelectionContext.SelectedEntity = entt::null;
+        }
+
+        m_LastEditorState = l_Current;
+    }
+
     m_PanelManager.UpdatePanels(deltaTime);
 }
 
 void ForgeLayer::OnRender()
 {
+    m_PanelManager.PreRenderPanels();
 }
 
 void ForgeLayer::OnImGuiRender()
 {
+    ImGuizmo::BeginFrame();
+
     m_PanelManager.RenderPanels();
 
     if (m_ShowAboutPopup)

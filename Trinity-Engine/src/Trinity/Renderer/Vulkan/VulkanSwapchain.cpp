@@ -128,6 +128,7 @@ namespace Trinity
         {
             vkDestroyImageView(l_Device, l_ImageView, nullptr);
         }
+
         m_ImageViews.clear();
         m_Images.clear();
 
@@ -140,20 +141,19 @@ namespace Trinity
 
     VkSurfaceFormatKHR VulkanSwapchain::ChooseSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats) const
     {
-        for (const auto& l_Format : formats)
+        for (const auto& it_Format : formats)
         {
-            if (l_Format.format == VK_FORMAT_B8G8R8A8_SRGB &&
-                l_Format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+            if (it_Format.format == VK_FORMAT_B8G8R8A8_SRGB && it_Format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
             {
-                return l_Format;
+                return it_Format;
             }
         }
 
-        for (const auto& l_Format : formats)
+        for (const auto& it_Format : formats)
         {
-            if (l_Format.format == VK_FORMAT_B8G8R8A8_UNORM)
+            if (it_Format.format == VK_FORMAT_B8G8R8A8_UNORM)
             {
-                return l_Format;
+                return it_Format;
             }
         }
 
@@ -164,19 +164,19 @@ namespace Trinity
     {
         if (!m_VSync)
         {
-            for (const auto& l_Mode : presentModes)
+            for (const auto& it_Mode : presentModes)
             {
-                if (l_Mode == VK_PRESENT_MODE_MAILBOX_KHR)
+                if (it_Mode == VK_PRESENT_MODE_MAILBOX_KHR)
                 {
-                    return l_Mode;
+                    return it_Mode;
                 }
             }
 
-            for (const auto& l_Mode : presentModes)
+            for (const auto& it_Mode : presentModes)
             {
-                if (l_Mode == VK_PRESENT_MODE_IMMEDIATE_KHR)
+                if (it_Mode == VK_PRESENT_MODE_IMMEDIATE_KHR)
                 {
-                    return l_Mode;
+                    return it_Mode;
                 }
             }
         }

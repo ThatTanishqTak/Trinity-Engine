@@ -36,6 +36,7 @@ namespace Trinity
         l_IO.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
         ImGuiTheme::SetDarkTheme();
+        ImGuiTheme::LoadFonts();
 
         auto& a_API = static_cast<VulkanRendererAPI&>(Renderer::GetAPI());
         SDL_Window* l_Window = static_cast<SDL_Window*>(Application::Get().GetWindow().GetNativeHandle().Window);

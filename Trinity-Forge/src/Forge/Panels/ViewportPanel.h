@@ -22,9 +22,11 @@ namespace Forge
         void OnInitialize() override;
         void OnShutdown() override;
         void OnUpdate(float deltaTime) override;
+        void OnPreRender() override;
         void OnRender() override;
 
     private:
+        void RenderToolbar();
         void RenderGizmos();
 
         Trinity::SceneRenderer m_SceneRenderer;
@@ -32,11 +34,14 @@ namespace Forge
 
         SelectionContext* m_SelectionContext = nullptr;
 
-        ImGuizmo::OPERATION m_GizmoOperation = static_cast<ImGuizmo::OPERATION>(-1);
+        ImGuizmo::OPERATION m_GizmoOperation = ImGuizmo::TRANSLATE;
 
         uint64_t m_ViewportTextureID = 0;
         uint32_t m_LastWidth = 0;
         uint32_t m_LastHeight = 0;
+        uint32_t m_PendingResizeWidth = 0;
+        uint32_t m_PendingResizeHeight = 0;
+        bool m_ResizeDirty = false;
 
         float m_CameraSpeed = 5.0f;
         float m_Sensitivity = 0.1f;

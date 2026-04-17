@@ -15,8 +15,8 @@ namespace Forge
     private:
         void RenderEntityNode(entt::entity entity);
 
-        SelectionContext* m_Context        = nullptr;
-        entt::entity     m_RenameTarget    = entt::null;
-        bool             m_RenameRequested = false;
+        SelectionContext* m_Context = nullptr;
+        entt::entity m_RenameTarget = entt::null;
+        bool  m_RenameRequested = false;
     };
 }

@@ -5,13 +5,13 @@
 
 namespace Trinity
 {
-    VulkanGeometryPass::VulkanGeometryPass(VulkanRendererAPI& renderer) : m_Renderer(&renderer)
+    VulkanGeometryPass::VulkanGeometryPass(VulkanRendererAPI& renderer, uint32_t width, uint32_t height) : m_Renderer(&renderer)
     {
         m_Name = "GeometryPass";
 
         FramebufferSpecification l_FramebufferSpecification{};
-        l_FramebufferSpecification.Width = renderer.GetSwapchainWidth();
-        l_FramebufferSpecification.Height = renderer.GetSwapchainHeight();
+        l_FramebufferSpecification.Width = width;
+        l_FramebufferSpecification.Height = height;
 
         FramebufferAttachmentSpecification l_ColorAttach{};
         l_ColorAttach.Format = TextureFormat::RGBA16F;

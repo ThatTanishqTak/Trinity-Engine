@@ -13,6 +13,7 @@ namespace Forge
         virtual void OnInitialize() {}
         virtual void OnShutdown() {}
         virtual void OnUpdate(float deltaTime) { (void)deltaTime; }
+        virtual void OnPreRender() {}
         virtual void OnRender() = 0;
 
         const std::string& GetName() const { return m_Name; }

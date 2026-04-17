@@ -3,6 +3,9 @@
 #include "Trinity/Scene/Scene.h"
 #include "Trinity/Scene/Entity.h"
 #include "Trinity/Scene/Components/TagComponent.h"
+#include "Trinity/Scene/Components/TransformComponent.h"
+#include "Trinity/Scene/Components/MeshComponent.h"
+#include "Trinity/Renderer/Mesh.h"
 
 #include <imgui.h>
 
@@ -10,9 +13,9 @@
 
 namespace Forge
 {
-    SceneHierarchyPanel::SceneHierarchyPanel(std::string name, SelectionContext* context)
-        : Panel(std::move(name)), m_Context(context)
+    SceneHierarchyPanel::SceneHierarchyPanel(std::string name, SelectionContext* context) : Panel(std::move(name)), m_Context(context)
     {
+
     }
 
     void SceneHierarchyPanel::OnRender()
@@ -25,9 +28,9 @@ namespace Forge
         {
             // Iterate all entities that have a TagComponent (every entity created via Scene::CreateEntity)
             auto l_View = l_Scene->GetRegistry().view<Trinity::TagComponent>();
-            for (auto l_Entity : l_View)
+            for (auto it_Entity : l_View)
             {
-                RenderEntityNode(l_Entity);
+                RenderEntityNode(it_Entity);
             }
 
             // Right-click on empty panel area to spawn
@@ -36,6 +39,12 @@ namespace Forge
                 if (ImGui::MenuItem("Create Empty Entity"))
                 {
                     l_Scene->CreateEntity("Entity");
+                }
+
+                if (ImGui::MenuItem("Create Cube"))
+                {
+                    Trinity::Entity l_Cube = l_Scene->CreateEntity("Cube");
+                    l_Cube.AddComponent<Trinity::MeshComponent>().MeshData = Trinity::Primitives::CreateCube();
                 }
 
                 ImGui::EndPopup();
@@ -58,12 +67,12 @@ namespace Forge
 
         const bool l_Selected = (m_Context->SelectedEntity == entity);
 
-        ImGuiTreeNodeFlags l_Flags = ImGuiTreeNodeFlags_OpenOnArrow
-            | ImGuiTreeNodeFlags_SpanAvailWidth
-            | ImGuiTreeNodeFlags_Leaf;  // No children until Phase 18.2 parenting
+        ImGuiTreeNodeFlags l_Flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Leaf;
 
         if (l_Selected)
+        {
             l_Flags |= ImGuiTreeNodeFlags_Selected;
+        }
 
         // Inline rename
         if (m_RenameTarget == entity && m_RenameRequested)
@@ -78,13 +87,13 @@ namespace Forge
             if (ImGui::InputText("##Rename", l_Buffer, sizeof(l_Buffer), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll))
             {
                 l_Tag.Tag = l_Buffer;
-                m_RenameTarget    = entt::null;
+                m_RenameTarget = entt::null;
                 m_RenameRequested = false;
             }
 
             if (!ImGui::IsItemActive() && !ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
             {
-                m_RenameTarget    = entt::null;
+                m_RenameTarget = entt::null;
                 m_RenameRequested = false;
             }
 
@@ -103,7 +112,7 @@ namespace Forge
             if (ImGui::MenuItem("Rename"))
             {
                 m_Context->SelectedEntity = entity;
-                m_RenameTarget    = entity;
+                m_RenameTarget = entity;
                 m_RenameRequested = true;
             }
 
@@ -118,15 +127,20 @@ namespace Forge
             if (ImGui::MenuItem("Delete"))
             {
                 if (m_Context->SelectedEntity == entity)
+                {
                     m_Context->SelectedEntity = entt::null;
+                }
 
                 Trinity::Entity l_Wrapper(entity, l_Scene);
                 l_Scene->DestroyEntity(l_Wrapper);
 
                 if (l_NodeOpen)
+                {
                     ImGui::TreePop();
+                }
 
                 ImGui::EndPopup();
+
                 return;
             }
 
@@ -134,6 +148,8 @@ namespace Forge
         }
 
         if (l_NodeOpen)
+        {
             ImGui::TreePop();
+        }
     }
 }
