@@ -12,6 +12,8 @@
 #include "Trinity/Layer/Layer.h"
 #include "Trinity/Scene/Scene.h"
 
+#include <string>
+
 namespace Trinity
 {
     class Event;
@@ -35,7 +37,12 @@ public:
 
 private:
     void NewScene();
+    void OpenScene(const std::string& filepath);
+    void SaveScene();
+    void SaveSceneAs(const std::string& filepath);
+
     void RenderMenuBar();
+    void RenderFileDialogModals();
 
     Trinity::Scene m_Scene;
 
@@ -49,9 +56,14 @@ private:
     Forge::RendererStatsPanel*   m_StatsPanel     = nullptr;
     Forge::LogPanel*             m_LogPanel       = nullptr;
 
-    bool        m_ShowAboutPopup  = false;
-    EditorState m_LastEditorState = EditorState::Edit;
+    std::string m_CurrentScenePath;
+    std::string m_SceneSnapshot;
 
-    // Scene snapshot for Play/Stop restore — gap until Phase 18 SceneSerializer
-    // std::string m_SceneSnapshot;
+    bool m_ShowAboutPopup       = false;
+    bool m_ShowOpenSceneModal   = false;
+    bool m_ShowSaveSceneAsModal = false;
+
+    char m_FilePathBuffer[512] = {};
+
+    EditorState m_LastEditorState = EditorState::Edit;
 };

@@ -4,8 +4,9 @@
 #include "Trinity/Renderer/Mesh.h"
 #include "Trinity/Renderer/Resources/Pipeline.h"
 #include "Trinity/Renderer/Resources/Shader.h"
+#include "Trinity/Renderer/RenderGraph/RenderGraphContext.h"
 #include "Trinity/Renderer/Vulkan/VulkanRendererAPI.h"
-#include "Trinity/Renderer/Vulkan/Passes/VulkanGeometryPass.h"
+#include "Trinity/Renderer/Vulkan/RenderGraph/VulkanRenderGraph.h"
 #include "Trinity/Renderer/Vulkan/Resources/VulkanBuffer.h"
 #include "Trinity/Renderer/Vulkan/Resources/VulkanPipeline.h"
 #include "Trinity/Renderer/Vulkan/Resources/VulkanTexture.h"
@@ -14,47 +15,21 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <vulkan/vulkan.h>
 
+#include <array>
 #include <cstring>
 #include <memory>
 
 namespace Trinity
 {
-    namespace
-    {
-        static void TransitionImage(
-            VkCommandBuffer cmd, VkImage image, VkImageAspectFlags aspect,
-            VkImageLayout oldLayout, VkImageLayout newLayout,
-            VkPipelineStageFlags2 srcStage, VkAccessFlags2 srcAccess,
-            VkPipelineStageFlags2 dstStage, VkAccessFlags2 dstAccess)
-        {
-            VkImageMemoryBarrier2 l_Barrier{};
-            l_Barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-            l_Barrier.srcStageMask  = srcStage;
-            l_Barrier.srcAccessMask = srcAccess;
-            l_Barrier.dstStageMask  = dstStage;
-            l_Barrier.dstAccessMask = dstAccess;
-            l_Barrier.oldLayout = oldLayout;
-            l_Barrier.newLayout = newLayout;
-            l_Barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            l_Barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            l_Barrier.image = image;
-            l_Barrier.subresourceRange = { aspect, 0, 1, 0, 1 };
-
-            VkDependencyInfo l_Dep{};
-            l_Dep.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-            l_Dep.imageMemoryBarrierCount = 1;
-            l_Dep.pImageMemoryBarriers = &l_Barrier;
-
-            vkCmdPipelineBarrier2(cmd, &l_Dep);
-        }
-    }
-
     struct SceneRenderer::Implementation
     {
         SceneRendererStats Stats;
         bool SceneActive = false;
-        std::unique_ptr<VulkanGeometryPass> GeometryPass;
+        std::unique_ptr<VulkanRenderGraph> RenderGraph;
         std::shared_ptr<Pipeline> MeshPipeline;
+        RenderGraphResourceHandle ColorHandle;
+        RenderGraphResourceHandle NormalHandle;
+        RenderGraphResourceHandle DepthHandle;
     };
 
     SceneRenderer::SceneRenderer() = default;
@@ -73,7 +48,130 @@ namespace Trinity
             return;
         }
 
-        m_Implementation->GeometryPass = std::make_unique<VulkanGeometryPass>(*a_VkAPI, width, height);
+        m_Implementation->RenderGraph = std::make_unique<VulkanRenderGraph>(*a_VkAPI);
+
+        RenderGraphTextureDescription l_ColorDesc{};
+        l_ColorDesc.Format    = TextureFormat::RGBA16F;
+        l_ColorDesc.Usage     = TextureUsage::ColorAttachment | TextureUsage::Sampled;
+        l_ColorDesc.DebugName = "GBuffer-Color";
+        m_Implementation->ColorHandle = m_Implementation->RenderGraph->DeclareTexture(l_ColorDesc);
+
+        RenderGraphTextureDescription l_NormalDesc{};
+        l_NormalDesc.Format    = TextureFormat::RGBA16F;
+        l_NormalDesc.Usage     = TextureUsage::ColorAttachment | TextureUsage::Sampled;
+        l_NormalDesc.DebugName = "GBuffer-Normal";
+        m_Implementation->NormalHandle = m_Implementation->RenderGraph->DeclareTexture(l_NormalDesc);
+
+        RenderGraphTextureDescription l_DepthDesc{};
+        l_DepthDesc.Format    = TextureFormat::Depth32F;
+        l_DepthDesc.Usage     = TextureUsage::DepthStencilAttachment | TextureUsage::Sampled;
+        l_DepthDesc.DebugName = "GBuffer-Depth";
+        m_Implementation->DepthHandle = m_Implementation->RenderGraph->DeclareTexture(l_DepthDesc);
+
+        const auto l_ColorHandle  = m_Implementation->ColorHandle;
+        const auto l_NormalHandle = m_Implementation->NormalHandle;
+        const auto l_DepthHandle  = m_Implementation->DepthHandle;
+
+        m_Implementation->RenderGraph->AddPass("Geometry")
+            .Write(l_ColorHandle)
+            .Write(l_NormalHandle)
+            .Write(l_DepthHandle)
+            .SetExecuteCallback([this, a_VkAPI, l_ColorHandle, l_NormalHandle, l_DepthHandle](RenderGraphContext& ctx)
+            {
+                VkCommandBuffer l_Cmd = a_VkAPI->GetCurrentCommandBuffer();
+
+                auto l_Color  = std::dynamic_pointer_cast<VulkanTexture>(ctx.GetTexture(l_ColorHandle));
+                auto l_Normal = std::dynamic_pointer_cast<VulkanTexture>(ctx.GetTexture(l_NormalHandle));
+                auto l_Depth  = std::dynamic_pointer_cast<VulkanTexture>(ctx.GetTexture(l_DepthHandle));
+
+                if (!l_Color || !l_Normal || !l_Depth)
+                {
+                    return;
+                }
+
+                auto a_MakeColorAttachment = [](VkImageView view) -> VkRenderingAttachmentInfo
+                {
+                    VkRenderingAttachmentInfo l_Info{};
+                    l_Info.sType            = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+                    l_Info.imageView        = view;
+                    l_Info.imageLayout      = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                    l_Info.loadOp           = VK_ATTACHMENT_LOAD_OP_CLEAR;
+                    l_Info.storeOp          = VK_ATTACHMENT_STORE_OP_STORE;
+                    l_Info.clearValue.color = { { 0.0f, 0.0f, 0.0f, 1.0f } };
+                    return l_Info;
+                };
+
+                std::array<VkRenderingAttachmentInfo, 2> l_ColorAttachments = {
+                    a_MakeColorAttachment(l_Color->GetImageView()),
+                    a_MakeColorAttachment(l_Normal->GetImageView())
+                };
+
+                VkRenderingAttachmentInfo l_DepthAttachment{};
+                l_DepthAttachment.sType                      = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+                l_DepthAttachment.imageView                  = l_Depth->GetImageView();
+                l_DepthAttachment.imageLayout                = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+                l_DepthAttachment.loadOp                     = VK_ATTACHMENT_LOAD_OP_CLEAR;
+                l_DepthAttachment.storeOp                    = VK_ATTACHMENT_STORE_OP_STORE;
+                l_DepthAttachment.clearValue.depthStencil    = { 1.0f, 0 };
+
+                VkRenderingInfo l_RenderingInfo{};
+                l_RenderingInfo.sType                = VK_STRUCTURE_TYPE_RENDERING_INFO;
+                l_RenderingInfo.renderArea           = { { 0, 0 }, { m_Width, m_Height } };
+                l_RenderingInfo.layerCount           = 1;
+                l_RenderingInfo.colorAttachmentCount = static_cast<uint32_t>(l_ColorAttachments.size());
+                l_RenderingInfo.pColorAttachments    = l_ColorAttachments.data();
+                l_RenderingInfo.pDepthAttachment     = &l_DepthAttachment;
+                vkCmdBeginRendering(l_Cmd, &l_RenderingInfo);
+
+                VkViewport l_Viewport{};
+                l_Viewport.width    = static_cast<float>(m_Width);
+                l_Viewport.height   = static_cast<float>(m_Height);
+                l_Viewport.minDepth = 0.0f;
+                l_Viewport.maxDepth = 1.0f;
+                vkCmdSetViewport(l_Cmd, 0, 1, &l_Viewport);
+
+                VkRect2D l_Scissor{};
+                l_Scissor.extent = { m_Width, m_Height };
+                vkCmdSetScissor(l_Cmd, 0, 1, &l_Scissor);
+
+                if (!m_DrawList.empty())
+                {
+                    auto* a_VkPipeline = dynamic_cast<VulkanPipeline*>(m_Implementation->MeshPipeline.get());
+                    vkCmdBindPipeline(l_Cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, a_VkPipeline->GetPipeline());
+
+                    const glm::mat4 l_VP = m_Camera.GetViewProjectionMatrix();
+
+                    for (const auto& cmd : m_DrawList)
+                    {
+                        if (!cmd.MeshRef) continue;
+
+                        auto* a_VB = dynamic_cast<VulkanBuffer*>(cmd.MeshRef->GetVertexBuffer().get());
+                        auto* a_IB = dynamic_cast<VulkanBuffer*>(cmd.MeshRef->GetIndexBuffer().get());
+                        if (!a_VB || !a_IB) continue;
+
+                        VkBuffer     l_Buffers[] = { a_VB->GetBuffer() };
+                        VkDeviceSize l_Offsets[] = { 0 };
+                        vkCmdBindVertexBuffers(l_Cmd, 0, 1, l_Buffers, l_Offsets);
+                        vkCmdBindIndexBuffer(l_Cmd, a_IB->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
+
+                        struct { float Model[16]; float VP[16]; } l_Push;
+                        std::memcpy(l_Push.Model, cmd.Transform,        64);
+                        std::memcpy(l_Push.VP,    glm::value_ptr(l_VP), 64);
+                        vkCmdPushConstants(l_Cmd, a_VkPipeline->GetLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, 128, &l_Push);
+
+                        vkCmdDrawIndexed(l_Cmd, cmd.MeshRef->GetIndexCount(), 1, 0, 0, 0);
+
+                        m_Implementation->Stats.DrawCalls++;
+                        m_Implementation->Stats.IndexCount  += cmd.MeshRef->GetIndexCount();
+                        m_Implementation->Stats.VertexCount += cmd.MeshRef->GetVertexCount();
+                    }
+                }
+
+                vkCmdEndRendering(l_Cmd);
+            });
+
+        m_Implementation->RenderGraph->AddPass("Output")
+            .Read(l_ColorHandle);
 
         ShaderSpecification l_ShaderSpec{};
         l_ShaderSpec.Modules.push_back({ ShaderStage::Vertex,   "geometry_pass.vert.spv" });
@@ -84,19 +182,19 @@ namespace Trinity
         PipelineSpecification l_PipelineSpec{};
         l_PipelineSpec.PipelineShader = l_Shader;
         l_PipelineSpec.VertexAttributes = {
-            { 0, 0, VertexAttributeFormat::Float3,  0 },   // Position
-            { 1, 0, VertexAttributeFormat::Float3, 12 },   // Normal
-            { 2, 0, VertexAttributeFormat::Float2, 24 },   // TexCoord
+            { 0, 0, VertexAttributeFormat::Float3,  0 },
+            { 1, 0, VertexAttributeFormat::Float3, 12 },
+            { 2, 0, VertexAttributeFormat::Float2, 24 },
         };
-        l_PipelineSpec.VertexStride = sizeof(Vertex);                     // 32 bytes
-        l_PipelineSpec.PushConstants = {{ ShaderStage::Vertex, 0, 128 }}; // model (64) + VP (64)
+        l_PipelineSpec.VertexStride           = sizeof(Vertex);
+        l_PipelineSpec.PushConstants          = {{ ShaderStage::Vertex, 0, 128 }};
         l_PipelineSpec.ColorAttachmentFormats = { TextureFormat::RGBA16F, TextureFormat::RGBA16F };
         l_PipelineSpec.DepthAttachmentFormat  = TextureFormat::Depth32F;
-        l_PipelineSpec.DepthTest   = true;
-        l_PipelineSpec.DepthWrite  = true;
-        l_PipelineSpec.DepthOp     = DepthCompareOp::Less;
-        l_PipelineSpec.CullingMode = CullMode::Back;
-        l_PipelineSpec.DebugName   = "MeshPipeline";
+        l_PipelineSpec.DepthTest              = true;
+        l_PipelineSpec.DepthWrite             = true;
+        l_PipelineSpec.DepthOp                = DepthCompareOp::Less;
+        l_PipelineSpec.CullingMode            = CullMode::Back;
+        l_PipelineSpec.DebugName              = "MeshPipeline";
         m_Implementation->MeshPipeline = Renderer::GetAPI().CreatePipeline(l_PipelineSpec);
     }
 
@@ -110,7 +208,7 @@ namespace Trinity
         m_Camera    = camera;
         m_SceneData = sceneData;
         m_DrawList.clear();
-        m_Implementation->Stats      = {};
+        m_Implementation->Stats       = {};
         m_Implementation->SceneActive = true;
     }
 
@@ -126,80 +224,12 @@ namespace Trinity
 
     void SceneRenderer::Render()
     {
-        if (!m_Implementation || !m_Implementation->GeometryPass || !m_Implementation->MeshPipeline)
+        if (!m_Implementation || !m_Implementation->RenderGraph || !m_Implementation->MeshPipeline)
         {
             return;
         }
 
-        auto* a_VkAPI = dynamic_cast<VulkanRendererAPI*>(&Renderer::GetAPI());
-        VkCommandBuffer l_Cmd = a_VkAPI->GetCurrentCommandBuffer();
-
-        auto l_Fb = m_Implementation->GeometryPass->GetFramebuffer();
-
-        // Transition all color attachments: UNDEFINED → COLOR_ATTACHMENT_OPTIMAL (contents discarded — fine, we clear)
-        for (uint32_t i = 0; i < l_Fb->GetColorAttachmentCount(); i++)
-        {
-            auto l_Tex = std::dynamic_pointer_cast<VulkanTexture>(l_Fb->GetColorAttachment(i));
-            TransitionImage(l_Cmd, l_Tex->GetImage(), VK_IMAGE_ASPECT_COLOR_BIT,
-                VK_IMAGE_LAYOUT_UNDEFINED,                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,        0,
-                VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT);
-        }
-
-        // Transition depth: UNDEFINED → DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-        {
-            auto l_Depth = std::dynamic_pointer_cast<VulkanTexture>(l_Fb->GetDepthAttachment());
-            TransitionImage(l_Cmd, l_Depth->GetImage(), VK_IMAGE_ASPECT_DEPTH_BIT,
-                VK_IMAGE_LAYOUT_UNDEFINED,                       VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,             0,
-                VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,   VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
-        }
-
-        m_Implementation->GeometryPass->Begin(m_Width, m_Height);
-
-        if (!m_DrawList.empty())
-        {
-            auto* a_VkPipeline = dynamic_cast<VulkanPipeline*>(m_Implementation->MeshPipeline.get());
-            vkCmdBindPipeline(l_Cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, a_VkPipeline->GetPipeline());
-
-            const glm::mat4 l_VP = m_Camera.GetViewProjectionMatrix();
-
-            for (const auto& cmd : m_DrawList)
-            {
-                if (!cmd.MeshRef) continue;
-
-                auto* a_VB = dynamic_cast<VulkanBuffer*>(cmd.MeshRef->GetVertexBuffer().get());
-                auto* a_IB = dynamic_cast<VulkanBuffer*>(cmd.MeshRef->GetIndexBuffer().get());
-                if (!a_VB || !a_IB) continue;
-
-                VkBuffer     l_Buffers[] = { a_VB->GetBuffer() };
-                VkDeviceSize l_Offsets[] = { 0 };
-                vkCmdBindVertexBuffers(l_Cmd, 0, 1, l_Buffers, l_Offsets);
-                vkCmdBindIndexBuffer(l_Cmd, a_IB->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
-
-                struct { float Model[16]; float VP[16]; } l_Push;
-                std::memcpy(l_Push.Model, cmd.Transform,            64);
-                std::memcpy(l_Push.VP,    glm::value_ptr(l_VP),     64);
-                vkCmdPushConstants(l_Cmd, a_VkPipeline->GetLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, 128, &l_Push);
-
-                vkCmdDrawIndexed(l_Cmd, cmd.MeshRef->GetIndexCount(), 1, 0, 0, 0);
-
-                m_Implementation->Stats.DrawCalls++;
-                m_Implementation->Stats.IndexCount  += cmd.MeshRef->GetIndexCount();
-                m_Implementation->Stats.VertexCount += cmd.MeshRef->GetVertexCount();
-            }
-        }
-
-        m_Implementation->GeometryPass->End();
-
-        // Transition color[0]: COLOR_ATTACHMENT_OPTIMAL → SHADER_READ_ONLY_OPTIMAL so ImGui can sample it
-        {
-            auto l_Color = std::dynamic_pointer_cast<VulkanTexture>(l_Fb->GetColorAttachment(0));
-            TransitionImage(l_Cmd, l_Color->GetImage(), VK_IMAGE_ASPECT_COLOR_BIT,
-                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-                VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,         VK_ACCESS_2_SHADER_READ_BIT);
-        }
+        m_Implementation->RenderGraph->Execute();
     }
 
     void SceneRenderer::OnResize(uint32_t width, uint32_t height)
@@ -207,26 +237,25 @@ namespace Trinity
         if (width == 0 || height == 0) return;
         if (m_Width == width && m_Height == height) return;
 
-        // Wait for the GPU to finish before destroying framebuffer images
         Renderer::WaitIdle();
 
         m_Width  = width;
         m_Height = height;
 
-        if (m_Implementation && m_Implementation->GeometryPass)
+        if (m_Implementation && m_Implementation->RenderGraph)
         {
-            m_Implementation->GeometryPass->Resize(width, height);
+            m_Implementation->RenderGraph->OnResize(width, height);
         }
     }
 
     std::shared_ptr<Texture> SceneRenderer::GetFinalOutput() const
     {
-        if (!m_Implementation || !m_Implementation->GeometryPass)
+        if (!m_Implementation || !m_Implementation->RenderGraph)
         {
             return nullptr;
         }
 
-        return m_Implementation->GeometryPass->GetFramebuffer()->GetColorAttachment(0);
+        return m_Implementation->RenderGraph->GetTexture(m_Implementation->ColorHandle);
     }
 
     const SceneRendererStats& SceneRenderer::GetStats() const

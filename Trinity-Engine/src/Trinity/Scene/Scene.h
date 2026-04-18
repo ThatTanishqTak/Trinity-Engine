@@ -14,8 +14,13 @@ namespace Trinity
         explicit Scene(std::string name = "Untitled");
         ~Scene() = default;
 
+        Scene(Scene&&) noexcept = default;
+        Scene& operator=(Scene&&) noexcept = default;
+
         Entity CreateEntity(const std::string& tag = "Entity");
-        void   DestroyEntity(Entity entity);
+        Entity CreateEntityWithUUID(uint64_t uuid, const std::string& tag = "Entity");
+        void  DestroyEntity(Entity entity);
+        Entity FindEntityByUUID(uint64_t uuid);
 
         const std::string& GetName() const { return m_Name; }
         void SetName(const std::string& name) { m_Name = name; }

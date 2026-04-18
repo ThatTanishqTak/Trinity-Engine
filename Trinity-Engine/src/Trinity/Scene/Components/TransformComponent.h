@@ -1,5 +1,6 @@
 #pragma once
 
+#include <entt/entt.hpp>
 #include <glm/glm.hpp>
 
 #include <cstdint>
@@ -15,5 +16,6 @@ namespace Trinity
         uint64_t ParentUUID = 0;
 
         glm::mat4 GetLocalMatrix() const;
+        glm::mat4 GetWorldMatrix(const entt::registry& registry) const;
     };
 }
