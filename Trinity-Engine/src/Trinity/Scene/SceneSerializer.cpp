@@ -26,16 +26,21 @@ namespace YAML
             l_Node.push_back(v.y);
             l_Node.push_back(v.z);
             l_Node.SetStyle(EmitterStyle::Flow);
+
             return l_Node;
         }
 
         static bool decode(const Node& l_Node, glm::vec3& v)
         {
             if (!l_Node.IsSequence() || l_Node.size() != 3)
+            {
                 return false;
+            }
+            
             v.x = l_Node[0].as<float>();
             v.y = l_Node[1].as<float>();
             v.z = l_Node[2].as<float>();
+            
             return true;
         }
     };
@@ -46,6 +51,7 @@ namespace Trinity
     static YAML::Emitter& operator<<(YAML::Emitter& out, const glm::vec3& v)
     {
         out << YAML::Flow << YAML::BeginSeq << v.x << v.y << v.z << YAML::EndSeq;
+
         return out;
     }
 
@@ -54,24 +60,24 @@ namespace Trinity
         out << YAML::BeginMap;
 
         out << YAML::Key << "UUID" << YAML::Value << entity.GetComponent<UUIDComponent>().UUID;
-        out << YAML::Key << "Tag"  << YAML::Value << entity.GetComponent<TagComponent>().Tag;
+        out << YAML::Key << "Tag" << YAML::Value << entity.GetComponent<TagComponent>().Tag;
 
         const auto& l_Transform = entity.GetComponent<TransformComponent>();
         out << YAML::Key << "Transform" << YAML::Value << YAML::BeginMap;
         out << YAML::Key << "Position" << YAML::Value << l_Transform.Position;
         out << YAML::Key << "Rotation" << YAML::Value << l_Transform.Rotation;
-        out << YAML::Key << "Scale"    << YAML::Value << l_Transform.Scale;
-        out << YAML::Key << "Parent"   << YAML::Value << l_Transform.ParentUUID;
+        out << YAML::Key << "Scale" << YAML::Value << l_Transform.Scale;
+        out << YAML::Key << "Parent" << YAML::Value << l_Transform.ParentUUID;
         out << YAML::EndMap;
 
         if (entity.HasComponent<CameraComponent>())
         {
             const auto& l_Camera = entity.GetComponent<CameraComponent>();
             out << YAML::Key << "Camera" << YAML::Value << YAML::BeginMap;
-            out << YAML::Key << "FOV"      << YAML::Value << l_Camera.FOV;
+            out << YAML::Key << "FOV" << YAML::Value << l_Camera.FOV;
             out << YAML::Key << "NearClip" << YAML::Value << l_Camera.NearClip;
-            out << YAML::Key << "FarClip"  << YAML::Value << l_Camera.FarClip;
-            out << YAML::Key << "Primary"  << YAML::Value << l_Camera.Primary;
+            out << YAML::Key << "FarClip" << YAML::Value << l_Camera.FarClip;
+            out << YAML::Key << "Primary" << YAML::Value << l_Camera.Primary;
             out << YAML::EndMap;
         }
 
@@ -79,7 +85,7 @@ namespace Trinity
         {
             const auto& l_Light = entity.GetComponent<DirectionalLightComponent>();
             out << YAML::Key << "DirectionalLight" << YAML::Value << YAML::BeginMap;
-            out << YAML::Key << "Color"     << YAML::Value << l_Light.Color;
+            out << YAML::Key << "Color" << YAML::Value << l_Light.Color;
             out << YAML::Key << "Intensity" << YAML::Value << l_Light.Intensity;
             out << YAML::EndMap;
         }
@@ -91,7 +97,7 @@ namespace Trinity
     {
         YAML::Emitter l_Out;
         l_Out << YAML::BeginMap;
-        l_Out << YAML::Key << "Scene"    << YAML::Value << scene.GetName();
+        l_Out << YAML::Key << "Scene" << YAML::Value << scene.GetName();
         l_Out << YAML::Key << "Entities" << YAML::Value << YAML::BeginSeq;
 
         scene.GetRegistry().view<UUIDComponent>().each([&](entt::entity l_Handle, const UUIDComponent&)
@@ -118,7 +124,9 @@ namespace Trinity
 
         const auto l_Entities = root["Entities"];
         if (!l_Entities)
+        {
             return true;
+        }
 
         for (const auto& l_EntityNode : l_Entities)
         {
@@ -131,9 +139,9 @@ namespace Trinity
             if (l_TransformNode)
             {
                 auto& l_Transform = l_Entity.GetComponent<TransformComponent>();
-                l_Transform.Position   = l_TransformNode["Position"].as<glm::vec3>();
-                l_Transform.Rotation   = l_TransformNode["Rotation"].as<glm::vec3>();
-                l_Transform.Scale      = l_TransformNode["Scale"].as<glm::vec3>();
+                l_Transform.Position = l_TransformNode["Position"].as<glm::vec3>();
+                l_Transform.Rotation = l_TransformNode["Rotation"].as<glm::vec3>();
+                l_Transform.Scale = l_TransformNode["Scale"].as<glm::vec3>();
                 l_Transform.ParentUUID = l_TransformNode["Parent"].as<uint64_t>(0);
             }
 
@@ -141,17 +149,17 @@ namespace Trinity
             if (l_CameraNode)
             {
                 auto& l_Camera = l_Entity.AddComponent<CameraComponent>();
-                l_Camera.FOV      = l_CameraNode["FOV"].as<float>(60.0f);
+                l_Camera.FOV = l_CameraNode["FOV"].as<float>(60.0f);
                 l_Camera.NearClip = l_CameraNode["NearClip"].as<float>(0.1f);
-                l_Camera.FarClip  = l_CameraNode["FarClip"].as<float>(1000.0f);
-                l_Camera.Primary  = l_CameraNode["Primary"].as<bool>(true);
+                l_Camera.FarClip = l_CameraNode["FarClip"].as<float>(1000.0f);
+                l_Camera.Primary = l_CameraNode["Primary"].as<bool>(true);
             }
 
             const auto l_LightNode = l_EntityNode["DirectionalLight"];
             if (l_LightNode)
             {
                 auto& l_Light = l_Entity.AddComponent<DirectionalLightComponent>();
-                l_Light.Color     = l_LightNode["Color"].as<glm::vec3>(glm::vec3(1.0f));
+                l_Light.Color = l_LightNode["Color"].as<glm::vec3>(glm::vec3(1.0f));
                 l_Light.Intensity = l_LightNode["Intensity"].as<float>(1.0f);
             }
         }

@@ -134,12 +134,12 @@ namespace Forge
                 Trinity::Entity l_Wrapper(entity, l_Scene);
                 l_Scene->DestroyEntity(l_Wrapper);
 
+                ImGui::EndPopup();
+
                 if (l_NodeOpen)
                 {
                     ImGui::TreePop();
                 }
-
-                ImGui::EndPopup();
 
                 return;
             }

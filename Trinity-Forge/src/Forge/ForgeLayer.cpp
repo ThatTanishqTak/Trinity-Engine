@@ -11,8 +11,57 @@
 #include <imgui.h>
 #include <ImGuizmo.h>
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <commdlg.h>
+#endif
+
+namespace
+{
+    static std::string PlatformOpenFileDialog(const char* filter)
+    {
+#ifdef _WIN32
+        OPENFILENAMEA l_OpenFile{};
+        char l_Path[512] = {};
+        l_OpenFile.lStructSize = sizeof(l_OpenFile);
+        l_OpenFile.lpstrFilter = filter;
+        l_OpenFile.lpstrFile = l_Path;
+        l_OpenFile.nMaxFile = sizeof(l_Path);
+        l_OpenFile.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
+
+        if (GetOpenFileNameA(&l_OpenFile))
+        {
+            return l_Path;
+        }
+#endif
+        return {};
+    }
+
+    static std::string PlatformSaveFileDialog(const char* filter, const char* defaultExt)
+    {
+#ifdef _WIN32
+        OPENFILENAMEA l_OpenFile{};
+        char l_Path[512] = {};
+        l_OpenFile.lStructSize = sizeof(l_OpenFile);
+        l_OpenFile.lpstrFilter = filter;
+        l_OpenFile.lpstrFile = l_Path;
+        l_OpenFile.nMaxFile = sizeof(l_Path);
+        l_OpenFile.lpstrDefExt = defaultExt;
+        l_OpenFile.Flags = OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR;
+
+        if (GetSaveFileNameA(&l_OpenFile))
+        {
+            return l_Path;
+        }
+#endif
+        return {};
+    }
+}
+
 ForgeLayer::ForgeLayer() : Trinity::Layer("ForgeLayer")
 {
+
 }
 
 ForgeLayer::~ForgeLayer() = default;
@@ -55,13 +104,21 @@ void ForgeLayer::OnUpdate(float deltaTime)
         }
         else if (Trinity::DesktopInput::KeyPressed(Trinity::Code::KeyCode::TR_KEY_O))
         {
-            m_ShowOpenSceneModal = true;
+            const std::string l_Path = PlatformOpenFileDialog("Trinity Scene\0*.trinity\0All Files\0*.*\0");
+            if (!l_Path.empty())
+            {
+                OpenScene(l_Path);
+            }
         }
         else if (Trinity::DesktopInput::KeyPressed(Trinity::Code::KeyCode::TR_KEY_S))
         {
             if (l_Shift || m_CurrentScenePath.empty())
             {
-                m_ShowSaveSceneAsModal = true;
+                const std::string l_Path = PlatformSaveFileDialog("Trinity Scene\0*.trinity\0All Files\0*.*\0", "trinity");
+                if (!l_Path.empty())
+                {
+                    SaveSceneAs(l_Path);
+                }
             }
             else
             {
@@ -107,8 +164,6 @@ void ForgeLayer::OnImGuiRender()
     ImGuizmo::BeginFrame();
 
     m_PanelManager.RenderPanels();
-
-    RenderFileDialogModals();
 
     if (m_ShowAboutPopup)
     {
@@ -176,76 +231,6 @@ void ForgeLayer::SaveSceneAs(const std::string& filepath)
     m_CurrentScenePath = filepath;
 }
 
-void ForgeLayer::RenderFileDialogModals()
-{
-    if (m_ShowOpenSceneModal)
-    {
-        ImGui::OpenPopup("Open Scene");
-        m_ShowOpenSceneModal = false;
-    }
-
-    if (m_ShowSaveSceneAsModal)
-    {
-        ImGui::OpenPopup("Save Scene As");
-        m_ShowSaveSceneAsModal = false;
-    }
-
-    const ImVec2 l_Center = ImGui::GetMainViewport()->GetCenter();
-    ImGui::SetNextWindowPos(l_Center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-    ImGui::SetNextWindowSize(ImVec2(500.0f, 0.0f), ImGuiCond_Appearing);
-
-    if (ImGui::BeginPopupModal("Open Scene", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        ImGui::Text("Scene path (.trinity):");
-        ImGui::SetNextItemWidth(-1.0f);
-        ImGui::InputText("##openpath", m_FilePathBuffer, sizeof(m_FilePathBuffer));
-
-        if (ImGui::Button("Open", ImVec2(120.0f, 0.0f)))
-        {
-            OpenScene(m_FilePathBuffer);
-            m_FilePathBuffer[0] = '\0';
-            ImGui::CloseCurrentPopup();
-        }
-
-        ImGui::SameLine();
-
-        if (ImGui::Button("Cancel", ImVec2(120.0f, 0.0f)))
-        {
-            m_FilePathBuffer[0] = '\0';
-            ImGui::CloseCurrentPopup();
-        }
-
-        ImGui::EndPopup();
-    }
-
-    ImGui::SetNextWindowPos(l_Center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-    ImGui::SetNextWindowSize(ImVec2(500.0f, 0.0f), ImGuiCond_Appearing);
-
-    if (ImGui::BeginPopupModal("Save Scene As", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        ImGui::Text("Scene path (.trinity):");
-        ImGui::SetNextItemWidth(-1.0f);
-        ImGui::InputText("##savepath", m_FilePathBuffer, sizeof(m_FilePathBuffer));
-
-        if (ImGui::Button("Save", ImVec2(120.0f, 0.0f)))
-        {
-            SaveSceneAs(m_FilePathBuffer);
-            m_FilePathBuffer[0] = '\0';
-            ImGui::CloseCurrentPopup();
-        }
-
-        ImGui::SameLine();
-
-        if (ImGui::Button("Cancel", ImVec2(120.0f, 0.0f)))
-        {
-            m_FilePathBuffer[0] = '\0';
-            ImGui::CloseCurrentPopup();
-        }
-
-        ImGui::EndPopup();
-    }
-}
-
 void ForgeLayer::RenderMenuBar()
 {
     // File
@@ -258,7 +243,11 @@ void ForgeLayer::RenderMenuBar()
 
         if (ImGui::MenuItem("Open Scene...", "Ctrl+O"))
         {
-            m_ShowOpenSceneModal = true;
+            const std::string l_Path = PlatformOpenFileDialog("Trinity Scene\0*.trinity\0All Files\0*.*\0");
+            if (!l_Path.empty())
+            {
+                OpenScene(l_Path);
+            }
         }
 
         ImGui::Separator();
@@ -282,7 +271,11 @@ void ForgeLayer::RenderMenuBar()
 
         if (ImGui::MenuItem("Save Scene As...", "Ctrl+Shift+S"))
         {
-            m_ShowSaveSceneAsModal = true;
+            const std::string l_Path = PlatformSaveFileDialog("Trinity Scene\0*.trinity\0All Files\0*.*\0", "trinity");
+            if (!l_Path.empty())
+            {
+                SaveSceneAs(l_Path);
+            }
         }
 
         ImGui::Separator();

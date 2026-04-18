@@ -42,7 +42,6 @@ private:
     void SaveSceneAs(const std::string& filepath);
 
     void RenderMenuBar();
-    void RenderFileDialogModals();
 
     Trinity::Scene m_Scene;
 
@@ -59,11 +58,7 @@ private:
     std::string m_CurrentScenePath;
     std::string m_SceneSnapshot;
 
-    bool m_ShowAboutPopup       = false;
-    bool m_ShowOpenSceneModal   = false;
-    bool m_ShowSaveSceneAsModal = false;
-
-    char m_FilePathBuffer[512] = {};
+    bool m_ShowAboutPopup = false;
 
     EditorState m_LastEditorState = EditorState::Edit;
 };
