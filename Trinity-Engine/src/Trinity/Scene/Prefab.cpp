@@ -32,16 +32,16 @@ namespace YAML
             return l_Node;
         }
 
-        static bool decode(const Node& l_Node, glm::vec3& v)
+        static bool decode(const Node& node, glm::vec3& v)
         {
-            if (!l_Node.IsSequence() || l_Node.size() != 3)
+            if (!node.IsSequence() || node.size() != 3)
             {
                 return false;
             }
 
-            v.x = l_Node[0].as<float>();
-            v.y = l_Node[1].as<float>();
-            v.z = l_Node[2].as<float>();
+            v.x = node[0].as<float>();
+            v.y = node[1].as<float>();
+            v.z = node[2].as<float>();
 
             return true;
         }

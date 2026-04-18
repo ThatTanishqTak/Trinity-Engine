@@ -1,7 +1,11 @@
 #include "Trinity/Scene/Components/TransformComponent.h"
-#include "Trinity/Scene/Components/UUIDComponent.h"
+
+#include "Trinity/Scene/Scene.h"
+#include "Trinity/Utilities/Log.h"
 
 #include <glm/gtc/matrix_transform.hpp>
+
+#include <entt/entt.hpp>
 
 namespace Trinity
 {
@@ -18,20 +22,40 @@ namespace Trinity
         return l_Matrix;
     }
 
-    glm::mat4 TransformComponent::GetWorldMatrix(const entt::registry& registry) const
+    glm::mat4 TransformComponent::GetWorldMatrix(const Scene& scene) const
     {
-        glm::mat4 l_Local = GetLocalMatrix();
+        constexpr int l_MaxDepth = 32;
 
-        if (ParentUUID == 0)
-            return l_Local;
+        glm::mat4 l_World = GetLocalMatrix();
+        uint64_t l_ParentUUID = ParentUUID;
+        int l_Depth = 0;
 
-        auto l_View = registry.view<const UUIDComponent, const TransformComponent>();
-        for (auto l_Entity : l_View)
+        const auto& l_Registry = scene.GetRegistry();
+
+        while (l_ParentUUID != 0)
         {
-            if (l_View.get<const UUIDComponent>(l_Entity).UUID == ParentUUID)
-                return l_View.get<const TransformComponent>(l_Entity).GetWorldMatrix(registry) * l_Local;
+            if (++l_Depth > l_MaxDepth)
+            {
+                TR_CORE_WARN("TransformComponent::GetWorldMatrix: parent chain exceeded {} — assuming cycle, aborting walk", l_MaxDepth);
+                break;
+            }
+
+            const entt::entity l_ParentHandle = scene.FindHandleByUUID(l_ParentUUID);
+            if (l_ParentHandle == entt::null)
+            {
+                break;
+            }
+
+            const auto* l_ParentTransform = l_Registry.try_get<TransformComponent>(l_ParentHandle);
+            if (!l_ParentTransform)
+            {
+                break;
+            }
+
+            l_World = l_ParentTransform->GetLocalMatrix() * l_World;
+            l_ParentUUID = l_ParentTransform->ParentUUID;
         }
 
-        return l_Local;
+        return l_World;
     }
 }

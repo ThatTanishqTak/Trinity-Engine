@@ -4,6 +4,7 @@
 #include "Trinity/Scene/Components/UUIDComponent.h"
 #include "Trinity/Scene/Components/TagComponent.h"
 #include "Trinity/Scene/Components/TransformComponent.h"
+#include "Trinity/Utilities/Log.h"
 
 #include <random>
 
@@ -13,7 +14,7 @@ namespace Trinity
     {
         static std::random_device s_RandomDevice;
         static std::mt19937_64 s_Engine(s_RandomDevice());
-        static std::uniform_int_distribution<uint64_t> s_Distribution;
+        static std::uniform_int_distribution<uint64_t> s_Distribution(1, UINT64_MAX);
 
         return s_Distribution(s_Engine);
     }
@@ -25,40 +26,62 @@ namespace Trinity
 
     Entity Scene::CreateEntity(const std::string& tag)
     {
-        Entity l_Entity(m_Registry.create(), this);
-        l_Entity.AddComponent<UUIDComponent>(GenerateUUID());
-        l_Entity.AddComponent<TagComponent>(tag);
-        l_Entity.AddComponent<TransformComponent>();
-
-        return l_Entity;
+        return CreateEntityWithUUID(GenerateUUID(), tag);
     }
 
     Entity Scene::CreateEntityWithUUID(uint64_t uuid, const std::string& tag)
     {
-        Entity l_Entity(m_Registry.create(), this);
+        if (uuid == 0)
+        {
+            TR_CORE_WARN("Scene::CreateEntityWithUUID: UUID 0 is reserved, regenerating");
+            uuid = GenerateUUID();
+        }
+
+        if (m_EntityByUUID.find(uuid) != m_EntityByUUID.end())
+        {
+            TR_CORE_ERROR("Scene::CreateEntityWithUUID: UUID {} already in scene — regenerating", uuid);
+            uuid = GenerateUUID();
+        }
+
+        const entt::entity l_Handle = m_Registry.create();
+        Entity l_Entity(l_Handle, this);
         l_Entity.AddComponent<UUIDComponent>(uuid);
         l_Entity.AddComponent<TagComponent>(tag);
         l_Entity.AddComponent<TransformComponent>();
+
+        m_EntityByUUID.emplace(uuid, l_Handle);
 
         return l_Entity;
     }
 
     void Scene::DestroyEntity(Entity entity)
     {
-        m_Registry.destroy(entity.GetHandle());
+        const entt::entity l_Handle = entity.GetHandle();
+
+        if (m_Registry.all_of<UUIDComponent>(l_Handle))
+        {
+            const uint64_t l_UUID = m_Registry.get<UUIDComponent>(l_Handle).UUID;
+            m_EntityByUUID.erase(l_UUID);
+        }
+
+        m_Registry.destroy(l_Handle);
     }
 
     Entity Scene::FindEntityByUUID(uint64_t uuid)
     {
-        auto l_View = m_Registry.view<UUIDComponent>();
-        for (auto l_Entity : l_View)
+        const auto it = m_EntityByUUID.find(uuid);
+        if (it == m_EntityByUUID.end())
         {
-            if (l_View.get<UUIDComponent>(l_Entity).UUID == uuid)
-            {
-                return Entity(l_Entity, this);
-            }
+            return Entity{};
         }
 
-        return Entity{};
+        return Entity(it->second, this);
+    }
+
+    entt::entity Scene::FindHandleByUUID(uint64_t uuid) const
+    {
+        const auto it = m_EntityByUUID.find(uuid);
+
+        return it != m_EntityByUUID.end() ? it->second : entt::null;
     }
 }
