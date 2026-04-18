@@ -75,6 +75,26 @@ namespace Trinity
 		s_API->OnWindowResize(width, height);
 	}
 
+	std::shared_ptr<Texture> Renderer::CreateTextureFromData(const void* data, uint32_t width, uint32_t height)
+	{
+		if (!s_API)
+		{
+			return nullptr;
+		}
+
+		return s_API->CreateTextureFromData(data, width, height);
+	}
+
+	std::shared_ptr<Texture> Renderer::LoadTextureFromFile(const std::string& path)
+	{
+		if (!s_API)
+		{
+			return nullptr;
+		}
+
+		return s_API->LoadTextureFromFile(path);
+	}
+
 	RendererBackend Renderer::GetBackend()
 	{
 		if (!s_API)

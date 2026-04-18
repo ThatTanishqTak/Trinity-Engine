@@ -44,6 +44,8 @@ namespace Trinity
 
 		virtual std::shared_ptr<Buffer> CreateBuffer(const BufferSpecification& specification) = 0;
 		virtual std::shared_ptr<Texture> CreateTexture(const TextureSpecification& specification) = 0;
+		virtual std::shared_ptr<Texture> CreateTextureFromData(const void* data, uint32_t width, uint32_t height) = 0;
+		virtual std::shared_ptr<Texture> LoadTextureFromFile(const std::string& path) = 0;
 		virtual std::shared_ptr<Framebuffer> CreateFramebuffer(const FramebufferSpecification& specification) = 0;
 		virtual std::shared_ptr<Shader> CreateShader(const ShaderSpecification& specification) = 0;
 		virtual std::shared_ptr<Pipeline> CreatePipeline(const PipelineSpecification& specification) = 0;

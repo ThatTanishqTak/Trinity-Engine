@@ -8,7 +8,10 @@
 #include "Trinity/Renderer/Vulkan/Resources/VulkanPipeline.h"
 #include "Trinity/Renderer/Vulkan/Resources/VulkanSampler.h"
 #include "Trinity/Platform/Window/Window.h"
+#include "Trinity/Utilities/Log.h"
 
+#include <stb_image.h>
+#include <cstring>
 #include <limits>
 
 namespace Trinity
@@ -190,6 +193,108 @@ namespace Trinity
     std::shared_ptr<Texture> VulkanRendererAPI::CreateTexture(const TextureSpecification& specification)
     {
         return std::make_shared<VulkanTexture>(m_Device.GetDevice(), m_Allocator.GetAllocator(), specification);
+    }
+
+    std::shared_ptr<Texture> VulkanRendererAPI::CreateTextureFromData(const void* data, uint32_t width, uint32_t height)
+    {
+        VkDeviceSize l_ImageSize = static_cast<VkDeviceSize>(width) * height * 4;
+
+        // Staging buffer (CPU-visible)
+        VkBufferCreateInfo l_BufInfo{};
+        l_BufInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        l_BufInfo.size = l_ImageSize;
+        l_BufInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        l_BufInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        VmaAllocationCreateInfo l_BufAllocInfo{};
+        l_BufAllocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+        l_BufAllocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
+        VkBuffer l_StagingBuffer = VK_NULL_HANDLE;
+        VmaAllocation l_StagingAllocation = VK_NULL_HANDLE;
+        VmaAllocationInfo l_StagingInfo{};
+        VulkanUtilities::VKCheck(vmaCreateBuffer(m_Allocator.GetAllocator(), &l_BufInfo, &l_BufAllocInfo, &l_StagingBuffer, &l_StagingAllocation, &l_StagingInfo), "CreateTextureFromData: failed to create staging buffer");
+
+        std::memcpy(l_StagingInfo.pMappedData, data, static_cast<size_t>(l_ImageSize));
+        vmaFlushAllocation(m_Allocator.GetAllocator(), l_StagingAllocation, 0, l_ImageSize);
+
+        // GPU texture (needs TransferDestination usage)
+        TextureSpecification l_Spec;
+        l_Spec.Width = width;
+        l_Spec.Height = height;
+        l_Spec.Format = TextureFormat::RGBA8;
+        l_Spec.Usage = TextureUsage::Sampled | TextureUsage::TransferDestination;
+
+        auto l_Texture = std::make_shared<VulkanTexture>(m_Device.GetDevice(), m_Allocator.GetAllocator(), l_Spec);
+
+        VkCommandBuffer l_Cmd = m_CommandPool.BeginSingleTimeCommands();
+
+        // UNDEFINED -> TRANSFER_DST
+        {
+            VkImageMemoryBarrier l_Barrier{};
+            l_Barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            l_Barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            l_Barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            l_Barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            l_Barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            l_Barrier.image = l_Texture->GetImage();
+            l_Barrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+            l_Barrier.srcAccessMask = 0;
+            l_Barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+            vkCmdPipelineBarrier(l_Cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &l_Barrier);
+        }
+
+        // Buffer -> Image copy
+        {
+            VkBufferImageCopy l_Region{};
+            l_Region.bufferOffset = 0;
+            l_Region.bufferRowLength = 0;
+            l_Region.bufferImageHeight = 0;
+            l_Region.imageSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+            l_Region.imageOffset = { 0, 0, 0 };
+            l_Region.imageExtent = { width, height, 1 };
+
+            vkCmdCopyBufferToImage(l_Cmd, l_StagingBuffer, l_Texture->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &l_Region);
+        }
+
+        // TRANSFER_DST -> SHADER_READ_ONLY
+        {
+            VkImageMemoryBarrier l_Barrier{};
+            l_Barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            l_Barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            l_Barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            l_Barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            l_Barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            l_Barrier.image = l_Texture->GetImage();
+            l_Barrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+            l_Barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            l_Barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+            vkCmdPipelineBarrier(l_Cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &l_Barrier);
+        }
+
+        m_CommandPool.EndSingleTimeCommands(l_Cmd);
+
+        vmaDestroyBuffer(m_Allocator.GetAllocator(), l_StagingBuffer, l_StagingAllocation);
+
+        return l_Texture;
+    }
+
+    std::shared_ptr<Texture> VulkanRendererAPI::LoadTextureFromFile(const std::string& path)
+    {
+        int l_Width = 0, l_Height = 0, l_Channels = 0;
+        stbi_uc* l_Pixels = stbi_load(path.c_str(), &l_Width, &l_Height, &l_Channels, STBI_rgb_alpha);
+
+        if (!l_Pixels)
+        {
+            TR_CORE_WARN("LoadTextureFromFile: failed to load '{}'", path);
+            return nullptr;
+        }
+
+        auto l_Texture = CreateTextureFromData(l_Pixels, static_cast<uint32_t>(l_Width), static_cast<uint32_t>(l_Height));
+        stbi_image_free(l_Pixels);
+        return l_Texture;
     }
 
     std::shared_ptr<Framebuffer> VulkanRendererAPI::CreateFramebuffer(const FramebufferSpecification& specification)
