@@ -2,6 +2,7 @@
 
 #include "Trinity/Scene/Scene.h"
 #include "Trinity/Scene/Entity.h"
+#include "Trinity/Scene/Components/UUIDComponent.h"
 #include "Trinity/Scene/Components/TagComponent.h"
 #include "Trinity/Scene/Components/TransformComponent.h"
 #include "Trinity/Scene/Components/MeshComponent.h"
@@ -10,6 +11,7 @@
 #include <imgui.h>
 
 #include <cstring>
+#include <vector>
 
 namespace Forge
 {
@@ -26,11 +28,14 @@ namespace Forge
 
         if (l_Scene)
         {
-            // Iterate all entities that have a TagComponent (every entity created via Scene::CreateEntity)
-            auto l_View = l_Scene->GetRegistry().view<Trinity::TagComponent>();
+            auto l_View = l_Scene->GetRegistry().view<Trinity::UUIDComponent, Trinity::TransformComponent>();
             for (auto it_Entity : l_View)
             {
-                RenderEntityNode(it_Entity);
+                const auto& l_Transform = l_View.get<Trinity::TransformComponent>(it_Entity);
+                if (l_Transform.ParentUUID == 0)
+                {
+                    RenderEntityNode(it_Entity);
+                }
             }
 
             // Right-click on empty panel area to spawn
@@ -63,11 +68,30 @@ namespace Forge
     void SceneHierarchyPanel::RenderEntityNode(entt::entity entity)
     {
         Trinity::Scene* l_Scene = m_Context->ActiveScene;
-        auto& l_Tag = l_Scene->GetRegistry().get<Trinity::TagComponent>(entity);
+        auto& l_Registry = l_Scene->GetRegistry();
+        auto& l_Tag = l_Registry.get<Trinity::TagComponent>(entity);
+
+        const uint64_t l_EntityUUID = l_Registry.get<Trinity::UUIDComponent>(entity).UUID;
+
+        std::vector<entt::entity> l_Children;
+        auto l_AllView = l_Registry.view<Trinity::UUIDComponent, Trinity::TransformComponent>();
+        for (auto it_Child : l_AllView)
+        {
+            if (it_Child == entity) continue;
+            if (l_AllView.get<Trinity::TransformComponent>(it_Child).ParentUUID == l_EntityUUID)
+            {
+                l_Children.push_back(it_Child);
+            }
+        }
 
         const bool l_Selected = (m_Context->SelectedEntity == entity);
+        const bool l_HasChildren = !l_Children.empty();
 
-        ImGuiTreeNodeFlags l_Flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_Leaf;
+        ImGuiTreeNodeFlags l_Flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
+        if (!l_HasChildren)
+        {
+            l_Flags |= ImGuiTreeNodeFlags_Leaf;
+        }
 
         if (l_Selected)
         {
@@ -149,6 +173,11 @@ namespace Forge
 
         if (l_NodeOpen)
         {
+            for (auto it_Child : l_Children)
+            {
+                RenderEntityNode(it_Child);
+            }
+
             ImGui::TreePop();
         }
     }

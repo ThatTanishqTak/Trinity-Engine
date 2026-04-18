@@ -28,6 +28,7 @@ namespace Forge
     private:
         void RenderToolbar();
         void RenderGizmos();
+        void HandleMeshDrop(const std::string& path);
 
         Trinity::SceneRenderer m_SceneRenderer;
         Trinity::EditorCamera m_Camera;

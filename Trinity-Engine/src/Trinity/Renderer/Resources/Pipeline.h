@@ -83,6 +83,9 @@ namespace Trinity
 		bool DepthWrite = true;
 		DepthCompareOp DepthOp = DepthCompareOp::Less;
 		bool WireframeMode = false;
+		bool DepthBias = false;
+		float DepthBiasConstantFactor = 0.0f;
+		float DepthBiasSlopeFactor = 0.0f;
 
 		std::vector<TextureFormat> ColorAttachmentFormats;
 		TextureFormat DepthAttachmentFormat = TextureFormat::None;

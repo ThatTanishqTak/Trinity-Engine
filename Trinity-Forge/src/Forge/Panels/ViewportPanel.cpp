@@ -4,11 +4,15 @@
 #include "Trinity/Platform/Window/Window.h"
 #include "Trinity/Renderer/Renderer.h"
 #include "Trinity/Scene/Scene.h"
+#include "Trinity/Scene/Entity.h"
 #include "Trinity/Scene/Components/TransformComponent.h"
 #include "Trinity/Scene/Components/MeshComponent.h"
+#include "Trinity/Asset/AssetRegistry.h"
 #include "Trinity/ImGui/ImGuiLayer.h"
 #include "Trinity/Platform/Input/Desktop/DesktopInput.h"
 #include "Trinity/Platform/Input/Desktop/DesktopInputCodes.h"
+
+#include <filesystem>
 
 #include <imgui.h>
 #include <ImGuizmo.h>
@@ -218,6 +222,16 @@ namespace Forge
         if (m_ViewportTextureID != 0)
         {
             ImGui::Image(static_cast<ImTextureID>(m_ViewportTextureID), l_PanelSize, ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
+
+            if (ImGui::BeginDragDropTarget())
+            {
+                if (const ImGuiPayload* l_Payload = ImGui::AcceptDragDropPayload("MESH_PATH"))
+                {
+                    HandleMeshDrop(std::string(static_cast<const char*>(l_Payload->Data)));
+                }
+
+                ImGui::EndDragDropTarget();
+            }
         }
 
         // Gap: in Play/Pause, use scene CameraComponent view
@@ -279,6 +293,34 @@ namespace Forge
             l_Transform.Rotation = glm::radians(l_Rotation);
             l_Transform.Scale = l_Scale;
         }
+    }
+
+    void ViewportPanel::HandleMeshDrop(const std::string& path)
+    {
+        if (!m_SelectionContext || !m_SelectionContext->ActiveScene)
+        {
+            return;
+        }
+
+        const Trinity::AssetHandle l_Handle = Trinity::AssetRegistry::Get().ImportAsset(path);
+        if (l_Handle == Trinity::InvalidAsset)
+        {
+            return;
+        }
+
+        std::shared_ptr<Trinity::Mesh> l_Mesh = Trinity::AssetRegistry::Get().LoadMesh(l_Handle);
+        if (!l_Mesh)
+        {
+            return;
+        }
+
+        const std::string l_Name = std::filesystem::path(path).stem().string();
+        Trinity::Entity l_Entity = m_SelectionContext->ActiveScene->CreateEntity(l_Name);
+        auto& l_MeshComp = l_Entity.AddComponent<Trinity::MeshComponent>();
+        l_MeshComp.MeshAssetUUID = l_Handle;
+        l_MeshComp.MeshData = l_Mesh;
+
+        m_SelectionContext->SelectedEntity = l_Entity.GetHandle();
     }
 
     void ViewportPanel::RenderToolbar()

@@ -5,8 +5,10 @@
 #include "Trinity/Scene/Components/UUIDComponent.h"
 #include "Trinity/Scene/Components/TagComponent.h"
 #include "Trinity/Scene/Components/TransformComponent.h"
+#include "Trinity/Scene/Components/MeshComponent.h"
 #include "Trinity/Scene/Components/CameraComponent.h"
 #include "Trinity/Scene/Components/DirectionalLightComponent.h"
+#include "Trinity/Asset/AssetRegistry.h"
 #include "Trinity/Utilities/Log.h"
 
 #include <yaml-cpp/yaml.h>
@@ -69,6 +71,14 @@ namespace Trinity
         out << YAML::Key << "Scale" << YAML::Value << l_Transform.Scale;
         out << YAML::Key << "Parent" << YAML::Value << l_Transform.ParentUUID;
         out << YAML::EndMap;
+
+        if (entity.HasComponent<MeshComponent>())
+        {
+            const auto& l_Mesh = entity.GetComponent<MeshComponent>();
+            out << YAML::Key << "MeshComponent" << YAML::Value << YAML::BeginMap;
+            out << YAML::Key << "MeshAssetUUID" << YAML::Value << l_Mesh.MeshAssetUUID;
+            out << YAML::EndMap;
+        }
 
         if (entity.HasComponent<CameraComponent>())
         {
@@ -143,6 +153,18 @@ namespace Trinity
                 l_Transform.Rotation = l_TransformNode["Rotation"].as<glm::vec3>();
                 l_Transform.Scale = l_TransformNode["Scale"].as<glm::vec3>();
                 l_Transform.ParentUUID = l_TransformNode["Parent"].as<uint64_t>(0);
+            }
+
+            const auto l_MeshNode = l_EntityNode["MeshComponent"];
+            if (l_MeshNode)
+            {
+                const AssetHandle l_UUID = l_MeshNode["MeshAssetUUID"].as<uint64_t>(InvalidAsset);
+                auto& l_Mesh = l_Entity.AddComponent<MeshComponent>();
+                l_Mesh.MeshAssetUUID = l_UUID;
+                if (l_UUID != InvalidAsset)
+                {
+                    l_Mesh.MeshData = AssetRegistry::Get().LoadMesh(l_UUID);
+                }
             }
 
             const auto l_CameraNode = l_EntityNode["Camera"];

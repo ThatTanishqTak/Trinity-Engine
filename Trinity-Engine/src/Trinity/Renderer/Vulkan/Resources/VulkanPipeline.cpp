@@ -75,7 +75,9 @@ namespace Trinity
         l_Rasterizer.lineWidth = 1.0f;
         l_Rasterizer.cullMode = VulkanUtilities::ToVkCullMode(specification.CullingMode);
         l_Rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;  // Y-flip in projection (P[1][1]*=-1) inverts apparent winding
-        l_Rasterizer.depthBiasEnable = VK_FALSE;
+        l_Rasterizer.depthBiasEnable = specification.DepthBias ? VK_TRUE : VK_FALSE;
+        l_Rasterizer.depthBiasConstantFactor = specification.DepthBiasConstantFactor;
+        l_Rasterizer.depthBiasSlopeFactor = specification.DepthBiasSlopeFactor;
 
         // Multisampling
         VkPipelineMultisampleStateCreateInfo l_Multisampling{};
@@ -102,19 +104,11 @@ namespace Trinity
             l_ColorBlendAttachments.push_back(l_Attachment);
         }
 
-        if (l_ColorBlendAttachments.empty())
-        {
-            VkPipelineColorBlendAttachmentState l_Default{};
-            l_Default.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-            l_Default.blendEnable = VK_FALSE;
-            l_ColorBlendAttachments.push_back(l_Default);
-        }
-
         VkPipelineColorBlendStateCreateInfo l_ColorBlending{};
         l_ColorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
         l_ColorBlending.logicOpEnable = VK_FALSE;
         l_ColorBlending.attachmentCount = static_cast<uint32_t>(l_ColorBlendAttachments.size());
-        l_ColorBlending.pAttachments = l_ColorBlendAttachments.data();
+        l_ColorBlending.pAttachments = l_ColorBlendAttachments.empty() ? nullptr : l_ColorBlendAttachments.data();
 
         // Pipeline layout
         std::vector<VkPushConstantRange> l_PushRanges;
@@ -141,15 +135,10 @@ namespace Trinity
             l_ColorFormats.push_back(VulkanUtilities::ToVkFormat(l_Fmt));
         }
 
-        if (l_ColorFormats.empty())
-        {
-            l_ColorFormats.push_back(VK_FORMAT_B8G8R8A8_SRGB);
-        }
-
         VkPipelineRenderingCreateInfo l_RenderingInfo{};
         l_RenderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
         l_RenderingInfo.colorAttachmentCount = static_cast<uint32_t>(l_ColorFormats.size());
-        l_RenderingInfo.pColorAttachmentFormats = l_ColorFormats.data();
+        l_RenderingInfo.pColorAttachmentFormats = l_ColorFormats.empty() ? nullptr : l_ColorFormats.data();
 
         if (specification.DepthAttachmentFormat != TextureFormat::None)
         {

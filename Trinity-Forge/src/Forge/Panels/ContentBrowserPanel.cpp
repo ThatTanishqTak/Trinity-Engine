@@ -331,6 +331,17 @@ namespace Forge
 
             bool l_DoubleClicked = false;
             RenderEntry(l_Name, l_Type, false, l_DoubleClicked);
+
+            if (l_Type == FileIconType::Mesh || l_Type == FileIconType::Prefab)
+            {
+                if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
+                {
+                    const std::string l_FullPath = it_Files.path().string();
+                    ImGui::SetDragDropPayload("MESH_PATH", l_FullPath.c_str(), l_FullPath.size() + 1);
+                    ImGui::TextUnformatted(l_Name.c_str());
+                    ImGui::EndDragDropSource();
+                }
+            }
         }
 
         ImGui::End();
