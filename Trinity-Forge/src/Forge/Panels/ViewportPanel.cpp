@@ -163,10 +163,13 @@ namespace Forge
             Trinity::Application::Get().GetWindow().SetCursorLocked(false);
         }
 
-        const float l_Scroll = Trinity::DesktopInput::MouseScrolled().y;
-        if (l_Scroll != 0.0f)
+        if (m_IsViewportHovered)
         {
-            m_Camera.AdjustFOV(-l_Scroll * 2.0f);
+            const float l_Scroll = Trinity::DesktopInput::MouseScrolled().y;
+            if (l_Scroll != 0.0f)
+            {
+                m_Camera.MoveForward(l_Scroll * m_ZoomSpeed);
+            }
         }
     }
 
@@ -286,12 +289,26 @@ namespace Forge
 
         if (ImGuizmo::IsUsing())
         {
-            glm::vec3 l_Translation, l_Rotation, l_Scale;
-            ImGuizmo::DecomposeMatrixToComponents(glm::value_ptr(l_ModelMatrix), glm::value_ptr(l_Translation), glm::value_ptr(l_Rotation), glm::value_ptr(l_Scale));
+            if (m_GizmoOperation == ImGuizmo::TRANSLATE)
+            {
+                l_Transform.Position = glm::vec3(l_ModelMatrix[3]);
+            }
+            else if (m_GizmoOperation == ImGuizmo::ROTATE)
+            {
+                const glm::vec3 l_Col0 = glm::normalize(glm::vec3(l_ModelMatrix[0]));
+                const glm::vec3 l_Col1 = glm::normalize(glm::vec3(l_ModelMatrix[1]));
+                const glm::vec3 l_Col2 = glm::normalize(glm::vec3(l_ModelMatrix[2]));
 
-            l_Transform.Position = l_Translation;
-            l_Transform.Rotation = glm::radians(l_Rotation);
-            l_Transform.Scale = l_Scale;
+                const float l_Rx = std::atan2f(-l_Col2.y, l_Col2.z);
+                const float l_Ry = std::atan2f(l_Col2.x, std::sqrtf(l_Col2.z * l_Col2.z + l_Col2.y * l_Col2.y));
+                const float l_Rz = std::atan2f(-l_Col1.x, l_Col0.x);
+
+                l_Transform.Rotation = glm::vec3(l_Rx, l_Ry, l_Rz);
+            }
+            else if (m_GizmoOperation == ImGuizmo::SCALE)
+            {
+                l_Transform.Scale = glm::vec3(glm::length(glm::vec3(l_ModelMatrix[0])), glm::length(glm::vec3(l_ModelMatrix[1])), glm::length(glm::vec3(l_ModelMatrix[2])));
+            }
         }
     }
 

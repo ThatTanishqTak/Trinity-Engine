@@ -46,6 +46,7 @@ namespace Forge
 
         float m_CameraSpeed = 5.0f;
         float m_Sensitivity = 0.1f;
+        float m_ZoomSpeed = 0.5f;
 
         bool m_IsViewportHovered = false;
         bool m_IsViewportFocused = false;
