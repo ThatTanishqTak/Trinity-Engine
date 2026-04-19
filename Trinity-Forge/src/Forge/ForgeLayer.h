@@ -42,6 +42,8 @@ private:
     void SaveSceneAs(const std::string& filepath);
 
     void RenderMenuBar();
+    void RenderTitleBar();
+    void UpdateWindowTitle();
 
     Trinity::Scene m_Scene;
 

@@ -95,6 +95,11 @@ namespace Trinity
         m_MenuBarCallback = std::move(callback);
     }
 
+    void ImGuiLayer::SetTitleBarCallback(std::function<void()> callback)
+    {
+        m_TitleBarCallback = std::move(callback);
+    }
+
     uint64_t ImGuiLayer::RegisterTexture(const std::shared_ptr<Texture>& texture)
     {
         return m_Implementation->RegisterTexture(texture->GetOpaqueHandle());
@@ -119,11 +124,41 @@ namespace Trinity
     void ImGuiLayer::PushDockspace()
     {
         const ImGuiViewport* l_Viewport = ImGui::GetMainViewport();
+        const float l_TitleBarHeight = ImGui::GetTextLineHeight() + 14.0f;
+
         ImGui::SetNextWindowPos(l_Viewport->WorkPos);
-        ImGui::SetNextWindowSize(l_Viewport->WorkSize);
+        ImGui::SetNextWindowSize(ImVec2(l_Viewport->WorkSize.x, l_TitleBarHeight));
         ImGui::SetNextWindowViewport(l_Viewport->ID);
 
-        ImGuiWindowFlags l_Flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus 
+        constexpr ImGuiWindowFlags l_TitleBarFlags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse
+            | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus
+            | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse
+            | ImGuiWindowFlags_NoSavedSettings;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 0.0f));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.08f, 0.08f, 0.08f, 1.00f));
+
+        ImGui::Begin("##TrinityTitleBar", nullptr, l_TitleBarFlags);
+        ImGui::PopStyleVar(3);
+        ImGui::PopStyleColor();
+
+        if (m_TitleBarCallback)
+        {
+            m_TitleBarCallback();
+        }
+
+        ImGui::End();
+
+        const ImVec2 l_DockPos = ImVec2(l_Viewport->WorkPos.x, l_Viewport->WorkPos.y + l_TitleBarHeight);
+        const ImVec2 l_DockSize = ImVec2(l_Viewport->WorkSize.x, l_Viewport->WorkSize.y - l_TitleBarHeight);
+
+        ImGui::SetNextWindowPos(l_DockPos);
+        ImGui::SetNextWindowSize(l_DockSize);
+        ImGui::SetNextWindowViewport(l_Viewport->ID);
+
+        ImGuiWindowFlags l_Flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus
             | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_MenuBar;
 
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);

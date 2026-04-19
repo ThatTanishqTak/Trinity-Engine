@@ -31,6 +31,8 @@ namespace Trinity
         void SetVSync(bool enabled) override;
         bool IsVSync() const override { return m_Data.VSync; }
 
+        void SetTitle(const std::string& title) override;
+
         void SetCursorVisible(bool visible) override;
         void SetCursorLocked(bool locked) override;
         bool IsCursorVisible() const override { return m_CursorVisible; }

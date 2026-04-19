@@ -24,6 +24,7 @@ namespace Trinity
         void End();
 
         void SetMenuBarCallback(std::function<void()> callback);
+        void SetTitleBarCallback(std::function<void()> callback);
 
         uint64_t RegisterTexture(const std::shared_ptr<Texture>& texture);
         void UnregisterTexture(uint64_t textureID);
@@ -37,6 +38,7 @@ namespace Trinity
         std::unique_ptr<Implementation> m_Implementation;
 
         std::function<void()> m_MenuBarCallback;
+        std::function<void()> m_TitleBarCallback;
 
         static ImGuiLayer* s_Instance;
     };

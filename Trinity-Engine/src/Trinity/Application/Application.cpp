@@ -121,7 +121,7 @@ namespace Trinity
             return false;
         });
 
-        for (auto it = m_LayerStack.end(); it != m_LayerStack.begin(); )
+        for (auto it = m_LayerStack.end(); it != m_LayerStack.begin();)
         {
             (*--it)->OnEvent(e);
             if (e.Handled)

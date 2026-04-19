@@ -5,8 +5,10 @@
 #include "Trinity/Events/Event.h"
 #include "Trinity/Renderer/Renderer.h"
 #include "Trinity/Scene/SceneSerializer.h"
+#include "Trinity/Platform/Window/Window.h"
 #include "Trinity/Platform/Input/Desktop/DesktopInput.h"
 #include "Trinity/Platform/Input/Desktop/DesktopInputCodes.h"
+#include "Trinity/Version.h"
 
 #include <imgui.h>
 #include <ImGuizmo.h>
@@ -83,6 +85,13 @@ void ForgeLayer::OnInitialize()
     {
         RenderMenuBar();
     });
+
+    Trinity::ImGuiLayer::Get().SetTitleBarCallback([this]()
+    {
+        RenderTitleBar();
+    });
+
+    UpdateWindowTitle();
 }
 
 void ForgeLayer::OnShutdown()
@@ -203,6 +212,8 @@ void ForgeLayer::NewScene()
     m_SceneSnapshot.clear();
     m_SelectionContext.SelectedEntity = entt::null;
     m_SelectionContext.ActiveScene = &m_Scene;
+
+    UpdateWindowTitle();
 }
 
 void ForgeLayer::OpenScene(const std::string& filepath)
@@ -215,6 +226,8 @@ void ForgeLayer::OpenScene(const std::string& filepath)
         m_SceneSnapshot.clear();
         m_SelectionContext.SelectedEntity = entt::null;
         m_SelectionContext.ActiveScene = &m_Scene;
+
+        UpdateWindowTitle();
     }
 }
 
@@ -230,6 +243,34 @@ void ForgeLayer::SaveSceneAs(const std::string& filepath)
 {
     Trinity::SceneSerializer::Serialize(m_Scene, filepath);
     m_CurrentScenePath = filepath;
+}
+
+void ForgeLayer::RenderTitleBar()
+{
+    const float l_Width = ImGui::GetWindowWidth();
+    const float l_Height = ImGui::GetWindowHeight();
+    const float l_TextOffsetY = (l_Height - ImGui::GetTextLineHeight()) * 0.5f;
+
+    ImGui::SetCursorPos(ImVec2(8.0f, l_TextOffsetY));
+    ImGui::TextColored(ImVec4(0.47f, 0.77f, 0.47f, 1.0f), "Trinity Forge");
+
+    const std::string& l_SceneName = m_Scene.GetName();
+    const float l_SceneNameWidth = ImGui::CalcTextSize(l_SceneName.c_str()).x;
+    ImGui::SetCursorPos(ImVec2((l_Width - l_SceneNameWidth) * 0.5f, l_TextOffsetY));
+    ImGui::Text("%s", l_SceneName.c_str());
+
+    const char* l_APIName = Trinity::Renderer::GetBackend() == Trinity::RendererBackend::Vulkan ? "Vulkan" : "Unknown";
+    const std::string l_RightText = std::string(l_APIName) + "  |  v" + Trinity::EngineVersion;
+    const float l_RightTextWidth = ImGui::CalcTextSize(l_RightText.c_str()).x;
+    ImGui::SetCursorPos(ImVec2(l_Width - l_RightTextWidth - 8.0f, l_TextOffsetY));
+    ImGui::TextDisabled("%s", l_RightText.c_str());
+}
+
+void ForgeLayer::UpdateWindowTitle()
+{
+    const char* l_APIName = Trinity::Renderer::GetBackend() == Trinity::RendererBackend::Vulkan ? "Vulkan" : "Unknown";
+    const std::string l_Title = std::string("Trinity Forge  |  ") + m_Scene.GetName() + "  |  " + l_APIName + "  |  v" + Trinity::EngineVersion;
+    Trinity::Application::Get().GetWindow().SetTitle(l_Title);
 }
 
 void ForgeLayer::RenderMenuBar()
