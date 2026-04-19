@@ -158,6 +158,12 @@ namespace Forge
         entt::registry& l_Registry = m_Context->ActiveScene->GetRegistry();
         const entt::entity l_Entity = m_Context->SelectedEntity;
 
+        const bool l_ReadOnly = (m_Context->State != EditorState::Edit);
+        if (l_ReadOnly)
+        {
+            ImGui::BeginDisabled();
+        }
+
         // Tag — always present, no remove option
         if (l_Registry.all_of<Trinity::TagComponent>(l_Entity))
         {
@@ -227,6 +233,11 @@ namespace Forge
         ImGui::Spacing();
 
         DrawAddComponentPopup(l_Registry, l_Entity);
+
+        if (l_ReadOnly)
+        {
+            ImGui::EndDisabled();
+        }
 
         ImGui::End();
     }

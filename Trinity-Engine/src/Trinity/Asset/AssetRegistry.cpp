@@ -55,6 +55,20 @@ namespace Trinity
         return ReadOrCreateMeta(path, l_Type);
     }
 
+    AssetHandle AssetRegistry::RegisterMesh(std::shared_ptr<Mesh> mesh)
+    {
+        const AssetHandle l_Handle = GenerateUUID();
+
+        AssetMetadata l_Meta{};
+        l_Meta.UUID = l_Handle;
+        l_Meta.Type = AssetType::Mesh;
+        m_Metadata[l_Handle] = l_Meta;
+
+        m_MeshCache[l_Handle] = std::move(mesh);
+
+        return l_Handle;
+    }
+
     const AssetMetadata* AssetRegistry::GetMetadata(AssetHandle handle) const
     {
         auto it = m_Metadata.find(handle);

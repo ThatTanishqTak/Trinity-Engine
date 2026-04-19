@@ -7,6 +7,7 @@
 #include "Trinity/Scene/Components/TransformComponent.h"
 #include "Trinity/Scene/Components/MeshComponent.h"
 #include "Trinity/Renderer/Mesh.h"
+#include "Trinity/Asset/AssetRegistry.h"
 
 #include <imgui.h>
 
@@ -25,6 +26,13 @@ namespace Forge
         ImGui::Begin(m_Name.c_str(), &m_Open);
 
         Trinity::Scene* l_Scene = m_Context->ActiveScene;
+        const bool l_IsEditing = (m_Context->State == EditorState::Edit);
+
+        if (!l_IsEditing)
+        {
+            m_RenameTarget    = entt::null;
+            m_RenameRequested = false;
+        }
 
         if (l_Scene)
         {
@@ -38,8 +46,7 @@ namespace Forge
                 }
             }
 
-            // Right-click on empty panel area to spawn
-            if (ImGui::BeginPopupContextWindow("##HierarchyContext", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
+            if (l_IsEditing && ImGui::BeginPopupContextWindow("##HierarchyContext", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
             {
                 if (ImGui::MenuItem("Create Empty Entity"))
                 {
@@ -49,13 +56,15 @@ namespace Forge
                 if (ImGui::MenuItem("Create Cube"))
                 {
                     Trinity::Entity l_Cube = l_Scene->CreateEntity("Cube");
-                    l_Cube.AddComponent<Trinity::MeshComponent>().MeshData = Trinity::Primitives::CreateCube();
+                    auto l_Mesh = Trinity::Primitives::CreateCube();
+                    auto& l_MeshComp = l_Cube.AddComponent<Trinity::MeshComponent>();
+                    l_MeshComp.MeshAssetUUID = Trinity::AssetRegistry::Get().RegisterMesh(l_Mesh);
+                    l_MeshComp.MeshData = std::move(l_Mesh);
                 }
 
                 ImGui::EndPopup();
             }
 
-            // Deselect by clicking empty space
             if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
             {
                 m_Context->SelectedEntity = entt::null;
@@ -98,8 +107,9 @@ namespace Forge
             l_Flags |= ImGuiTreeNodeFlags_Selected;
         }
 
-        // Inline rename
-        if (m_RenameTarget == entity && m_RenameRequested)
+        const bool l_IsEditing = (m_Context->State == EditorState::Edit);
+
+        if (m_RenameTarget == entity && m_RenameRequested && l_IsEditing)
         {
             char l_Buffer[256];
             std::strncpy(l_Buffer, l_Tag.Tag.c_str(), sizeof(l_Buffer) - 1);
@@ -131,7 +141,7 @@ namespace Forge
             m_Context->SelectedEntity = entity;
         }
 
-        if (ImGui::BeginPopupContextItem())
+        if (l_IsEditing && ImGui::BeginPopupContextItem())
         {
             if (ImGui::MenuItem("Rename"))
             {

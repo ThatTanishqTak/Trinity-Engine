@@ -17,6 +17,7 @@ namespace Trinity
         static AssetRegistry& Get();
 
         AssetHandle ImportAsset(const std::filesystem::path& path);
+        AssetHandle RegisterMesh(std::shared_ptr<Mesh> mesh);
 
         const AssetMetadata* GetMetadata(AssetHandle handle) const;
 

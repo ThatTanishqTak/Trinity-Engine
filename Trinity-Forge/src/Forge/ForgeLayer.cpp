@@ -92,11 +92,11 @@ void ForgeLayer::OnShutdown()
 
 void ForgeLayer::OnUpdate(float deltaTime)
 {
-    // Keyboard shortcuts
+    // Keyboard shortcuts — blocked during play/pause
     const bool l_Ctrl = Trinity::DesktopInput::KeyDown(Trinity::Code::KeyCode::TR_KEY_LEFT_CONTROL);
     const bool l_Shift = Trinity::DesktopInput::KeyDown(Trinity::Code::KeyCode::TR_KEY_LEFT_SHIFT);
 
-    if (l_Ctrl)
+    if (l_Ctrl && m_SelectionContext.State == EditorState::Edit)
     {
         if (Trinity::DesktopInput::KeyPressed(Trinity::Code::KeyCode::TR_KEY_N))
         {
@@ -151,7 +151,8 @@ void ForgeLayer::OnUpdate(float deltaTime)
         m_LastEditorState = l_Current;
     }
 
-    m_PanelManager.UpdatePanels(deltaTime);
+    const float l_EffectiveDelta = (m_SelectionContext.State == EditorState::Pause) ? 0.0f : deltaTime;
+    m_PanelManager.UpdatePanels(l_EffectiveDelta);
 }
 
 void ForgeLayer::OnRender()

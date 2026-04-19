@@ -164,9 +164,12 @@ namespace Trinity
                 const std::string l_SourcePath = l_MeshNode["MeshSourcePath"].as<std::string>("");
                 auto& l_Mesh = l_Entity.AddComponent<MeshComponent>();
                 l_Mesh.MeshAssetUUID = l_UUID;
-                if (l_UUID != InvalidAsset && !l_SourcePath.empty())
+                if (l_UUID != InvalidAsset)
                 {
-                    AssetRegistry::Get().ImportAsset(l_SourcePath);
+                    if (!l_SourcePath.empty())
+                    {
+                        AssetRegistry::Get().ImportAsset(l_SourcePath);
+                    }
                     l_Mesh.MeshData = AssetRegistry::Get().LoadMesh(l_UUID);
                 }
             }
