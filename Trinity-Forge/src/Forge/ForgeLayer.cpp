@@ -104,7 +104,7 @@ void ForgeLayer::OnUpdate(float deltaTime)
         }
         else if (Trinity::DesktopInput::KeyPressed(Trinity::Code::KeyCode::TR_KEY_O))
         {
-            const std::string l_Path = PlatformOpenFileDialog("Trinity Scene\0*.trinity\0All Files\0*.*\0");
+            const std::string l_Path = PlatformOpenFileDialog("Trinity Scene\0*.tscene\0All Files\0*.*\0");
             if (!l_Path.empty())
             {
                 OpenScene(l_Path);
@@ -114,7 +114,7 @@ void ForgeLayer::OnUpdate(float deltaTime)
         {
             if (l_Shift || m_CurrentScenePath.empty())
             {
-                const std::string l_Path = PlatformSaveFileDialog("Trinity Scene\0*.trinity\0All Files\0*.*\0", "trinity");
+                const std::string l_Path = PlatformSaveFileDialog("Trinity Scene\0*.tscene\0All Files\0*.*\0", "tscene");
                 if (!l_Path.empty())
                 {
                     SaveSceneAs(l_Path);
@@ -243,7 +243,7 @@ void ForgeLayer::RenderMenuBar()
 
         if (ImGui::MenuItem("Open Scene...", "Ctrl+O"))
         {
-            const std::string l_Path = PlatformOpenFileDialog("Trinity Scene\0*.trinity\0All Files\0*.*\0");
+            const std::string l_Path = PlatformOpenFileDialog("Trinity Scene\0*.tscene\0All Files\0*.*\0");
             if (!l_Path.empty())
             {
                 OpenScene(l_Path);
@@ -271,7 +271,7 @@ void ForgeLayer::RenderMenuBar()
 
         if (ImGui::MenuItem("Save Scene As...", "Ctrl+Shift+S"))
         {
-            const std::string l_Path = PlatformSaveFileDialog("Trinity Scene\0*.trinity\0All Files\0*.*\0", "trinity");
+            const std::string l_Path = PlatformSaveFileDialog("Trinity Scene\0*.tscene\0All Files\0*.*\0", "tscene");
             if (!l_Path.empty())
             {
                 SaveSceneAs(l_Path);

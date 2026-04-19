@@ -32,16 +32,16 @@ namespace YAML
             return l_Node;
         }
 
-        static bool decode(const Node& l_Node, glm::vec3& v)
+        static bool decode(const Node& node, glm::vec3& v)
         {
-            if (!l_Node.IsSequence() || l_Node.size() != 3)
+            if (!node.IsSequence() || node.size() != 3)
             {
                 return false;
             }
             
-            v.x = l_Node[0].as<float>();
-            v.y = l_Node[1].as<float>();
-            v.z = l_Node[2].as<float>();
+            v.x = node[0].as<float>();
+            v.y = node[1].as<float>();
+            v.z = node[2].as<float>();
             
             return true;
         }
@@ -77,6 +77,8 @@ namespace Trinity
             const auto& l_Mesh = entity.GetComponent<MeshComponent>();
             out << YAML::Key << "MeshComponent" << YAML::Value << YAML::BeginMap;
             out << YAML::Key << "MeshAssetUUID" << YAML::Value << l_Mesh.MeshAssetUUID;
+            const AssetMetadata* l_Meta = AssetRegistry::Get().GetMetadata(l_Mesh.MeshAssetUUID);
+            out << YAML::Key << "MeshSourcePath" << YAML::Value << (l_Meta ? l_Meta->SourcePath : std::string{});
             out << YAML::EndMap;
         }
 
@@ -110,9 +112,9 @@ namespace Trinity
         l_Out << YAML::Key << "Scene" << YAML::Value << scene.GetName();
         l_Out << YAML::Key << "Entities" << YAML::Value << YAML::BeginSeq;
 
-        scene.GetRegistry().view<UUIDComponent>().each([&](entt::entity l_Handle, const UUIDComponent&)
+        scene.GetRegistry().view<UUIDComponent>().each([&](entt::entity handle, const UUIDComponent&)
         {
-            Entity l_Entity(l_Handle, &scene);
+            Entity l_Entity(handle, &scene);
             SerializeEntity(l_Out, l_Entity);
         });
 
@@ -159,10 +161,12 @@ namespace Trinity
             if (l_MeshNode)
             {
                 const AssetHandle l_UUID = l_MeshNode["MeshAssetUUID"].as<uint64_t>(InvalidAsset);
+                const std::string l_SourcePath = l_MeshNode["MeshSourcePath"].as<std::string>("");
                 auto& l_Mesh = l_Entity.AddComponent<MeshComponent>();
                 l_Mesh.MeshAssetUUID = l_UUID;
-                if (l_UUID != InvalidAsset)
+                if (l_UUID != InvalidAsset && !l_SourcePath.empty())
                 {
+                    AssetRegistry::Get().ImportAsset(l_SourcePath);
                     l_Mesh.MeshData = AssetRegistry::Get().LoadMesh(l_UUID);
                 }
             }
@@ -226,6 +230,7 @@ namespace Trinity
         try
         {
             const YAML::Node l_Root = YAML::Load(yaml);
+
             return ParseYaml(scene, l_Root);
         }
         catch (const YAML::Exception& e)
