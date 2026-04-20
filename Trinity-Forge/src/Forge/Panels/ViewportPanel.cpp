@@ -76,12 +76,9 @@ namespace Forge
             for (auto it_Entity : l_View)
             {
                 auto& l_Transform = l_View.get<Trinity::TransformComponent>(it_Entity);
-                auto& l_Mesh = l_View.get<Trinity::MeshComponent>(it_Entity);
+                auto& l_Mesh      = l_View.get<Trinity::MeshComponent>(it_Entity);
 
-                if (!l_Mesh.MeshData)
-                {
-                    continue;
-                }
+                if (!l_Mesh.MeshData) continue;
 
                 Trinity::MeshDrawCommand l_Cmd{};
                 l_Cmd.MeshRef = l_Mesh.MeshData;

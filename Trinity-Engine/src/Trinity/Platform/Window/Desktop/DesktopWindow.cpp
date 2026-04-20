@@ -314,15 +314,6 @@ namespace Trinity
         m_Data.VSync = enabled;
     }
 
-    void DesktopWindow::SetTitle(const std::string& title)
-    {
-        m_Data.Title = title;
-        if (m_WindowHandle != nullptr)
-        {
-            SDL_SetWindowTitle(m_WindowHandle, title.c_str());
-        }
-    }
-
     void DesktopWindow::SetCursorVisible(bool visible)
     {
         if (m_CursorVisible == visible)
