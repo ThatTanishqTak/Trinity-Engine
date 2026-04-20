@@ -70,6 +70,21 @@ namespace Trinity
 		uint32_t Size = 0;
 	};
 
+	enum class DescriptorType : uint8_t
+	{
+		CombinedImageSampler = 0,
+		UniformBuffer,
+		StorageBuffer,
+	};
+
+	struct DescriptorSetLayoutBinding
+	{
+		uint32_t Binding = 0;
+		DescriptorType Type = DescriptorType::CombinedImageSampler;
+		ShaderStage Stage = ShaderStage::Fragment;
+		uint32_t Count = 1;
+	};
+
 	struct PipelineSpecification
 	{
 		std::shared_ptr<Shader> PipelineShader;
@@ -86,6 +101,8 @@ namespace Trinity
 		bool DepthBias = false;
 		float DepthBiasConstantFactor = 0.0f;
 		float DepthBiasSlopeFactor = 0.0f;
+
+		std::vector<DescriptorSetLayoutBinding> DescriptorBindings;
 
 		std::vector<TextureFormat> ColorAttachmentFormats;
 		TextureFormat DepthAttachmentFormat = TextureFormat::None;

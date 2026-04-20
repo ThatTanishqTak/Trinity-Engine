@@ -1,4 +1,5 @@
 #include "Forge/Panels/ViewportPanel.h"
+#include "Forge/AssetPayload.h"
 
 #include "Trinity/Application/Application.h"
 #include "Trinity/Platform/Window/Window.h"
@@ -7,6 +8,7 @@
 #include "Trinity/Scene/Entity.h"
 #include "Trinity/Scene/Components/TransformComponent.h"
 #include "Trinity/Scene/Components/MeshComponent.h"
+#include "Trinity/Scene/Components/TextureComponent.h"
 #include "Trinity/Asset/AssetRegistry.h"
 #include "Trinity/ImGui/ImGuiLayer.h"
 #include "Trinity/Platform/Input/Desktop/DesktopInput.h"
@@ -82,6 +84,16 @@ namespace Forge
 
                 Trinity::MeshDrawCommand l_Cmd{};
                 l_Cmd.MeshRef = l_Mesh.MeshData;
+
+                if (l_Registry.all_of<Trinity::TextureComponent>(it_Entity))
+                {
+                    auto& l_TexComp = l_Registry.get<Trinity::TextureComponent>(it_Entity);
+                    l_Cmd.AlbedoTexture = l_TexComp.TextureData;
+                }
+
+                if (!l_Cmd.AlbedoTexture)
+                    l_Cmd.AlbedoTexture = l_Mesh.MeshData->AlbedoTexture;
+
                 const glm::mat4 l_Matrix = l_Transform.GetLocalMatrix();
                 std::memcpy(l_Cmd.Transform, glm::value_ptr(l_Matrix), sizeof(l_Cmd.Transform));
                 m_SceneRenderer.SubmitMesh(l_Cmd);
@@ -226,11 +238,15 @@ namespace Forge
         {
             ImGui::Image(static_cast<ImTextureID>(m_ViewportTextureID), l_PanelSize, ImVec2(0.0f, 0.0f), ImVec2(1.0f, 1.0f));
 
-            if (ImGui::BeginDragDropTarget())
+            if (m_SelectionContext->State == EditorState::Edit && ImGui::BeginDragDropTarget())
             {
-                if (const ImGuiPayload* l_Payload = ImGui::AcceptDragDropPayload("MESH_PATH"))
+                if (const ImGuiPayload* l_Payload = ImGui::AcceptDragDropPayload(AssetPayloadID))
                 {
-                    HandleMeshDrop(std::string(static_cast<const char*>(l_Payload->Data)));
+                    const auto* a_Asset = static_cast<const AssetPayload*>(l_Payload->Data);
+                    if (a_Asset->Type == Trinity::AssetType::Mesh)
+                    {
+                        HandleMeshDrop(a_Asset->Path);
+                    }
                 }
 
                 ImGui::EndDragDropTarget();
@@ -331,13 +347,26 @@ namespace Forge
             return;
         }
 
-        const std::string l_Name = std::filesystem::path(path).stem().string();
-        Trinity::Entity l_Entity = m_SelectionContext->ActiveScene->CreateEntity(l_Name);
-        auto& l_MeshComp = l_Entity.AddComponent<Trinity::MeshComponent>();
-        l_MeshComp.MeshAssetUUID = l_Handle;
-        l_MeshComp.MeshData = l_Mesh;
+        auto& l_Registry = m_SelectionContext->ActiveScene->GetRegistry();
+        const entt::entity l_Selected = m_SelectionContext->SelectedEntity;
 
-        m_SelectionContext->SelectedEntity = l_Entity.GetHandle();
+        if (l_Selected != entt::null && l_Registry.all_of<Trinity::MeshComponent>(l_Selected))
+        {
+            auto& l_MeshComp = l_Registry.get<Trinity::MeshComponent>(l_Selected);
+            l_MeshComp.MeshAssetUUID = l_Handle;
+            l_MeshComp.MeshData = l_Mesh;
+        }
+        else
+        {
+            const std::string l_Name = std::filesystem::path(path).stem().string();
+            Trinity::Entity l_Entity = m_SelectionContext->ActiveScene->CreateEntity(l_Name);
+
+            auto& l_MeshComp = l_Entity.AddComponent<Trinity::MeshComponent>();
+            l_MeshComp.MeshAssetUUID = l_Handle;
+            l_MeshComp.MeshData = l_Mesh;
+
+            m_SelectionContext->SelectedEntity = l_Entity.GetHandle();
+        }
     }
 
     void ViewportPanel::RenderToolbar()

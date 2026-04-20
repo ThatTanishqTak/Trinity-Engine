@@ -27,6 +27,7 @@ namespace Trinity
         static void OnWindowResize(uint32_t width, uint32_t height);
 
         static std::shared_ptr<Texture> CreateTextureFromData(const void* data, uint32_t width, uint32_t height);
+        static std::shared_ptr<Texture> CreateTextureFromMemory(const uint8_t* data, size_t size);
         static std::shared_ptr<Texture> LoadTextureFromFile(const std::string& path);
 
         static RendererAPI& GetAPI() { return *s_API; }

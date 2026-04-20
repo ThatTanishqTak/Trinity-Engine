@@ -121,10 +121,35 @@ namespace Trinity
             l_PushRanges.push_back(l_Range);
         }
 
+        if (!specification.DescriptorBindings.empty())
+        {
+            std::vector<VkDescriptorSetLayoutBinding> l_DSBindings;
+            for (const auto& it_Binding : specification.DescriptorBindings)
+            {
+                VkDescriptorSetLayoutBinding l_B{};
+                l_B.binding         = it_Binding.Binding;
+                l_B.descriptorType  = VulkanUtilities::ToVkDescriptorType(it_Binding.Type);
+                l_B.descriptorCount = it_Binding.Count;
+                l_B.stageFlags      = VulkanUtilities::ToVkShaderStage(it_Binding.Stage);
+                l_DSBindings.push_back(l_B);
+            }
+
+            VkDescriptorSetLayoutCreateInfo l_DSLayoutInfo{};
+            l_DSLayoutInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+            l_DSLayoutInfo.bindingCount = static_cast<uint32_t>(l_DSBindings.size());
+            l_DSLayoutInfo.pBindings    = l_DSBindings.data();
+            VulkanUtilities::VKCheck(vkCreateDescriptorSetLayout(m_Device, &l_DSLayoutInfo, nullptr, &m_DescriptorSetLayout), "Failed vkCreateDescriptorSetLayout");
+        }
+
         VkPipelineLayoutCreateInfo l_PipelineLayoutInfo{};
         l_PipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         l_PipelineLayoutInfo.pushConstantRangeCount = static_cast<uint32_t>(l_PushRanges.size());
         l_PipelineLayoutInfo.pPushConstantRanges = l_PushRanges.empty() ? nullptr : l_PushRanges.data();
+        if (m_DescriptorSetLayout != VK_NULL_HANDLE)
+        {
+            l_PipelineLayoutInfo.setLayoutCount = 1;
+            l_PipelineLayoutInfo.pSetLayouts    = &m_DescriptorSetLayout;
+        }
 
         VulkanUtilities::VKCheck(vkCreatePipelineLayout(m_Device, &l_PipelineLayoutInfo, nullptr, &m_PipelineLayout), "Failed vkCreatePipelineLayout");
 
@@ -182,6 +207,11 @@ namespace Trinity
         if (m_PipelineLayout != VK_NULL_HANDLE)
         {
             vkDestroyPipelineLayout(m_Device, m_PipelineLayout, nullptr);
+        }
+
+        if (m_DescriptorSetLayout != VK_NULL_HANDLE)
+        {
+            vkDestroyDescriptorSetLayout(m_Device, m_DescriptorSetLayout, nullptr);
         }
     }
 }

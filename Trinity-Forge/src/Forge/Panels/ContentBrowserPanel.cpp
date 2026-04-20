@@ -1,4 +1,5 @@
 #include "Forge/Panels/ContentBrowserPanel.h"
+#include "Forge/AssetPayload.h"
 
 #include "Trinity/ImGui/ImGuiLayer.h"
 #include "Trinity/Renderer/Renderer.h"
@@ -8,6 +9,20 @@
 #include <algorithm>
 #include <cstring>
 #include <vector>
+
+namespace
+{
+    Trinity::AssetType AssetTypeFromFileIconType(Forge::FileIconType type)
+    {
+        switch (type)
+        {
+            case Forge::FileIconType::Mesh:    return Trinity::AssetType::Mesh;
+            case Forge::FileIconType::Texture: return Trinity::AssetType::Texture;
+            case Forge::FileIconType::Scene:   return Trinity::AssetType::Scene;
+            default:                           return Trinity::AssetType::None;
+        }
+    }
+}
 
 namespace Forge
 {
@@ -325,22 +340,42 @@ namespace Forge
         // --- Files ---
         for (const auto& it_Files : l_Files)
         {
-            const std::string l_Extension  = it_Files.path().extension().string();
+            const std::string l_Extension = it_Files.path().extension().string();
+
+            if (l_Extension == ".meta")
+            {
+                continue;
+            }
+
             const std::string l_Name = it_Files.path().filename().string();
             const FileIconType l_Type = FileTypeFromExtension(l_Extension);
 
             bool l_DoubleClicked = false;
             RenderEntry(l_Name, l_Type, false, l_DoubleClicked);
 
-            if (l_Type == FileIconType::Mesh || l_Type == FileIconType::Prefab)
+            if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
             {
-                if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
+                AssetPayload l_Payload{};
+                l_Payload.Type = AssetTypeFromFileIconType(l_Type);
+                const std::string l_FullPath = it_Files.path().string();
+                std::strncpy(l_Payload.Path, l_FullPath.c_str(), sizeof(l_Payload.Path) - 1);
+                ImGui::SetDragDropPayload(AssetPayloadID, &l_Payload, sizeof(l_Payload));
+
+                const FileIcon& l_Icon = m_Icons[static_cast<size_t>(l_Type)];
+                if (l_Icon.ImGuiID != 0)
                 {
-                    const std::string l_FullPath = it_Files.path().string();
-                    ImGui::SetDragDropPayload("MESH_PATH", l_FullPath.c_str(), l_FullPath.size() + 1);
-                    ImGui::TextUnformatted(l_Name.c_str());
-                    ImGui::EndDragDropSource();
+                    ImGui::Image(static_cast<ImTextureID>(l_Icon.ImGuiID), ImVec2(16.0f, 16.0f));
                 }
+                else
+                {
+                    const ImVec4 l_Color = ImGui::ColorConvertU32ToFloat4(l_Icon.Color);
+                    ImGui::ColorButton("##ic", l_Color, ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop, ImVec2(16.0f, 16.0f));
+                }
+
+                ImGui::SameLine(0.0f, 6.0f);
+                ImGui::Text("%s  %s", l_Icon.Label, l_Name.c_str());
+
+                ImGui::EndDragDropSource();
             }
         }
 

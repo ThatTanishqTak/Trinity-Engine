@@ -15,6 +15,7 @@
 #include "Trinity/Platform/Input/Desktop/DesktopInput.h"
 
 #include "Trinity/Renderer/Renderer.h"
+#include "Trinity/Asset/AssetRegistry.h"
 
 #include <atomic>
 #include <cassert>
@@ -76,6 +77,8 @@ namespace Trinity
         Renderer::WaitIdle();
 
         m_LayerStack.Shutdown();
+
+        AssetRegistry::Get().Clear();
 
         Renderer::Shutdown();
 

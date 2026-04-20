@@ -1,6 +1,7 @@
 #include "Trinity/Asset/AssetRegistry.h"
 
 #include "Trinity/Asset/Importers/MeshImporter.h"
+#include "Trinity/Renderer/Renderer.h"
 #include "Trinity/Utilities/Log.h"
 
 #include <yaml-cpp/yaml.h>
@@ -104,10 +105,34 @@ namespace Trinity
         return l_Mesh;
     }
 
+    std::shared_ptr<Texture> AssetRegistry::LoadTexture(AssetHandle handle)
+    {
+        if (handle == InvalidAsset)
+            return nullptr;
+
+        auto l_CacheIt = m_TextureCache.find(handle);
+        if (l_CacheIt != m_TextureCache.end())
+            return l_CacheIt->second;
+
+        const AssetMetadata* l_Meta = GetMetadata(handle);
+        if (!l_Meta || l_Meta->Type != AssetType::Texture)
+        {
+            TR_CORE_ERROR("AssetRegistry: no texture metadata for handle {}", handle);
+            return nullptr;
+        }
+
+        auto l_Texture = Renderer::LoadTextureFromFile(l_Meta->SourcePath);
+        if (l_Texture)
+            m_TextureCache[handle] = l_Texture;
+
+        return l_Texture;
+    }
+
     void AssetRegistry::Clear()
     {
         m_Metadata.clear();
         m_MeshCache.clear();
+        m_TextureCache.clear();
     }
 
     AssetHandle AssetRegistry::ReadOrCreateMeta(const std::filesystem::path& sourcePath, AssetType type)

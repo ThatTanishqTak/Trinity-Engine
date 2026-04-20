@@ -3,12 +3,15 @@
 #include "Trinity/Renderer/Renderer.h"
 #include "Trinity/Renderer/Mesh.h"
 #include "Trinity/Renderer/Resources/Pipeline.h"
+#include "Trinity/Renderer/Resources/Sampler.h"
 #include "Trinity/Renderer/Resources/Shader.h"
 #include "Trinity/Renderer/RenderGraph/RenderGraphContext.h"
 #include "Trinity/Renderer/Vulkan/VulkanRendererAPI.h"
+#include "Trinity/Renderer/Vulkan/VulkanUtilities.h"
 #include "Trinity/Renderer/Vulkan/RenderGraph/VulkanRenderGraph.h"
 #include "Trinity/Renderer/Vulkan/Resources/VulkanBuffer.h"
 #include "Trinity/Renderer/Vulkan/Resources/VulkanPipeline.h"
+#include "Trinity/Renderer/Vulkan/Resources/VulkanSampler.h"
 #include "Trinity/Renderer/Vulkan/Resources/VulkanTexture.h"
 #include "Trinity/Utilities/Log.h"
 
@@ -19,6 +22,7 @@
 #include <array>
 #include <cstring>
 #include <memory>
+#include <unordered_map>
 
 namespace Trinity
 {
@@ -36,6 +40,14 @@ namespace Trinity
         RenderGraphResourceHandle MRAHandle;
         RenderGraphResourceHandle DepthHandle;
         RenderGraphResourceHandle ShadowHandle;
+
+        VkDevice Device = VK_NULL_HANDLE;
+        VkDescriptorPool DescriptorPool = VK_NULL_HANDLE;
+        VkDescriptorSetLayout GeometryDescriptorLayout = VK_NULL_HANDLE;
+        std::shared_ptr<Sampler> AlbedoSampler;
+        std::shared_ptr<Texture> WhiteFallbackTexture;
+        VkDescriptorSet WhiteFallbackSet = VK_NULL_HANDLE;
+        std::unordered_map<Texture*, VkDescriptorSet> DescriptorSetCache;
     };
 
     SceneRenderer::SceneRenderer() = default;
@@ -250,9 +262,48 @@ namespace Trinity
                 if (!m_DrawList.empty())
                 {
                     auto* a_VkPipeline = dynamic_cast<VulkanPipeline*>(m_Implementation->GeometryPipeline.get());
+                    auto* a_VkSampler  = dynamic_cast<VulkanSampler*>(m_Implementation->AlbedoSampler.get());
                     vkCmdBindPipeline(l_Cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, a_VkPipeline->GetPipeline());
 
                     const glm::mat4 l_VP = m_Camera.GetViewProjectionMatrix();
+
+                    auto a_GetOrCreateSet = [&](Texture* texture) -> VkDescriptorSet
+                    {
+                        auto it = m_Implementation->DescriptorSetCache.find(texture);
+                        if (it != m_Implementation->DescriptorSetCache.end())
+                            return it->second;
+
+                        auto* a_VkTex = dynamic_cast<VulkanTexture*>(texture);
+                        if (!a_VkTex || !a_VkSampler || m_Implementation->GeometryDescriptorLayout == VK_NULL_HANDLE)
+                            return m_Implementation->WhiteFallbackSet;
+
+                        VkDescriptorSetAllocateInfo l_AI{};
+                        l_AI.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+                        l_AI.descriptorPool     = m_Implementation->DescriptorPool;
+                        l_AI.descriptorSetCount = 1;
+                        l_AI.pSetLayouts        = &m_Implementation->GeometryDescriptorLayout;
+
+                        VkDescriptorSet l_NewSet = VK_NULL_HANDLE;
+                        if (vkAllocateDescriptorSets(m_Implementation->Device, &l_AI, &l_NewSet) != VK_SUCCESS)
+                            return m_Implementation->WhiteFallbackSet;
+
+                        VkDescriptorImageInfo l_Img{};
+                        l_Img.sampler     = a_VkSampler->GetSampler();
+                        l_Img.imageView   = a_VkTex->GetImageView();
+                        l_Img.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+                        VkWriteDescriptorSet l_Wr{};
+                        l_Wr.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                        l_Wr.dstSet          = l_NewSet;
+                        l_Wr.dstBinding      = 0;
+                        l_Wr.descriptorCount = 1;
+                        l_Wr.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                        l_Wr.pImageInfo      = &l_Img;
+                        vkUpdateDescriptorSets(m_Implementation->Device, 1, &l_Wr, 0, nullptr);
+
+                        m_Implementation->DescriptorSetCache[texture] = l_NewSet;
+                        return l_NewSet;
+                    };
 
                     for (const auto& cmd : m_DrawList)
                     {
@@ -266,6 +317,13 @@ namespace Trinity
                         VkDeviceSize l_Offsets[] = { 0 };
                         vkCmdBindVertexBuffers(l_Cmd, 0, 1, l_Buffers, l_Offsets);
                         vkCmdBindIndexBuffer(l_Cmd, a_IB->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
+
+                        Texture* l_AlbedoTex = cmd.AlbedoTexture
+                            ? cmd.AlbedoTexture.get()
+                            : m_Implementation->WhiteFallbackTexture.get();
+                        VkDescriptorSet l_DescSet = a_GetOrCreateSet(l_AlbedoTex);
+                        if (l_DescSet != VK_NULL_HANDLE)
+                            vkCmdBindDescriptorSets(l_Cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, a_VkPipeline->GetLayout(), 0, 1, &l_DescSet, 0, nullptr);
 
                         struct { float Model[16]; float VP[16]; } l_Push;
                         std::memcpy(l_Push.Model, cmd.Transform,        64);
@@ -331,12 +389,79 @@ namespace Trinity
         l_PipelineSpec.DepthWrite             = true;
         l_PipelineSpec.DepthOp                = DepthCompareOp::Less;
         l_PipelineSpec.CullingMode            = CullMode::Back;
+        l_PipelineSpec.DescriptorBindings     = {{ 0, DescriptorType::CombinedImageSampler, ShaderStage::Fragment, 1 }};
         l_PipelineSpec.DebugName              = "GeometryPipeline";
         m_Implementation->GeometryPipeline = Renderer::GetAPI().CreatePipeline(l_PipelineSpec);
+
+        m_Implementation->Device = a_VkAPI->GetDevice().GetDevice();
+
+        auto* a_VkGeomPipeline = dynamic_cast<VulkanPipeline*>(m_Implementation->GeometryPipeline.get());
+        m_Implementation->GeometryDescriptorLayout = a_VkGeomPipeline->GetDescriptorSetLayout();
+
+        VkDescriptorPoolSize l_PoolSize{};
+        l_PoolSize.type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        l_PoolSize.descriptorCount = 256;
+
+        VkDescriptorPoolCreateInfo l_PoolInfo{};
+        l_PoolInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        l_PoolInfo.maxSets       = 256;
+        l_PoolInfo.poolSizeCount = 1;
+        l_PoolInfo.pPoolSizes    = &l_PoolSize;
+        VulkanUtilities::VKCheck(vkCreateDescriptorPool(m_Implementation->Device, &l_PoolInfo, nullptr, &m_Implementation->DescriptorPool), "Failed vkCreateDescriptorPool");
+
+        SamplerSpecification l_SamplerSpec{};
+        l_SamplerSpec.MinFilter    = SamplerFilter::Linear;
+        l_SamplerSpec.MagFilter    = SamplerFilter::Linear;
+        l_SamplerSpec.MipmapMode   = SamplerMipmapMode::Linear;
+        l_SamplerSpec.AddressModeU = SamplerAddressMode::Repeat;
+        l_SamplerSpec.AddressModeV = SamplerAddressMode::Repeat;
+        l_SamplerSpec.AddressModeW = SamplerAddressMode::Repeat;
+        l_SamplerSpec.DebugName    = "AlbedoSampler";
+        m_Implementation->AlbedoSampler = Renderer::GetAPI().CreateSampler(l_SamplerSpec);
+
+        const uint8_t l_White[4] = { 255, 255, 255, 255 };
+        m_Implementation->WhiteFallbackTexture = Renderer::GetAPI().CreateTextureFromData(l_White, 1, 1);
+
+        auto* a_VkSampler = dynamic_cast<VulkanSampler*>(m_Implementation->AlbedoSampler.get());
+        auto* a_VkWhiteTex = dynamic_cast<VulkanTexture*>(m_Implementation->WhiteFallbackTexture.get());
+
+        if (a_VkSampler && a_VkWhiteTex && m_Implementation->GeometryDescriptorLayout != VK_NULL_HANDLE)
+        {
+            VkDescriptorSetAllocateInfo l_AllocInfo{};
+            l_AllocInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+            l_AllocInfo.descriptorPool     = m_Implementation->DescriptorPool;
+            l_AllocInfo.descriptorSetCount = 1;
+            l_AllocInfo.pSetLayouts        = &m_Implementation->GeometryDescriptorLayout;
+            VulkanUtilities::VKCheck(vkAllocateDescriptorSets(m_Implementation->Device, &l_AllocInfo, &m_Implementation->WhiteFallbackSet), "Failed vkAllocateDescriptorSets");
+
+            VkDescriptorImageInfo l_ImageInfo{};
+            l_ImageInfo.sampler     = a_VkSampler->GetSampler();
+            l_ImageInfo.imageView   = a_VkWhiteTex->GetImageView();
+            l_ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+            VkWriteDescriptorSet l_Write{};
+            l_Write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            l_Write.dstSet          = m_Implementation->WhiteFallbackSet;
+            l_Write.dstBinding      = 0;
+            l_Write.descriptorCount = 1;
+            l_Write.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            l_Write.pImageInfo      = &l_ImageInfo;
+            vkUpdateDescriptorSets(m_Implementation->Device, 1, &l_Write, 0, nullptr);
+
+            m_Implementation->DescriptorSetCache[m_Implementation->WhiteFallbackTexture.get()] = m_Implementation->WhiteFallbackSet;
+        }
     }
 
     void SceneRenderer::Shutdown()
     {
+        if (m_Implementation && m_Implementation->DescriptorPool != VK_NULL_HANDLE)
+        {
+            vkDestroyDescriptorPool(m_Implementation->Device, m_Implementation->DescriptorPool, nullptr);
+            m_Implementation->DescriptorPool = VK_NULL_HANDLE;
+            m_Implementation->DescriptorSetCache.clear();
+            m_Implementation->WhiteFallbackSet = VK_NULL_HANDLE;
+        }
+
         m_Implementation.reset();
     }
 

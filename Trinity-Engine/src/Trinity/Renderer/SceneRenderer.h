@@ -14,6 +14,7 @@ namespace Trinity
 	struct MeshDrawCommand
 	{
 		std::shared_ptr<Mesh> MeshRef;
+		std::shared_ptr<Texture> AlbedoTexture;
 		float Transform[16] = {};
 	};
 

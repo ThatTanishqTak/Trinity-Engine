@@ -11,7 +11,7 @@ namespace Trinity
         ImGuiIO& l_IO = ImGui::GetIO();
 
         // Regular weight — primary UI font
-        ImFont* l_Regular = l_IO.Fonts->AddFontFromFileTTF("assets/fonts/JetBrains Mono-Regular.ttf", 14.0f);
+        ImFont* l_Regular = l_IO.Fonts->AddFontFromFileTTF("assets/resources/fonts/JetBrains Mono-Regular.ttf", 14.0f);
         if (!l_Regular)
         {
             TR_CORE_WARN("Font not found: assets/fonts/JetBrains Mono-Regular.ttf — using built-in default");
@@ -19,7 +19,7 @@ namespace Trinity
         }
 
         // SemiBold weight — component headers and labels
-        ImFont* l_SemiBold = l_IO.Fonts->AddFontFromFileTTF("assets/fonts/JetBrains Mono-SemiBold.ttf", 15.0f);
+        ImFont* l_SemiBold = l_IO.Fonts->AddFontFromFileTTF("assets/resources/fonts/JetBrains Mono-SemiBold.ttf", 15.0f);
         if (!l_SemiBold)
         {
             TR_CORE_WARN("Font not found: assets/fonts/JetBrains Mono-SemiBold.ttf — using built-in default");

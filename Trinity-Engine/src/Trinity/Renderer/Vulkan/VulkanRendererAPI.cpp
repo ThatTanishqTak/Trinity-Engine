@@ -297,6 +297,22 @@ namespace Trinity
         return l_Texture;
     }
 
+    std::shared_ptr<Texture> VulkanRendererAPI::CreateTextureFromMemory(const uint8_t* data, size_t size)
+    {
+        int l_Width = 0, l_Height = 0, l_Channels = 0;
+        stbi_uc* l_Pixels = stbi_load_from_memory(data, static_cast<int>(size), &l_Width, &l_Height, &l_Channels, STBI_rgb_alpha);
+
+        if (!l_Pixels)
+        {
+            TR_CORE_WARN("CreateTextureFromMemory: failed to decode image data");
+            return nullptr;
+        }
+
+        auto l_Texture = CreateTextureFromData(l_Pixels, static_cast<uint32_t>(l_Width), static_cast<uint32_t>(l_Height));
+        stbi_image_free(l_Pixels);
+        return l_Texture;
+    }
+
     std::shared_ptr<Framebuffer> VulkanRendererAPI::CreateFramebuffer(const FramebufferSpecification& specification)
     {
         return std::make_shared<VulkanFramebuffer>(m_Device.GetDevice(), m_Allocator.GetAllocator(), specification);

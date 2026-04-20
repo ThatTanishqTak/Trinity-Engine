@@ -85,6 +85,16 @@ namespace Trinity
 		return s_API->CreateTextureFromData(data, width, height);
 	}
 
+	std::shared_ptr<Texture> Renderer::CreateTextureFromMemory(const uint8_t* data, size_t size)
+	{
+		if (!s_API)
+		{
+			return nullptr;
+		}
+
+		return s_API->CreateTextureFromMemory(data, size);
+	}
+
 	std::shared_ptr<Texture> Renderer::LoadTextureFromFile(const std::string& path)
 	{
 		if (!s_API)

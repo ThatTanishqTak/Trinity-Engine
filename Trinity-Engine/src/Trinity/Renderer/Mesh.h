@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Trinity/Renderer/Resources/Buffer.h"
+#include "Trinity/Renderer/Resources/Texture.h"
 
 #include <glm/glm.hpp>
 
@@ -26,6 +27,8 @@ namespace Trinity
         std::shared_ptr<Buffer> GetIndexBuffer() const { return m_IndexBuffer; }
         uint32_t GetIndexCount() const { return m_IndexCount; }
         uint32_t GetVertexCount() const { return m_VertexCount; }
+
+        std::shared_ptr<Texture> AlbedoTexture;
 
     private:
         std::shared_ptr<Buffer> m_VertexBuffer;
