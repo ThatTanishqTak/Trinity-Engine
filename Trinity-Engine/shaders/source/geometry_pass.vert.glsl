@@ -17,8 +17,10 @@ layout(push_constant) uniform PushConstants
 void main()
 {
     vec4 l_WorldPos = u_Push.u_Model * vec4(a_Position, 1.0);
-    v_FragPos       = l_WorldPos.xyz;
-    v_Normal        = mat3(transpose(inverse(u_Push.u_Model))) * a_Normal;
-    v_TexCoord      = a_TexCoord;
-    gl_Position     = u_Push.u_ViewProjection * l_WorldPos;
+
+    v_FragPos = l_WorldPos.xyz;
+    v_Normal = mat3(transpose(inverse(u_Push.u_Model))) * a_Normal;
+    v_TexCoord = a_TexCoord;
+
+    gl_Position = u_Push.u_ViewProjection * l_WorldPos;
 }

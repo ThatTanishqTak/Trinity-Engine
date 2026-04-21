@@ -12,9 +12,9 @@ layout(location = 2) out vec4 o_MRA;
 
 void main()
 {
-    vec3 l_N = normalize(v_Normal);
+    vec3 l_Normal = normalize(v_Normal);
 
     o_Albedo = texture(u_AlbedoTexture, v_TexCoord);
-    o_Normal = vec4(l_N * 0.5 + 0.5, 1.0);
-    o_MRA    = vec4(0.0, 0.5, 1.0, 1.0);
+    o_Normal = vec4(l_Normal * 0.5 + 0.5, 1.0);
+    o_MRA = vec4(0.0, 0.5, 1.0, 1.0);
 }
