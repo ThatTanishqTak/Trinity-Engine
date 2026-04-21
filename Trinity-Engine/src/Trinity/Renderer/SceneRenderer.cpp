@@ -15,6 +15,7 @@
 #include "Trinity/Renderer/Vulkan/Resources/VulkanTexture.h"
 #include "Trinity/Utilities/Log.h"
 
+#include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <vulkan/vulkan.h>

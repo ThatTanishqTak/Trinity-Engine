@@ -4,11 +4,14 @@
 #include "Trinity/Application/Application.h"
 #include "Trinity/Platform/Window/Window.h"
 #include "Trinity/Renderer/Renderer.h"
+
 #include "Trinity/Scene/Scene.h"
 #include "Trinity/Scene/Entity.h"
 #include "Trinity/Scene/Components/TransformComponent.h"
 #include "Trinity/Scene/Components/MeshComponent.h"
 #include "Trinity/Scene/Components/TextureComponent.h"
+#include "Trinity/Scene/Components/LightComponent.h"
+
 #include "Trinity/Asset/AssetRegistry.h"
 #include "Trinity/ImGui/ImGuiLayer.h"
 #include "Trinity/Platform/Input/Desktop/DesktopInput.h"
@@ -69,6 +72,37 @@ namespace Forge
 
         // Submit the scene
         Trinity::SceneRenderData l_SceneData{};
+
+        if (m_SelectionContext && m_SelectionContext->ActiveScene)
+        {
+            auto& a_LightRegistry = m_SelectionContext->ActiveScene->GetRegistry();
+            auto a_LightView = a_LightRegistry.view<Trinity::TransformComponent, Trinity::LightComponent>();
+
+            for (auto it_Entity : a_LightView)
+            {
+                const auto& a_Transform = a_LightView.get<Trinity::TransformComponent>(it_Entity);
+                const auto& a_Light = a_LightView.get<Trinity::LightComponent>(it_Entity);
+
+                if (!std::holds_alternative<Trinity::DirectionalLight>(a_Light.Data))
+                {
+                    continue;
+                }
+
+                const auto& a_Directional = std::get<Trinity::DirectionalLight>(a_Light.Data);
+
+                glm::mat4 l_RotationMatrix = glm::mat4(1.0f);
+                l_RotationMatrix = glm::rotate(l_RotationMatrix, a_Transform.Rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
+                l_RotationMatrix = glm::rotate(l_RotationMatrix, a_Transform.Rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
+                l_RotationMatrix = glm::rotate(l_RotationMatrix, a_Transform.Rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
+
+                l_SceneData.SunLight.Direction = glm::normalize(glm::vec3(l_RotationMatrix * glm::vec4(0.0f, -1.0f, 0.0f, 0.0f)));
+                l_SceneData.SunLight.Color = a_Directional.Color;
+                l_SceneData.SunLight.Intensity = a_Directional.Intensity;
+
+                break;
+            }
+        }
+
         m_SceneRenderer.BeginScene(m_Camera, l_SceneData);
 
         if (m_SelectionContext && m_SelectionContext->ActiveScene)

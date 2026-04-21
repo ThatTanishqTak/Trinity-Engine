@@ -90,14 +90,14 @@ namespace Trinity
             l_Out << YAML::EndMap;
         }
 
-        if (entity.HasComponent<DirectionalLightComponent>())
-        {
-            const auto& a_DirectionalLightComponent = entity.GetComponent<DirectionalLightComponent>();
-            l_Out << YAML::Key << "DirectionalLight" << YAML::Value << YAML::BeginMap;
-            l_Out << YAML::Key << "Color" << YAML::Value << a_DirectionalLightComponent.Color;
-            l_Out << YAML::Key << "Intensity" << YAML::Value << a_DirectionalLightComponent.Intensity;
-            l_Out << YAML::EndMap;
-        }
+        //if (entity.HasComponent<DirectionalLightComponent>())
+        //{
+        //    const auto& a_DirectionalLightComponent = entity.GetComponent<DirectionalLightComponent>();
+        //    l_Out << YAML::Key << "DirectionalLight" << YAML::Value << YAML::BeginMap;
+        //    l_Out << YAML::Key << "Color" << YAML::Value << a_DirectionalLightComponent.Color;
+        //    l_Out << YAML::Key << "Intensity" << YAML::Value << a_DirectionalLightComponent.Intensity;
+        //    l_Out << YAML::EndMap;
+        //}
 
         l_Out << YAML::EndMap;
 
@@ -166,13 +166,13 @@ namespace Trinity
             a_CameraComponent.Primary = a_CameraNode["Primary"].as<bool>(true);
         }
 
-        const auto a_DirectionalLightNode = l_Root["DirectionalLight"];
-        if (a_DirectionalLightNode)
-        {
-            auto& a_DirectionalLightComponent = l_Entity.AddComponent<DirectionalLightComponent>();
-            a_DirectionalLightComponent.Color = a_DirectionalLightNode["Color"].as<glm::vec3>(glm::vec3(1.0f));
-            a_DirectionalLightComponent.Intensity = a_DirectionalLightNode["Intensity"].as<float>(1.0f);
-        }
+        //const auto a_DirectionalLightNode = l_Root["DirectionalLight"];
+        //if (a_DirectionalLightNode)
+        //{
+        //    auto& a_DirectionalLightComponent = l_Entity.AddComponent<DirectionalLightComponent>();
+        //    a_DirectionalLightComponent.Color = a_DirectionalLightNode["Color"].as<glm::vec3>(glm::vec3(1.0f));
+        //    a_DirectionalLightComponent.Intensity = a_DirectionalLightNode["Intensity"].as<float>(1.0f);
+        //}
 
         return l_Entity;
     }
