@@ -85,9 +85,9 @@ namespace Trinity
         m_CommandPool.ResetCommandBuffer(m_CurrentFrameIndex);
         m_CommandPool.BeginCommandBuffer(m_CurrentFrameIndex);
 
-        VkCommandBuffer l_Cmd = GetCurrentCommandBuffer();
+        VkCommandBuffer l_CommandBuffer = GetCurrentCommandBuffer();
 
-        TransitionImageLayout(l_Cmd, m_Swapchain.GetImages()[m_CurrentImageIndex], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        TransitionImageLayout(l_CommandBuffer, m_Swapchain.GetImages()[m_CurrentImageIndex], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
         m_FrameStarted = true;
 
@@ -101,9 +101,9 @@ namespace Trinity
             return;
         }
 
-        VkCommandBuffer l_Cmd = GetCurrentCommandBuffer();
+        VkCommandBuffer l_CommandBuffer = GetCurrentCommandBuffer();
 
-        TransitionImageLayout(l_Cmd, m_Swapchain.GetImages()[m_CurrentImageIndex], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+        TransitionImageLayout(l_CommandBuffer, m_Swapchain.GetImages()[m_CurrentImageIndex], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
         m_CommandPool.EndCommandBuffer(m_CurrentFrameIndex);
 
@@ -116,7 +116,7 @@ namespace Trinity
         VkSemaphore l_SignalSemaphores[] = { m_SyncObjects.GetRenderFinishedSemaphore(m_CurrentImageIndex) };
         VkPipelineStageFlags l_WaitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
-        VkCommandBuffer l_Cmd = m_CommandPool.GetCommandBuffer(m_CurrentFrameIndex);
+        VkCommandBuffer l_CommandBuffer = m_CommandPool.GetCommandBuffer(m_CurrentFrameIndex);
 
         VkSubmitInfo l_SubmitInfo{};
         l_SubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -124,7 +124,7 @@ namespace Trinity
         l_SubmitInfo.pWaitSemaphores = l_WaitSemaphores;
         l_SubmitInfo.pWaitDstStageMask = l_WaitStages;
         l_SubmitInfo.commandBufferCount = 1;
-        l_SubmitInfo.pCommandBuffers = &l_Cmd;
+        l_SubmitInfo.pCommandBuffers = &l_CommandBuffer;
         l_SubmitInfo.signalSemaphoreCount = 1;
         l_SubmitInfo.pSignalSemaphores = l_SignalSemaphores;
 
@@ -200,34 +200,34 @@ namespace Trinity
         VkDeviceSize l_ImageSize = static_cast<VkDeviceSize>(width) * height * 4;
 
         // Staging buffer (CPU-visible)
-        VkBufferCreateInfo l_BufInfo{};
-        l_BufInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        l_BufInfo.size = l_ImageSize;
-        l_BufInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-        l_BufInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        VkBufferCreateInfo l_BufferCreateInfo{};
+        l_BufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        l_BufferCreateInfo.size = l_ImageSize;
+        l_BufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        l_BufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-        VmaAllocationCreateInfo l_BufAllocInfo{};
-        l_BufAllocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
-        l_BufAllocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+        VmaAllocationCreateInfo l_BufferAllocateInfo{};
+        l_BufferAllocateInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+        l_BufferAllocateInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
 
         VkBuffer l_StagingBuffer = VK_NULL_HANDLE;
         VmaAllocation l_StagingAllocation = VK_NULL_HANDLE;
         VmaAllocationInfo l_StagingInfo{};
-        VulkanUtilities::VKCheck(vmaCreateBuffer(m_Allocator.GetAllocator(), &l_BufInfo, &l_BufAllocInfo, &l_StagingBuffer, &l_StagingAllocation, &l_StagingInfo), "CreateTextureFromData: failed to create staging buffer");
+        VulkanUtilities::VKCheck(vmaCreateBuffer(m_Allocator.GetAllocator(), &l_BufferCreateInfo, &l_BufferAllocateInfo, &l_StagingBuffer, &l_StagingAllocation, &l_StagingInfo), "CreateTextureFromData: failed to create staging buffer");
 
         std::memcpy(l_StagingInfo.pMappedData, data, static_cast<size_t>(l_ImageSize));
         vmaFlushAllocation(m_Allocator.GetAllocator(), l_StagingAllocation, 0, l_ImageSize);
 
         // GPU texture (needs TransferDestination usage)
-        TextureSpecification l_Spec;
-        l_Spec.Width = width;
-        l_Spec.Height = height;
-        l_Spec.Format = TextureFormat::RGBA8;
-        l_Spec.Usage = TextureUsage::Sampled | TextureUsage::TransferDestination;
+        TextureSpecification l_TextureSpecification;
+        l_TextureSpecification.Width = width;
+        l_TextureSpecification.Height = height;
+        l_TextureSpecification.Format = TextureFormat::RGBA8;
+        l_TextureSpecification.Usage = TextureUsage::Sampled | TextureUsage::TransferDestination;
 
-        auto l_Texture = std::make_shared<VulkanTexture>(m_Device.GetDevice(), m_Allocator.GetAllocator(), l_Spec);
+        auto a_Texture = std::make_shared<VulkanTexture>(m_Device.GetDevice(), m_Allocator.GetAllocator(), l_TextureSpecification);
 
-        VkCommandBuffer l_Cmd = m_CommandPool.BeginSingleTimeCommands();
+        VkCommandBuffer l_CommandBuffer = m_CommandPool.BeginSingleTimeCommands();
 
         // UNDEFINED -> TRANSFER_DST
         {
@@ -237,12 +237,12 @@ namespace Trinity
             l_Barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
             l_Barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
             l_Barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            l_Barrier.image = l_Texture->GetImage();
+            l_Barrier.image = a_Texture->GetImage();
             l_Barrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
             l_Barrier.srcAccessMask = 0;
             l_Barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
-            vkCmdPipelineBarrier(l_Cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &l_Barrier);
+            vkCmdPipelineBarrier(l_CommandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &l_Barrier);
         }
 
         // Buffer -> Image copy
@@ -255,7 +255,7 @@ namespace Trinity
             l_Region.imageOffset = { 0, 0, 0 };
             l_Region.imageExtent = { width, height, 1 };
 
-            vkCmdCopyBufferToImage(l_Cmd, l_StagingBuffer, l_Texture->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &l_Region);
+            vkCmdCopyBufferToImage(l_CommandBuffer, l_StagingBuffer, a_Texture->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &l_Region);
         }
 
         // TRANSFER_DST -> SHADER_READ_ONLY
@@ -266,19 +266,19 @@ namespace Trinity
             l_Barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
             l_Barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
             l_Barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            l_Barrier.image = l_Texture->GetImage();
+            l_Barrier.image = a_Texture->GetImage();
             l_Barrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
             l_Barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
             l_Barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-            vkCmdPipelineBarrier(l_Cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &l_Barrier);
+            vkCmdPipelineBarrier(l_CommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &l_Barrier);
         }
 
-        m_CommandPool.EndSingleTimeCommands(l_Cmd);
+        m_CommandPool.EndSingleTimeCommands(l_CommandBuffer);
 
         vmaDestroyBuffer(m_Allocator.GetAllocator(), l_StagingBuffer, l_StagingAllocation);
 
-        return l_Texture;
+        return a_Texture;
     }
 
     std::shared_ptr<Texture> VulkanRendererAPI::LoadTextureFromFile(const std::string& path)
@@ -292,14 +292,18 @@ namespace Trinity
             return nullptr;
         }
 
-        auto l_Texture = CreateTextureFromData(l_Pixels, static_cast<uint32_t>(l_Width), static_cast<uint32_t>(l_Height));
+        auto a_Texture = CreateTextureFromData(l_Pixels, static_cast<uint32_t>(l_Width), static_cast<uint32_t>(l_Height));
         stbi_image_free(l_Pixels);
-        return l_Texture;
+
+        return a_Texture;
     }
 
     std::shared_ptr<Texture> VulkanRendererAPI::CreateTextureFromMemory(const uint8_t* data, size_t size)
     {
-        int l_Width = 0, l_Height = 0, l_Channels = 0;
+        int l_Width = 0;
+        int l_Height = 0;
+        int l_Channels = 0;
+
         stbi_uc* l_Pixels = stbi_load_from_memory(data, static_cast<int>(size), &l_Width, &l_Height, &l_Channels, STBI_rgb_alpha);
 
         if (!l_Pixels)
@@ -308,9 +312,10 @@ namespace Trinity
             return nullptr;
         }
 
-        auto l_Texture = CreateTextureFromData(l_Pixels, static_cast<uint32_t>(l_Width), static_cast<uint32_t>(l_Height));
+        auto a_Texture = CreateTextureFromData(l_Pixels, static_cast<uint32_t>(l_Width), static_cast<uint32_t>(l_Height));
         stbi_image_free(l_Pixels);
-        return l_Texture;
+
+        return a_Texture;
     }
 
     std::shared_ptr<Framebuffer> VulkanRendererAPI::CreateFramebuffer(const FramebufferSpecification& specification)

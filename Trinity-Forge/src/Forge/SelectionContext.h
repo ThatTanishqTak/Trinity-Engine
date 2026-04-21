@@ -16,7 +16,7 @@ enum class EditorState : uint8_t
 
 struct SelectionContext
 {
-    entt::entity    SelectedEntity = entt::null;
-    Trinity::Scene* ActiveScene    = nullptr;
-    EditorState     State          = EditorState::Edit;
+    entt::entity SelectedEntity = entt::null;
+    Trinity::Scene* ActiveScene = nullptr;
+    EditorState State = EditorState::Edit;
 };

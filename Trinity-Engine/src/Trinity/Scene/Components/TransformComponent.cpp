@@ -27,10 +27,12 @@ namespace Trinity
         constexpr int l_MaxDepth = 32;
 
         glm::mat4 l_World = GetLocalMatrix();
+
         uint64_t l_ParentUUID = ParentUUID;
+
         int l_Depth = 0;
 
-        const auto& l_Registry = scene.GetRegistry();
+        const auto& a_Registry = scene.GetRegistry();
 
         while (l_ParentUUID != 0)
         {
@@ -46,14 +48,14 @@ namespace Trinity
                 break;
             }
 
-            const auto* l_ParentTransform = l_Registry.try_get<TransformComponent>(l_ParentHandle);
-            if (!l_ParentTransform)
+            const auto* a_ParentTransform = a_Registry.try_get<TransformComponent>(l_ParentHandle);
+            if (!a_ParentTransform)
             {
                 break;
             }
 
-            l_World = l_ParentTransform->GetLocalMatrix() * l_World;
-            l_ParentUUID = l_ParentTransform->ParentUUID;
+            l_World = a_ParentTransform->GetLocalMatrix() * l_World;
+            l_ParentUUID = a_ParentTransform->ParentUUID;
         }
 
         return l_World;

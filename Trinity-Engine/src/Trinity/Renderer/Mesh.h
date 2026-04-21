@@ -15,7 +15,7 @@ namespace Trinity
     {
         glm::vec3 Position;
         glm::vec3 Normal;
-        glm::vec2 TexCoord;
+        glm::vec2 TextureCoordinate;
     };
 
     class Mesh
@@ -28,11 +28,13 @@ namespace Trinity
         uint32_t GetIndexCount() const { return m_IndexCount; }
         uint32_t GetVertexCount() const { return m_VertexCount; }
 
+    public:
         std::shared_ptr<Texture> AlbedoTexture;
 
     private:
         std::shared_ptr<Buffer> m_VertexBuffer;
         std::shared_ptr<Buffer> m_IndexBuffer;
+
         uint32_t m_IndexCount = 0;
         uint32_t m_VertexCount = 0;
     };

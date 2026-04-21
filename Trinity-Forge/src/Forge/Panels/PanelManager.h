@@ -19,11 +19,12 @@ namespace Forge
         T* RegisterPanel(Args&&... args)
         {
             auto l_Panel = std::make_unique<T>(std::forward<Args>(args)...);
-            T* l_Ptr = l_Panel.get();
+            T* l_Pointer = l_Panel.get();
             l_Panel->OnInitialize();
+
             m_Panels.push_back(std::move(l_Panel));
 
-            return l_Ptr;
+            return l_Pointer;
         }
 
         void UpdatePanels(float deltaTime);

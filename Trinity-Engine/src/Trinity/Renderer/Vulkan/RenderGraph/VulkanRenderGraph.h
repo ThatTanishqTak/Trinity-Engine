@@ -19,6 +19,7 @@ namespace Trinity
 
     protected:
         std::shared_ptr<Texture> CreateResource(const RenderGraphTextureDescription& description) override;
+
         void OnReset() override;
         void OnCompile() override;
         void OnExecutePassBegin(uint32_t passIndex, RenderGraphContext& context) override;

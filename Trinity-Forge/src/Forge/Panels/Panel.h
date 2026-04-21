@@ -7,13 +7,33 @@ namespace Forge
     class Panel
     {
     public:
-        explicit Panel(std::string name) : m_Name(std::move(name)) {}
+        explicit Panel(std::string name) : m_Name(std::move(name))
+        {
+
+        }
+
         virtual ~Panel() = default;
 
-        virtual void OnInitialize() {}
-        virtual void OnShutdown() {}
-        virtual void OnUpdate(float deltaTime) { (void)deltaTime; }
-        virtual void OnPreRender() {}
+        virtual void OnInitialize()
+        {
+
+        }
+
+        virtual void OnShutdown()
+        {
+
+        }
+
+        virtual void OnUpdate(float deltaTime)
+        {
+            (void)deltaTime;
+        }
+
+        virtual void OnPreRender()
+        {
+
+        }
+
         virtual void OnRender() = 0;
 
         const std::string& GetName() const { return m_Name; }
@@ -22,6 +42,7 @@ namespace Forge
 
     protected:
         std::string m_Name;
+
         bool m_Open = true;
     };
 }

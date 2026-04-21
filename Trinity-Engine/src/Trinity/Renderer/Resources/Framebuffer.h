@@ -23,6 +23,7 @@ namespace Trinity
 		std::vector<FramebufferAttachmentSpecification> ColorAttachments;
 		FramebufferAttachmentSpecification DepthAttachment;
 		bool HasDepthAttachment = false;
+
 		std::string DebugName;
 	};
 

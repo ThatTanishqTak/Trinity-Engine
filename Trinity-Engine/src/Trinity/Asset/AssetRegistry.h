@@ -22,7 +22,7 @@ namespace Trinity
 
         const AssetMetadata* GetMetadata(AssetHandle handle) const;
 
-        std::shared_ptr<Mesh>    LoadMesh(AssetHandle handle);
+        std::shared_ptr<Mesh> LoadMesh(AssetHandle handle);
         std::shared_ptr<Texture> LoadTexture(AssetHandle handle);
 
         void Clear();
@@ -34,8 +34,8 @@ namespace Trinity
 
         AssetHandle ReadOrCreateMeta(const std::filesystem::path& sourcePath, AssetType type);
 
-        std::unordered_map<AssetHandle, AssetMetadata>       m_Metadata;
-        std::unordered_map<AssetHandle, std::shared_ptr<Mesh>>    m_MeshCache;
+        std::unordered_map<AssetHandle, AssetMetadata> m_Metadata;
+        std::unordered_map<AssetHandle, std::shared_ptr<Mesh>> m_MeshCache;
         std::unordered_map<AssetHandle, std::shared_ptr<Texture>> m_TextureCache;
     };
 }

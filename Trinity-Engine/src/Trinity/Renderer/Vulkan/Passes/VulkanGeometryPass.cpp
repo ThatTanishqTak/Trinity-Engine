@@ -15,17 +15,17 @@ namespace Trinity
 
         FramebufferAttachmentSpecification l_ColorAttach{};
         l_ColorAttach.Format = TextureFormat::RGBA16F;
-        l_ColorAttach.DebugName = "GBuffer-Color";
+        l_ColorAttach.DebugName = "GeometryBuffer-Color";
         l_FramebufferSpecification.ColorAttachments.push_back(l_ColorAttach);
 
         FramebufferAttachmentSpecification l_NormalAttach{};
         l_NormalAttach.Format = TextureFormat::RGBA16F;
-        l_NormalAttach.DebugName = "GBuffer-Normal";
+        l_NormalAttach.DebugName = "GeometryBuffer-Normal";
         l_FramebufferSpecification.ColorAttachments.push_back(l_NormalAttach);
 
         l_FramebufferSpecification.HasDepthAttachment = true;
         l_FramebufferSpecification.DepthAttachment.Format = TextureFormat::Depth32F;
-        l_FramebufferSpecification.DepthAttachment.DebugName = "GBuffer-Depth";
+        l_FramebufferSpecification.DepthAttachment.DebugName = "GeometryBuffer-Depth";
         l_FramebufferSpecification.DebugName = "GeometryPass-Framebuffer";
 
         m_Framebuffer = std::make_shared<VulkanFramebuffer>(renderer.GetDevice().GetDevice(), renderer.GetAllocator().GetAllocator(), l_FramebufferSpecification);
@@ -38,7 +38,7 @@ namespace Trinity
             m_Framebuffer->Resize(width, height);
         }
 
-        VkCommandBuffer l_Cmd = m_Renderer->GetCurrentCommandBuffer();
+        VkCommandBuffer l_CommandBuffer = m_Renderer->GetCurrentCommandBuffer();
 
         std::vector<VkRenderingAttachmentInfo> l_ColorAttachments;
         for (uint32_t i = 0; i < m_Framebuffer->GetColorAttachmentCount(); i++)
@@ -76,7 +76,7 @@ namespace Trinity
         l_RenderingInfo.pColorAttachments = l_ColorAttachments.data();
         l_RenderingInfo.pDepthAttachment = a_DepthTexture ? &l_DepthAttachment : nullptr;
 
-        vkCmdBeginRendering(l_Cmd, &l_RenderingInfo);
+        vkCmdBeginRendering(l_CommandBuffer, &l_RenderingInfo);
 
         VkViewport l_Viewport{};
         l_Viewport.x = 0.0f;
@@ -85,18 +85,18 @@ namespace Trinity
         l_Viewport.height = static_cast<float>(height);
         l_Viewport.minDepth = 0.0f;
         l_Viewport.maxDepth = 1.0f;
-        vkCmdSetViewport(l_Cmd, 0, 1, &l_Viewport);
+        vkCmdSetViewport(l_CommandBuffer, 0, 1, &l_Viewport);
 
         VkRect2D l_Scissor{};
         l_Scissor.offset = { 0, 0 };
         l_Scissor.extent = { width, height };
-        vkCmdSetScissor(l_Cmd, 0, 1, &l_Scissor);
+        vkCmdSetScissor(l_CommandBuffer, 0, 1, &l_Scissor);
     }
 
     void VulkanGeometryPass::End()
     {
-        VkCommandBuffer l_Cmd = m_Renderer->GetCurrentCommandBuffer();
-        vkCmdEndRendering(l_Cmd);
+        VkCommandBuffer l_CommandBuffer = m_Renderer->GetCurrentCommandBuffer();
+        vkCmdEndRendering(l_CommandBuffer);
     }
 
     void VulkanGeometryPass::Resize(uint32_t width, uint32_t height)

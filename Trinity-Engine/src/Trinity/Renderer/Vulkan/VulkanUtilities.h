@@ -270,10 +270,14 @@ namespace Trinity
         {
             switch (type)
             {
-                case DescriptorType::CombinedImageSampler: return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-                case DescriptorType::UniformBuffer:        return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                case DescriptorType::StorageBuffer:        return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-                default:                                   return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                case DescriptorType::CombinedImageSampler:
+                    return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                case DescriptorType::UniformBuffer:
+                    return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                case DescriptorType::StorageBuffer:
+                    return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+                default:
+                    return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             }
         }
 

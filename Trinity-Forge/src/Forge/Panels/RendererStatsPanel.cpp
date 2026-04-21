@@ -26,7 +26,7 @@ namespace Forge
 
         ImGui::Separator();
 
-        // These require VkQueryPool timestamp queries — gap until SceneRenderer exposes them
+        // These require VkQueryPool timestamp queries, gap until SceneRenderer exposes them
         ImGui::TextDisabled("Draw Calls:     --");
         ImGui::TextDisabled("Vertices:       --");
         ImGui::TextDisabled("Geometry Pass:  -- ms");

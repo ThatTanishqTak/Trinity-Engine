@@ -55,6 +55,7 @@ namespace Trinity
     void ImGuiLayer::OnShutdown()
     {
         Renderer::WaitIdle();
+
         m_Implementation->Shutdown();
         m_Implementation.reset();
         ImGui::DestroyContext();

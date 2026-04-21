@@ -29,15 +29,19 @@ namespace Trinity
 	{
 		SamplerFilter MinFilter = SamplerFilter::Linear;
 		SamplerFilter MagFilter = SamplerFilter::Linear;
+
 		SamplerMipmapMode MipmapMode = SamplerMipmapMode::Linear;
+
 		SamplerAddressMode AddressModeU = SamplerAddressMode::Repeat;
 		SamplerAddressMode AddressModeV = SamplerAddressMode::Repeat;
 		SamplerAddressMode AddressModeW = SamplerAddressMode::Repeat;
+
 		float MipLodBias = 0.0f;
 		float MinLod = 0.0f;
 		float MaxLod = 1000.0f;
 		bool AnisotropyEnable = false;
 		float MaxAnisotropy = 1.0f;
+
 		std::string DebugName;
 	};
 

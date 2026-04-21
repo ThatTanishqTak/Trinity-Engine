@@ -9,6 +9,9 @@ namespace Trinity
         std::string Tag;
 
         TagComponent() = default;
-        explicit TagComponent(std::string tag) : Tag(std::move(tag)) {}
+        explicit TagComponent(std::string tag) : Tag(std::move(tag))
+        {
+
+        }
     };
 }

@@ -45,6 +45,7 @@ namespace Trinity
 
         const entt::entity l_Handle = m_Registry.create();
         Entity l_Entity(l_Handle, this);
+
         l_Entity.AddComponent<UUIDComponent>(uuid);
         l_Entity.AddComponent<TagComponent>(tag);
         l_Entity.AddComponent<TransformComponent>();
@@ -57,7 +58,6 @@ namespace Trinity
     void Scene::DestroyEntity(Entity entity)
     {
         const entt::entity l_Handle = entity.GetHandle();
-
         if (m_Registry.all_of<UUIDComponent>(l_Handle))
         {
             const uint64_t l_UUID = m_Registry.get<UUIDComponent>(l_Handle).UUID;
@@ -69,19 +69,19 @@ namespace Trinity
 
     Entity Scene::FindEntityByUUID(uint64_t uuid)
     {
-        const auto it = m_EntityByUUID.find(uuid);
-        if (it == m_EntityByUUID.end())
+        const auto a_Entity = m_EntityByUUID.find(uuid);
+        if (a_Entity == m_EntityByUUID.end())
         {
             return Entity{};
         }
 
-        return Entity(it->second, this);
+        return Entity(a_Entity->second, this);
     }
 
     entt::entity Scene::FindHandleByUUID(uint64_t uuid) const
     {
-        const auto it = m_EntityByUUID.find(uuid);
+        const auto a_Entity = m_EntityByUUID.find(uuid);
 
-        return it != m_EntityByUUID.end() ? it->second : entt::null;
+        return a_Entity != m_EntityByUUID.end() ? a_Entity->second : entt::null;
     }
 }

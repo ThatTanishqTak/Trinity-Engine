@@ -124,9 +124,9 @@ namespace Trinity
     {
         VkDevice l_Device = m_Device->GetDevice();
 
-        for (auto l_ImageView : m_ImageViews)
+        for (auto it_ImageView : m_ImageViews)
         {
-            vkDestroyImageView(l_Device, l_ImageView, nullptr);
+            vkDestroyImageView(l_Device, it_ImageView, nullptr);
         }
 
         m_ImageViews.clear();

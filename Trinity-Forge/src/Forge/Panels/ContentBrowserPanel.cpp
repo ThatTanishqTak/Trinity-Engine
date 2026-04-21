@@ -16,17 +16,29 @@ namespace
     {
         switch (type)
         {
-            case Forge::FileIconType::Mesh:    return Trinity::AssetType::Mesh;
-            case Forge::FileIconType::Texture: return Trinity::AssetType::Texture;
-            case Forge::FileIconType::Scene:   return Trinity::AssetType::Scene;
-            default:                           return Trinity::AssetType::None;
+            case Forge::FileIconType::Mesh:
+            {
+                return Trinity::AssetType::Mesh;
+            }
+            case Forge::FileIconType::Texture:
+            {
+                return Trinity::AssetType::Texture;
+            }
+            case Forge::FileIconType::Scene:
+            {
+                return Trinity::AssetType::Scene;
+            }
+            default:
+            {
+                return Trinity::AssetType::None;
+            }
         }
     }
 }
 
 namespace Forge
 {
-    std::vector<uint8_t> ContentBrowserPanel::MakeIconPixels(uint8_t R, uint8_t G, uint8_t B)
+    std::vector<uint8_t> ContentBrowserPanel::MakeIconPixels(uint8_t r, uint8_t g, uint8_t b)
     {
         constexpr int l_Size = 32;
         constexpr int l_Border = 2;
@@ -43,15 +55,15 @@ namespace Forge
                 if (l_IsBorder)
                 {
                     // Slightly brightened border
-                    l_Pixels[l_Index + 0] = static_cast<uint8_t>(std::min(255, static_cast<int>(R) + 70));
-                    l_Pixels[l_Index + 1] = static_cast<uint8_t>(std::min(255, static_cast<int>(G) + 70));
-                    l_Pixels[l_Index + 2] = static_cast<uint8_t>(std::min(255, static_cast<int>(B) + 70));
+                    l_Pixels[l_Index + 0] = static_cast<uint8_t>(std::min(255, static_cast<int>(r) + 70));
+                    l_Pixels[l_Index + 1] = static_cast<uint8_t>(std::min(255, static_cast<int>(g) + 70));
+                    l_Pixels[l_Index + 2] = static_cast<uint8_t>(std::min(255, static_cast<int>(b) + 70));
                 }
                 else
                 {
-                    l_Pixels[l_Index + 0] = R;
-                    l_Pixels[l_Index + 1] = G;
-                    l_Pixels[l_Index + 2] = B;
+                    l_Pixels[l_Index + 0] = r;
+                    l_Pixels[l_Index + 1] = g;
+                    l_Pixels[l_Index + 2] = b;
                 }
 
                 l_Pixels[l_Index + 3] = 255;
@@ -61,7 +73,7 @@ namespace Forge
         return l_Pixels;
     }
 
-    std::vector<uint8_t> ContentBrowserPanel::MakeFolderPixels(uint8_t R, uint8_t G, uint8_t B)
+    std::vector<uint8_t> ContentBrowserPanel::MakeFolderPixels(uint8_t r, uint8_t g, uint8_t b)
     {
         constexpr int l_Size = 32;
 
@@ -82,15 +94,15 @@ namespace Forge
             l_Pixels[l_Index + 3] = 255;
         };
 
-        const uint8_t l_BackgroundR = static_cast<uint8_t>(std::min(255, static_cast<int>(R) + 70));
-        const uint8_t l_BackgroundG = static_cast<uint8_t>(std::min(255, static_cast<int>(G) + 70));
-        const uint8_t l_BackgroundB = static_cast<uint8_t>(std::min(255, static_cast<int>(B) + 70));
+        const uint8_t l_BackgroundR = static_cast<uint8_t>(std::min(255, static_cast<int>(r) + 70));
+        const uint8_t l_BackgroundG = static_cast<uint8_t>(std::min(255, static_cast<int>(g) + 70));
+        const uint8_t l_BackgroundB = static_cast<uint8_t>(std::min(255, static_cast<int>(b) + 70));
 
         for (int y = 2; y < 8; ++y)
         {
             for (int x = 2; x < 16; ++x)
             {
-                a_Fill(x, y, (x < 3 || x > 14 || y < 3 || y > 6) ? l_BackgroundR : R, (x < 3 || x > 14 || y < 3 || y > 6) ? l_BackgroundG : G, (x < 3 || x > 14 || y < 3 || y > 6) ? l_BackgroundB : B);
+                a_Fill(x, y, (x < 3 || x > 14 || y < 3 || y > 6) ? l_BackgroundR : r, (x < 3 || x > 14 || y < 3 || y > 6) ? l_BackgroundG : g, (x < 3 || x > 14 || y < 3 || y > 6) ? l_BackgroundB : b);
             }
         }
 
@@ -100,7 +112,7 @@ namespace Forge
             for (int x = 2; x < 30; ++x)
             {
                 const bool l_Edge = (x == 2 || x == 29 || y == 6 || y == 29);
-                a_Fill(x, y, l_Edge ? l_BackgroundR : R, l_Edge ? l_BackgroundG : G, l_Edge ? l_BackgroundB : B);
+                a_Fill(x, y, l_Edge ? l_BackgroundR : r, l_Edge ? l_BackgroundG : g, l_Edge ? l_BackgroundB : b);
             }
         }
 
@@ -119,12 +131,12 @@ namespace Forge
 
     void ContentBrowserPanel::OnShutdown()
     {
-        for (auto& l_Icon : m_Icons)
+        for (auto& it_Icon : m_Icons)
         {
-            if (l_Icon.ImGuiID != 0)
+            if (it_Icon.ImGuiID != 0)
             {
-                Trinity::ImGuiLayer::Get().UnregisterTexture(l_Icon.ImGuiID);
-                l_Icon.ImGuiID = 0;
+                Trinity::ImGuiLayer::Get().UnregisterTexture(it_Icon.ImGuiID);
+                it_Icon.ImGuiID = 0;
             }
         }
     }
@@ -186,7 +198,7 @@ namespace Forge
 
     FileIconType ContentBrowserPanel::FileTypeFromExtension(const std::string& extension) const
     {
-        if (extension == ".trinity")
+        if (extension == ".tscene")
         {
             return FileIconType::Scene;
         }
@@ -225,10 +237,7 @@ namespace Forge
 
         ImGui::PushID(name.c_str());
 
-        // Record the top-left of this row before drawing anything
         const ImVec2 l_CursorPosition = ImGui::GetCursorScreenPos();
-
-        // Full-width selectable — empty Label so ImGui doesn't draw its own text
         const bool l_Activated = ImGui::Selectable("##entry", false, ImGuiSelectableFlags_AllowDoubleClick, ImVec2(0.0f, s_RowHeight));
 
         outDoubleClicked = l_Activated && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
@@ -251,7 +260,6 @@ namespace Forge
             l_DrawList->AddText(ImVec2(l_IconMin.x + (s_IconSize - ts.x) * 0.5f, l_IconMin.y + (s_IconSize - ts.y) * 0.5f), IM_COL32(255, 255, 255, 255), l_Icon.Label);
         }
 
-        // --- Draw the entry name to the right of the icon ---
         const float l_TextX = l_CursorPosition.x + s_IconPadding + s_IconSize + 6.0f;
         const float l_TextY = l_CursorPosition.y + (s_RowHeight - ImGui::GetTextLineHeight()) * 0.5f;
 
@@ -269,7 +277,7 @@ namespace Forge
             LoadIcons();
         }
 
-        // --- Navigation bar ---
+        // Navigation bar
         const bool l_AtRoot = (m_CurrentDirectory == m_BaseDirectory);
 
         if (l_AtRoot)
@@ -315,15 +323,15 @@ namespace Forge
             }
         }
 
-        auto a_ByName = [](const std::filesystem::directory_entry& a, const std::filesystem::directory_entry& B)
+        auto a_ByName = [](const std::filesystem::directory_entry& a, const std::filesystem::directory_entry& b)
         {
-            return a.path().filename() < B.path().filename();
+            return a.path().filename() < b.path().filename();
         };
 
         std::sort(l_Directories.begin(),  l_Directories.end(),  a_ByName);
         std::sort(l_Files.begin(), l_Files.end(), a_ByName);
 
-        // --- Directories ---
+        // Directories
         for (const auto& it_Directory : l_Directories)
         {
             const std::string l_Name = it_Directory.path().filename().string();
@@ -337,28 +345,30 @@ namespace Forge
             }
         }
 
-        // --- Files ---
-        for (const auto& it_Files : l_Files)
+        // Files
+        for (const auto& it_File : l_Files)
         {
-            const std::string l_Extension = it_Files.path().extension().string();
+            const std::string l_Extension = it_File.path().extension().string();
 
             if (l_Extension == ".meta")
             {
                 continue;
             }
 
-            const std::string l_Name = it_Files.path().filename().string();
+            const std::string l_Name = it_File.path().filename().string();
             const FileIconType l_Type = FileTypeFromExtension(l_Extension);
-
             bool l_DoubleClicked = false;
+
             RenderEntry(l_Name, l_Type, false, l_DoubleClicked);
 
             if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
             {
                 AssetPayload l_Payload{};
                 l_Payload.Type = AssetTypeFromFileIconType(l_Type);
-                const std::string l_FullPath = it_Files.path().string();
+
+                const std::string l_FullPath = it_File.path().string();
                 std::strncpy(l_Payload.Path, l_FullPath.c_str(), sizeof(l_Payload.Path) - 1);
+
                 ImGui::SetDragDropPayload(AssetPayloadID, &l_Payload, sizeof(l_Payload));
 
                 const FileIcon& l_Icon = m_Icons[static_cast<size_t>(l_Type)];
@@ -369,7 +379,7 @@ namespace Forge
                 else
                 {
                     const ImVec4 l_Color = ImGui::ColorConvertU32ToFloat4(l_Icon.Color);
-                    ImGui::ColorButton("##ic", l_Color, ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop, ImVec2(16.0f, 16.0f));
+                    ImGui::ColorButton("##icon", l_Color, ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoDragDrop, ImVec2(16.0f, 16.0f));
                 }
 
                 ImGui::SameLine(0.0f, 6.0f);

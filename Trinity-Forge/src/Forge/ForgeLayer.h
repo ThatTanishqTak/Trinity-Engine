@@ -46,14 +46,14 @@ private:
     Trinity::Scene m_Scene;
 
     Forge::PanelManager m_PanelManager;
-    SelectionContext     m_SelectionContext;
+    SelectionContext m_SelectionContext;
 
-    Forge::ViewportPanel*        m_ViewportPanel  = nullptr;
-    Forge::SceneHierarchyPanel*  m_HierarchyPanel = nullptr;
-    Forge::InspectorPanel*       m_InspectorPanel = nullptr;
-    Forge::ContentBrowserPanel*  m_ContentPanel   = nullptr;
-    Forge::RendererStatsPanel*   m_StatsPanel     = nullptr;
-    Forge::LogPanel*             m_LogPanel       = nullptr;
+    Forge::ViewportPanel* m_ViewportPanel = nullptr;
+    Forge::SceneHierarchyPanel* m_HierarchyPanel = nullptr;
+    Forge::InspectorPanel* m_InspectorPanel = nullptr;
+    Forge::ContentBrowserPanel* m_ContentPanel = nullptr;
+    Forge::RendererStatsPanel* m_StatsPanel = nullptr;
+    Forge::LogPanel* m_LogPanel = nullptr;
 
     std::string m_CurrentScenePath;
     std::string m_SceneSnapshot;

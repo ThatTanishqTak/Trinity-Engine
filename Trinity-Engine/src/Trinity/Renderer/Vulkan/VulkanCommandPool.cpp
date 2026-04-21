@@ -20,13 +20,13 @@ namespace Trinity
 
         m_CommandBuffers.resize(framesInFlight);
 
-        VkCommandBufferAllocateInfo l_AllocInfo{};
-        l_AllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        l_AllocInfo.commandPool = m_CommandPool;
-        l_AllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        l_AllocInfo.commandBufferCount = framesInFlight;
+        VkCommandBufferAllocateInfo l_AllocateInfo{};
+        l_AllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        l_AllocateInfo.commandPool = m_CommandPool;
+        l_AllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        l_AllocateInfo.commandBufferCount = framesInFlight;
 
-        VulkanUtilities::VKCheck(vkAllocateCommandBuffers(device.GetDevice(), &l_AllocInfo, m_CommandBuffers.data()), "Failed vkAllocateCommandBuffers");
+        VulkanUtilities::VKCheck(vkAllocateCommandBuffers(device.GetDevice(), &l_AllocateInfo, m_CommandBuffers.data()), "Failed vkAllocateCommandBuffers");
 
         TR_CORE_INFO("Vulkan command pool created ({} command buffers)", framesInFlight);
     }
@@ -63,14 +63,14 @@ namespace Trinity
 
     VkCommandBuffer VulkanCommandPool::BeginSingleTimeCommands() const
     {
-        VkCommandBufferAllocateInfo l_AllocInfo{};
-        l_AllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        l_AllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        l_AllocInfo.commandPool = m_CommandPool;
-        l_AllocInfo.commandBufferCount = 1;
+        VkCommandBufferAllocateInfo l_AllocateInfo{};
+        l_AllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        l_AllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        l_AllocateInfo.commandPool = m_CommandPool;
+        l_AllocateInfo.commandBufferCount = 1;
 
         VkCommandBuffer l_CommandBuffer;
-        VulkanUtilities::VKCheck(vkAllocateCommandBuffers(m_Device->GetDevice(), &l_AllocInfo, &l_CommandBuffer), "Failed vkAllocateCommandBuffers");
+        VulkanUtilities::VKCheck(vkAllocateCommandBuffers(m_Device->GetDevice(), &l_AllocateInfo, &l_CommandBuffer), "Failed vkAllocateCommandBuffers");
 
         VkCommandBufferBeginInfo l_BeginInfo{};
         l_BeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;

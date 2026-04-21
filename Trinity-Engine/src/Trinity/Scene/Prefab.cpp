@@ -7,7 +7,7 @@
 #include "Trinity/Scene/Components/TransformComponent.h"
 #include "Trinity/Scene/Components/MeshComponent.h"
 #include "Trinity/Scene/Components/CameraComponent.h"
-#include "Trinity/Scene/Components/DirectionalLightComponent.h"
+#include "Trinity/Scene/Components/LightComponent.h"
 #include "Trinity/Asset/AssetRegistry.h"
 #include "Trinity/Utilities/Log.h"
 
@@ -64,38 +64,38 @@ namespace Trinity
 
         l_Out << YAML::Key << "Tag" << YAML::Value << entity.GetComponent<TagComponent>().Tag;
 
-        const auto& l_Transform = entity.GetComponent<TransformComponent>();
+        const auto& a_TransformComponent = entity.GetComponent<TransformComponent>();
         l_Out << YAML::Key << "Transform" << YAML::Value << YAML::BeginMap;
-        l_Out << YAML::Key << "Position" << YAML::Value << l_Transform.Position;
-        l_Out << YAML::Key << "Rotation" << YAML::Value << l_Transform.Rotation;
-        l_Out << YAML::Key << "Scale"    << YAML::Value << l_Transform.Scale;
+        l_Out << YAML::Key << "Position" << YAML::Value << a_TransformComponent.Position;
+        l_Out << YAML::Key << "Rotation" << YAML::Value << a_TransformComponent.Rotation;
+        l_Out << YAML::Key << "Scale" << YAML::Value << a_TransformComponent.Scale;
         l_Out << YAML::EndMap;
 
         if (entity.HasComponent<MeshComponent>())
         {
-            const auto& l_Mesh = entity.GetComponent<MeshComponent>();
+            const auto& a_MeshComponent = entity.GetComponent<MeshComponent>();
             l_Out << YAML::Key << "MeshComponent" << YAML::Value << YAML::BeginMap;
-            l_Out << YAML::Key << "MeshAssetUUID" << YAML::Value << l_Mesh.MeshAssetUUID;
+            l_Out << YAML::Key << "MeshAssetUUID" << YAML::Value << a_MeshComponent.MeshAssetUUID;
             l_Out << YAML::EndMap;
         }
 
         if (entity.HasComponent<CameraComponent>())
         {
-            const auto& l_Camera = entity.GetComponent<CameraComponent>();
+            const auto& a_CameraComponent = entity.GetComponent<CameraComponent>();
             l_Out << YAML::Key << "Camera" << YAML::Value << YAML::BeginMap;
-            l_Out << YAML::Key << "FOV"      << YAML::Value << l_Camera.FOV;
-            l_Out << YAML::Key << "NearClip" << YAML::Value << l_Camera.NearClip;
-            l_Out << YAML::Key << "FarClip"  << YAML::Value << l_Camera.FarClip;
-            l_Out << YAML::Key << "Primary"  << YAML::Value << l_Camera.Primary;
+            l_Out << YAML::Key << "FOV" << YAML::Value << a_CameraComponent.FOV;
+            l_Out << YAML::Key << "NearClip" << YAML::Value << a_CameraComponent.NearClip;
+            l_Out << YAML::Key << "FarClip" << YAML::Value << a_CameraComponent.FarClip;
+            l_Out << YAML::Key << "Primary" << YAML::Value << a_CameraComponent.Primary;
             l_Out << YAML::EndMap;
         }
 
         if (entity.HasComponent<DirectionalLightComponent>())
         {
-            const auto& l_Light = entity.GetComponent<DirectionalLightComponent>();
+            const auto& a_DirectionalLightComponent = entity.GetComponent<DirectionalLightComponent>();
             l_Out << YAML::Key << "DirectionalLight" << YAML::Value << YAML::BeginMap;
-            l_Out << YAML::Key << "Color"     << YAML::Value << l_Light.Color;
-            l_Out << YAML::Key << "Intensity" << YAML::Value << l_Light.Intensity;
+            l_Out << YAML::Key << "Color" << YAML::Value << a_DirectionalLightComponent.Color;
+            l_Out << YAML::Key << "Intensity" << YAML::Value << a_DirectionalLightComponent.Intensity;
             l_Out << YAML::EndMap;
         }
 
@@ -134,43 +134,44 @@ namespace Trinity
         const std::string l_Tag = l_Root["Tag"] ? l_Root["Tag"].as<std::string>() : "Prefab";
         Entity l_Entity = scene.CreateEntity(l_Tag);
 
-        const auto l_TransformNode = l_Root["Transform"];
-        if (l_TransformNode)
+        const auto a_TransformNode = l_Root["Transform"];
+        if (a_TransformNode)
         {
-            auto& l_Transform = l_Entity.GetComponent<TransformComponent>();
-            l_Transform.Position = l_TransformNode["Position"].as<glm::vec3>();
-            l_Transform.Rotation = l_TransformNode["Rotation"].as<glm::vec3>();
-            l_Transform.Scale = l_TransformNode["Scale"].as<glm::vec3>();
+            auto& a_TransformComponent = l_Entity.GetComponent<TransformComponent>();
+            a_TransformComponent.Position = a_TransformNode["Position"].as<glm::vec3>();
+            a_TransformComponent.Rotation = a_TransformNode["Rotation"].as<glm::vec3>();
+            a_TransformComponent.Scale = a_TransformNode["Scale"].as<glm::vec3>();
         }
 
-        const auto l_MeshNode = l_Root["MeshComponent"];
-        if (l_MeshNode)
+        const auto a_MeshNode = l_Root["MeshComponent"];
+        if (a_MeshNode)
         {
-            const AssetHandle l_UUID = l_MeshNode["MeshAssetUUID"].as<uint64_t>(InvalidAsset);
-            auto& l_Mesh = l_Entity.AddComponent<MeshComponent>();
-            l_Mesh.MeshAssetUUID = l_UUID;
+            const AssetHandle l_UUID = a_MeshNode["MeshAssetUUID"].as<uint64_t>(InvalidAsset);
+            auto& a_MeshComponent = l_Entity.AddComponent<MeshComponent>();
+
+            a_MeshComponent.MeshAssetUUID = l_UUID;
             if (l_UUID != InvalidAsset)
             {
-                l_Mesh.MeshData = AssetRegistry::Get().LoadMesh(l_UUID);
+                a_MeshComponent.MeshData = AssetRegistry::Get().LoadMesh(l_UUID);
             }
         }
 
-        const auto l_CameraNode = l_Root["Camera"];
-        if (l_CameraNode)
+        const auto a_CameraNode = l_Root["Camera"];
+        if (a_CameraNode)
         {
-            auto& l_Camera = l_Entity.AddComponent<CameraComponent>();
-            l_Camera.FOV = l_CameraNode["FOV"].as<float>(60.0f);
-            l_Camera.NearClip = l_CameraNode["NearClip"].as<float>(0.1f);
-            l_Camera.FarClip = l_CameraNode["FarClip"].as<float>(1000.0f);
-            l_Camera.Primary = l_CameraNode["Primary"].as<bool>(true);
+            auto& a_CameraComponent = l_Entity.AddComponent<CameraComponent>();
+            a_CameraComponent.FOV = a_CameraNode["FOV"].as<float>(60.0f);
+            a_CameraComponent.NearClip = a_CameraNode["NearClip"].as<float>(0.1f);
+            a_CameraComponent.FarClip = a_CameraNode["FarClip"].as<float>(1000.0f);
+            a_CameraComponent.Primary = a_CameraNode["Primary"].as<bool>(true);
         }
 
-        const auto l_LightNode = l_Root["DirectionalLight"];
-        if (l_LightNode)
+        const auto a_DirectionalLightNode = l_Root["DirectionalLight"];
+        if (a_DirectionalLightNode)
         {
-            auto& l_Light = l_Entity.AddComponent<DirectionalLightComponent>();
-            l_Light.Color = l_LightNode["Color"].as<glm::vec3>(glm::vec3(1.0f));
-            l_Light.Intensity = l_LightNode["Intensity"].as<float>(1.0f);
+            auto& a_DirectionalLightComponent = l_Entity.AddComponent<DirectionalLightComponent>();
+            a_DirectionalLightComponent.Color = a_DirectionalLightNode["Color"].as<glm::vec3>(glm::vec3(1.0f));
+            a_DirectionalLightComponent.Intensity = a_DirectionalLightNode["Intensity"].as<float>(1.0f);
         }
 
         return l_Entity;

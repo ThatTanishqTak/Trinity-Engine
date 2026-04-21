@@ -43,10 +43,10 @@ namespace Trinity
         l_ImageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         l_ImageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-        VmaAllocationCreateInfo l_AllocInfo{};
-        l_AllocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+        VmaAllocationCreateInfo l_AllocateInfo{};
+        l_AllocateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
-        VulkanUtilities::VKCheck(vmaCreateImage(m_Allocator, &l_ImageInfo, &l_AllocInfo, &m_Image, &m_Allocation, nullptr), "Failed vmaCreateImage");
+        VulkanUtilities::VKCheck(vmaCreateImage(m_Allocator, &l_ImageInfo, &l_AllocateInfo, &m_Image, &m_Allocation, nullptr), "Failed vmaCreateImage");
     }
 
     void VulkanTexture::CreateImageView()

@@ -17,6 +17,6 @@ namespace Forge
 
         SelectionContext* m_Context = nullptr;
         entt::entity m_RenameTarget = entt::null;
-        bool  m_RenameRequested = false;
+        bool m_RenameRequested = false;
     };
-}
+};

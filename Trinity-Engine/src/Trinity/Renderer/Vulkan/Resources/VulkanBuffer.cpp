@@ -17,23 +17,36 @@ namespace Trinity
         l_BufferInfo.usage = VulkanUtilities::ToVkBufferUsage(specification.Usage);
         l_BufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-        VmaAllocationCreateInfo l_AllocInfo{};
+        VmaAllocationCreateInfo l_AllocateInfo{};
         switch (specification.MemoryType)
         {
             case BufferMemoryType::GPU:
-                l_AllocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+            {
+                l_AllocateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
                 break;
+            }
             case BufferMemoryType::CPUToGPU:
-                l_AllocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
-                l_AllocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+            {
+                l_AllocateInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+                l_AllocateInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
                 break;
+            }
             case BufferMemoryType::GPUToCPU:
-                l_AllocInfo.usage = VMA_MEMORY_USAGE_GPU_TO_CPU;
-                l_AllocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+            {
+                l_AllocateInfo.usage = VMA_MEMORY_USAGE_GPU_TO_CPU;
+                l_AllocateInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
                 break;
+            }
+            default:
+            {
+                break;
+            }
         }
 
-        VulkanUtilities::VKCheck(vmaCreateBuffer(m_Allocator, &l_BufferInfo, &l_AllocInfo, &m_Buffer, &m_Allocation, nullptr), "Failed vmaCreateBuffer");
+        VulkanUtilities::VKCheck(vmaCreateBuffer(m_Allocator, &l_BufferInfo, &l_AllocateInfo, &m_Buffer, &m_Allocation, nullptr), "Failed vmaCreateBuffer");
 
         if (specification.MemoryType == BufferMemoryType::CPUToGPU || specification.MemoryType == BufferMemoryType::GPUToCPU)
         {
@@ -70,6 +83,7 @@ namespace Trinity
 
             vmaMapMemory(m_Allocator, m_Allocation, &l_Mapped);
             std::memcpy(static_cast<uint8_t*>(l_Mapped) + offset, data, size);
+
             vmaFlushAllocation(m_Allocator, m_Allocation, offset, size);
             vmaUnmapMemory(m_Allocator, m_Allocation);
         }

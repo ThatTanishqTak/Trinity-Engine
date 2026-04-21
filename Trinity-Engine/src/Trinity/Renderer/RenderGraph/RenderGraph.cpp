@@ -14,13 +14,13 @@ namespace Trinity
 
     RenderGraphResourceHandle RenderGraph::DeclareTexture(const RenderGraphTextureDescription& description)
     {
-        RenderGraphResourceHandle it_Handle{};
-        it_Handle.Index = static_cast<uint32_t>(m_ResourceDescs.size());
+        RenderGraphResourceHandle l_Handle{};
+        l_Handle.Index = static_cast<uint32_t>(m_ResourceDescs.size());
 
         m_ResourceDescs.push_back(description);
         m_Compiled = false;
 
-        return it_Handle;
+        return l_Handle;
     }
 
     RenderGraphPass& RenderGraph::AddPass(const std::string& name)
@@ -70,11 +70,11 @@ namespace Trinity
         l_Context.Width = m_SwapchainWidth;
         l_Context.Height = m_SwapchainHeight;
 
-        for (uint32_t l_Index : m_ExecutionOrder)
+        for (uint32_t it_Index : m_ExecutionOrder)
         {
-            OnExecutePassBegin(l_Index, l_Context);
-            m_Passes[l_Index].Execute(l_Context);
-            OnExecutePassEnd(l_Index, l_Context);
+            OnExecutePassBegin(it_Index, l_Context);
+            m_Passes[it_Index].Execute(l_Context);
+            OnExecutePassEnd(it_Index, l_Context);
         }
     }
 
@@ -129,18 +129,18 @@ namespace Trinity
                 return;
             }
 
-            auto& a_Deps = l_Dependencies[to];
-            if (std::find(a_Deps.begin(), a_Deps.end(), from) == a_Deps.end())
+            auto& a_Dependency = l_Dependencies[to];
+            if (std::find(a_Dependency.begin(), a_Dependency.end(), from) == a_Dependency.end())
             {
-                a_Deps.push_back(from);
+                a_Dependency.push_back(from);
             }
         };
 
         for (uint32_t i = 0; i < l_PassCount; i++)
         {
-            const auto& l_Pass = m_Passes[i];
+            const auto& a_Pass = m_Passes[i];
 
-            for (const auto& it_Handle : l_Pass.GetReads())
+            for (const auto& it_Handle : a_Pass.GetReads())
             {
                 if (!it_Handle.IsValid() || it_Handle.Index >= l_ResourceCount)
                 {
@@ -153,7 +153,7 @@ namespace Trinity
                 }
             }
 
-            for (const auto& it_Handle : l_Pass.GetWrites())
+            for (const auto& it_Handle : a_Pass.GetWrites())
             {
                 if (!it_Handle.IsValid() || it_Handle.Index >= l_ResourceCount)
                 {
@@ -171,7 +171,7 @@ namespace Trinity
                 }
             }
 
-            for (const auto& it_Handle : l_Pass.GetReads())
+            for (const auto& it_Handle : a_Pass.GetReads())
             {
                 if (!it_Handle.IsValid() || it_Handle.Index >= l_ResourceCount)
                 {
@@ -181,7 +181,7 @@ namespace Trinity
                 l_ActiveReaders[it_Handle.Index].push_back(i);
             }
 
-            for (const auto& it_Handle : l_Pass.GetWrites())
+            for (const auto& it_Handle : a_Pass.GetWrites())
             {
                 if (!it_Handle.IsValid() || it_Handle.Index >= l_ResourceCount)
                 {
@@ -231,9 +231,9 @@ namespace Trinity
                     continue;
                 }
 
-                for (uint32_t l_Dep : l_Dependencies[i])
+                for (uint32_t it_Dependency : l_Dependencies[i])
                 {
-                    if (l_Dep == l_Next)
+                    if (it_Dependency == l_Next)
                     {
                         l_InDegree[i]--;
                         break;
@@ -249,24 +249,24 @@ namespace Trinity
 
         for (size_t i = 0; i < m_ResourceDescs.size(); i++)
         {
-            RenderGraphTextureDescription l_ResolvedDesc = m_ResourceDescs[i];
-            if (l_ResolvedDesc.Width == 0)
+            RenderGraphTextureDescription l_ResolveDescription = m_ResourceDescs[i];
+            if (l_ResolveDescription.Width == 0)
             {
-                l_ResolvedDesc.Width = m_SwapchainWidth;
+                l_ResolveDescription.Width = m_SwapchainWidth;
             }
 
-            if (l_ResolvedDesc.Height == 0)
+            if (l_ResolveDescription.Height == 0)
             {
-                l_ResolvedDesc.Height = m_SwapchainHeight;
+                l_ResolveDescription.Height = m_SwapchainHeight;
             }
 
-            if (l_ResolvedDesc.Width == 0 || l_ResolvedDesc.Height == 0)
+            if (l_ResolveDescription.Width == 0 || l_ResolveDescription.Height == 0)
             {
-                TR_CORE_WARN("[RENDER GRAPH]: Resource '{}' has zero extent and no swapchain fallback", l_ResolvedDesc.DebugName);
+                TR_CORE_WARN("[RENDER GRAPH]: Resource '{}' has zero extent and no swapchain fallback", l_ResolveDescription.DebugName);
                 continue;
             }
 
-            m_Resources[i] = CreateResource(l_ResolvedDesc);
+            m_Resources[i] = CreateResource(l_ResolveDescription);
         }
     }
 }

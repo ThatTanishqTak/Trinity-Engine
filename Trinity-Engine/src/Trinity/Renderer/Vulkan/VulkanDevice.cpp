@@ -94,19 +94,16 @@ namespace Trinity
 
     void VulkanDevice::CreateLogicalDevice(bool enableValidation)
     {
-        std::set<uint32_t> l_UniqueQueueFamilies = {
-            m_QueueFamilyIndices.GraphicsFamily.value(),
-            m_QueueFamilyIndices.PresentFamily.value()
-        };
+        std::set<uint32_t> l_UniqueQueueFamilies = { m_QueueFamilyIndices.GraphicsFamily.value(), m_QueueFamilyIndices.PresentFamily.value() };
 
         float l_QueuePriority = 1.0f;
         std::vector<VkDeviceQueueCreateInfo> l_QueueCreateInfos;
 
-        for (uint32_t l_QueueFamily : l_UniqueQueueFamilies)
+        for (uint32_t it_QueueFamily : l_UniqueQueueFamilies)
         {
             VkDeviceQueueCreateInfo l_QueueCreateInfo{};
             l_QueueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-            l_QueueCreateInfo.queueFamilyIndex = l_QueueFamily;
+            l_QueueCreateInfo.queueFamilyIndex = it_QueueFamily;
             l_QueueCreateInfo.queueCount = 1;
             l_QueueCreateInfo.pQueuePriorities = &l_QueuePriority;
             l_QueueCreateInfos.push_back(l_QueueCreateInfo);

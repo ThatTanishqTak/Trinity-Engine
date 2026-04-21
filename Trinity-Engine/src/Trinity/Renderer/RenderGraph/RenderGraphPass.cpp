@@ -32,6 +32,7 @@ namespace Trinity
     RenderGraphPass& RenderGraphPass::SetExecuteCallback(std::function<void(RenderGraphContext&)> callback)
     {
         m_ExecuteCallback = std::move(callback);
+
         return *this;
     }
 

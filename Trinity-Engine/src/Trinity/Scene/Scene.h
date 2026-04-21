@@ -27,7 +27,6 @@ namespace Trinity
         entt::entity FindHandleByUUID(uint64_t uuid) const;
 
         const std::string& GetName() const { return m_Name; }
-
         void SetName(const std::string& name) { m_Name = name; }
 
         entt::registry& GetRegistry() { return m_Registry; }

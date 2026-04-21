@@ -7,7 +7,7 @@
 #include "Trinity/Scene/Components/MeshComponent.h"
 #include "Trinity/Scene/Components/TextureComponent.h"
 #include "Trinity/Scene/Components/CameraComponent.h"
-#include "Trinity/Scene/Components/DirectionalLightComponent.h"
+#include "Trinity/Scene/Components/LightComponent.h"
 #include "Trinity/Asset/AssetRegistry.h"
 
 #include <imgui.h>
@@ -19,9 +19,9 @@
 
 namespace Forge
 {
-    InspectorPanel::InspectorPanel(std::string name, SelectionContext* context)
-        : Panel(std::move(name)), m_Context(context)
+    InspectorPanel::InspectorPanel(std::string name, SelectionContext* context) : Panel(std::move(name)), m_Context(context)
     {
+
     }
 
     void InspectorPanel::DrawVec3Control(const char* label, glm::vec3& values, float resetValue)
@@ -31,15 +31,19 @@ namespace Forge
         ImGui::Text("%s", label);
         ImGui::SameLine(100.0f);
 
-        const float l_BtnSize = ImGui::GetFrameHeight();
+        const float l_ButtonSize = ImGui::GetFrameHeight();
         const float l_Spacing = ImGui::GetStyle().ItemSpacing.x;
-        const float l_DragWidth = (ImGui::GetContentRegionAvail().x - l_BtnSize * 3.0f - l_Spacing * 2.0f) / 3.0f;
+        const float l_DragWidth = (ImGui::GetContentRegionAvail().x - l_ButtonSize * 3.0f - l_Spacing * 2.0f) / 3.0f;
 
         // X — red
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.80f, 0.10f, 0.10f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.90f, 0.20f, 0.20f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.80f, 0.10f, 0.10f, 1.0f));
-        if (ImGui::Button("X", ImVec2(l_BtnSize, l_BtnSize))) values.x = resetValue;
+        if (ImGui::Button("X", ImVec2(l_ButtonSize, l_ButtonSize)))
+        {
+            values.x = resetValue;
+        }
+
         ImGui::PopStyleColor(3);
         ImGui::SameLine(0.0f, 0.0f);
         ImGui::SetNextItemWidth(l_DragWidth);
@@ -50,7 +54,11 @@ namespace Forge
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.10f, 0.60f, 0.10f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.70f, 0.20f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.10f, 0.60f, 0.10f, 1.0f));
-        if (ImGui::Button("Y", ImVec2(l_BtnSize, l_BtnSize))) values.y = resetValue;
+        if (ImGui::Button("Y", ImVec2(l_ButtonSize, l_ButtonSize)))
+        {
+            values.y = resetValue;
+        }
+
         ImGui::PopStyleColor(3);
         ImGui::SameLine(0.0f, 0.0f);
         ImGui::SetNextItemWidth(l_DragWidth);
@@ -61,7 +69,11 @@ namespace Forge
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.10f, 0.10f, 0.80f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.20f, 0.90f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.10f, 0.10f, 0.80f, 1.0f));
-        if (ImGui::Button("Z", ImVec2(l_BtnSize, l_BtnSize))) values.z = resetValue;
+        if (ImGui::Button("Z", ImVec2(l_ButtonSize, l_ButtonSize)))
+        {
+            values.z = resetValue;
+        }
+
         ImGui::PopStyleColor(3);
         ImGui::SameLine(0.0f, 0.0f);
         ImGui::SetNextItemWidth(l_DragWidth);
@@ -72,10 +84,10 @@ namespace Forge
 
     void InspectorPanel::DrawAddComponentPopup(entt::registry& registry, entt::entity entity)
     {
-        const float l_BtnWidth = 200.0f;
-        ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - l_BtnWidth) * 0.5f + ImGui::GetCursorPosX());
+        const float l_ButtonWidth = 200.0f;
+        ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - l_ButtonWidth) * 0.5f + ImGui::GetCursorPosX());
 
-        if (ImGui::Button("Add Component", ImVec2(l_BtnWidth, 0.0f)))
+        if (ImGui::Button("Add Component", ImVec2(l_ButtonWidth, 0.0f)))
         {
             m_ComponentSearchBuffer[0] = '\0';
             ImGui::OpenPopup("##AddComponent");
@@ -91,7 +103,11 @@ namespace Forge
             // Case-insensitive substring match
             auto Matches = [&](const char* label) -> bool
             {
-                if (m_ComponentSearchBuffer[0] == '\0') return true;
+                if (m_ComponentSearchBuffer[0] == '\0')
+                {
+                    return true;
+                }
+
                 const char* a = m_ComponentSearchBuffer;
                 const char* b = label;
                 // Simple case-insensitive contains
@@ -103,8 +119,12 @@ namespace Forge
                     {
                         ++ai; ++bi;
                     }
-                    if (*ai == '\0') return true;
+                    if (*ai == '\0')
+                    {
+                        return true;
+                    }
                 }
+
                 return false;
             };
 
@@ -117,6 +137,7 @@ namespace Forge
                     registry.emplace<Trinity::MeshComponent>(entity);
                     ImGui::CloseCurrentPopup();
                 }
+
                 l_AnyVisible = true;
             }
 
@@ -127,6 +148,7 @@ namespace Forge
                     registry.emplace<Trinity::TextureComponent>(entity);
                     ImGui::CloseCurrentPopup();
                 }
+
                 l_AnyVisible = true;
             }
 
@@ -137,6 +159,7 @@ namespace Forge
                     registry.emplace<Trinity::CameraComponent>(entity);
                     ImGui::CloseCurrentPopup();
                 }
+
                 l_AnyVisible = true;
             }
 
@@ -147,6 +170,7 @@ namespace Forge
                     registry.emplace<Trinity::DirectionalLightComponent>(entity);
                     ImGui::CloseCurrentPopup();
                 }
+
                 l_AnyVisible = true;
             }
 
@@ -166,6 +190,7 @@ namespace Forge
         if (m_Context->SelectedEntity == entt::null || m_Context->ActiveScene == nullptr)
         {
             ImGui::End();
+
             return;
         }
 
@@ -178,81 +203,81 @@ namespace Forge
             ImGui::BeginDisabled();
         }
 
-        // Tag — always present, no remove option
+        // Tag: always present, no remove option
         if (l_Registry.all_of<Trinity::TagComponent>(l_Entity))
         {
-            auto& l_Tag = l_Registry.get<Trinity::TagComponent>(l_Entity);
-
+            auto& a_Tag = l_Registry.get<Trinity::TagComponent>(l_Entity);
             char l_Buffer[256];
-            std::strncpy(l_Buffer, l_Tag.Tag.c_str(), sizeof(l_Buffer) - 1);
+
+            std::strncpy(l_Buffer, a_Tag.Tag.c_str(), sizeof(l_Buffer) - 1);
             l_Buffer[sizeof(l_Buffer) - 1] = '\0';
 
             ImGui::SetNextItemWidth(-1.0f);
             if (ImGui::InputText("##Tag", l_Buffer, sizeof(l_Buffer)))
-                l_Tag.Tag = l_Buffer;
+            {
+                a_Tag.Tag = l_Buffer;
+            }
         }
 
         ImGui::Spacing();
 
         // Transform
-        DrawComponent<Trinity::TransformComponent>("Transform", l_Registry, l_Entity, [](Trinity::TransformComponent& t)
+        DrawComponent<Trinity::TransformComponent>("Transform", l_Registry, l_Entity, [](Trinity::TransformComponent& textureComponent)
         {
-            DrawVec3Control("Position", t.Position, 0.0f);
+            DrawVec3Control("Position", textureComponent.Position, 0.0f);
 
-            glm::vec3 l_RotDeg = glm::degrees(t.Rotation);
-            DrawVec3Control("Rotation", l_RotDeg, 0.0f);
-            t.Rotation = glm::radians(l_RotDeg);
+            glm::vec3 l_RotationDegree = glm::degrees(textureComponent.Rotation);
+            DrawVec3Control("Rotation", l_RotationDegree, 0.0f);
+            textureComponent.Rotation = glm::radians(l_RotationDegree);
 
-            DrawVec3Control("Scale", t.Scale, 1.0f);
+            DrawVec3Control("Scale", textureComponent.Scale, 1.0f);
         });
 
         ImGui::Spacing();
 
         // Mesh
-        DrawComponent<Trinity::MeshComponent>("Mesh", l_Registry, l_Entity, [](Trinity::MeshComponent& m)
+        DrawComponent<Trinity::MeshComponent>("Mesh", l_Registry, l_Entity, [](Trinity::MeshComponent& meshComponent)
         {
-            const float l_AvailWidth = ImGui::GetContentRegionAvail().x;
-            const float l_BtnSize = ImGui::GetFrameHeight();
+            const float l_AvailableWidth = ImGui::GetContentRegionAvail().x;
+            const float l_ButtonSize = ImGui::GetFrameHeight();
             const float l_Spacing = ImGui::GetStyle().ItemSpacing.x;
-            const float l_SlotWidth = l_AvailWidth - l_BtnSize - l_Spacing;
-            const float l_SlotHeight = l_BtnSize + 4.0f;
+            const float l_SlotWidth = l_AvailableWidth - l_ButtonSize - l_Spacing;
+            const float l_SlotHeight = l_ButtonSize + 4.0f;
 
-            const ImVec2 l_SlotPos = ImGui::GetCursorScreenPos();
+            const ImVec2 l_SlotPosition = ImGui::GetCursorScreenPos();
             ImGui::InvisibleButton("##MeshSlot", ImVec2(l_SlotWidth, l_SlotHeight));
 
-            ImDrawList* l_Draw = ImGui::GetWindowDrawList();
+            ImDrawList* l_DrawList = ImGui::GetWindowDrawList();
 
-            const bool l_HasMesh = (m.MeshData != nullptr);
-
-            const ImU32 l_BorderColor = l_HasMesh
-                ? ImGui::GetColorU32(ImGuiCol_Border)
-                : ImGui::GetColorU32(ImGuiCol_Border, 0.4f);
-            l_Draw->AddRect(l_SlotPos, ImVec2(l_SlotPos.x + l_SlotWidth, l_SlotPos.y + l_SlotHeight), l_BorderColor, 3.0f, 0, 1.0f);
+            const ImU32 l_BorderColor = meshComponent.MeshData != nullptr ? ImGui::GetColorU32(ImGuiCol_Border) : ImGui::GetColorU32(ImGuiCol_Border, 0.4f);
+            l_DrawList->AddRect(l_SlotPosition, ImVec2(l_SlotPosition.x + l_SlotWidth, l_SlotPosition.y + l_SlotHeight), l_BorderColor, 3.0f, 0, 1.0f);
 
             constexpr float l_IconSize = 14.0f;
             constexpr float l_IconPad = 5.0f;
-            const ImVec2 l_IconMin(l_SlotPos.x + l_IconPad, l_SlotPos.y + (l_SlotHeight - l_IconSize) * 0.5f);
-            const ImVec2 l_IconMax(l_IconMin.x + l_IconSize, l_IconMin.y + l_IconSize);
-            const float  l_TextX = l_IconMax.x + 6.0f;
-            const float  l_TextY = l_SlotPos.y + (l_SlotHeight - ImGui::GetTextLineHeight()) * 0.5f;
 
-            if (l_HasMesh)
+            const ImVec2 l_IconMin(l_SlotPosition.x + l_IconPad, l_SlotPosition.y + (l_SlotHeight - l_IconSize) * 0.5f);
+            const ImVec2 l_IconMax(l_IconMin.x + l_IconSize, l_IconMin.y + l_IconSize);
+
+            const float l_TextX = l_IconMax.x + 6.0f;
+            const float l_TextY = l_SlotPosition.y + (l_SlotHeight - ImGui::GetTextLineHeight()) * 0.5f;
+
+            if (meshComponent.MeshData != nullptr)
             {
-                l_Draw->AddRectFilled(l_IconMin, l_IconMax, IM_COL32(33, 150, 243, 255), 2.0f);
+                l_DrawList->AddRectFilled(l_IconMin, l_IconMax, IM_COL32(33, 150, 243, 255), 2.0f);
 
                 std::string l_FileName = "mesh";
-                const Trinity::AssetMetadata* l_Meta = Trinity::AssetRegistry::Get().GetMetadata(m.MeshAssetUUID);
+                const Trinity::AssetMetadata* l_Meta = Trinity::AssetRegistry::Get().GetMetadata(meshComponent.MeshAssetUUID);
                 if (l_Meta)
                 {
                     l_FileName = std::filesystem::path(l_Meta->SourcePath).stem().string();
                 }
 
-                l_Draw->AddText(ImVec2(l_TextX, l_TextY), ImGui::GetColorU32(ImGuiCol_Text), l_FileName.c_str());
+                l_DrawList->AddText(ImVec2(l_TextX, l_TextY), ImGui::GetColorU32(ImGuiCol_Text), l_FileName.c_str());
             }
             else
             {
-                l_Draw->AddRectFilled(l_IconMin, l_IconMax, IM_COL32(33, 150, 243, 60), 2.0f);
-                l_Draw->AddText(ImVec2(l_TextX, l_TextY), ImGui::GetColorU32(ImGuiCol_TextDisabled), "Drop Mesh Here");
+                l_DrawList->AddRectFilled(l_IconMin, l_IconMax, IM_COL32(33, 150, 243, 60), 2.0f);
+                l_DrawList->AddText(ImVec2(l_TextX, l_TextY), ImGui::GetColorU32(ImGuiCol_TextDisabled), "Drop Mesh Here");
             }
 
             if (ImGui::BeginDragDropTarget())
@@ -265,88 +290,89 @@ namespace Forge
                         const Trinity::AssetHandle l_Handle = Trinity::AssetRegistry::Get().ImportAsset(a_Asset->Path);
                         if (l_Handle != Trinity::InvalidAsset)
                         {
-                            auto l_Mesh = Trinity::AssetRegistry::Get().LoadMesh(l_Handle);
-                            if (l_Mesh)
+                            auto a_Mesh = Trinity::AssetRegistry::Get().LoadMesh(l_Handle);
+                            if (a_Mesh)
                             {
-                                m.MeshAssetUUID = l_Handle;
-                                m.MeshData = l_Mesh;
+                                meshComponent.MeshAssetUUID = l_Handle;
+                                meshComponent.MeshData = a_Mesh;
                             }
                         }
                     }
                 }
+
                 ImGui::EndDragDropTarget();
             }
 
             ImGui::SameLine(0.0f, l_Spacing);
 
-            if (!l_HasMesh)
+            if (meshComponent.MeshData == nullptr)
             {
                 ImGui::BeginDisabled();
             }
 
-            if (ImGui::Button("x", ImVec2(l_BtnSize, l_SlotHeight)))
+            if (ImGui::Button("x", ImVec2(l_ButtonSize, l_SlotHeight)))
             {
-                m.MeshAssetUUID = Trinity::InvalidAsset;
-                m.MeshData.reset();
+                meshComponent.MeshAssetUUID = Trinity::InvalidAsset;
+                meshComponent.MeshData.reset();
             }
 
-            if (!l_HasMesh)
+            if (meshComponent.MeshData == nullptr)
             {
                 ImGui::EndDisabled();
             }
 
-            if (m.MeshData)
+            if (meshComponent.MeshData)
             {
                 ImGui::Spacing();
-                ImGui::Text("Vertices: %u   Indices: %u", m.MeshData->GetVertexCount(), m.MeshData->GetIndexCount());
+                ImGui::Text("Vertices: %u   Indices: %u", meshComponent.MeshData->GetVertexCount(), meshComponent.MeshData->GetIndexCount());
             }
         });
 
         ImGui::Spacing();
 
         // Texture
-        DrawComponent<Trinity::TextureComponent>("Texture", l_Registry, l_Entity, [](Trinity::TextureComponent& t)
+        DrawComponent<Trinity::TextureComponent>("Texture", l_Registry, l_Entity, [](Trinity::TextureComponent& textureComponent)
         {
-            const float l_AvailWidth = ImGui::GetContentRegionAvail().x;
-            const float l_BtnSize = ImGui::GetFrameHeight();
+            const float l_AvailableWidth = ImGui::GetContentRegionAvail().x;
+            const float l_ButtonSize = ImGui::GetFrameHeight();
             const float l_Spacing = ImGui::GetStyle().ItemSpacing.x;
-            const float l_SlotWidth = l_AvailWidth - l_BtnSize - l_Spacing;
-            const float l_SlotHeight = l_BtnSize + 4.0f;
+            const float l_SlotWidth = l_AvailableWidth - l_ButtonSize - l_Spacing;
+            const float l_SlotHeight = l_ButtonSize + 4.0f;
 
-            const ImVec2 l_SlotPos = ImGui::GetCursorScreenPos();
+            const ImVec2 l_SlotPosition = ImGui::GetCursorScreenPos();
             ImGui::InvisibleButton("##TextureSlot", ImVec2(l_SlotWidth, l_SlotHeight));
 
-            ImDrawList* l_Draw = ImGui::GetWindowDrawList();
+            ImDrawList* l_DrawList = ImGui::GetWindowDrawList();
 
-            const bool l_HasTex = (t.TextureData != nullptr);
-
-            const ImU32 l_BorderColor = l_HasTex
-                ? ImGui::GetColorU32(ImGuiCol_Border)
-                : ImGui::GetColorU32(ImGuiCol_Border, 0.4f);
-            l_Draw->AddRect(l_SlotPos, ImVec2(l_SlotPos.x + l_SlotWidth, l_SlotPos.y + l_SlotHeight), l_BorderColor, 3.0f, 0, 1.0f);
+            const ImU32 l_BorderColor = (textureComponent.TextureData != nullptr) ? ImGui::GetColorU32(ImGuiCol_Border) : ImGui::GetColorU32(ImGuiCol_Border, 0.4f);
+            l_DrawList->AddRect(l_SlotPosition, ImVec2(l_SlotPosition.x + l_SlotWidth, l_SlotPosition.y + l_SlotHeight), l_BorderColor, 3.0f, 0, 1.0f);
 
             constexpr float l_IconSize = 14.0f;
             constexpr float l_IconPad = 5.0f;
-            const ImVec2 l_IconMin(l_SlotPos.x + l_IconPad, l_SlotPos.y + (l_SlotHeight - l_IconSize) * 0.5f);
-            const ImVec2 l_IconMax(l_IconMin.x + l_IconSize, l_IconMin.y + l_IconSize);
-            const float  l_TextX = l_IconMax.x + 6.0f;
-            const float  l_TextY = l_SlotPos.y + (l_SlotHeight - ImGui::GetTextLineHeight()) * 0.5f;
 
-            if (l_HasTex)
+            const ImVec2 l_IconMin(l_SlotPosition.x + l_IconPad, l_SlotPosition.y + (l_SlotHeight - l_IconSize) * 0.5f);
+            const ImVec2 l_IconMax(l_IconMin.x + l_IconSize, l_IconMin.y + l_IconSize);
+
+            const float l_TextX = l_IconMax.x + 6.0f;
+            const float l_TextY = l_SlotPosition.y + (l_SlotHeight - ImGui::GetTextLineHeight()) * 0.5f;
+
+            if (textureComponent.TextureData != nullptr)
             {
-                l_Draw->AddRectFilled(l_IconMin, l_IconMax, IM_COL32(233, 30, 99, 255), 2.0f);
+                l_DrawList->AddRectFilled(l_IconMin, l_IconMax, IM_COL32(233, 30, 99, 255), 2.0f);
 
                 std::string l_FileName = "texture";
-                const Trinity::AssetMetadata* l_Meta = Trinity::AssetRegistry::Get().GetMetadata(t.TextureAssetUUID);
+                const Trinity::AssetMetadata* l_Meta = Trinity::AssetRegistry::Get().GetMetadata(textureComponent.TextureAssetUUID);
                 if (l_Meta)
+                {
                     l_FileName = std::filesystem::path(l_Meta->SourcePath).stem().string();
+                }
 
-                l_Draw->AddText(ImVec2(l_TextX, l_TextY), ImGui::GetColorU32(ImGuiCol_Text), l_FileName.c_str());
+                l_DrawList->AddText(ImVec2(l_TextX, l_TextY), ImGui::GetColorU32(ImGuiCol_Text), l_FileName.c_str());
             }
             else
             {
-                l_Draw->AddRectFilled(l_IconMin, l_IconMax, IM_COL32(233, 30, 99, 60), 2.0f);
-                l_Draw->AddText(ImVec2(l_TextX, l_TextY), ImGui::GetColorU32(ImGuiCol_TextDisabled), "Drop Texture Here");
+                l_DrawList->AddRectFilled(l_IconMin, l_IconMax, IM_COL32(233, 30, 99, 60), 2.0f);
+                l_DrawList->AddText(ImVec2(l_TextX, l_TextY), ImGui::GetColorU32(ImGuiCol_TextDisabled), "Drop Texture Here");
             }
 
             if (ImGui::BeginDragDropTarget())
@@ -359,51 +385,56 @@ namespace Forge
                         const Trinity::AssetHandle l_Handle = Trinity::AssetRegistry::Get().ImportAsset(a_Asset->Path);
                         if (l_Handle != Trinity::InvalidAsset)
                         {
-                            auto l_Tex = Trinity::AssetRegistry::Get().LoadTexture(l_Handle);
-                            if (l_Tex)
+                            auto a_Texture = Trinity::AssetRegistry::Get().LoadTexture(l_Handle);
+                            if (a_Texture)
                             {
-                                t.TextureAssetUUID = l_Handle;
-                                t.TextureData = l_Tex;
+                                textureComponent.TextureAssetUUID = l_Handle;
+                                textureComponent.TextureData = a_Texture;
                             }
                         }
                     }
                 }
+
                 ImGui::EndDragDropTarget();
             }
 
             ImGui::SameLine(0.0f, l_Spacing);
 
-            if (!l_HasTex)
-                ImGui::BeginDisabled();
-
-            if (ImGui::Button("x##tex", ImVec2(l_BtnSize, l_SlotHeight)))
+            if (textureComponent.TextureData == nullptr)
             {
-                t.TextureAssetUUID = Trinity::InvalidAsset;
-                t.TextureData.reset();
+                ImGui::BeginDisabled();
             }
 
-            if (!l_HasTex)
+            if (ImGui::Button("x##texture", ImVec2(l_ButtonSize, l_SlotHeight)))
+            {
+                textureComponent.TextureAssetUUID = Trinity::InvalidAsset;
+                textureComponent.TextureData.reset();
+            }
+
+            if (textureComponent.TextureData == nullptr)
+            {
                 ImGui::EndDisabled();
+            }
         });
 
         ImGui::Spacing();
 
         // Camera
-        DrawComponent<Trinity::CameraComponent>("Camera", l_Registry, l_Entity, [](Trinity::CameraComponent& c)
+        DrawComponent<Trinity::CameraComponent>("Camera", l_Registry, l_Entity, [](Trinity::CameraComponent& cameraComponent)
         {
-            ImGui::Checkbox("Primary", &c.Primary);
-            ImGui::DragFloat("FOV", &c.FOV, 0.5f, 1.0f, 179.0f, "%.1f deg");
-            ImGui::DragFloat("Near Clip", &c.NearClip, 0.01f, 0.001f, 10.0f, "%.3f");
-            ImGui::DragFloat("Far Clip", &c.FarClip, 1.0f, 1.0f, 100000.0f, "%.0f");
+            ImGui::Checkbox("Primary", &cameraComponent.Primary);
+            ImGui::DragFloat("FOV", &cameraComponent.FOV, 0.5f, 1.0f, 179.0f, "%.1f deg");
+            ImGui::DragFloat("Near Clip", &cameraComponent.NearClip, 0.01f, 0.001f, 10.0f, "%.3f");
+            ImGui::DragFloat("Far Clip", &cameraComponent.FarClip, 1.0f, 1.0f, 100000.0f, "%.0f");
         });
 
         ImGui::Spacing();
 
         // Directional Light
-        DrawComponent<Trinity::DirectionalLightComponent>("Directional Light", l_Registry, l_Entity, [](Trinity::DirectionalLightComponent& l)
+        DrawComponent<Trinity::DirectionalLightComponent>("Directional Light", l_Registry, l_Entity, [](Trinity::DirectionalLightComponent& directionalLightComponent)
         {
-            ImGui::ColorEdit3("Color", glm::value_ptr(l.Color));
-            ImGui::DragFloat("Intensity", &l.Intensity, 0.01f, 0.0f, 100.0f);
+            ImGui::ColorEdit3("Color", glm::value_ptr(directionalLightComponent.Color));
+            ImGui::DragFloat("Intensity", &directionalLightComponent.Intensity, 0.01f, 0.0f, 100.0f);
         });
 
         ImGui::Spacing();

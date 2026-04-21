@@ -14,15 +14,15 @@ namespace Trinity
 
     std::shared_ptr<Texture> VulkanRenderGraph::CreateResource(const RenderGraphTextureDescription& description)
     {
-        TextureSpecification l_Specification{};
-        l_Specification.Width = description.Width;
-        l_Specification.Height = description.Height;
-        l_Specification.MipLevels = 1;
-        l_Specification.Format = description.Format;
-        l_Specification.Usage = description.Usage;
-        l_Specification.DebugName = description.DebugName;
+        TextureSpecification l_TextureSpecification{};
+        l_TextureSpecification.Width = description.Width;
+        l_TextureSpecification.Height = description.Height;
+        l_TextureSpecification.MipLevels = 1;
+        l_TextureSpecification.Format = description.Format;
+        l_TextureSpecification.Usage = description.Usage;
+        l_TextureSpecification.DebugName = description.DebugName;
 
-        return std::make_shared<VulkanTexture>(m_Renderer->GetDevice().GetDevice(), m_Renderer->GetAllocator().GetAllocator(), l_Specification);
+        return std::make_shared<VulkanTexture>(m_Renderer->GetDevice().GetDevice(), m_Renderer->GetAllocator().GetAllocator(), l_TextureSpecification);
     }
 
     void VulkanRenderGraph::OnReset()
@@ -55,8 +55,10 @@ namespace Trinity
 
                 const ResourceState l_Needed = GetReadState(m_ResourceDescs[it_Handle.Index]);
                 AppendBarrierIfNeeded(a_OutBarriers, it_Handle.Index, l_Current[it_Handle.Index], l_Needed);
+
                 l_Current[it_Handle.Index] = l_Needed;
             }
+
             for (const auto& it_Handle : a_Pass.GetWrites())
             {
                 if (!it_Handle.IsValid() || it_Handle.Index >= l_ResourceCount)
@@ -66,6 +68,7 @@ namespace Trinity
 
                 const ResourceState l_Needed = GetWriteState(m_ResourceDescs[it_Handle.Index]);
                 AppendBarrierIfNeeded(a_OutBarriers, it_Handle.Index, l_Current[it_Handle.Index], l_Needed);
+
                 l_Current[it_Handle.Index] = l_Needed;
             }
         }

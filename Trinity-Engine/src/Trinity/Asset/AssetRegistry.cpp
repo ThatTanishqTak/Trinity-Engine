@@ -14,6 +14,7 @@ namespace Trinity
     AssetRegistry& AssetRegistry::Get()
     {
         static AssetRegistry s_Instance;
+
         return s_Instance;
     }
 
@@ -32,17 +33,15 @@ namespace Trinity
 
         AssetType l_Type = AssetType::None;
 
-        if (l_Extension == ".fbx" || l_Extension == ".obj" || l_Extension == ".gltf"
-            || l_Extension == ".glb" || l_Extension == ".dae")
+        if (l_Extension == ".fbx" || l_Extension == ".obj" || l_Extension == ".gltf" || l_Extension == ".glb" || l_Extension == ".dae")
         {
             l_Type = AssetType::Mesh;
         }
-        else if (l_Extension == ".png" || l_Extension == ".jpg"
-                 || l_Extension == ".jpeg" || l_Extension == ".tga")
+        else if (l_Extension == ".png" || l_Extension == ".jpg" || l_Extension == ".jpeg" || l_Extension == ".tga")
         {
             l_Type = AssetType::Texture;
         }
-        else if (l_Extension == ".trinity")
+        else if (l_Extension == ".tscene")
         {
             l_Type = AssetType::Scene;
         }
@@ -72,8 +71,9 @@ namespace Trinity
 
     const AssetMetadata* AssetRegistry::GetMetadata(AssetHandle handle) const
     {
-        auto it = m_Metadata.find(handle);
-        return (it != m_Metadata.end()) ? &it->second : nullptr;
+        auto a_MetaData = m_Metadata.find(handle);
+
+        return (a_MetaData != m_Metadata.end()) ? &a_MetaData->second : nullptr;
     }
 
     std::shared_ptr<Mesh> AssetRegistry::LoadMesh(AssetHandle handle)
@@ -83,10 +83,10 @@ namespace Trinity
             return nullptr;
         }
 
-        auto l_CacheIt = m_MeshCache.find(handle);
-        if (l_CacheIt != m_MeshCache.end())
+        auto a_CacheIndex = m_MeshCache.find(handle);
+        if (a_CacheIndex != m_MeshCache.end())
         {
-            return l_CacheIt->second;
+            return a_CacheIndex->second;
         }
 
         const AssetMetadata* l_Meta = GetMetadata(handle);
@@ -96,23 +96,27 @@ namespace Trinity
             return nullptr;
         }
 
-        auto l_Mesh = MeshImporter::Import(l_Meta->SourcePath);
-        if (l_Mesh)
+        auto a_Mesh = MeshImporter::Import(l_Meta->SourcePath);
+        if (a_Mesh)
         {
-            m_MeshCache[handle] = l_Mesh;
+            m_MeshCache[handle] = a_Mesh;
         }
 
-        return l_Mesh;
+        return a_Mesh;
     }
 
     std::shared_ptr<Texture> AssetRegistry::LoadTexture(AssetHandle handle)
     {
         if (handle == InvalidAsset)
+        {
             return nullptr;
+        }
 
-        auto l_CacheIt = m_TextureCache.find(handle);
-        if (l_CacheIt != m_TextureCache.end())
-            return l_CacheIt->second;
+        auto a_CacheIndex = m_TextureCache.find(handle);
+        if (a_CacheIndex != m_TextureCache.end())
+        {
+            return a_CacheIndex->second;
+        }
 
         const AssetMetadata* l_Meta = GetMetadata(handle);
         if (!l_Meta || l_Meta->Type != AssetType::Texture)
@@ -121,11 +125,13 @@ namespace Trinity
             return nullptr;
         }
 
-        auto l_Texture = Renderer::LoadTextureFromFile(l_Meta->SourcePath);
-        if (l_Texture)
-            m_TextureCache[handle] = l_Texture;
+        auto a_Texture = Renderer::LoadTextureFromFile(l_Meta->SourcePath);
+        if (a_Texture)
+        {
+            m_TextureCache[handle] = a_Texture;
+        }
 
-        return l_Texture;
+        return a_Texture;
     }
 
     void AssetRegistry::Clear()
@@ -150,11 +156,12 @@ namespace Trinity
                     if (m_Metadata.find(l_Handle) == m_Metadata.end())
                     {
                         AssetMetadata l_Meta{};
-                        l_Meta.UUID       = l_Handle;
-                        l_Meta.Type       = type;
+                        l_Meta.UUID = l_Handle;
+                        l_Meta.Type = type;
                         l_Meta.SourcePath = sourcePath.string();
                         m_Metadata[l_Handle] = l_Meta;
                     }
+
                     return l_Handle;
                 }
             }
@@ -167,8 +174,8 @@ namespace Trinity
         const AssetHandle l_Handle = GenerateUUID();
 
         AssetMetadata l_Meta{};
-        l_Meta.UUID       = l_Handle;
-        l_Meta.Type       = type;
+        l_Meta.UUID = l_Handle;
+        l_Meta.Type = type;
         l_Meta.SourcePath = sourcePath.string();
         m_Metadata[l_Handle] = l_Meta;
 

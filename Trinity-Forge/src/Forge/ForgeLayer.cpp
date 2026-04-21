@@ -34,11 +34,17 @@ namespace
         {
             return l_Path;
         }
-#endif
+
+#elif _MACOS
         return {};
+
+#elif _LINUX
+        return {};
+
+#endif
     }
 
-    static std::string PlatformSaveFileDialog(const char* filter, const char* defaultExt)
+    static std::string PlatformSaveFileDialog(const char* filter, const char* defaultExtention)
     {
 #ifdef _WIN32
         OPENFILENAMEA l_OpenFile{};
@@ -47,15 +53,21 @@ namespace
         l_OpenFile.lpstrFilter = filter;
         l_OpenFile.lpstrFile = l_Path;
         l_OpenFile.nMaxFile = sizeof(l_Path);
-        l_OpenFile.lpstrDefExt = defaultExt;
+        l_OpenFile.lpstrDefExt = defaultExtention;
         l_OpenFile.Flags = OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR;
 
         if (GetSaveFileNameA(&l_OpenFile))
         {
             return l_Path;
         }
-#endif
+
+#elif _MACOS
         return {};
+
+#elif _LINUX
+        return {};
+
+#endif
     }
 }
 
@@ -92,11 +104,7 @@ void ForgeLayer::OnShutdown()
 
 void ForgeLayer::OnUpdate(float deltaTime)
 {
-    // Keyboard shortcuts — blocked during play/pause
-    const bool l_Ctrl = Trinity::DesktopInput::KeyDown(Trinity::Code::KeyCode::TR_KEY_LEFT_CONTROL);
-    const bool l_Shift = Trinity::DesktopInput::KeyDown(Trinity::Code::KeyCode::TR_KEY_LEFT_SHIFT);
-
-    if (l_Ctrl && m_SelectionContext.State == EditorState::Edit)
+    if (Trinity::DesktopInput::KeyDown(Trinity::Code::KeyCode::TR_KEY_LEFT_CONTROL) && m_SelectionContext.State == EditorState::Edit)
     {
         if (Trinity::DesktopInput::KeyPressed(Trinity::Code::KeyCode::TR_KEY_N))
         {
@@ -112,7 +120,7 @@ void ForgeLayer::OnUpdate(float deltaTime)
         }
         else if (Trinity::DesktopInput::KeyPressed(Trinity::Code::KeyCode::TR_KEY_S))
         {
-            if (l_Shift || m_CurrentScenePath.empty())
+            if (Trinity::DesktopInput::KeyDown(Trinity::Code::KeyCode::TR_KEY_LEFT_SHIFT) || m_CurrentScenePath.empty())
             {
                 const std::string l_Path = PlatformSaveFileDialog("Trinity Scene\0*.tscene\0All Files\0*.*\0", "tscene");
                 if (!l_Path.empty())
@@ -127,28 +135,26 @@ void ForgeLayer::OnUpdate(float deltaTime)
         }
     }
 
-    // Detect state transitions and react
     if (m_SelectionContext.State != m_LastEditorState)
     {
-        const EditorState l_Previous = m_LastEditorState;
-        const EditorState l_Current = m_SelectionContext.State;
-
-        if (l_Current == EditorState::Play && l_Previous == EditorState::Edit)
+        if (m_SelectionContext.State == EditorState::Play && m_LastEditorState == EditorState::Edit)
         {
             m_SceneSnapshot = Trinity::SceneSerializer::SerializeToString(m_Scene);
         }
-        else if (l_Current == EditorState::Edit && (l_Previous == EditorState::Play || l_Previous == EditorState::Pause))
+        else if (m_SelectionContext.State == EditorState::Edit && (m_LastEditorState == EditorState::Play || m_LastEditorState == EditorState::Pause))
         {
             if (!m_SceneSnapshot.empty())
             {
                 m_Scene = Trinity::Scene();
+
                 Trinity::SceneSerializer::DeserializeFromString(m_Scene, m_SceneSnapshot);
                 m_SelectionContext.ActiveScene = &m_Scene;
             }
+
             m_SelectionContext.SelectedEntity = entt::null;
         }
 
-        m_LastEditorState = l_Current;
+        m_LastEditorState = m_SelectionContext.State;
     }
 
     const float l_EffectiveDelta = (m_SelectionContext.State == EditorState::Pause) ? 0.0f : deltaTime;
@@ -199,6 +205,7 @@ void ForgeLayer::OnEvent(Trinity::Event& e)
 void ForgeLayer::NewScene()
 {
     m_Scene = Trinity::Scene("Untitled");
+
     m_CurrentScenePath.clear();
     m_SceneSnapshot.clear();
     m_SelectionContext.SelectedEntity = entt::null;
@@ -211,6 +218,7 @@ void ForgeLayer::OpenScene(const std::string& filepath)
     if (Trinity::SceneSerializer::Deserialize(l_NewScene, filepath))
     {
         m_Scene = std::move(l_NewScene);
+
         m_CurrentScenePath = filepath;
         m_SceneSnapshot.clear();
         m_SelectionContext.SelectedEntity = entt::null;
@@ -253,9 +261,7 @@ void ForgeLayer::RenderMenuBar()
 
         ImGui::Separator();
 
-        const bool l_HasPath = !m_CurrentScenePath.empty();
-
-        if (!l_HasPath)
+        if (!m_CurrentScenePath.empty())
         {
             ImGui::BeginDisabled();
         }
@@ -265,7 +271,7 @@ void ForgeLayer::RenderMenuBar()
             SaveScene();
         }
 
-        if (!l_HasPath)
+        if (!m_CurrentScenePath.empty())
         {
             ImGui::EndDisabled();
         }

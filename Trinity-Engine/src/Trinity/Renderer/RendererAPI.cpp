@@ -21,7 +21,7 @@ namespace Trinity
             }
 #endif
             default:
-                TR_CORE_CRITICAL("Requested renderer backend is not compiled into this build.");
+                TR_CORE_CRITICAL("Requested renderer backend is not compiled into this build");
                 std::abort();
 
                 return nullptr;

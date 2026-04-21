@@ -18,19 +18,17 @@ namespace Forge
         void OnRender() override;
 
     private:
-        template<typename T, typename DrawFn>
-        static void DrawComponent(const char* label, entt::registry& registry, entt::entity entity, DrawFn drawFn)
+        template<typename T, typename DrawFunction>
+        static void DrawComponent(const char* label, entt::registry& registry, entt::entity entity, DrawFunction drawFunction)
         {
             if (!registry.all_of<T>(entity))
+            {
                 return;
+            }
 
-            const ImGuiTreeNodeFlags l_Flags = ImGuiTreeNodeFlags_DefaultOpen
-                | ImGuiTreeNodeFlags_AllowOverlap
-                | ImGuiTreeNodeFlags_Framed
-                | ImGuiTreeNodeFlags_SpanAvailWidth
-                | ImGuiTreeNodeFlags_FramePadding;
+            const ImGuiTreeNodeFlags l_Flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_FramePadding;
 
-            auto& l_Component = registry.get<T>(entity);
+            auto& a_Component = registry.get<T>(entity);
 
             ImGui::PushID(reinterpret_cast<const void*>(&typeid(T)));
             const bool l_Open = ImGui::TreeNodeEx(label, l_Flags);
@@ -39,20 +37,25 @@ namespace Forge
             if (ImGui::BeginPopupContextItem("##ComponentContext"))
             {
                 if (ImGui::MenuItem("Remove Component"))
+                {
                     l_Remove = true;
+                }
+
                 ImGui::EndPopup();
             }
 
             if (l_Open)
             {
-                drawFn(l_Component);
+                drawFunction(a_Component);
                 ImGui::TreePop();
             }
 
             ImGui::PopID();
 
             if (l_Remove)
+            {
                 registry.remove<T>(entity);
+            }
         }
 
         static void DrawVec3Control(const char* label, glm::vec3& values, float resetValue = 0.0f);

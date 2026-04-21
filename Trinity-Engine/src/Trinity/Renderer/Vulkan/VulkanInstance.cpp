@@ -48,13 +48,13 @@ namespace Trinity
             enableValidation = false;
         }
 
-        VkApplicationInfo l_AppInfo{};
-        l_AppInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-        l_AppInfo.pApplicationName = "Trinity Engine";
-        l_AppInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-        l_AppInfo.pEngineName = "Trinity";
-        l_AppInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-        l_AppInfo.apiVersion = VK_API_VERSION_1_3;
+        VkApplicationInfo l_ApplicationInfo{};
+        l_ApplicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+        l_ApplicationInfo.pApplicationName = "Trinity Engine";
+        l_ApplicationInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+        l_ApplicationInfo.pEngineName = "Trinity";
+        l_ApplicationInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+        l_ApplicationInfo.apiVersion = VK_API_VERSION_1_3;
 
         uint32_t l_SDLExtensionCount = 0;
         const char* const* l_SDLExtensions = SDL_Vulkan_GetInstanceExtensions(&l_SDLExtensionCount);
@@ -72,7 +72,7 @@ namespace Trinity
 
         VkInstanceCreateInfo l_CreateInfo{};
         l_CreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-        l_CreateInfo.pApplicationInfo = &l_AppInfo;
+        l_CreateInfo.pApplicationInfo = &l_ApplicationInfo;
         l_CreateInfo.enabledExtensionCount = static_cast<uint32_t>(l_Extensions.size());
         l_CreateInfo.ppEnabledExtensionNames = l_Extensions.data();
 

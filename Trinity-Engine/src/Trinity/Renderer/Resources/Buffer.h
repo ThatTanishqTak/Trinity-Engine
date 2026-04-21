@@ -31,6 +31,7 @@ namespace Trinity
 		uint64_t Size = 0;
 		BufferUsage Usage = BufferUsage::None;
 		BufferMemoryType MemoryType = BufferMemoryType::GPU;
+
 		std::string DebugName;
 	};
 

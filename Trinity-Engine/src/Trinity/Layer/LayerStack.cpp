@@ -27,6 +27,7 @@ namespace Trinity
     {
         Layer* l_Layer = layer.get();
         m_Layers.emplace(m_Layers.begin() + m_LayerInsertIndex, std::move(layer));
+
         ++m_LayerInsertIndex;
         l_Layer->OnInitialize();
     }
@@ -35,6 +36,7 @@ namespace Trinity
     {
         Layer* l_Overlay = overlay.get();
         m_Layers.push_back(std::move(overlay));
+
         l_Overlay->OnInitialize();
     }
 
@@ -45,6 +47,7 @@ namespace Trinity
         {
             (*a_Index)->OnShutdown();
             m_Layers.erase(a_Index);
+
             --m_LayerInsertIndex;
         }
     }

@@ -34,6 +34,7 @@ namespace Trinity
         m_Yaw += yawDelta;
         m_Pitch -= pitchDelta;
         m_Pitch = std::clamp(m_Pitch, -89.0f, 89.0f);
+
         UpdateDirectionVectors();
     }
 

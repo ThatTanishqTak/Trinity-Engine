@@ -118,27 +118,29 @@ namespace Trinity
             l_Range.stageFlags = VulkanUtilities::ToVkShaderStage(it_Range.Stage);
             l_Range.offset = it_Range.Offset;
             l_Range.size = it_Range.Size;
+
             l_PushRanges.push_back(l_Range);
         }
 
         if (!specification.DescriptorBindings.empty())
         {
-            std::vector<VkDescriptorSetLayoutBinding> l_DSBindings;
+            std::vector<VkDescriptorSetLayoutBinding> l_DescriptorSetLayoutBindings;
             for (const auto& it_Binding : specification.DescriptorBindings)
             {
-                VkDescriptorSetLayoutBinding l_B{};
-                l_B.binding         = it_Binding.Binding;
-                l_B.descriptorType  = VulkanUtilities::ToVkDescriptorType(it_Binding.Type);
-                l_B.descriptorCount = it_Binding.Count;
-                l_B.stageFlags      = VulkanUtilities::ToVkShaderStage(it_Binding.Stage);
-                l_DSBindings.push_back(l_B);
+                VkDescriptorSetLayoutBinding l_DescriptorSetLayoutBinding{};
+                l_DescriptorSetLayoutBinding.binding = it_Binding.Binding;
+                l_DescriptorSetLayoutBinding.descriptorType = VulkanUtilities::ToVkDescriptorType(it_Binding.Type);
+                l_DescriptorSetLayoutBinding.descriptorCount = it_Binding.Count;
+                l_DescriptorSetLayoutBinding.stageFlags = VulkanUtilities::ToVkShaderStage(it_Binding.Stage);
+                l_DescriptorSetLayoutBindings.push_back(l_DescriptorSetLayoutBinding);
             }
 
-            VkDescriptorSetLayoutCreateInfo l_DSLayoutInfo{};
-            l_DSLayoutInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-            l_DSLayoutInfo.bindingCount = static_cast<uint32_t>(l_DSBindings.size());
-            l_DSLayoutInfo.pBindings    = l_DSBindings.data();
-            VulkanUtilities::VKCheck(vkCreateDescriptorSetLayout(m_Device, &l_DSLayoutInfo, nullptr, &m_DescriptorSetLayout), "Failed vkCreateDescriptorSetLayout");
+            VkDescriptorSetLayoutCreateInfo l_DescriptorSetLayoutCreateInfo{};
+            l_DescriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+            l_DescriptorSetLayoutCreateInfo.bindingCount = static_cast<uint32_t>(l_DescriptorSetLayoutBindings.size());
+            l_DescriptorSetLayoutCreateInfo.pBindings = l_DescriptorSetLayoutBindings.data();
+
+            VulkanUtilities::VKCheck(vkCreateDescriptorSetLayout(m_Device, &l_DescriptorSetLayoutCreateInfo, nullptr, &m_DescriptorSetLayout), "Failed vkCreateDescriptorSetLayout");
         }
 
         VkPipelineLayoutCreateInfo l_PipelineLayoutInfo{};
@@ -148,16 +150,16 @@ namespace Trinity
         if (m_DescriptorSetLayout != VK_NULL_HANDLE)
         {
             l_PipelineLayoutInfo.setLayoutCount = 1;
-            l_PipelineLayoutInfo.pSetLayouts    = &m_DescriptorSetLayout;
+            l_PipelineLayoutInfo.pSetLayouts = &m_DescriptorSetLayout;
         }
 
         VulkanUtilities::VKCheck(vkCreatePipelineLayout(m_Device, &l_PipelineLayoutInfo, nullptr, &m_PipelineLayout), "Failed vkCreatePipelineLayout");
 
         // Dynamic rendering format info
         std::vector<VkFormat> l_ColorFormats;
-        for (const auto& l_Fmt : specification.ColorAttachmentFormats)
+        for (const auto& it_Format : specification.ColorAttachmentFormats)
         {
-            l_ColorFormats.push_back(VulkanUtilities::ToVkFormat(l_Fmt));
+            l_ColorFormats.push_back(VulkanUtilities::ToVkFormat(it_Format));
         }
 
         VkPipelineRenderingCreateInfo l_RenderingInfo{};
@@ -176,13 +178,13 @@ namespace Trinity
         }
 
         // Create pipeline
-        const auto& l_ShaderStages = a_VulkanShader->GetStageCreateInfos();
+        const auto& a_ShaderStages = a_VulkanShader->GetStageCreateInfos();
 
         VkGraphicsPipelineCreateInfo l_PipelineInfo{};
         l_PipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         l_PipelineInfo.pNext = &l_RenderingInfo;
-        l_PipelineInfo.stageCount = static_cast<uint32_t>(l_ShaderStages.size());
-        l_PipelineInfo.pStages = l_ShaderStages.data();
+        l_PipelineInfo.stageCount = static_cast<uint32_t>(a_ShaderStages.size());
+        l_PipelineInfo.pStages = a_ShaderStages.data();
         l_PipelineInfo.pVertexInputState = &l_VertexInputInfo;
         l_PipelineInfo.pInputAssemblyState = &l_InputAssembly;
         l_PipelineInfo.pViewportState = &l_ViewportState;

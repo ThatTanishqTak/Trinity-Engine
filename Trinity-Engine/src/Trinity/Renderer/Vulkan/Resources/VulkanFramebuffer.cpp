@@ -48,14 +48,14 @@ namespace Trinity
     {
         for (const auto& it_AttachSpecification : m_Specification.ColorAttachments)
         {
-            TextureSpecification l_TexSpec{};
-            l_TexSpec.Width = m_Specification.Width;
-            l_TexSpec.Height = m_Specification.Height;
-            l_TexSpec.Format = it_AttachSpecification.Format;
-            l_TexSpec.Usage = TextureUsage::ColorAttachment | TextureUsage::Sampled;
-            l_TexSpec.DebugName = it_AttachSpecification.DebugName;
+            TextureSpecification l_TextureSpecification{};
+            l_TextureSpecification.Width = m_Specification.Width;
+            l_TextureSpecification.Height = m_Specification.Height;
+            l_TextureSpecification.Format = it_AttachSpecification.Format;
+            l_TextureSpecification.Usage = TextureUsage::ColorAttachment | TextureUsage::Sampled;
+            l_TextureSpecification.DebugName = it_AttachSpecification.DebugName;
 
-            m_ColorAttachments.push_back(std::make_shared<VulkanTexture>(m_Device, m_Allocator, l_TexSpec));
+            m_ColorAttachments.push_back(std::make_shared<VulkanTexture>(m_Device, m_Allocator, l_TextureSpecification));
         }
 
         if (m_Specification.HasDepthAttachment)

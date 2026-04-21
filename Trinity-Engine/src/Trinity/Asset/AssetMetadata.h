@@ -15,8 +15,8 @@ namespace Trinity
 
     struct AssetMetadata
     {
-        uint64_t   UUID       = 0;
-        AssetType  Type       = AssetType::None;
+        uint64_t UUID = 0;
+        AssetType Type = AssetType::None;
         std::string SourcePath;
     };
 }

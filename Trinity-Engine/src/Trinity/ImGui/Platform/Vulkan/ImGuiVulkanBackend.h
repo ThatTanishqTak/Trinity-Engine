@@ -1,8 +1,5 @@
 #pragma once
 
-// Internal header — never include this outside Trinity/ImGui/Platform/Vulkan/.
-// ImGuiLayer.cpp is the only permitted consumer.
-
 #include "Trinity/ImGui/ImGuiLayer.h"
 
 #include <vulkan/vulkan.h>

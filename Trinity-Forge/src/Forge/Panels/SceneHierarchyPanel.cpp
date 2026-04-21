@@ -25,41 +25,40 @@ namespace Forge
     {
         ImGui::Begin(m_Name.c_str(), &m_Open);
 
-        Trinity::Scene* l_Scene = m_Context->ActiveScene;
-        const bool l_IsEditing = (m_Context->State == EditorState::Edit);
-
-        if (!l_IsEditing)
+        if (m_Context->State != EditorState::Edit)
         {
-            m_RenameTarget    = entt::null;
+            m_RenameTarget = entt::null;
             m_RenameRequested = false;
         }
 
-        if (l_Scene)
+        if (m_Context->ActiveScene)
         {
-            auto l_View = l_Scene->GetRegistry().view<Trinity::UUIDComponent, Trinity::TransformComponent>();
-            for (auto it_Entity : l_View)
+            auto a_View = m_Context->ActiveScene->GetRegistry().view<Trinity::UUIDComponent, Trinity::TransformComponent>();
+            for (auto it_Entity : a_View)
             {
-                const auto& l_Transform = l_View.get<Trinity::TransformComponent>(it_Entity);
-                if (l_Transform.ParentUUID == 0)
+                const auto& a_Transform = a_View.get<Trinity::TransformComponent>(it_Entity);
+                if (a_Transform.ParentUUID == 0)
                 {
                     RenderEntityNode(it_Entity);
                 }
             }
 
-            if (l_IsEditing && ImGui::BeginPopupContextWindow("##HierarchyContext", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
+            if (m_Context->State == EditorState::Edit && ImGui::BeginPopupContextWindow("##HierarchyContext", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
             {
                 if (ImGui::MenuItem("Create Empty Entity"))
                 {
-                    l_Scene->CreateEntity("Entity");
+                    m_Context->ActiveScene->CreateEntity("Entity");
                 }
 
                 if (ImGui::MenuItem("Create Cube"))
                 {
-                    Trinity::Entity l_Cube = l_Scene->CreateEntity("Cube");
-                    auto l_Mesh = Trinity::Primitives::CreateCube();
-                    auto& l_MeshComp = l_Cube.AddComponent<Trinity::MeshComponent>();
-                    l_MeshComp.MeshAssetUUID = Trinity::AssetRegistry::Get().RegisterMesh(l_Mesh);
-                    l_MeshComp.MeshData = std::move(l_Mesh);
+                    Trinity::Entity l_Cube = m_Context->ActiveScene->CreateEntity("Cube");
+
+                    auto a_Mesh = Trinity::Primitives::CreateCube();
+                    auto& a_MeshComponent = l_Cube.AddComponent<Trinity::MeshComponent>();
+
+                    a_MeshComponent.MeshAssetUUID = Trinity::AssetRegistry::Get().RegisterMesh(a_Mesh);
+                    a_MeshComponent.MeshData = std::move(a_Mesh);
                 }
 
                 ImGui::EndPopup();
@@ -76,43 +75,41 @@ namespace Forge
 
     void SceneHierarchyPanel::RenderEntityNode(entt::entity entity)
     {
-        Trinity::Scene* l_Scene = m_Context->ActiveScene;
-        auto& l_Registry = l_Scene->GetRegistry();
-        auto& l_Tag = l_Registry.get<Trinity::TagComponent>(entity);
+        auto& a_Registry = m_Context->ActiveScene->GetRegistry();
+        auto& a_Tag = a_Registry.get<Trinity::TagComponent>(entity);
 
-        const uint64_t l_EntityUUID = l_Registry.get<Trinity::UUIDComponent>(entity).UUID;
+        const uint64_t l_EntityUUID = a_Registry.get<Trinity::UUIDComponent>(entity).UUID;
 
         std::vector<entt::entity> l_Children;
-        auto l_AllView = l_Registry.view<Trinity::UUIDComponent, Trinity::TransformComponent>();
-        for (auto it_Child : l_AllView)
+        auto a_AllView = a_Registry.view<Trinity::UUIDComponent, Trinity::TransformComponent>();
+        for (auto it_Child : a_AllView)
         {
-            if (it_Child == entity) continue;
-            if (l_AllView.get<Trinity::TransformComponent>(it_Child).ParentUUID == l_EntityUUID)
+            if (it_Child == entity)
+            {
+                continue;
+            }
+
+            if (a_AllView.get<Trinity::TransformComponent>(it_Child).ParentUUID == l_EntityUUID)
             {
                 l_Children.push_back(it_Child);
             }
         }
 
-        const bool l_Selected = (m_Context->SelectedEntity == entity);
-        const bool l_HasChildren = !l_Children.empty();
-
         ImGuiTreeNodeFlags l_Flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
-        if (!l_HasChildren)
+        if (!l_Children.empty())
         {
             l_Flags |= ImGuiTreeNodeFlags_Leaf;
         }
 
-        if (l_Selected)
+        if (m_Context->SelectedEntity == entity)
         {
             l_Flags |= ImGuiTreeNodeFlags_Selected;
         }
 
-        const bool l_IsEditing = (m_Context->State == EditorState::Edit);
-
-        if (m_RenameTarget == entity && m_RenameRequested && l_IsEditing)
+        if (m_RenameTarget == entity && m_RenameRequested && (m_Context->State == EditorState::Edit))
         {
             char l_Buffer[256];
-            std::strncpy(l_Buffer, l_Tag.Tag.c_str(), sizeof(l_Buffer) - 1);
+            std::strncpy(l_Buffer, a_Tag.Tag.c_str(), sizeof(l_Buffer) - 1);
             l_Buffer[sizeof(l_Buffer) - 1] = '\0';
 
             ImGui::SetNextItemWidth(-1.0f);
@@ -120,7 +117,7 @@ namespace Forge
 
             if (ImGui::InputText("##Rename", l_Buffer, sizeof(l_Buffer), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll))
             {
-                l_Tag.Tag = l_Buffer;
+                a_Tag.Tag = l_Buffer;
                 m_RenameTarget = entt::null;
                 m_RenameRequested = false;
             }
@@ -134,14 +131,14 @@ namespace Forge
             return;
         }
 
-        const bool l_NodeOpen = ImGui::TreeNodeEx(reinterpret_cast<void*>(static_cast<uintptr_t>(static_cast<uint32_t>(entity))), l_Flags, "%s", l_Tag.Tag.c_str());
+        const bool l_NodeOpen = ImGui::TreeNodeEx(reinterpret_cast<void*>(static_cast<uintptr_t>(static_cast<uint32_t>(entity))), l_Flags, "%s", a_Tag.Tag.c_str());
 
         if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
         {
             m_Context->SelectedEntity = entity;
         }
 
-        if (l_IsEditing && ImGui::BeginPopupContextItem())
+        if (m_Context->State == EditorState::Edit && ImGui::BeginPopupContextItem())
         {
             if (ImGui::MenuItem("Rename"))
             {
@@ -152,7 +149,7 @@ namespace Forge
 
             if (ImGui::MenuItem("Duplicate"))
             {
-                Trinity::Entity l_New = l_Scene->CreateEntity(l_Tag.Tag);
+                Trinity::Entity l_New = m_Context->ActiveScene->CreateEntity(a_Tag.Tag);
                 (void)l_New;
             }
 
@@ -165,8 +162,8 @@ namespace Forge
                     m_Context->SelectedEntity = entt::null;
                 }
 
-                Trinity::Entity l_Wrapper(entity, l_Scene);
-                l_Scene->DestroyEntity(l_Wrapper);
+                Trinity::Entity l_Wrapper(entity, m_Context->ActiveScene);
+                m_Context->ActiveScene->DestroyEntity(l_Wrapper);
 
                 ImGui::EndPopup();
 

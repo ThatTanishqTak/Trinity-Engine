@@ -30,14 +30,14 @@ namespace Trinity
         entt::entity GetHandle() const { return m_Handle; }
 
         operator entt::entity() const { return m_Handle; }
-        operator bool()         const { return m_Handle != entt::null; }
+        operator bool() const { return m_Handle != entt::null; }
 
         bool operator==(const Entity& other) const { return m_Handle == other.m_Handle && m_Scene == other.m_Scene; }
         bool operator!=(const Entity& other) const { return !(*this == other); }
 
     private:
         entt::entity m_Handle = entt::null;
-        Scene*       m_Scene  = nullptr;
+        Scene* m_Scene = nullptr;
     };
 }
 

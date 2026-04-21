@@ -27,17 +27,17 @@ namespace Forge
     protected:
         void sink_it_(const spdlog::details::log_msg& msg) override
         {
-            spdlog::memory_buf_t l_Buf;
-            formatter_->format(msg, l_Buf);
+            spdlog::memory_buf_t l_MemoryBuffer;
+            formatter_->format(msg, l_MemoryBuffer);
 
             LogEntry l_Entry;
-            l_Entry.Message = fmt::to_string(l_Buf);
+            l_Entry.Message = fmt::to_string(l_MemoryBuffer);
             l_Entry.Level = static_cast<int>(msg.level);
 
             m_Entries->push_back(std::move(l_Entry));
 
-            constexpr std::size_t k_MaxEntries = 1000;
-            if (m_Entries->size() > k_MaxEntries)
+            constexpr std::size_t l_MaxEntries = 1000;
+            if (m_Entries->size() > l_MaxEntries)
             {
                 m_Entries->pop_front();
             }
@@ -52,8 +52,6 @@ namespace Forge
         std::shared_ptr<std::deque<LogEntry>> m_Entries;
     };
 
-    // -------------------------------------------------------------------------
-
     LogPanel::LogPanel(std::string name) : Panel(std::move(name)), m_Entries(std::make_shared<std::deque<LogEntry>>())
     {
 
@@ -61,41 +59,42 @@ namespace Forge
 
     void LogPanel::OnInitialize()
     {
-        auto l_Sink = std::make_shared<ImGuiLogSink>(m_Entries);
-        l_Sink->set_pattern("[%T] [%n] %v");
-        m_Sink = l_Sink;
+        auto a_Sink = std::make_shared<ImGuiLogSink>(m_Entries);
+        a_Sink->set_pattern("[%T] [%n] %v");
 
-        auto l_AddSink = [&](const std::string& loggerName)
+        m_Sink = a_Sink;
+
+        auto a_AddSink = [&](const std::string& loggerName)
         {
-            auto l_Logger = spdlog::get(loggerName);
-            if (l_Logger)
+            auto a_Logger = spdlog::get(loggerName);
+            if (a_Logger)
             {
-                l_Logger->sinks().push_back(l_Sink);
+                a_Logger->sinks().push_back(a_Sink);
             }
         };
 
-        l_AddSink("TRINITY-ENGINE");
-        l_AddSink("TRINITY-FORGE");
+        a_AddSink("TRINITY-ENGINE");
+        a_AddSink("TRINITY-FORGE");
     }
 
     void LogPanel::OnShutdown()
     {
-        auto l_Sink = std::static_pointer_cast<spdlog::sinks::sink>(m_Sink);
+        auto a_Sink = std::static_pointer_cast<spdlog::sinks::sink>(m_Sink);
 
-        auto l_RemoveSink = [&](const std::string& loggerName)
+        auto a_RemoveSink = [&](const std::string& loggerName)
         {
-            auto l_Logger = spdlog::get(loggerName);
-            if (!l_Logger)
+            auto a_Logger = spdlog::get(loggerName);
+            if (!a_Logger)
             {
                 return;
             }
 
-            auto& l_Sinks = l_Logger->sinks();
-            l_Sinks.erase(std::remove(l_Sinks.begin(), l_Sinks.end(), l_Sink), l_Sinks.end());
+            auto& a_Sinks = a_Logger->sinks();
+            a_Sinks.erase(std::remove(a_Sinks.begin(), a_Sinks.end(), a_Sink), a_Sinks.end());
         };
 
-        l_RemoveSink("TRINITY-ENGINE");
-        l_RemoveSink("TRINITY-FORGE");
+        a_RemoveSink("TRINITY-ENGINE");
+        a_RemoveSink("TRINITY-FORGE");
         m_Sink.reset();
     }
 
