@@ -33,7 +33,16 @@ namespace Trinity
         float LightSpaceMatrix[16];
         float LightDirection[4];
         float LightColor[4];
-        float CameraPosition[4];
+        float CameraPosition[4]; // w = dynamic light count
+    };
+
+    struct GpuLight
+    {
+        float PositionAndRange[4];
+        float DirectionAndInnerCos[4];
+        float ColorAndIntensity[4];
+        float Params0[4];
+        float Params1[4];
     };
 
     struct SceneRenderer::Implementation
@@ -67,6 +76,7 @@ namespace Trinity
 
         std::vector<std::shared_ptr<Buffer>> LightingUniformBuffers;
         std::vector<VkDescriptorSet> LightingDescriptorSets;
+        std::shared_ptr<Buffer> LightStorageBuffer;
     };
 
     SceneRenderer::SceneRenderer() = default;
@@ -429,6 +439,7 @@ namespace Trinity
 
             auto* a_VkSampler = dynamic_cast<VulkanSampler*>(m_Implementation->GBufferSampler.get());
             auto* a_VkUBO = dynamic_cast<VulkanBuffer*>(m_Implementation->LightingUniformBuffers[l_FrameIndex].get());
+            auto* a_VkLightBuffer = dynamic_cast<VulkanBuffer*>(m_Implementation->LightStorageBuffer.get());
             VkDescriptorSet l_Set = m_Implementation->LightingDescriptorSets[l_FrameIndex];
 
             std::array<VkDescriptorImageInfo, 5> l_ImageInfos{};
@@ -438,12 +449,17 @@ namespace Trinity
             l_ImageInfos[3] = { a_VkSampler->GetSampler(), a_Depth->GetImageView(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL };
             l_ImageInfos[4] = { a_VkSampler->GetSampler(), a_Shadow->GetImageView(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL };
 
-            VkDescriptorBufferInfo l_BufferInfo{};
-            l_BufferInfo.buffer = a_VkUBO->GetBuffer();
-            l_BufferInfo.offset = 0;
-            l_BufferInfo.range = sizeof(LightingUniformData);
+            VkDescriptorBufferInfo l_UBOInfo{};
+            l_UBOInfo.buffer = a_VkUBO->GetBuffer();
+            l_UBOInfo.offset = 0;
+            l_UBOInfo.range = sizeof(LightingUniformData);
 
-            std::array<VkWriteDescriptorSet, 6> l_WriteDescriptorSets{};
+            VkDescriptorBufferInfo l_SSBOInfo{};
+            l_SSBOInfo.buffer = a_VkLightBuffer->GetBuffer();
+            l_SSBOInfo.offset = 0;
+            l_SSBOInfo.range = m_Implementation->LightStorageBuffer->GetSize();
+
+            std::array<VkWriteDescriptorSet, 7> l_WriteDescriptorSets{};
             for (uint32_t i = 0; i < 5; i++)
             {
                 l_WriteDescriptorSets[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -453,13 +469,20 @@ namespace Trinity
                 l_WriteDescriptorSets[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
                 l_WriteDescriptorSets[i].pImageInfo = &l_ImageInfos[i];
             }
+
             l_WriteDescriptorSets[5].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             l_WriteDescriptorSets[5].dstSet = l_Set;
             l_WriteDescriptorSets[5].dstBinding = 5;
             l_WriteDescriptorSets[5].descriptorCount = 1;
             l_WriteDescriptorSets[5].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            l_WriteDescriptorSets[5].pBufferInfo = &l_BufferInfo;
-            vkUpdateDescriptorSets(m_Implementation->Device, 6, l_WriteDescriptorSets.data(), 0, nullptr);
+            l_WriteDescriptorSets[5].pBufferInfo = &l_UBOInfo;
+            l_WriteDescriptorSets[6].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            l_WriteDescriptorSets[6].dstSet = l_Set;
+            l_WriteDescriptorSets[6].dstBinding = 6;
+            l_WriteDescriptorSets[6].descriptorCount = 1;
+            l_WriteDescriptorSets[6].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            l_WriteDescriptorSets[6].pBufferInfo = &l_SSBOInfo;
+            vkUpdateDescriptorSets(m_Implementation->Device, 7, l_WriteDescriptorSets.data(), 0, nullptr);
 
             VkRenderingAttachmentInfo l_ColorAttachment{};
             l_ColorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
@@ -559,7 +582,8 @@ namespace Trinity
             { 2, DescriptorType::CombinedImageSampler, ShaderStage::Fragment, 1 },
             { 3, DescriptorType::CombinedImageSampler, ShaderStage::Fragment, 1 },
             { 4, DescriptorType::CombinedImageSampler, ShaderStage::Fragment, 1 },
-            { 5, DescriptorType::UniformBuffer, ShaderStage::Fragment, 1 }
+            { 5, DescriptorType::UniformBuffer, ShaderStage::Fragment, 1 },
+            { 6, DescriptorType::StorageBuffer, ShaderStage::Fragment, 1 }
         };
         l_LightingPipelineSpecification.DebugName = "LightingPipeline";
         m_Implementation->LightingPipeline = Renderer::GetAPI().CreatePipeline(l_LightingPipelineSpecification);
@@ -572,15 +596,17 @@ namespace Trinity
         auto* a_VkLightingPipeline = dynamic_cast<VulkanPipeline*>(m_Implementation->LightingPipeline.get());
         m_Implementation->LightingDescriptorLayout = a_VkLightingPipeline->GetDescriptorSetLayout();
 
-        std::array<VkDescriptorPoolSize, 2> l_PoolSizes{};
+        std::array<VkDescriptorPoolSize, 3> l_PoolSizes{};
         l_PoolSizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         l_PoolSizes[0].descriptorCount = 256;
         l_PoolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         l_PoolSizes[1].descriptorCount = 8;
+        l_PoolSizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        l_PoolSizes[2].descriptorCount = 8;
 
         VkDescriptorPoolCreateInfo l_PoolInfo{};
         l_PoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        l_PoolInfo.maxSets = 264;
+        l_PoolInfo.maxSets = 272;
         l_PoolInfo.poolSizeCount = static_cast<uint32_t>(l_PoolSizes.size());
         l_PoolInfo.pPoolSizes = l_PoolSizes.data();
         VulkanUtilities::VKCheck(vkCreateDescriptorPool(m_Implementation->Device, &l_PoolInfo, nullptr, &m_Implementation->DescriptorPool), "Failed vkCreateDescriptorPool");
@@ -625,6 +651,14 @@ namespace Trinity
             l_LightingAllocInfo.pSetLayouts = &m_Implementation->LightingDescriptorLayout;
             VulkanUtilities::VKCheck(vkAllocateDescriptorSets(m_Implementation->Device, &l_LightingAllocInfo, &m_Implementation->LightingDescriptorSets[i]), "Failed vkAllocateDescriptorSets for lighting");
         }
+
+        constexpr uint32_t l_MaxLights = 256;
+        BufferSpecification l_LightSSBOSpec{};
+        l_LightSSBOSpec.Size = static_cast<uint64_t>(l_MaxLights) * sizeof(GpuLight);
+        l_LightSSBOSpec.Usage = BufferUsage::StorageBuffer;
+        l_LightSSBOSpec.MemoryType = BufferMemoryType::CPUToGPU;
+        l_LightSSBOSpec.DebugName = "LightBuffer";
+        m_Implementation->LightStorageBuffer = Renderer::GetAPI().CreateBuffer(l_LightSSBOSpec);
 
         const uint8_t l_White[4] = { 255, 255, 255, 255 };
         m_Implementation->WhiteFallbackTexture = Renderer::GetAPI().CreateTextureFromData(l_White, 1, 1);
