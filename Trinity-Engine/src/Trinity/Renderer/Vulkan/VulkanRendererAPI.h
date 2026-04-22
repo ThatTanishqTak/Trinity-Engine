@@ -14,6 +14,8 @@
 
 namespace Trinity
 {
+    class RenderGraph;
+
 	class VulkanRendererAPI final : public RendererAPI
 	{
     public:
@@ -37,6 +39,8 @@ namespace Trinity
         std::shared_ptr<Shader> CreateShader(const ShaderSpecification& specification) override;
         std::shared_ptr<Pipeline> CreatePipeline(const PipelineSpecification& specification) override;
         std::shared_ptr<Sampler> CreateSampler(const SamplerSpecification& specification) override;
+
+        std::unique_ptr<RenderGraph> CreateRenderGraph();
 
         void OnWindowResize(uint32_t width, uint32_t height) override;
         uint32_t GetSwapchainWidth() const override;

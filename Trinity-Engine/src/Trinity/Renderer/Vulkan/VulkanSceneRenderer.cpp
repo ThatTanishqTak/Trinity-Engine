@@ -5,10 +5,10 @@
 #include "Trinity/Renderer/Resources/Pipeline.h"
 #include "Trinity/Renderer/Resources/Sampler.h"
 #include "Trinity/Renderer/Resources/Shader.h"
+#include "Trinity/Renderer/RenderGraph/RenderGraph.h"
 #include "Trinity/Renderer/RenderGraph/RenderGraphContext.h"
 #include "Trinity/Renderer/Vulkan/VulkanRendererAPI.h"
 #include "Trinity/Renderer/Vulkan/VulkanUtilities.h"
-#include "Trinity/Renderer/Vulkan/RenderGraph/VulkanRenderGraph.h"
 #include "Trinity/Renderer/Vulkan/Resources/VulkanBuffer.h"
 #include "Trinity/Renderer/Vulkan/Resources/VulkanPipeline.h"
 #include "Trinity/Renderer/Vulkan/Resources/VulkanSampler.h"
@@ -49,7 +49,7 @@ namespace Trinity
     {
         SceneRendererStats Stats;
         bool SceneActive = false;
-        std::unique_ptr<VulkanRenderGraph> RenderGraph;
+        std::unique_ptr<RenderGraph> RenderGraph;
 
         std::shared_ptr<Pipeline> GeometryPipeline;
         std::shared_ptr<Pipeline> ShadowPipeline;
@@ -267,7 +267,7 @@ namespace Trinity
             return;
         }
 
-        m_Implementation->RenderGraph = std::make_unique<VulkanRenderGraph>(*a_VulkanAPI);
+        m_Implementation->RenderGraph = a_VulkanAPI->CreateRenderGraph();
 
         constexpr uint32_t l_ShadowMapSize = 2048;
 

@@ -339,6 +339,11 @@ namespace Trinity
         return std::make_shared<VulkanSampler>(m_Device.GetDevice(), specification);
     }
 
+    std::unique_ptr<RenderGraph> VulkanRendererAPI::CreateRenderGraph()
+    {
+        return std::make_unique<VulkanRenderGraph>(*this);
+    }
+
     void VulkanRendererAPI::TransitionImageLayout(VkCommandBuffer cmd, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout) const
     {
         VkImageMemoryBarrier2 l_Barrier{};
