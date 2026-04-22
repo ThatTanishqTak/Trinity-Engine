@@ -3,12 +3,17 @@
 #include "Trinity/Renderer/ISceneRenderer.h"
 #include "Trinity/Renderer/SceneRenderer.h"
 
+#include <vulkan/vulkan.h>
+
 #include <cstdint>
 #include <memory>
 #include <vector>
 
 namespace Trinity
 {
+    class VulkanSampler;
+    class VulkanTexture;
+
     class VulkanSceneRenderer final : public ISceneRenderer
     {
     public:
@@ -25,6 +30,16 @@ namespace Trinity
 
         std::shared_ptr<Texture> GetFinalOutput() const override;
         const SceneRendererStats& GetStats() const override;
+
+    private:
+        bool BindMeshBuffers(VkCommandBuffer commandBuffer, const MeshDrawCommand& command) const;
+        void DrawMeshCommand(VkCommandBuffer commandBuffer, const MeshDrawCommand& command) const;
+
+        VkDescriptorSet GetOrCreateGeometryMaterialSet(Texture* texture);
+
+        void BindGeometryMaterialSet(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, Texture* texture);
+        void UpdateLightingDescriptorSet(uint32_t frameIndex, VulkanSampler* sampler, VulkanTexture* albedo, VulkanTexture* normal, VulkanTexture* mra, VulkanTexture* depth, VulkanTexture* shadow);
+        void SetupFallbackTextureAndSampler();
 
     private:
         struct Implementation;

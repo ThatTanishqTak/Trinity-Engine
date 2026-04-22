@@ -82,6 +82,178 @@ namespace Trinity
     VulkanSceneRenderer::VulkanSceneRenderer() = default;
     VulkanSceneRenderer::~VulkanSceneRenderer() = default;
 
+    bool VulkanSceneRenderer::BindMeshBuffers(VkCommandBuffer commandBuffer, const MeshDrawCommand& command) const
+    {
+        if (!command.MeshRef)
+        {
+            return false;
+        }
+
+        auto* a_VertexBuffer = dynamic_cast<VulkanBuffer*>(command.MeshRef->GetVertexBuffer().get());
+        auto* a_IndexBuffer = dynamic_cast<VulkanBuffer*>(command.MeshRef->GetIndexBuffer().get());
+        if (!a_VertexBuffer || !a_IndexBuffer)
+        {
+            return false;
+        }
+
+        VkBuffer l_Buffers[] = { a_VertexBuffer->GetBuffer() };
+        VkDeviceSize l_Offsets[] = { 0 };
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, l_Buffers, l_Offsets);
+        vkCmdBindIndexBuffer(commandBuffer, a_IndexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
+
+        return true;
+    }
+
+    void VulkanSceneRenderer::DrawMeshCommand(VkCommandBuffer commandBuffer, const MeshDrawCommand& command) const
+    {
+        vkCmdDrawIndexed(commandBuffer, command.MeshRef->GetIndexCount(), 1, 0, 0, 0);
+    }
+
+    VkDescriptorSet VulkanSceneRenderer::GetOrCreateGeometryMaterialSet(Texture* texture)
+    {
+        auto a_Index = m_Implementation->DescriptorSetCache.find(texture);
+        if (a_Index != m_Implementation->DescriptorSetCache.end())
+        {
+            return a_Index->second;
+        }
+
+        auto* a_VkSampler = dynamic_cast<VulkanSampler*>(m_Implementation->AlbedoSampler.get());
+        auto* a_VkTexture = dynamic_cast<VulkanTexture*>(texture);
+        if (!a_VkTexture || !a_VkSampler || m_Implementation->GeometryDescriptorLayout == VK_NULL_HANDLE)
+        {
+            return m_Implementation->WhiteFallbackSet;
+        }
+
+        VkDescriptorSetAllocateInfo l_AllocateInfo{};
+        l_AllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        l_AllocateInfo.descriptorPool = m_Implementation->DescriptorPool;
+        l_AllocateInfo.descriptorSetCount = 1;
+        l_AllocateInfo.pSetLayouts = &m_Implementation->GeometryDescriptorLayout;
+
+        VkDescriptorSet l_NewDescriptorSet = VK_NULL_HANDLE;
+        if (vkAllocateDescriptorSets(m_Implementation->Device, &l_AllocateInfo, &l_NewDescriptorSet) != VK_SUCCESS)
+        {
+            return m_Implementation->WhiteFallbackSet;
+        }
+
+        VkDescriptorImageInfo l_ImageInfo{};
+        l_ImageInfo.sampler = a_VkSampler->GetSampler();
+        l_ImageInfo.imageView = a_VkTexture->GetImageView();
+        l_ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+        VkWriteDescriptorSet l_WriteDescriptorSet{};
+        l_WriteDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        l_WriteDescriptorSet.dstSet = l_NewDescriptorSet;
+        l_WriteDescriptorSet.dstBinding = 0;
+        l_WriteDescriptorSet.descriptorCount = 1;
+        l_WriteDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        l_WriteDescriptorSet.pImageInfo = &l_ImageInfo;
+        vkUpdateDescriptorSets(m_Implementation->Device, 1, &l_WriteDescriptorSet, 0, nullptr);
+
+        m_Implementation->DescriptorSetCache[texture] = l_NewDescriptorSet;
+        return l_NewDescriptorSet;
+    }
+
+    void VulkanSceneRenderer::BindGeometryMaterialSet(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, Texture* texture)
+    {
+        VkDescriptorSet l_DescriptorSet = GetOrCreateGeometryMaterialSet(texture);
+        if (l_DescriptorSet != VK_NULL_HANDLE)
+        {
+            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &l_DescriptorSet, 0, nullptr);
+        }
+    }
+
+    void VulkanSceneRenderer::UpdateLightingDescriptorSet(uint32_t frameIndex, VulkanSampler* sampler, VulkanTexture* albedo, VulkanTexture* normal, VulkanTexture* mra, VulkanTexture* depth, VulkanTexture* shadow)
+    {
+        auto* a_VkUBO = dynamic_cast<VulkanBuffer*>(m_Implementation->LightingUniformBuffers[frameIndex].get());
+        auto* a_VkLightBuffer = dynamic_cast<VulkanBuffer*>(m_Implementation->LightStorageBuffer.get());
+        if (!sampler || !a_VkUBO || !a_VkLightBuffer)
+        {
+            return;
+        }
+
+        VkDescriptorSet l_Set = m_Implementation->LightingDescriptorSets[frameIndex];
+
+        std::array<VkDescriptorImageInfo, 5> l_ImageInfos{};
+        l_ImageInfos[0] = { sampler->GetSampler(), albedo->GetImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+        l_ImageInfos[1] = { sampler->GetSampler(), normal->GetImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+        l_ImageInfos[2] = { sampler->GetSampler(), mra->GetImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+        l_ImageInfos[3] = { sampler->GetSampler(), depth->GetImageView(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL };
+        l_ImageInfos[4] = { sampler->GetSampler(), shadow->GetImageView(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL };
+
+        VkDescriptorBufferInfo l_UBOInfo{};
+        l_UBOInfo.buffer = a_VkUBO->GetBuffer();
+        l_UBOInfo.offset = 0;
+        l_UBOInfo.range = sizeof(LightingUniformData);
+
+        VkDescriptorBufferInfo l_SSBOInfo{};
+        l_SSBOInfo.buffer = a_VkLightBuffer->GetBuffer();
+        l_SSBOInfo.offset = 0;
+        l_SSBOInfo.range = m_Implementation->LightStorageBuffer->GetSize();
+
+        std::array<VkWriteDescriptorSet, 7> l_WriteDescriptorSets{};
+        for (uint32_t i = 0; i < 5; i++)
+        {
+            l_WriteDescriptorSets[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            l_WriteDescriptorSets[i].dstSet = l_Set;
+            l_WriteDescriptorSets[i].dstBinding = i;
+            l_WriteDescriptorSets[i].descriptorCount = 1;
+            l_WriteDescriptorSets[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            l_WriteDescriptorSets[i].pImageInfo = &l_ImageInfos[i];
+        }
+
+        l_WriteDescriptorSets[5].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        l_WriteDescriptorSets[5].dstSet = l_Set;
+        l_WriteDescriptorSets[5].dstBinding = 5;
+        l_WriteDescriptorSets[5].descriptorCount = 1;
+        l_WriteDescriptorSets[5].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        l_WriteDescriptorSets[5].pBufferInfo = &l_UBOInfo;
+
+        l_WriteDescriptorSets[6].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        l_WriteDescriptorSets[6].dstSet = l_Set;
+        l_WriteDescriptorSets[6].dstBinding = 6;
+        l_WriteDescriptorSets[6].descriptorCount = 1;
+        l_WriteDescriptorSets[6].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        l_WriteDescriptorSets[6].pBufferInfo = &l_SSBOInfo;
+        vkUpdateDescriptorSets(m_Implementation->Device, 7, l_WriteDescriptorSets.data(), 0, nullptr);
+    }
+
+    void VulkanSceneRenderer::SetupFallbackTextureAndSampler()
+    {
+        const uint8_t l_White[4] = { 255, 255, 255, 255 };
+        m_Implementation->WhiteFallbackTexture = Renderer::GetAPI().CreateTextureFromData(l_White, 1, 1);
+
+        auto* a_VkSampler = dynamic_cast<VulkanSampler*>(m_Implementation->AlbedoSampler.get());
+        auto* a_VkWhiteTexture = dynamic_cast<VulkanTexture*>(m_Implementation->WhiteFallbackTexture.get());
+        if (!a_VkSampler || !a_VkWhiteTexture || m_Implementation->GeometryDescriptorLayout == VK_NULL_HANDLE)
+        {
+            return;
+        }
+
+        VkDescriptorSetAllocateInfo l_AllocateInfo{};
+        l_AllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        l_AllocateInfo.descriptorPool = m_Implementation->DescriptorPool;
+        l_AllocateInfo.descriptorSetCount = 1;
+        l_AllocateInfo.pSetLayouts = &m_Implementation->GeometryDescriptorLayout;
+        VulkanUtilities::VKCheck(vkAllocateDescriptorSets(m_Implementation->Device, &l_AllocateInfo, &m_Implementation->WhiteFallbackSet), "Failed vkAllocateDescriptorSets");
+
+        VkDescriptorImageInfo l_ImageInfo{};
+        l_ImageInfo.sampler = a_VkSampler->GetSampler();
+        l_ImageInfo.imageView = a_VkWhiteTexture->GetImageView();
+        l_ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+        VkWriteDescriptorSet l_WriteDescriptorSet{};
+        l_WriteDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        l_WriteDescriptorSet.dstSet = m_Implementation->WhiteFallbackSet;
+        l_WriteDescriptorSet.dstBinding = 0;
+        l_WriteDescriptorSet.descriptorCount = 1;
+        l_WriteDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        l_WriteDescriptorSet.pImageInfo = &l_ImageInfo;
+        vkUpdateDescriptorSets(m_Implementation->Device, 1, &l_WriteDescriptorSet, 0, nullptr);
+
+        m_Implementation->DescriptorSetCache[m_Implementation->WhiteFallbackTexture.get()] = m_Implementation->WhiteFallbackSet;
+    }
+
     void VulkanSceneRenderer::Initialize(uint32_t width, uint32_t height)
     {
         m_Width = width;
@@ -198,22 +370,10 @@ namespace Trinity
 
                 for (const auto& it_Command : m_DrawList)
                 {
-                    if (!it_Command.MeshRef)
+                    if (!BindMeshBuffers(l_CommandBuffer, it_Command))
                     {
                         continue;
                     }
-
-                    auto* a_VertexBuffer = dynamic_cast<VulkanBuffer*>(it_Command.MeshRef->GetVertexBuffer().get());
-                    auto* a_IndexBuffer = dynamic_cast<VulkanBuffer*>(it_Command.MeshRef->GetIndexBuffer().get());
-                    if (!a_VertexBuffer || !a_IndexBuffer)
-                    {
-                        continue;
-                    }
-
-                    VkBuffer l_Buffers[] = { a_VertexBuffer->GetBuffer() };
-                    VkDeviceSize l_Offsets[] = { 0 };
-                    vkCmdBindVertexBuffers(l_CommandBuffer, 0, 1, l_Buffers, l_Offsets);
-                    vkCmdBindIndexBuffer(l_CommandBuffer, a_IndexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
                     struct
                     {
@@ -225,7 +385,7 @@ namespace Trinity
                     std::memcpy(l_Push.Model, it_Command.Transform, 64);
                     vkCmdPushConstants(l_CommandBuffer, a_VulkanPipeline->GetLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, 128, &l_Push);
 
-                    vkCmdDrawIndexed(l_CommandBuffer, it_Command.MeshRef->GetIndexCount(), 1, 0, 0, 0);
+                    DrawMeshCommand(l_CommandBuffer, it_Command);
                 }
             }
 
@@ -296,80 +456,19 @@ namespace Trinity
             if (!m_DrawList.empty())
             {
                 auto* a_VulkanPipeline = dynamic_cast<VulkanPipeline*>(m_Implementation->GeometryPipeline.get());
-                auto* a_VkSampler = dynamic_cast<VulkanSampler*>(m_Implementation->AlbedoSampler.get());
                 vkCmdBindPipeline(l_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, a_VulkanPipeline->GetPipeline());
 
                 const glm::mat4 l_ViewProjection = m_Camera.GetViewProjectionMatrix();
 
-                auto a_GetOrCreateSet = [&](Texture* texture) -> VkDescriptorSet
-                {
-                    auto a_Index = m_Implementation->DescriptorSetCache.find(texture);
-                    if (a_Index != m_Implementation->DescriptorSetCache.end())
-                    {
-                        return a_Index->second;
-                    }
-
-                    auto* a_VkTex = dynamic_cast<VulkanTexture*>(texture);
-                    if (!a_VkTex || !a_VkSampler || m_Implementation->GeometryDescriptorLayout == VK_NULL_HANDLE)
-                    {
-                        return m_Implementation->WhiteFallbackSet;
-                    }
-
-                    VkDescriptorSetAllocateInfo l_AllocateInfo{};
-                    l_AllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-                    l_AllocateInfo.descriptorPool = m_Implementation->DescriptorPool;
-                    l_AllocateInfo.descriptorSetCount = 1;
-                    l_AllocateInfo.pSetLayouts = &m_Implementation->GeometryDescriptorLayout;
-
-                    VkDescriptorSet l_NewDescriptorSet = VK_NULL_HANDLE;
-                    if (vkAllocateDescriptorSets(m_Implementation->Device, &l_AllocateInfo, &l_NewDescriptorSet) != VK_SUCCESS)
-                    {
-                        return m_Implementation->WhiteFallbackSet;
-                    }
-
-                    VkDescriptorImageInfo l_ImageInfo{};
-                    l_ImageInfo.sampler = a_VkSampler->GetSampler();
-                    l_ImageInfo.imageView = a_VkTex->GetImageView();
-                    l_ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-                    VkWriteDescriptorSet l_WriteDescriptorSet{};
-                    l_WriteDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                    l_WriteDescriptorSet.dstSet = l_NewDescriptorSet;
-                    l_WriteDescriptorSet.dstBinding = 0;
-                    l_WriteDescriptorSet.descriptorCount = 1;
-                    l_WriteDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-                    l_WriteDescriptorSet.pImageInfo = &l_ImageInfo;
-                    vkUpdateDescriptorSets(m_Implementation->Device, 1, &l_WriteDescriptorSet, 0, nullptr);
-
-                    m_Implementation->DescriptorSetCache[texture] = l_NewDescriptorSet;
-                    return l_NewDescriptorSet;
-                };
-
                 for (const auto& it_Command : m_DrawList)
                 {
-                    if (!it_Command.MeshRef)
+                    if (!BindMeshBuffers(l_CommandBuffer, it_Command))
                     {
                         continue;
                     }
-
-                    auto* a_VertexBuffer = dynamic_cast<VulkanBuffer*>(it_Command.MeshRef->GetVertexBuffer().get());
-                    auto* a_IndexBuffer = dynamic_cast<VulkanBuffer*>(it_Command.MeshRef->GetIndexBuffer().get());
-                    if (!a_VertexBuffer || !a_IndexBuffer)
-                    {
-                        continue;
-                    }
-
-                    VkBuffer l_Buffers[] = { a_VertexBuffer->GetBuffer() };
-                    VkDeviceSize l_Offsets[] = { 0 };
-                    vkCmdBindVertexBuffers(l_CommandBuffer, 0, 1, l_Buffers, l_Offsets);
-                    vkCmdBindIndexBuffer(l_CommandBuffer, a_IndexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
                     Texture* l_AlbedoTex = it_Command.AlbedoTexture ? it_Command.AlbedoTexture.get() : m_Implementation->WhiteFallbackTexture.get();
-                    VkDescriptorSet l_DescSet = a_GetOrCreateSet(l_AlbedoTex);
-                    if (l_DescSet != VK_NULL_HANDLE)
-                    {
-                        vkCmdBindDescriptorSets(l_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, a_VulkanPipeline->GetLayout(), 0, 1, &l_DescSet, 0, nullptr);
-                    }
+                    BindGeometryMaterialSet(l_CommandBuffer, a_VulkanPipeline->GetLayout(), l_AlbedoTex);
 
                     struct
                     {
@@ -379,7 +478,7 @@ namespace Trinity
                     std::memcpy(l_Push.VP, glm::value_ptr(l_ViewProjection), 64);
                     vkCmdPushConstants(l_CommandBuffer, a_VulkanPipeline->GetLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, 128, &l_Push);
 
-                    vkCmdDrawIndexed(l_CommandBuffer, it_Command.MeshRef->GetIndexCount(), 1, 0, 0, 0);
+                    DrawMeshCommand(l_CommandBuffer, it_Command);
 
                     m_Implementation->Stats.DrawCalls++;
                     m_Implementation->Stats.IndexCount += it_Command.MeshRef->GetIndexCount();
@@ -439,52 +538,10 @@ namespace Trinity
             l_UBOData.CameraPosition[3] = 0.0f;
             m_Implementation->LightingUniformBuffers[l_FrameIndex]->SetData(&l_UBOData, sizeof(LightingUniformData));
 
-            auto* a_VkSampler = dynamic_cast<VulkanSampler*>(m_Implementation->GBufferSampler.get());
-            auto* a_VkUBO = dynamic_cast<VulkanBuffer*>(m_Implementation->LightingUniformBuffers[l_FrameIndex].get());
-            auto* a_VkLightBuffer = dynamic_cast<VulkanBuffer*>(m_Implementation->LightStorageBuffer.get());
+            auto* a_VulkanSampler = dynamic_cast<VulkanSampler*>(m_Implementation->GBufferSampler.get());
             VkDescriptorSet l_Set = m_Implementation->LightingDescriptorSets[l_FrameIndex];
 
-            std::array<VkDescriptorImageInfo, 5> l_ImageInfos{};
-            l_ImageInfos[0] = { a_VkSampler->GetSampler(), a_Albedo->GetImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
-            l_ImageInfos[1] = { a_VkSampler->GetSampler(), a_Normal->GetImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
-            l_ImageInfos[2] = { a_VkSampler->GetSampler(), a_MRA->GetImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
-            l_ImageInfos[3] = { a_VkSampler->GetSampler(), a_Depth->GetImageView(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL };
-            l_ImageInfos[4] = { a_VkSampler->GetSampler(), a_Shadow->GetImageView(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL };
-
-            VkDescriptorBufferInfo l_UBOInfo{};
-            l_UBOInfo.buffer = a_VkUBO->GetBuffer();
-            l_UBOInfo.offset = 0;
-            l_UBOInfo.range = sizeof(LightingUniformData);
-
-            VkDescriptorBufferInfo l_SSBOInfo{};
-            l_SSBOInfo.buffer = a_VkLightBuffer->GetBuffer();
-            l_SSBOInfo.offset = 0;
-            l_SSBOInfo.range = m_Implementation->LightStorageBuffer->GetSize();
-
-            std::array<VkWriteDescriptorSet, 7> l_WriteDescriptorSets{};
-            for (uint32_t i = 0; i < 5; i++)
-            {
-                l_WriteDescriptorSets[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                l_WriteDescriptorSets[i].dstSet = l_Set;
-                l_WriteDescriptorSets[i].dstBinding = i;
-                l_WriteDescriptorSets[i].descriptorCount = 1;
-                l_WriteDescriptorSets[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-                l_WriteDescriptorSets[i].pImageInfo = &l_ImageInfos[i];
-            }
-
-            l_WriteDescriptorSets[5].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            l_WriteDescriptorSets[5].dstSet = l_Set;
-            l_WriteDescriptorSets[5].dstBinding = 5;
-            l_WriteDescriptorSets[5].descriptorCount = 1;
-            l_WriteDescriptorSets[5].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            l_WriteDescriptorSets[5].pBufferInfo = &l_UBOInfo;
-            l_WriteDescriptorSets[6].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            l_WriteDescriptorSets[6].dstSet = l_Set;
-            l_WriteDescriptorSets[6].dstBinding = 6;
-            l_WriteDescriptorSets[6].descriptorCount = 1;
-            l_WriteDescriptorSets[6].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            l_WriteDescriptorSets[6].pBufferInfo = &l_SSBOInfo;
-            vkUpdateDescriptorSets(m_Implementation->Device, 7, l_WriteDescriptorSets.data(), 0, nullptr);
+            UpdateLightingDescriptorSet(l_FrameIndex, a_VulkanSampler, a_Albedo.get(), a_Normal.get(), a_MRA.get(), a_Depth.get(), a_Shadow.get());
 
             VkRenderingAttachmentInfo l_ColorAttachment{};
             l_ColorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
@@ -654,45 +711,7 @@ namespace Trinity
             VulkanUtilities::VKCheck(vkAllocateDescriptorSets(m_Implementation->Device, &l_LightingAllocInfo, &m_Implementation->LightingDescriptorSets[i]), "Failed vkAllocateDescriptorSets for lighting");
         }
 
-        constexpr uint32_t l_MaxLights = 256;
-        BufferSpecification l_LightSSBOSpec{};
-        l_LightSSBOSpec.Size = static_cast<uint64_t>(l_MaxLights) * sizeof(GpuLight);
-        l_LightSSBOSpec.Usage = BufferUsage::StorageBuffer;
-        l_LightSSBOSpec.MemoryType = BufferMemoryType::CPUToGPU;
-        l_LightSSBOSpec.DebugName = "LightBuffer";
-        m_Implementation->LightStorageBuffer = Renderer::GetAPI().CreateBuffer(l_LightSSBOSpec);
-
-        const uint8_t l_White[4] = { 255, 255, 255, 255 };
-        m_Implementation->WhiteFallbackTexture = Renderer::GetAPI().CreateTextureFromData(l_White, 1, 1);
-
-        auto* a_VkSampler = dynamic_cast<VulkanSampler*>(m_Implementation->AlbedoSampler.get());
-        auto* a_VkWhiteTex = dynamic_cast<VulkanTexture*>(m_Implementation->WhiteFallbackTexture.get());
-
-        if (a_VkSampler && a_VkWhiteTex && m_Implementation->GeometryDescriptorLayout != VK_NULL_HANDLE)
-        {
-            VkDescriptorSetAllocateInfo l_AllocInfo{};
-            l_AllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-            l_AllocInfo.descriptorPool = m_Implementation->DescriptorPool;
-            l_AllocInfo.descriptorSetCount = 1;
-            l_AllocInfo.pSetLayouts = &m_Implementation->GeometryDescriptorLayout;
-            VulkanUtilities::VKCheck(vkAllocateDescriptorSets(m_Implementation->Device, &l_AllocInfo, &m_Implementation->WhiteFallbackSet), "Failed vkAllocateDescriptorSets");
-
-            VkDescriptorImageInfo l_ImageInfo{};
-            l_ImageInfo.sampler = a_VkSampler->GetSampler();
-            l_ImageInfo.imageView = a_VkWhiteTex->GetImageView();
-            l_ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-            VkWriteDescriptorSet l_Write{};
-            l_Write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            l_Write.dstSet = m_Implementation->WhiteFallbackSet;
-            l_Write.dstBinding = 0;
-            l_Write.descriptorCount = 1;
-            l_Write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            l_Write.pImageInfo = &l_ImageInfo;
-            vkUpdateDescriptorSets(m_Implementation->Device, 1, &l_Write, 0, nullptr);
-
-            m_Implementation->DescriptorSetCache[m_Implementation->WhiteFallbackTexture.get()] = m_Implementation->WhiteFallbackSet;
-        }
+        SetupFallbackTextureAndSampler();
     }
 
     void VulkanSceneRenderer::Shutdown()
