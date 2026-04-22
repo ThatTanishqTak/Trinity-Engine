@@ -7,6 +7,7 @@
 #include "Trinity/Renderer/Vulkan/Resources/VulkanShader.h"
 #include "Trinity/Renderer/Vulkan/Resources/VulkanPipeline.h"
 #include "Trinity/Renderer/Vulkan/Resources/VulkanSampler.h"
+#include "Trinity/Renderer/Vulkan/RenderGraph/VulkanRenderGraph.h"
 #include "Trinity/Platform/Window/Window.h"
 #include "Trinity/Utilities/Log.h"
 

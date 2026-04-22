@@ -79,6 +79,10 @@ namespace Trinity
         std::shared_ptr<Buffer> LightStorageBuffer;
     };
 
+    struct SceneRenderer::BackendHooks
+    {
+    };
+
     SceneRenderer::SceneRenderer() = default;
     SceneRenderer::~SceneRenderer() = default;
 
@@ -311,7 +315,9 @@ namespace Trinity
 
                     auto* a_VkTex = dynamic_cast<VulkanTexture*>(texture);
                     if (!a_VkTex || !a_VkSampler || m_Implementation->GeometryDescriptorLayout == VK_NULL_HANDLE)
+                    {
                         return m_Implementation->WhiteFallbackSet;
+                    }
 
                     VkDescriptorSetAllocateInfo l_AllocateInfo{};
                     l_AllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;

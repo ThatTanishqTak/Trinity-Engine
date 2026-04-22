@@ -64,7 +64,10 @@ namespace Trinity
         const SceneRendererStats& GetStats() const;
 
     private:
+        struct BackendHooks;
         struct Implementation;
+
+        std::unique_ptr<BackendHooks> m_BackendHooks;
         std::unique_ptr<Implementation> m_Implementation;
 
         std::vector<MeshDrawCommand> m_DrawList;
