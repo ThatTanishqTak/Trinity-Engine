@@ -7,7 +7,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <vector>
 
 namespace Trinity
 {
@@ -64,17 +63,7 @@ namespace Trinity
         const SceneRendererStats& GetStats() const;
 
     private:
-        struct BackendHooks;
         struct Implementation;
-
-        std::unique_ptr<BackendHooks> m_BackendHooks;
         std::unique_ptr<Implementation> m_Implementation;
-
-        std::vector<MeshDrawCommand> m_DrawList;
-        Camera m_Camera;
-        SceneRenderData m_SceneData;
-
-        uint32_t m_Width = 0;
-        uint32_t m_Height = 0;
     };
 }
