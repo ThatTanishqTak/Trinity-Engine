@@ -21,9 +21,13 @@
 #include <vulkan/vulkan.h>
 
 #include <array>
+#include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <memory>
+#include <type_traits>
 #include <unordered_map>
+#include <vector>
 
 namespace Trinity
 {
@@ -44,6 +48,127 @@ namespace Trinity
         float Params0[4];
         float Params1[4];
     };
+
+    static constexpr uint32_t s_MaxSupportedSceneLights = 256;
+    static constexpr uint32_t s_GpuLightTypePoint = 1;
+    static constexpr uint32_t s_GpuLightTypeSpot = 2;
+
+    template <typename TLight>
+    static GpuLight BuildGpuLightFromData(const TLight& light)
+    {
+        GpuLight l_Result{};
+
+        if constexpr (requires { light.Position; })
+        {
+            l_Result.PositionAndRange[0] = light.Position.x;
+            l_Result.PositionAndRange[1] = light.Position.y;
+            l_Result.PositionAndRange[2] = light.Position.z;
+        }
+
+        if constexpr (requires { light.Range; })
+        {
+            l_Result.PositionAndRange[3] = light.Range;
+        }
+        else
+        {
+            l_Result.PositionAndRange[3] = 10.0f;
+        }
+
+        if constexpr (requires { light.Direction; })
+        {
+            l_Result.DirectionAndInnerCos[0] = light.Direction.x;
+            l_Result.DirectionAndInnerCos[1] = light.Direction.y;
+            l_Result.DirectionAndInnerCos[2] = light.Direction.z;
+        }
+
+        if constexpr (requires { light.InnerCos; })
+        {
+            l_Result.DirectionAndInnerCos[3] = light.InnerCos;
+        }
+        else if constexpr (requires { light.InnerAngle; })
+        {
+            l_Result.DirectionAndInnerCos[3] = std::cos(light.InnerAngle);
+        }
+        else
+        {
+            l_Result.DirectionAndInnerCos[3] = 1.0f;
+        }
+
+        if constexpr (requires { light.Color; })
+        {
+            l_Result.ColorAndIntensity[0] = light.Color.r;
+            l_Result.ColorAndIntensity[1] = light.Color.g;
+            l_Result.ColorAndIntensity[2] = light.Color.b;
+        }
+        else
+        {
+            l_Result.ColorAndIntensity[0] = 1.0f;
+            l_Result.ColorAndIntensity[1] = 1.0f;
+            l_Result.ColorAndIntensity[2] = 1.0f;
+        }
+
+        if constexpr (requires { light.Intensity; })
+        {
+            l_Result.ColorAndIntensity[3] = light.Intensity;
+        }
+        else
+        {
+            l_Result.ColorAndIntensity[3] = 1.0f;
+        }
+
+        if constexpr (requires { light.OuterCos; })
+        {
+            l_Result.Params0[0] = light.OuterCos;
+        }
+        else if constexpr (requires { light.OuterAngle; })
+        {
+            l_Result.Params0[0] = std::cos(light.OuterAngle);
+        }
+
+        if constexpr (requires { light.Type; })
+        {
+            l_Result.Params1[3] = static_cast<float>(light.Type);
+        }
+        else if constexpr (requires { light.Direction; })
+        {
+            l_Result.Params1[3] = static_cast<float>(s_GpuLightTypeSpot);
+        }
+        else
+        {
+            l_Result.Params1[3] = static_cast<float>(s_GpuLightTypePoint);
+        }
+
+        return l_Result;
+    }
+
+    template <typename TSceneData>
+    static uint32_t FillGpuLightsFromSceneData(const TSceneData& sceneData, std::vector<GpuLight>& outLights)
+    {
+        outLights.clear();
+
+        if constexpr (requires { sceneData.Lights; })
+        {
+            const size_t l_Count = std::min(static_cast<size_t>(s_MaxSupportedSceneLights), sceneData.Lights.size());
+            outLights.reserve(l_Count);
+
+            for (size_t i = 0; i < l_Count; i++)
+            {
+                const auto& it_Light = sceneData.Lights[i];
+                if constexpr (std::is_same_v<std::remove_cvref_t<decltype(it_Light)>, GpuLight>)
+                {
+                    outLights.push_back(it_Light);
+                }
+                else
+                {
+                    outLights.push_back(BuildGpuLightFromData(it_Light));
+                }
+            }
+
+            return static_cast<uint32_t>(outLights.size());
+        }
+
+        return 0;
+    }
 
     struct VulkanSceneRenderer::Implementation
     {
@@ -190,6 +315,11 @@ namespace Trinity
         l_SSBOInfo.buffer = a_VkLightBuffer->GetBuffer();
         l_SSBOInfo.offset = 0;
         l_SSBOInfo.range = m_Implementation->LightStorageBuffer->GetSize();
+
+        if (l_SSBOInfo.buffer == VK_NULL_HANDLE || l_SSBOInfo.range == 0)
+        {
+            return;
+        }
 
         std::array<VkWriteDescriptorSet, 7> l_WriteDescriptorSets{};
         for (uint32_t i = 0; i < 5; i++)
@@ -535,7 +665,23 @@ namespace Trinity
             l_UBOData.CameraPosition[0] = l_CamPos.x;
             l_UBOData.CameraPosition[1] = l_CamPos.y;
             l_UBOData.CameraPosition[2] = l_CamPos.z;
-            l_UBOData.CameraPosition[3] = 0.0f;
+
+            std::vector<GpuLight> l_GpuLights;
+            const uint32_t l_LightCount = FillGpuLightsFromSceneData(m_SceneData, l_GpuLights);
+            l_UBOData.CameraPosition[3] = static_cast<float>(l_LightCount);
+
+            if (m_Implementation->LightStorageBuffer && m_Implementation->LightStorageBuffer->GetSize() > 0)
+            {
+                if (!l_GpuLights.empty())
+                {
+                    m_Implementation->LightStorageBuffer->SetData(l_GpuLights.data(), static_cast<uint64_t>(l_GpuLights.size()) * sizeof(GpuLight));
+                }
+                else
+                {
+                    GpuLight l_EmptyLight{};
+                    m_Implementation->LightStorageBuffer->SetData(&l_EmptyLight, sizeof(GpuLight));
+                }
+            }
             m_Implementation->LightingUniformBuffers[l_FrameIndex]->SetData(&l_UBOData, sizeof(LightingUniformData));
 
             auto* a_VulkanSampler = dynamic_cast<VulkanSampler*>(m_Implementation->GBufferSampler.get());
@@ -693,6 +839,13 @@ namespace Trinity
         const uint32_t l_MaxFrames = Renderer::GetAPI().GetMaxFramesInFlight();
         m_Implementation->LightingUniformBuffers.resize(l_MaxFrames);
         m_Implementation->LightingDescriptorSets.resize(l_MaxFrames, VK_NULL_HANDLE);
+
+        BufferSpecification l_LightBufferSpecification{};
+        l_LightBufferSpecification.Size = static_cast<uint64_t>(s_MaxSupportedSceneLights) * sizeof(GpuLight);
+        l_LightBufferSpecification.Usage = BufferUsage::StorageBuffer;
+        l_LightBufferSpecification.MemoryType = BufferMemoryType::CPUToGPU;
+        l_LightBufferSpecification.DebugName = "SceneLightsStorage";
+        m_Implementation->LightStorageBuffer = Renderer::GetAPI().CreateBuffer(l_LightBufferSpecification);
 
         for (uint32_t i = 0; i < l_MaxFrames; i++)
         {
