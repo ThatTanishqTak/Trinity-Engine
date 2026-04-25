@@ -35,7 +35,6 @@ namespace Forge
     void ViewportPanel::OnInitialize()
     {
         m_Camera = Trinity::EditorCamera(60.0f, 1280.0f / 720.0f, 0.1f, 1000.0f);
-        m_SceneRenderer.Initialize(1280, 720);
     }
 
     void ViewportPanel::OnShutdown()
@@ -47,8 +46,6 @@ namespace Forge
             Trinity::ImGuiLayer::Get().UnregisterTexture(m_ViewportTextureID);
             m_ViewportTextureID = 0;
         }
-
-        m_SceneRenderer.Shutdown();
     }
 
     void ViewportPanel::OnPreRender()
@@ -67,90 +64,6 @@ namespace Forge
             }
 
             m_Camera.SetAspectRatio(static_cast<float>(m_PendingResizeWidth) / static_cast<float>(m_PendingResizeHeight));
-            m_SceneRenderer.OnResize(m_PendingResizeWidth, m_PendingResizeHeight);
-        }
-
-        // Submit the scene
-        Trinity::SceneRenderData l_SceneData{};
-
-        if (m_SelectionContext && m_SelectionContext->ActiveScene)
-        {
-            auto& a_LightRegistry = m_SelectionContext->ActiveScene->GetRegistry();
-            auto a_LightView = a_LightRegistry.view<Trinity::TransformComponent, Trinity::LightComponent>();
-
-            for (auto it_Entity : a_LightView)
-            {
-                const auto& a_Transform = a_LightView.get<Trinity::TransformComponent>(it_Entity);
-                const auto& a_Light = a_LightView.get<Trinity::LightComponent>(it_Entity);
-
-                if (!std::holds_alternative<Trinity::DirectionalLight>(a_Light.Data))
-                {
-                    continue;
-                }
-
-                const auto& a_Directional = std::get<Trinity::DirectionalLight>(a_Light.Data);
-
-                glm::mat4 l_RotationMatrix = glm::mat4(1.0f);
-                l_RotationMatrix = glm::rotate(l_RotationMatrix, a_Transform.Rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
-                l_RotationMatrix = glm::rotate(l_RotationMatrix, a_Transform.Rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
-                l_RotationMatrix = glm::rotate(l_RotationMatrix, a_Transform.Rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
-
-                l_SceneData.SunLight.Direction = glm::normalize(glm::vec3(l_RotationMatrix * glm::vec4(0.0f, -1.0f, 0.0f, 0.0f)));
-                l_SceneData.SunLight.Color = a_Directional.Color;
-                l_SceneData.SunLight.Intensity = a_Directional.Intensity;
-
-                break;
-            }
-        }
-
-        m_SceneRenderer.BeginScene(m_Camera, l_SceneData);
-
-        if (m_SelectionContext && m_SelectionContext->ActiveScene)
-        {
-            auto& a_Registry = m_SelectionContext->ActiveScene->GetRegistry();
-            auto a_View = a_Registry.view<Trinity::TransformComponent, Trinity::MeshComponent>();
-
-            for (auto it_Entity : a_View)
-            {
-                auto& a_TransformComponent = a_View.get<Trinity::TransformComponent>(it_Entity);
-                auto& a_MeshComponent = a_View.get<Trinity::MeshComponent>(it_Entity);
-
-                if (!a_MeshComponent.MeshData)
-                {
-                    continue;
-                }
-
-                Trinity::MeshDrawCommand l_DrawCommand{};
-                l_DrawCommand.MeshRef = a_MeshComponent.MeshData;
-
-                if (a_Registry.all_of<Trinity::TextureComponent>(it_Entity))
-                {
-                    auto& a_TextureComponent = a_Registry.get<Trinity::TextureComponent>(it_Entity);
-                    l_DrawCommand.AlbedoTexture = a_TextureComponent.TextureData;
-                }
-
-                if (!l_DrawCommand.AlbedoTexture)
-                {
-                    l_DrawCommand.AlbedoTexture = a_MeshComponent.MeshData->AlbedoTexture;
-                }
-
-                const glm::mat4 l_Matrix = a_TransformComponent.GetLocalMatrix();
-                std::memcpy(l_DrawCommand.Transform, glm::value_ptr(l_Matrix), sizeof(l_DrawCommand.Transform));
-
-                m_SceneRenderer.SubmitMesh(l_DrawCommand);
-            }
-        }
-
-        m_SceneRenderer.EndScene();
-        m_SceneRenderer.Render();
-
-        if (m_ViewportTextureID == 0)
-        {
-            auto a_Output = m_SceneRenderer.GetFinalOutput();
-            if (a_Output)
-            {
-                m_ViewportTextureID = Trinity::ImGuiLayer::Get().RegisterTexture(a_Output);
-            }
         }
     }
 

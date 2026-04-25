@@ -3,7 +3,6 @@
 #include "Forge/Panels/Panel.h"
 
 #include "Trinity/Renderer/Camera/EditorCamera.h"
-#include "Trinity/Renderer/SceneRenderer.h"
 
 #include <imgui.h>
 #include <ImGuizmo.h>
@@ -30,7 +29,6 @@ namespace Forge
         void RenderGizmos();
         void HandleMeshDrop(const std::string& path);
 
-        Trinity::SceneRenderer m_SceneRenderer;
         Trinity::EditorCamera m_Camera;
 
         SelectionContext* m_SelectionContext = nullptr;
