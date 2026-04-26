@@ -42,6 +42,7 @@ namespace
         return {};
 
 #endif
+        return {};
     }
 
     static std::string PlatformSaveFileDialog(const char* filter, const char* defaultExtention)
@@ -68,6 +69,7 @@ namespace
         return {};
 
 #endif
+        return {};
     }
 }
 

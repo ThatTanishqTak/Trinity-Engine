@@ -56,7 +56,7 @@ namespace Trinity
         uint32_t GetCurrentImageIndex() const { return m_CurrentImageIndex; }
 
     private:
-        void TransitionImageLayout(VkCommandBuffer cmd, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout) const;
+        void TransitionImageLayout(VkCommandBuffer command, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout) const;
 
     private:
         Window* m_Window = nullptr;
