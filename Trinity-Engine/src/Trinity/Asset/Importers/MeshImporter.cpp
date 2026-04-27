@@ -25,7 +25,7 @@ namespace Trinity
             return nullptr;
         }
 
-        std::vector<Vertex> l_Vertices;
+        std::vector<Geometry::Vertex> l_Vertices;
         std::vector<uint32_t> l_Indices;
 
         for (uint32_t it_MeshIndex = 0; it_MeshIndex < l_Scene->mNumMeshes; ++it_MeshIndex)
@@ -35,7 +35,7 @@ namespace Trinity
 
             for (uint32_t i = 0; i < l_Mesh->mNumVertices; ++i)
             {
-                Vertex l_Vertex{};
+                Geometry::Vertex l_Vertex{};
 
                 l_Vertex.Position = { l_Mesh->mVertices[i].x, l_Mesh->mVertices[i].y, l_Mesh->mVertices[i].z };
 
@@ -46,7 +46,7 @@ namespace Trinity
 
                 if (l_Mesh->mTextureCoords[0])
                 {
-                    l_Vertex.TextureCoordinate = { l_Mesh->mTextureCoords[0][i].x, l_Mesh->mTextureCoords[0][i].y };
+                    l_Vertex.UV = { l_Mesh->mTextureCoords[0][i].x, l_Mesh->mTextureCoords[0][i].y };
                 }
 
                 l_Vertices.push_back(l_Vertex);

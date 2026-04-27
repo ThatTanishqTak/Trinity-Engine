@@ -7,6 +7,7 @@
 #include "Trinity/Scene/Components/TransformComponent.h"
 #include "Trinity/Scene/Components/MeshComponent.h"
 #include "Trinity/Renderer/Mesh.h"
+#include "Trinity/Geometry/Geometry.h"
 #include "Trinity/Asset/AssetRegistry.h"
 
 #include <imgui.h>
@@ -50,15 +51,31 @@ namespace Forge
                     m_Context->ActiveScene->CreateEntity("Entity");
                 }
 
-                if (ImGui::MenuItem("Create Cube"))
+                auto SpawnPrimitive = [&](const char* tag, Trinity::Geometry::PrimitiveType type)
                 {
-                    Trinity::Entity l_Cube = m_Context->ActiveScene->CreateEntity("Cube");
+                    Trinity::Entity l_Entity = m_Context->ActiveScene->CreateEntity(tag);
 
-                    auto a_Mesh = Trinity::Primitives::CreateCube();
-                    auto& a_MeshComponent = l_Cube.AddComponent<Trinity::MeshComponent>();
+                    const auto& l_Data = Trinity::Geometry::GetPrimitive(type);
+                    auto a_Mesh = Trinity::Mesh::Create(l_Data.Vertices, l_Data.Indices);
 
+                    auto& a_MeshComponent = l_Entity.AddComponent<Trinity::MeshComponent>();
                     a_MeshComponent.MeshAssetUUID = Trinity::AssetRegistry::Get().RegisterMesh(a_Mesh);
                     a_MeshComponent.MeshData = std::move(a_Mesh);
+                };
+
+                if (ImGui::MenuItem("Create Triangle"))
+                {
+                    SpawnPrimitive("Triangle", Trinity::Geometry::PrimitiveType::Triangle);
+                }
+
+                if (ImGui::MenuItem("Create Quad"))
+                {
+                    SpawnPrimitive("Quad", Trinity::Geometry::PrimitiveType::Quad);
+                }
+
+                if (ImGui::MenuItem("Create Cube"))
+                {
+                    SpawnPrimitive("Cube", Trinity::Geometry::PrimitiveType::Cube);
                 }
 
                 ImGui::EndPopup();

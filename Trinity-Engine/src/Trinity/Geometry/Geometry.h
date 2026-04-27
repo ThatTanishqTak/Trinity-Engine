@@ -73,7 +73,7 @@ namespace Trinity
 					l_MeshData.Vertices.push_back({ {x0,y0,z0}, {nx,ny,nz}, {0,0} });
 					l_MeshData.Vertices.push_back({ {x1,y1,z1}, {nx,ny,nz}, {1,0} });
 					l_MeshData.Vertices.push_back({ {x2,y2,z2}, {nx,ny,nz}, {1,1} });
-					l_MeshData.Vertices.push_back({ {x3,y3,z3}, {nx,ny,nz}, {0,1} });
+                    l_MeshData.Vertices.push_back({ {x3,y3,z3}, {nx,ny,nz}, {0,1} });
 
 					l_MeshData.Indices.insert(l_MeshData.Indices.end(), { l_Base + 0, l_Base + 1, l_Base + 2, l_Base + 2, l_Base + 3, l_Base + 0 });
 				};
