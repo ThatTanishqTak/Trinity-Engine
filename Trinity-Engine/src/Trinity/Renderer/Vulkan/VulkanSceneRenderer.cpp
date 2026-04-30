@@ -2,13 +2,5 @@
 
 namespace Trinity
 {
-    void VulkanSceneRenderer::BeginScene()
-    {
 
-    }
-
-    void VulkanSceneRenderer::EndScene()
-    {
-
-    }
 }

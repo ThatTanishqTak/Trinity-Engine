@@ -15,6 +15,7 @@ namespace Trinity
 {
     class Window;
     class CommandBuffer;
+    class RenderGraph;
 
     enum class RendererBackend : uint8_t
     {
@@ -52,6 +53,7 @@ namespace Trinity
         virtual std::shared_ptr<Shader> CreateShader(const ShaderSpecification& specification) = 0;
         virtual std::shared_ptr<Pipeline> CreatePipeline(const PipelineSpecification& specification) = 0;
         virtual std::shared_ptr<Sampler> CreateSampler(const SamplerSpecification& specification) = 0;
+        virtual std::unique_ptr<RenderGraph> CreateRenderGraph() = 0;
 
         virtual CommandBuffer& GetCommandBuffer() = 0;
 

@@ -44,6 +44,37 @@ namespace Trinity
 
             return VK_INDEX_TYPE_UINT32;
         }
+
+        VkAttachmentLoadOp ToVkLoadOp(AttachmentLoadOp operation)
+        {
+            switch (operation)
+            {
+                case AttachmentLoadOp::Load:
+                    return VK_ATTACHMENT_LOAD_OP_LOAD;
+
+                case AttachmentLoadOp::Clear:
+                    return VK_ATTACHMENT_LOAD_OP_CLEAR;
+
+                case AttachmentLoadOp::DontCare:
+                    return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            }
+
+            return VK_ATTACHMENT_LOAD_OP_CLEAR;
+        }
+
+        VkAttachmentStoreOp ToVkStoreOp(AttachmentStoreOp operation)
+        {
+            switch (operation)
+            {
+                case AttachmentStoreOp::Store:
+                    return VK_ATTACHMENT_STORE_OP_STORE;
+
+                case AttachmentStoreOp::DontCare:
+                    return VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            }
+
+            return VK_ATTACHMENT_STORE_OP_STORE;
+        }
     }
 
     VulkanCommandBuffer::~VulkanCommandBuffer()
@@ -134,6 +165,82 @@ namespace Trinity
     {
         m_CommandBuffer = VK_NULL_HANDLE;
         m_BoundPipeline = nullptr;
+    }
+
+    void VulkanCommandBuffer::BeginRendering(const RenderingInfo& info)
+    {
+        if (m_CommandBuffer == VK_NULL_HANDLE)
+        {
+            return;
+        }
+
+        std::vector<VkRenderingAttachmentInfo> l_ColorAttachments(info.ColorAttachmentCount);
+
+        for (uint32_t i = 0; i < info.ColorAttachmentCount; i++)
+        {
+            const ColorAttachmentInfo& a_Source = info.ColorAttachments[i];
+            VkRenderingAttachmentInfo& a_Target = l_ColorAttachments[i];
+
+            a_Target = {};
+            a_Target.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+            a_Target.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            a_Target.loadOp = ToVkLoadOp(a_Source.LoadOp);
+            a_Target.storeOp = ToVkStoreOp(a_Source.StoreOp);
+
+            a_Target.clearValue.color.float32[0] = a_Source.ClearColor.R;
+            a_Target.clearValue.color.float32[1] = a_Source.ClearColor.G;
+            a_Target.clearValue.color.float32[2] = a_Source.ClearColor.B;
+            a_Target.clearValue.color.float32[3] = a_Source.ClearColor.A;
+
+            if (a_Source.Image != nullptr)
+            {
+                auto* a_VulkanTexture = dynamic_cast<VulkanTexture*>(a_Source.Image);
+                if (a_VulkanTexture != nullptr)
+                {
+                    a_Target.imageView = a_VulkanTexture->GetImageView();
+                }
+            }
+        }
+
+        VkRenderingAttachmentInfo l_DepthAttachment{};
+        bool l_HasDepth = false;
+
+        if (info.DepthAttachment != nullptr && info.DepthAttachment->Image != nullptr)
+        {
+            l_HasDepth = true;
+            l_DepthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+            l_DepthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            l_DepthAttachment.loadOp = ToVkLoadOp(info.DepthAttachment->LoadOp);
+            l_DepthAttachment.storeOp = ToVkStoreOp(info.DepthAttachment->StoreOp);
+            l_DepthAttachment.clearValue.depthStencil = { info.DepthAttachment->ClearDepth, 0 };
+
+            auto* a_VulkanTexture = dynamic_cast<VulkanTexture*>(info.DepthAttachment->Image);
+            if (a_VulkanTexture != nullptr)
+            {
+                l_DepthAttachment.imageView = a_VulkanTexture->GetImageView();
+            }
+        }
+
+        VkRenderingInfo l_RenderingInfo{};
+        l_RenderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+        l_RenderingInfo.renderArea.offset = { info.RenderAreaX, info.RenderAreaY };
+        l_RenderingInfo.renderArea.extent = { info.RenderAreaWidth, info.RenderAreaHeight };
+        l_RenderingInfo.layerCount = 1;
+        l_RenderingInfo.colorAttachmentCount = info.ColorAttachmentCount;
+        l_RenderingInfo.pColorAttachments = l_ColorAttachments.data();
+        l_RenderingInfo.pDepthAttachment = l_HasDepth ? &l_DepthAttachment : nullptr;
+
+        vkCmdBeginRendering(m_CommandBuffer, &l_RenderingInfo);
+    }
+
+    void VulkanCommandBuffer::EndRendering()
+    {
+        if (m_CommandBuffer == VK_NULL_HANDLE)
+        {
+            return;
+        }
+
+        vkCmdEndRendering(m_CommandBuffer);
     }
 
     void VulkanCommandBuffer::BindPipeline(Pipeline& pipeline)

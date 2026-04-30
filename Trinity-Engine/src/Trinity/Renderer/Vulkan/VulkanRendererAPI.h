@@ -40,7 +40,7 @@ namespace Trinity
         std::shared_ptr<Pipeline> CreatePipeline(const PipelineSpecification& specification) override;
         std::shared_ptr<Sampler> CreateSampler(const SamplerSpecification& specification) override;
 
-        std::unique_ptr<RenderGraph> CreateRenderGraph();
+        std::unique_ptr<RenderGraph> CreateRenderGraph() override;
 
         void OnWindowResize(uint32_t width, uint32_t height) override;
         uint32_t GetSwapchainWidth() const override;

@@ -29,6 +29,9 @@ namespace Trinity
         VkCommandBuffer GetHandle() const { return m_CommandBuffer; }
         bool IsValid() const { return m_CommandBuffer != VK_NULL_HANDLE; }
 
+        void BeginRendering(const RenderingInfo& info) override;
+        void EndRendering() override;
+
         void BindPipeline(Pipeline& pipeline) override;
         void BindVertexBuffer(uint32_t binding, Buffer& buffer, uint64_t offset = 0) override;
         void BindIndexBuffer(Buffer& buffer, IndexType type, uint64_t offset = 0) override;

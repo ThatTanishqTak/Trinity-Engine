@@ -26,6 +26,19 @@ namespace Trinity
     inline ShaderStageFlags operator|(ShaderStageFlags a, ShaderStageFlags b) { return static_cast<ShaderStageFlags>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b)); }
     inline bool operator&(ShaderStageFlags a, ShaderStageFlags b) { return (static_cast<uint32_t>(a) & static_cast<uint32_t>(b)) != 0; }
 
+    enum class AttachmentLoadOp : uint8_t
+    {
+        Load,
+        Clear,
+        DontCare
+    };
+
+    enum class AttachmentStoreOp : uint8_t
+    {
+        Store,
+        DontCare
+    };
+
     struct Viewport
     {
         float X;
@@ -45,10 +58,50 @@ namespace Trinity
         uint32_t Height;
     };
 
+    struct ClearColorValue
+    {
+        float R = 0.0f;
+        float G = 0.0f;
+        float B = 0.0f;
+        float A = 1.0f;
+    };
+
+    struct ColorAttachmentInfo
+    {
+        Texture* Image = nullptr;
+        AttachmentLoadOp LoadOp = AttachmentLoadOp::Clear;
+        AttachmentStoreOp StoreOp = AttachmentStoreOp::Store;
+        ClearColorValue ClearColor;
+    };
+
+    struct DepthAttachmentInfo
+    {
+        Texture* Image = nullptr;
+        AttachmentLoadOp LoadOp = AttachmentLoadOp::Clear;
+        AttachmentStoreOp StoreOp = AttachmentStoreOp::Store;
+        float ClearDepth = 1.0f;
+    };
+
+    struct RenderingInfo
+    {
+        int32_t RenderAreaX = 0;
+        int32_t RenderAreaY = 0;
+        uint32_t RenderAreaWidth = 0;
+        uint32_t RenderAreaHeight = 0;
+
+        const ColorAttachmentInfo* ColorAttachments = nullptr;
+        uint32_t ColorAttachmentCount = 0;
+
+        const DepthAttachmentInfo* DepthAttachment = nullptr;
+    };
+
     class CommandBuffer
     {
     public:
         virtual ~CommandBuffer() = default;
+
+        virtual void BeginRendering(const RenderingInfo& info) = 0;
+        virtual void EndRendering() = 0;
 
         virtual void BindPipeline(Pipeline& pipeline) = 0;
         virtual void BindVertexBuffer(uint32_t binding, Buffer& buffer, uint64_t offset = 0) = 0;

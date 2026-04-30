@@ -4,10 +4,9 @@
 
 namespace Trinity
 {
-    class VulkanSceneRenderer : public SceneRenderer
+    class VulkanSceneRenderer //: public SceneRenderer
     {
     public:
-        void BeginScene() override;
-        void EndScene() override;
+
     };
 }
