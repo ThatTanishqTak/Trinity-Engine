@@ -25,7 +25,7 @@ namespace Trinity
     {
         constexpr uint32_t l_ShadowMapResolution = 2048;
 
-        glm::mat4 ComputeLightViewProjection(const Camera& camera, const DirectionalLight& sunLight, uint32_t shadowMapResolution)
+        glm::mat4 ComputeLightViewProjection(const Camera& camera, const glm::vec3& sunDirection, uint32_t shadowMapResolution)
         {
             const glm::mat4 l_InverseViewProjection = glm::inverse(camera.GetViewProjectionMatrix());
 
@@ -51,7 +51,7 @@ namespace Trinity
             }
             l_FrustumCentre /= 8.0f;
 
-            const glm::vec3 l_LightDirection = glm::normalize(glm::vec3(sunLight.Direction[0], sunLight.Direction[1], sunLight.Direction[2]));
+            const glm::vec3 l_LightDirection = glm::normalize(sunDirection);
             const glm::vec3 l_Up = std::abs(l_LightDirection.y) > 0.99f ? glm::vec3(0.0f, 0.0f, 1.0f) : glm::vec3(0.0f, 1.0f, 0.0f);
             const glm::mat4 l_LightView = glm::lookAt(l_FrustumCentre - l_LightDirection, l_FrustumCentre, l_Up);
 
@@ -201,7 +201,7 @@ namespace Trinity
             {
                 l_CommandBuffer.BindPipeline(*m_Implementation->ShadowPipeline);
 
-                const glm::mat4 l_LightViewProjection = ComputeLightViewProjection(m_Camera, m_SceneData.SunLight, l_ShadowMapResolution);
+                const glm::mat4 l_LightViewProjection = ComputeLightViewProjection(m_Camera, m_SceneData.SunDirection, l_ShadowMapResolution);
 
                 for (const auto& it_DrawCommand : m_DrawList)
                 {

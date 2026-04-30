@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Trinity/Renderer/Camera/Camera.h"
+#include "Trinity/Scene/Components/LightComponent.h"
 
 #include <cstdint>
 #include <memory>
@@ -20,16 +21,10 @@ namespace Trinity
         float Transform[16] = {};
     };
 
-    struct DirectionalLight
-    {
-        float Direction[3] = { 0.0f, -1.0f, 0.0f };
-        float Intensity = 1.0f;
-        float Color[3] = { 1.0f, 1.0f, 1.0f };
-    };
-
     struct SceneRenderData
     {
         DirectionalLight SunLight;
+        glm::vec3 SunDirection = { 0.0f, -1.0f, 0.0f };
     };
 
     struct SceneRendererStats
