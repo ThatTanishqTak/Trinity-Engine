@@ -5,6 +5,7 @@
 namespace Trinity
 {
     class Window;
+    class CommandBuffer;
 
     struct RendererSpecification
     {
@@ -32,7 +33,9 @@ namespace Trinity
         static std::shared_ptr<Texture> LoadTextureFromFile(const std::string& path);
 
         static RendererAPI& GetAPI() { return *s_API; }
+        static CommandBuffer& GetCommandBuffer();
         static RendererBackend GetBackend();
+
         static uint32_t GetCurrentFrameIndex();
         static uint32_t GetMaxFramesInFlight();
 

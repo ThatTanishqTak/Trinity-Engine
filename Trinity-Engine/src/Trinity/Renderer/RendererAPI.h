@@ -14,6 +14,7 @@
 namespace Trinity
 {
     class Window;
+    class CommandBuffer;
 
     enum class RendererBackend : uint8_t
     {
@@ -51,6 +52,8 @@ namespace Trinity
         virtual std::shared_ptr<Shader> CreateShader(const ShaderSpecification& specification) = 0;
         virtual std::shared_ptr<Pipeline> CreatePipeline(const PipelineSpecification& specification) = 0;
         virtual std::shared_ptr<Sampler> CreateSampler(const SamplerSpecification& specification) = 0;
+
+        virtual CommandBuffer& GetCommandBuffer() = 0;
 
         virtual void OnWindowResize(uint32_t width, uint32_t height) = 0;
         virtual uint32_t GetSwapchainWidth() const = 0;

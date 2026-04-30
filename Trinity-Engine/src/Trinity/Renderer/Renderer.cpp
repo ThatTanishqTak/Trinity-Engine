@@ -105,6 +105,11 @@ namespace Trinity
 		return s_API->LoadTextureFromFile(path);
 	}
 
+    CommandBuffer& Renderer::GetCommandBuffer()
+    {
+        return s_API->GetCommandBuffer();
+    }
+
 	RendererBackend Renderer::GetBackend()
 	{
 		if (!s_API)

@@ -17,10 +17,14 @@ namespace Trinity
 
     enum class ShaderStageFlags : uint32_t
     {
+        None = 0,
         Vertex = 1 << 0,
         Fragment = 1 << 1,
         Compute = 1 << 2
     };
+
+    inline ShaderStageFlags operator|(ShaderStageFlags a, ShaderStageFlags b) { return static_cast<ShaderStageFlags>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b)); }
+    inline bool operator&(ShaderStageFlags a, ShaderStageFlags b) { return (static_cast<uint32_t>(a) & static_cast<uint32_t>(b)) != 0; }
 
     struct Viewport
     {
@@ -46,7 +50,7 @@ namespace Trinity
     public:
         virtual ~CommandBuffer() = default;
 
-        virtual void BindPipeline() = 0;
+        virtual void BindPipeline(Pipeline& pipeline) = 0;
         virtual void BindVertexBuffer(uint32_t binding, Buffer& buffer, uint64_t offset = 0) = 0;
         virtual void BindIndexBuffer(Buffer& buffer, IndexType type, uint64_t offset = 0) = 0;
         virtual void BindTexture(uint32_t set, uint32_t binding, Texture& texture, Sampler& sampler) = 0;

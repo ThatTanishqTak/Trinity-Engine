@@ -6,10 +6,30 @@
 
 namespace Trinity
 {
-    class VulkanCommandBuffer : CommandBuffer
+    class VulkanPipeline;
+
+    class VulkanCommandBuffer final : public CommandBuffer
     {
     public:
-        void BindPipeline() override;
+        VulkanCommandBuffer() = default;
+        ~VulkanCommandBuffer() override;
+
+        VulkanCommandBuffer(const VulkanCommandBuffer&) = delete;
+        VulkanCommandBuffer& operator=(const VulkanCommandBuffer&) = delete;
+
+        VulkanCommandBuffer(VulkanCommandBuffer&& other) noexcept;
+        VulkanCommandBuffer& operator=(VulkanCommandBuffer&& other) noexcept;
+
+        void Initialize(VkDevice device);
+        void Shutdown();
+
+        void Reset(VkCommandBuffer commandBuffer);
+        void Invalidate();
+
+        VkCommandBuffer GetHandle() const { return m_CommandBuffer; }
+        bool IsValid() const { return m_CommandBuffer != VK_NULL_HANDLE; }
+
+        void BindPipeline(Pipeline& pipeline) override;
         void BindVertexBuffer(uint32_t binding, Buffer& buffer, uint64_t offset = 0) override;
         void BindIndexBuffer(Buffer& buffer, IndexType type, uint64_t offset = 0) override;
         void BindTexture(uint32_t set, uint32_t binding, Texture& texture, Sampler& sampler) override;
@@ -24,7 +44,9 @@ namespace Trinity
         void DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance) override;
 
     private:
-        VkCommandBuffer m_CommandBuffer;
-        VkPipeline m_Pipeline;
+        VkDevice m_Device = VK_NULL_HANDLE;
+        VkCommandBuffer m_CommandBuffer = VK_NULL_HANDLE;
+        VulkanPipeline* m_BoundPipeline = nullptr;
+        VkDescriptorPool m_TransientDescriptorPool = VK_NULL_HANDLE;
     };
 }

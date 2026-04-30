@@ -186,6 +186,11 @@ namespace Trinity
         return m_CommandPool.GetCommandBuffer(m_CurrentFrameIndex);
     }
 
+    CommandBuffer& VulkanRendererAPI::GetCommandBuffer()
+    {
+        return m_CommandPool.GetCommandBufferWrapper(m_CurrentFrameIndex);
+    }
+
     std::shared_ptr<Buffer> VulkanRendererAPI::CreateBuffer(const BufferSpecification& specification)
     {
         return std::make_shared<VulkanBuffer>(m_Device.GetDevice(), m_Allocator.GetAllocator(), specification);

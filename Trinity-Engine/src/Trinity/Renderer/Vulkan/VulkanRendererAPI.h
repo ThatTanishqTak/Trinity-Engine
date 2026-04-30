@@ -53,6 +53,7 @@ namespace Trinity
         VulkanCommandPool& GetCommandPool() { return m_CommandPool; }
         VulkanSwapchain& GetSwapchain() { return m_Swapchain; }
         VkCommandBuffer GetCurrentCommandBuffer() const;
+        CommandBuffer& GetCommandBuffer() override;
         uint32_t GetCurrentImageIndex() const { return m_CurrentImageIndex; }
 
     private:

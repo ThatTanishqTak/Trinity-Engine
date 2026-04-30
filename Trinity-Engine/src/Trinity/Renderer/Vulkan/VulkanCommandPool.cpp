@@ -20,45 +20,59 @@ namespace Trinity
 
         m_CommandBuffers.resize(framesInFlight);
 
-        VkCommandBufferAllocateInfo l_AllocateInfo{};
-        l_AllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        l_AllocateInfo.commandPool = m_CommandPool;
-        l_AllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        l_AllocateInfo.commandBufferCount = framesInFlight;
+        VkCommandBufferAllocateInfo l_AllocInfo{};
+        l_AllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        l_AllocInfo.commandPool = m_CommandPool;
+        l_AllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        l_AllocInfo.commandBufferCount = framesInFlight;
 
-        VulkanUtilities::VKCheck(vkAllocateCommandBuffers(device.GetDevice(), &l_AllocateInfo, m_CommandBuffers.data()), "Failed vkAllocateCommandBuffers");
+        VulkanUtilities::VKCheck(vkAllocateCommandBuffers(device.GetDevice(), &l_AllocInfo, m_CommandBuffers.data()), "Failed vkAllocateCommandBuffers");
 
-        TR_CORE_INFO("Vulkan command pool created ({} command buffers)", framesInFlight);
+        m_CommandBufferWrappers.reserve(framesInFlight);
+        for (uint32_t i = 0; i < framesInFlight; i++)
+        {
+            m_CommandBufferWrappers.emplace_back();
+            m_CommandBufferWrappers.back().Initialize(device.GetDevice());
+        }
     }
 
     void VulkanCommandPool::Shutdown()
     {
-        if (m_CommandPool != VK_NULL_HANDLE && m_Device != nullptr)
+        for (auto& it_Wrapper : m_CommandBufferWrappers)
+        {
+            it_Wrapper.Shutdown();
+        }
+        m_CommandBufferWrappers.clear();
+
+        if (m_CommandPool != VK_NULL_HANDLE)
         {
             vkDestroyCommandPool(m_Device->GetDevice(), m_CommandPool, nullptr);
             m_CommandPool = VK_NULL_HANDLE;
         }
-
         m_CommandBuffers.clear();
     }
 
-    void VulkanCommandPool::ResetCommandBuffer(uint32_t frameIndex) const
+    void VulkanCommandPool::ResetCommandBuffer(uint32_t frameIndex)
     {
         VulkanUtilities::VKCheck(vkResetCommandBuffer(m_CommandBuffers[frameIndex], 0), "Failed vkResetCommandBuffer");
+        m_CommandBufferWrappers[frameIndex].Invalidate();
     }
 
-    void VulkanCommandPool::BeginCommandBuffer(uint32_t frameIndex) const
+    void VulkanCommandPool::BeginCommandBuffer(uint32_t frameIndex)
     {
         VkCommandBufferBeginInfo l_BeginInfo{};
         l_BeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         l_BeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
         VulkanUtilities::VKCheck(vkBeginCommandBuffer(m_CommandBuffers[frameIndex], &l_BeginInfo), "Failed vkBeginCommandBuffer");
+
+        m_CommandBufferWrappers[frameIndex].Reset(m_CommandBuffers[frameIndex]);
     }
 
-    void VulkanCommandPool::EndCommandBuffer(uint32_t frameIndex) const
+    void VulkanCommandPool::EndCommandBuffer(uint32_t frameIndex)
     {
         VulkanUtilities::VKCheck(vkEndCommandBuffer(m_CommandBuffers[frameIndex]), "Failed vkEndCommandBuffer");
+        m_CommandBufferWrappers[frameIndex].Invalidate();
     }
 
     VkCommandBuffer VulkanCommandPool::BeginSingleTimeCommands() const

@@ -1,5 +1,7 @@
 #include "Trinity/Renderer/RenderGraph/RenderGraph.h"
 
+#include "Trinity/Renderer/CommandBuffer.h"
+#include "Trinity/Renderer/Renderer.h"
 #include "Trinity/Utilities/Log.h"
 
 #include <algorithm>
@@ -10,6 +12,11 @@ namespace Trinity
     std::shared_ptr<Texture> RenderGraphContext::GetTexture(RenderGraphResourceHandle handle) const
     {
         return Graph ? Graph->GetTexture(handle) : nullptr;
+    }
+
+    CommandBuffer& RenderGraphContext::GetCommandBuffer() const
+    {
+        return *CommandBuf;
     }
 
     RenderGraphResourceHandle RenderGraph::DeclareTexture(const RenderGraphTextureDescription& description)
@@ -67,13 +74,16 @@ namespace Trinity
 
         RenderGraphContext l_Context{};
         l_Context.Graph = this;
+        l_Context.CommandBuf = &Renderer::GetCommandBuffer();
         l_Context.Width = m_SwapchainWidth;
         l_Context.Height = m_SwapchainHeight;
 
         for (uint32_t it_Index : m_ExecutionOrder)
         {
             OnExecutePassBegin(it_Index, l_Context);
+
             m_Passes[it_Index].Execute(l_Context);
+
             OnExecutePassEnd(it_Index, l_Context);
         }
     }

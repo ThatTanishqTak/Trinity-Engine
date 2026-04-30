@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Trinity/Renderer/Vulkan/VulkanCommandBuffer.h"
+
 #include <vulkan/vulkan.h>
 
 #include <cstdint>
@@ -9,9 +11,9 @@ namespace Trinity
 {
     class VulkanDevice;
 
-	class VulkanCommandPool
-	{
-	public:
+    class VulkanCommandPool
+    {
+    public:
         VulkanCommandPool() = default;
         ~VulkanCommandPool() = default;
 
@@ -19,18 +21,20 @@ namespace Trinity
         void Shutdown();
 
         VkCommandBuffer GetCommandBuffer(uint32_t frameIndex) const { return m_CommandBuffers[frameIndex]; }
+        VulkanCommandBuffer& GetCommandBufferWrapper(uint32_t frameIndex) { return m_CommandBufferWrappers[frameIndex]; }
         VkCommandPool GetPool() const { return m_CommandPool; }
 
-        void ResetCommandBuffer(uint32_t frameIndex) const;
-        void BeginCommandBuffer(uint32_t frameIndex) const;
-        void EndCommandBuffer(uint32_t frameIndex) const;
+        void ResetCommandBuffer(uint32_t frameIndex);
+        void BeginCommandBuffer(uint32_t frameIndex);
+        void EndCommandBuffer(uint32_t frameIndex);
 
         VkCommandBuffer BeginSingleTimeCommands() const;
         void EndSingleTimeCommands(VkCommandBuffer commandBuffer) const;
 
-	private:
-		VulkanDevice* m_Device = nullptr;
-		VkCommandPool m_CommandPool = VK_NULL_HANDLE;
-		std::vector<VkCommandBuffer> m_CommandBuffers;
-	};
+    private:
+        VulkanDevice* m_Device = nullptr;
+        VkCommandPool m_CommandPool = VK_NULL_HANDLE;
+        std::vector<VkCommandBuffer> m_CommandBuffers;
+        std::vector<VulkanCommandBuffer> m_CommandBufferWrappers;
+    };
 }
