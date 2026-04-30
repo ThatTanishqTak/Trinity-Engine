@@ -1,14 +1,16 @@
 #version 450
 
-layout(location = 0) in vec3 a_Position;
+layout(location = 0) in vec3 in_Position;
+layout(location = 1) in vec3 in_Normal;
+layout(location = 2) in vec2 in_UV;
 
-layout(push_constant) uniform PushConstants
+layout(push_constant) uniform PushBlock
 {
-    mat4 u_LightSpaceMatrix;
-    mat4 u_Model;
+    mat4 Model;
+    mat4 LightViewProjection;
 } u_Push;
 
 void main()
 {
-    gl_Position = u_Push.u_LightSpaceMatrix * u_Push.u_Model * vec4(a_Position, 1.0);
+    gl_Position = u_Push.LightViewProjection * u_Push.Model * vec4(in_Position, 1.0);
 }

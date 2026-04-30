@@ -4,6 +4,7 @@
 #include "Trinity/Application/Application.h"
 #include "Trinity/Platform/Window/Window.h"
 #include "Trinity/Renderer/Renderer.h"
+#include "Trinity/Renderer/Mesh.h"
 
 #include "Trinity/Scene/Scene.h"
 #include "Trinity/Scene/Entity.h"
@@ -23,7 +24,9 @@
 #include <ImGuizmo.h>
 #include <glm/gtc/type_ptr.hpp>
 
+#include <cmath>
 #include <cstring>
+#include <memory>
 
 namespace Forge
 {
@@ -35,6 +38,7 @@ namespace Forge
     void ViewportPanel::OnInitialize()
     {
         m_Camera = Trinity::EditorCamera(60.0f, 1280.0f / 720.0f, 0.1f, 1000.0f);
+        m_SceneRenderer.Initialize(1280, 720);
     }
 
     void ViewportPanel::OnShutdown()
@@ -46,11 +50,12 @@ namespace Forge
             Trinity::ImGuiLayer::Get().UnregisterTexture(m_ViewportTextureID);
             m_ViewportTextureID = 0;
         }
+
+        m_SceneRenderer.Shutdown();
     }
 
     void ViewportPanel::OnPreRender()
     {
-        // Apply any resize that was detected last frame (before we render into the framebuffer)
         if (m_ResizeDirty)
         {
             m_ResizeDirty = false;
@@ -59,17 +64,55 @@ namespace Forge
             {
                 Trinity::Renderer::WaitIdle();
                 Trinity::ImGuiLayer::Get().UnregisterTexture(m_ViewportTextureID);
-
                 m_ViewportTextureID = 0;
             }
 
             m_Camera.SetAspectRatio(static_cast<float>(m_PendingResizeWidth) / static_cast<float>(m_PendingResizeHeight));
+            m_SceneRenderer.OnResize(m_PendingResizeWidth, m_PendingResizeHeight);
+        }
+
+        Trinity::SceneRenderData l_SceneData{};
+        m_SceneRenderer.BeginScene(m_Camera, l_SceneData);
+
+        if (m_SelectionContext && m_SelectionContext->ActiveScene)
+        {
+            auto& a_Registry = m_SelectionContext->ActiveScene->GetRegistry();
+            auto a_View = a_Registry.view<Trinity::TransformComponent, Trinity::MeshComponent>();
+
+            for (auto it_Entity : a_View)
+            {
+                auto& a_Transform = a_View.get<Trinity::TransformComponent>(it_Entity);
+                auto& a_Mesh = a_View.get<Trinity::MeshComponent>(it_Entity);
+
+                if (!a_Mesh.MeshData)
+                {
+                    continue;
+                }
+
+                Trinity::MeshDrawCommand l_Command{};
+                l_Command.MeshRef = a_Mesh.MeshData;
+                const glm::mat4 l_ModelMatrix = a_Transform.GetLocalMatrix();
+
+                std::memcpy(l_Command.Transform, glm::value_ptr(l_ModelMatrix), sizeof(l_Command.Transform));
+                m_SceneRenderer.SubmitMesh(l_Command);
+            }
+        }
+
+        m_SceneRenderer.EndScene();
+        m_SceneRenderer.Render();
+
+        if (m_ViewportTextureID == 0)
+        {
+            auto a_Output = m_SceneRenderer.GetFinalOutput();
+            if (a_Output)
+            {
+                m_ViewportTextureID = Trinity::ImGuiLayer::Get().RegisterTexture(a_Output);
+            }
         }
     }
 
     void ViewportPanel::OnUpdate(float deltaTime)
     {
-        // Editor camera is suspended during Play / Pause
         if (m_SelectionContext->State != EditorState::Edit)
         {
             Trinity::Application::Get().GetWindow().SetCursorLocked(false);
@@ -185,7 +228,6 @@ namespace Forge
             m_LastHeight = l_Height;
             m_PendingResizeWidth = l_Width;
             m_PendingResizeHeight = l_Height;
-
             m_ResizeDirty = true;
         }
 
@@ -208,11 +250,10 @@ namespace Forge
             }
         }
 
-        // Gap: in Play/Pause, use scene CameraComponent view
         if (m_SelectionContext->State != EditorState::Edit)
         {
             const ImVec2 l_TextPosition = ImVec2(8.0f, ImGui::GetCursorStartPos().y + 36.0f);
-            ImGui::GetWindowDrawList()->AddText(l_TextPosition, IM_COL32(255, 200, 0, 180), "No Scene Camera — using editor camera fallback");
+            ImGui::GetWindowDrawList()->AddText(l_TextPosition, IM_COL32(255, 200, 0, 180), "No Scene Camera \xE2\x80\x94 using editor camera fallback");
         }
 
         RenderGizmos();
@@ -221,8 +262,22 @@ namespace Forge
 
     void ViewportPanel::RenderGizmos()
     {
-        // Gizmos are suppressed during Play / Pause
-        if (m_SelectionContext->State != EditorState::Edit || m_SelectionContext->SelectedEntity == entt::null || m_GizmoOperation == static_cast<ImGuizmo::OPERATION>(-1) || m_SelectionContext->ActiveScene == nullptr)
+        if (m_SelectionContext->State != EditorState::Edit)
+        {
+            return;
+        }
+
+        if (m_SelectionContext->SelectedEntity == entt::null)
+        {
+            return;
+        }
+
+        if (m_GizmoOperation == static_cast<ImGuizmo::OPERATION>(-1))
+        {
+            return;
+        }
+
+        if (m_SelectionContext->ActiveScene == nullptr)
         {
             return;
         }
@@ -236,7 +291,7 @@ namespace Forge
 
         const glm::mat4& l_ViewMatrix = m_Camera.GetViewMatrix();
         glm::mat4 l_ProjectionMatrix = m_Camera.GetProjectionMatrix();
-        l_ProjectionMatrix[1][1] *= -1.0f;  // Vulkan NDC Y-down correction — gizmo draw only
+        l_ProjectionMatrix[1][1] *= -1.0f;
 
         auto& a_TransformComponent = m_SelectionContext->ActiveScene->GetRegistry().get<Trinity::TransformComponent>(m_SelectionContext->SelectedEntity);
         glm::mat4 l_ModelMatrix = a_TransformComponent.GetLocalMatrix();
@@ -251,13 +306,13 @@ namespace Forge
             }
             else if (m_GizmoOperation == ImGuizmo::ROTATE)
             {
-                const glm::vec3 l_Colum0 = glm::normalize(glm::vec3(l_ModelMatrix[0]));
-                const glm::vec3 l_Colum1 = glm::normalize(glm::vec3(l_ModelMatrix[1]));
-                const glm::vec3 l_Colum2 = glm::normalize(glm::vec3(l_ModelMatrix[2]));
+                const glm::vec3 l_Column0 = glm::normalize(glm::vec3(l_ModelMatrix[0]));
+                const glm::vec3 l_Column1 = glm::normalize(glm::vec3(l_ModelMatrix[1]));
+                const glm::vec3 l_Column2 = glm::normalize(glm::vec3(l_ModelMatrix[2]));
 
-                const float l_RotationX = std::atan2f(-l_Colum2.y, l_Colum2.z);
-                const float l_RotationY = std::atan2f(l_Colum2.x, std::sqrtf(l_Colum2.z * l_Colum2.z + l_Colum2.y * l_Colum2.y));
-                const float l_RotationZ = std::atan2f(-l_Colum1.x, l_Colum0.x);
+                const float l_RotationX = std::atan2f(-l_Column2.y, l_Column2.z);
+                const float l_RotationY = std::atan2f(l_Column2.x, std::sqrtf(l_Column2.z * l_Column2.z + l_Column2.y * l_Column2.y));
+                const float l_RotationZ = std::atan2f(-l_Column1.x, l_Column0.x);
 
                 a_TransformComponent.Rotation = glm::vec3(l_RotationX, l_RotationY, l_RotationZ);
             }
@@ -281,8 +336,8 @@ namespace Forge
             return;
         }
 
-        std::shared_ptr<Trinity::Mesh> l_MeshComponent = Trinity::AssetRegistry::Get().LoadMesh(l_Handle);
-        if (!l_MeshComponent)
+        std::shared_ptr<Trinity::Mesh> l_Mesh = Trinity::AssetRegistry::Get().LoadMesh(l_Handle);
+        if (!l_Mesh)
         {
             return;
         }
@@ -294,7 +349,7 @@ namespace Forge
         {
             auto& a_MeshComponent = a_Registry.get<Trinity::MeshComponent>(l_Selected);
             a_MeshComponent.MeshAssetUUID = l_Handle;
-            a_MeshComponent.MeshData = l_MeshComponent;
+            a_MeshComponent.MeshData = l_Mesh;
         }
         else
         {
@@ -303,7 +358,7 @@ namespace Forge
 
             auto& a_MeshComponent = l_Entity.AddComponent<Trinity::MeshComponent>();
             a_MeshComponent.MeshAssetUUID = l_Handle;
-            a_MeshComponent.MeshData = l_MeshComponent;
+            a_MeshComponent.MeshData = l_Mesh;
 
             m_SelectionContext->SelectedEntity = l_Entity.GetHandle();
         }
@@ -320,7 +375,6 @@ namespace Forge
 
         ImGui::SetCursorPosX((ImGui::GetWindowWidth() - l_TotalWidth) * 0.5f);
 
-        // Play / Resume
         const bool l_CanPlay = (l_State == EditorState::Edit || l_State == EditorState::Pause);
         if (!l_CanPlay)
         {
@@ -339,7 +393,6 @@ namespace Forge
 
         ImGui::SameLine(0.0f, l_Spacing);
 
-        // Pause
         const bool l_CanPause = (l_State == EditorState::Play);
         if (!l_CanPause)
         {
@@ -358,7 +411,6 @@ namespace Forge
 
         ImGui::SameLine(0.0f, l_Spacing);
 
-        // Stop
         const bool l_CanStop = (l_State == EditorState::Play || l_State == EditorState::Pause);
         if (!l_CanStop)
         {
