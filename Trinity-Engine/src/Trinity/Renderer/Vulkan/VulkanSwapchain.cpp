@@ -15,8 +15,6 @@ namespace Trinity
 
         CreateSwapchain(width, height);
         CreateImageViews();
-
-        TR_CORE_INFO("Vulkan swapchain created ({}x{}, {} images)", m_Extent.width, m_Extent.height, m_Images.size());
     }
 
     void VulkanSwapchain::Shutdown()
@@ -37,12 +35,12 @@ namespace Trinity
         CleanupSwapchain();
         CreateSwapchain(width, height);
         CreateImageViews();
-
-        TR_CORE_DEBUG("Swapchain recreated ({}x{})", m_Extent.width, m_Extent.height);
     }
 
     void VulkanSwapchain::CreateSwapchain(uint32_t width, uint32_t height)
     {
+        TR_CORE_TRACE("Creating Swapchain");
+
         SwapchainSupportDetails l_Support = m_Device->QuerySwapchainSupport();
 
         VkSurfaceFormatKHR l_SurfaceFormat = ChooseSurfaceFormat(l_Support.Formats);
@@ -93,10 +91,14 @@ namespace Trinity
         vkGetSwapchainImagesKHR(m_Device->GetDevice(), m_Swapchain, &l_ImageCount, nullptr);
         m_Images.resize(l_ImageCount);
         vkGetSwapchainImagesKHR(m_Device->GetDevice(), m_Swapchain, &l_ImageCount, m_Images.data());
+
+        TR_CORE_TRACE("Swapchain Created: {}x{}", width, height);
     }
 
     void VulkanSwapchain::CreateImageViews()
     {
+        TR_CORE_TRACE("Creating Image Views");
+
         m_ImageViews.resize(m_Images.size());
 
         for (size_t i = 0; i < m_Images.size(); i++)
@@ -118,11 +120,17 @@ namespace Trinity
 
             VulkanUtilities::VKCheck(vkCreateImageView(m_Device->GetDevice(), &l_ViewInfo, nullptr, &m_ImageViews[i]), "Failed vkCreateImageView");
         }
+
+        TR_CORE_TRACE("Image Views Created: {}", m_ImageViews.size());
     }
 
     void VulkanSwapchain::CleanupSwapchain()
     {
+        TR_CORE_TRACE("Cleaning Up Swapchain");
+
         VkDevice l_Device = m_Device->GetDevice();
+
+        TR_CORE_TRACE("Clearing Up Image Views");
 
         for (auto it_ImageView : m_ImageViews)
         {
@@ -132,11 +140,19 @@ namespace Trinity
         m_ImageViews.clear();
         m_Images.clear();
 
+        TR_CORE_TRACE("Image Views Cleared");
+
         if (m_Swapchain != VK_NULL_HANDLE)
         {
+            TR_CORE_TRACE("Destroying Swapchain");
+
             vkDestroySwapchainKHR(l_Device, m_Swapchain, nullptr);
             m_Swapchain = VK_NULL_HANDLE;
+
+            TR_CORE_TRACE("Swapchain Destroyed");
         }
+
+        TR_CORE_TRACE("Swapchain Cleanup Complete");
     }
 
     VkSurfaceFormatKHR VulkanSwapchain::ChooseSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats) const

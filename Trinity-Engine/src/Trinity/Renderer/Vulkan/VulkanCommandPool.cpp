@@ -9,6 +9,8 @@ namespace Trinity
 {
     void VulkanCommandPool::Initialize(VulkanDevice& device, uint32_t framesInFlight)
     {
+        TR_CORE_TRACE("Initializing Command Pool");
+
         m_Device = &device;
 
         VkCommandPoolCreateInfo l_PoolInfo{};
@@ -17,6 +19,10 @@ namespace Trinity
         l_PoolInfo.queueFamilyIndex = device.GetQueueFamilyIndices().GraphicsFamily.value();
 
         VulkanUtilities::VKCheck(vkCreateCommandPool(device.GetDevice(), &l_PoolInfo, nullptr, &m_CommandPool), "Failed vkCreateCommandPool");
+
+        TR_CORE_TRACE("Command Pool Initialized");
+
+        TR_CORE_TRACE("Initializing Command Buffer");
 
         m_CommandBuffers.resize(framesInFlight);
 
@@ -34,15 +40,23 @@ namespace Trinity
             m_CommandBufferWrappers.emplace_back();
             m_CommandBufferWrappers.back().Initialize(device.GetDevice());
         }
+
+        TR_CORE_TRACE("Command Buffer Initialized");
     }
 
     void VulkanCommandPool::Shutdown()
     {
+        TR_CORE_TRACE("Shutting Down Command Buffer");
+
         for (auto& it_Wrapper : m_CommandBufferWrappers)
         {
             it_Wrapper.Shutdown();
         }
         m_CommandBufferWrappers.clear();
+
+        TR_CORE_TRACE("Command Buffer Shutdown Complete");
+
+        TR_CORE_TRACE("Shutting Down Command Pool");
 
         if (m_CommandPool != VK_NULL_HANDLE)
         {
@@ -50,6 +64,8 @@ namespace Trinity
             m_CommandPool = VK_NULL_HANDLE;
         }
         m_CommandBuffers.clear();
+
+        TR_CORE_TRACE("Command Pool Shutdown Complete");
     }
 
     void VulkanCommandPool::ResetCommandBuffer(uint32_t frameIndex)

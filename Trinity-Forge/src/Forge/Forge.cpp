@@ -17,14 +17,17 @@ public:
 
 Trinity::Application* Trinity::CreateApplication(const Trinity::ApplicationSpecification& specification)
 {
-    TR_INFO("------- CREATING APPLICATION -------");
+    TR_INFO("CREATING APPLICATION");
 
     Trinity::ApplicationSpecification l_Specification = specification;
     l_Specification.Title = "Forge";
     l_Specification.Width = 1920;
     l_Specification.Height = 1080;
 
-    TR_INFO("------- APPLICATION CREATED -------");
+    TR_TRACE("Title: {}", l_Specification.Title);
+    TR_TRACE("Resolution: {}X{}", l_Specification.Width, l_Specification.Height);
+
+    TR_INFO("APPLICATION CREATED");
 
     return new ForgeApp(l_Specification);
 }

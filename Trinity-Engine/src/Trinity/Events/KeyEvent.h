@@ -13,7 +13,7 @@ namespace Trinity
     public:
         Code::KeyCode GetKeyCode() const { return m_KeyCode; }
 
-        TR_EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryKeyboard)
+        EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryKeyboard)
 
     protected:
         explicit KeyEvent(Code::KeyCode keycode) : m_KeyCode(keycode)
@@ -43,7 +43,7 @@ namespace Trinity
             return ss.str();
         }
 
-        TR_EVENT_CLASS_TYPE(KeyPressed)
+        EVENT_CLASS_TYPE(KeyPressed)
 
     private:
         int m_RepeatCount = 0;
@@ -66,7 +66,7 @@ namespace Trinity
             return ss.str();
         }
 
-        TR_EVENT_CLASS_TYPE(KeyReleased)
+        EVENT_CLASS_TYPE(KeyReleased)
     };
 
     // NOTE: Typed characters are Unicode codepoints, not physical key codes.
@@ -88,8 +88,8 @@ namespace Trinity
             return ss.str();
         }
 
-        TR_EVENT_CLASS_TYPE(KeyTyped)
-            TR_EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryKeyboard)
+        EVENT_CLASS_TYPE(KeyTyped)
+            EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryKeyboard)
 
     private:
         uint32_t m_Codepoint = 0;

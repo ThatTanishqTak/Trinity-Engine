@@ -14,7 +14,6 @@ namespace Trinity
         auto* a_VulkanShader = dynamic_cast<VulkanShader*>(specification.PipelineShader.get());
         if (a_VulkanShader == nullptr)
         {
-            TR_CORE_ERROR("VulkanPipeline requires a VulkanShader.");
             return;
         }
 

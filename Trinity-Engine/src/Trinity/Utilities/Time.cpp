@@ -25,8 +25,6 @@ namespace Trinity
             s_LastFrameTime = s_StartTime;
             s_DeltaTime = 0.0f;
             s_Initialized = true;
-
-            TR_CORE_INFO("TIME INITIALIZED");
         }
 
         void Time::Update()

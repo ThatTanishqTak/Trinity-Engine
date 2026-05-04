@@ -163,7 +163,6 @@ namespace Trinity
     {
         if (!root["Scene"])
         {
-            TR_CORE_ERROR("SceneSerializer: missing 'Scene' key");
             return false;
         }
 
@@ -285,12 +284,10 @@ namespace Trinity
         std::ofstream l_File(filepath);
         if (!l_File.is_open())
         {
-            TR_CORE_ERROR("SceneSerializer: cannot open '{}' for writing", filepath);
             return;
         }
 
         l_File << BuildYaml(scene);
-        TR_CORE_INFO("Scene saved: {}", filepath);
     }
 
     std::string SceneSerializer::SerializeToString(Scene& scene)
@@ -308,7 +305,6 @@ namespace Trinity
         }
         catch (const YAML::Exception& e)
         {
-            TR_CORE_ERROR("SceneSerializer: failed to load '{}': {}", filepath, e.what());
             return false;
         }
     }
@@ -323,7 +319,6 @@ namespace Trinity
         }
         catch (const YAML::Exception& e)
         {
-            TR_CORE_ERROR("SceneSerializer: failed to parse yaml: {}", e.what());
             return false;
         }
     }

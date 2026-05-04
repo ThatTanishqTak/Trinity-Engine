@@ -32,12 +32,10 @@ namespace Trinity
 
     Application::Application(const ApplicationSpecification& specification) : m_Specification(specification)
     {
-        TR_CORE_INFO("------- INITIALIZING APPLICATION -------");
+        TR_CORE_INFO("INITIALIZING APPLICATION");
 
         if (s_Instance != nullptr)
         {
-            TR_CORE_CRITICAL("Application instance already exists");
-
             std::abort();
         }
 
@@ -65,14 +63,16 @@ namespace Trinity
 
         auto a_ImGuiLayer = std::make_unique<ImGuiLayer>();
         m_ImGuiLayer = a_ImGuiLayer.get();
+
         PushOverlay(std::move(a_ImGuiLayer));
 
-        TR_CORE_INFO("------- APPLICATION INITIALIZED -------");
+        TR_CORE_INFO("APPLICATION INITIALIZED");
     }
 
     Application::~Application()
     {
-        TR_CORE_INFO("------- SHUTTING DOWN APPLICATION -------");
+
+        TR_CORE_INFO("SHUTTING DOWN APPLICATION");
 
         Renderer::WaitIdle();
 
@@ -87,15 +87,13 @@ namespace Trinity
 
         s_Instance = nullptr;
 
-        TR_CORE_INFO("------- APPLICATION SHUTDOWN COMPLETE -------");
+        TR_CORE_INFO("APPLICATION SHUTDOWN COMPLETE");
     }
 
     Application& Application::Get()
     {
         if (s_Instance == nullptr)
         {
-            TR_CORE_CRITICAL("Application instance not available.");
-
             std::abort();
         }
 

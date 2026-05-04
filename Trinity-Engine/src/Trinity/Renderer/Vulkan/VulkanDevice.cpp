@@ -18,16 +18,18 @@ namespace Trinity
 
         PickPhysicalDevice();
         CreateLogicalDevice(enableValidation);
-
-        TR_CORE_INFO("Vulkan device initialized: {}", m_Properties.deviceName);
     }
 
     void VulkanDevice::Shutdown()
     {
         if (m_Device != VK_NULL_HANDLE)
         {
+            TR_CORE_TRACE("Destroying Vulkan Logical Device");
+
             vkDestroyDevice(m_Device, nullptr);
             m_Device = VK_NULL_HANDLE;
+
+            TR_CORE_TRACE("Vulkan Logical Device Destroyed");
         }
 
         m_Instance = nullptr;
@@ -45,6 +47,8 @@ namespace Trinity
 
     void VulkanDevice::PickPhysicalDevice()
     {
+        TR_CORE_TRACE("Picking Suitable GPU");
+
         VkInstance l_Instance = GetInstance();
 
         uint32_t l_DeviceCount = 0;
@@ -52,7 +56,7 @@ namespace Trinity
 
         if (l_DeviceCount == 0)
         {
-            TR_CORE_CRITICAL("No GPUs with Vulkan support found.");
+            TR_CORE_CRITICAL("No GPUs with Vulkan support found");
             std::abort();
         }
 
@@ -62,14 +66,16 @@ namespace Trinity
         // Prefer discrete GPU
         for (const auto& l_Device : l_Devices)
         {
-            VkPhysicalDeviceProperties l_Props;
-            vkGetPhysicalDeviceProperties(l_Device, &l_Props);
+            VkPhysicalDeviceProperties l_Properties;
+            vkGetPhysicalDeviceProperties(l_Device, &l_Properties);
 
-            if (IsDeviceSuitable(l_Device) && l_Props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+            if (IsDeviceSuitable(l_Device) && l_Properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
             {
                 m_PhysicalDevice = l_Device;
-                m_Properties = l_Props;
+                m_Properties = l_Properties;
                 m_QueueFamilyIndices = FindQueueFamilies(l_Device);
+
+                TR_CORE_TRACE("Selected Descrete GPU: {}", l_Properties.deviceName);
 
                 return;
             }
@@ -84,16 +90,20 @@ namespace Trinity
                 vkGetPhysicalDeviceProperties(l_Device, &m_Properties);
                 m_QueueFamilyIndices = FindQueueFamilies(l_Device);
 
+                TR_CORE_TRACE("Selected Fallback GPU: {}");
+
                 return;
             }
         }
 
-        TR_CORE_CRITICAL("No suitable GPU found.");
+        TR_CORE_CRITICAL("No suitable GPU found");
         std::abort();
     }
 
     void VulkanDevice::CreateLogicalDevice(bool enableValidation)
     {
+        TR_CORE_TRACE("Creating Logical Device");
+
         std::set<uint32_t> l_UniqueQueueFamilies = { m_QueueFamilyIndices.GraphicsFamily.value(), m_QueueFamilyIndices.PresentFamily.value() };
 
         float l_QueuePriority = 1.0f;
@@ -147,6 +157,8 @@ namespace Trinity
 
         vkGetDeviceQueue(m_Device, m_QueueFamilyIndices.GraphicsFamily.value(), 0, &m_GraphicsQueue);
         vkGetDeviceQueue(m_Device, m_QueueFamilyIndices.PresentFamily.value(), 0, &m_PresentQueue);
+
+        TR_CORE_TRACE("Logical Device Created");
     }
 
     QueueFamilyIndices VulkanDevice::FindQueueFamilies(VkPhysicalDevice device) const

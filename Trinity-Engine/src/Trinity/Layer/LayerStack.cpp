@@ -1,5 +1,7 @@
 #include "Trinity/Layer/LayerStack.h"
 
+#include "Trinity/Utilities/Log.h"
+
 #include <algorithm>
 #include <utility>
 
@@ -14,13 +16,19 @@ namespace Trinity
 
     void LayerStack::Shutdown()
     {
+        TR_CORE_INFO("SHUTTING DOWN LAYER STACK");
+
         for (const std::unique_ptr<Layer>& it_Layer : m_Layers)
         {
             it_Layer->OnShutdown();
+
+            TR_CORE_TRACE("{} Shutdown", it_Layer->GetName());
         }
 
         m_Layers.clear();
         m_LayerInsertIndex = 0;
+
+        TR_CORE_INFO("LAYER STACK SHUTDOWN COMPLETE");
     }
 
     void LayerStack::PushLayer(std::unique_ptr<Layer> layer)
@@ -30,6 +38,8 @@ namespace Trinity
 
         ++m_LayerInsertIndex;
         l_Layer->OnInitialize();
+
+        TR_CORE_TRACE("Pushed layer({}) into stack", l_Layer->GetName());
     }
 
     void LayerStack::PushOverlay(std::unique_ptr<Layer> overlay)
@@ -38,6 +48,8 @@ namespace Trinity
         m_Layers.push_back(std::move(overlay));
 
         l_Overlay->OnInitialize();
+
+        TR_CORE_TRACE("Pushed overlay({}) into stack", l_Overlay->GetName());
     }
 
     void LayerStack::PopLayer(Layer* layer)
@@ -49,6 +61,8 @@ namespace Trinity
             m_Layers.erase(a_Index);
 
             --m_LayerInsertIndex;
+
+            TR_CORE_TRACE("Poped layer({}) out of stack", layer->GetName());
         }
     }
 
@@ -59,6 +73,8 @@ namespace Trinity
         {
             (*a_Index)->OnShutdown();
             m_Layers.erase(a_Index);
+
+            TR_CORE_TRACE("Poped overlay({}) out of stack", overlay->GetName());
         }
     }
 }

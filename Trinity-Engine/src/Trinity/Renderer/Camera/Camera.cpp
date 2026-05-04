@@ -2,6 +2,8 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "Trinity/Utilities/Log.h"
+
 namespace Trinity
 {
 	Camera::Camera(float fovDegrees, float aspectRatio, float nearClip, float farClip) : m_FOV(fovDegrees), m_AspectRatio(aspectRatio), m_NearClip(nearClip), m_FarClip(farClip)

@@ -33,13 +33,11 @@ namespace Trinity
     {
         if (uuid == 0)
         {
-            TR_CORE_WARN("Scene::CreateEntityWithUUID: UUID 0 is reserved, regenerating");
             uuid = GenerateUUID();
         }
 
         if (m_EntityByUUID.find(uuid) != m_EntityByUUID.end())
         {
-            TR_CORE_ERROR("Scene::CreateEntityWithUUID: UUID {} already in scene — regenerating", uuid);
             uuid = GenerateUUID();
         }
 

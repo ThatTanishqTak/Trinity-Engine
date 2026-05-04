@@ -127,7 +127,7 @@ namespace Forge
             return;
         }
 
-        if (Trinity::DesktopInput::MouseButtonDown(Trinity::Code::MouseCode::TR_BUTTON_RIGHT))
+        if (Trinity::DesktopInput::MouseButtonDown(Trinity::Code::MouseCode::BUTTON_RIGHT))
         {
             Trinity::Application::Get().GetWindow().SetCursorLocked(true);
 
@@ -136,32 +136,32 @@ namespace Forge
 
             m_Camera.Rotate(l_Delta.x * m_Sensitivity, l_Delta.y * m_Sensitivity);
 
-            if (Trinity::DesktopInput::KeyDown(Trinity::Code::KeyCode::TR_KEY_W))
+            if (Trinity::DesktopInput::KeyDown(Trinity::Code::KeyCode::KEY_W))
             {
                 m_Camera.MoveForward(l_Speed);
             }
 
-            if (Trinity::DesktopInput::KeyDown(Trinity::Code::KeyCode::TR_KEY_S))
+            if (Trinity::DesktopInput::KeyDown(Trinity::Code::KeyCode::KEY_S))
             {
                 m_Camera.MoveForward(-l_Speed);
             }
 
-            if (Trinity::DesktopInput::KeyDown(Trinity::Code::KeyCode::TR_KEY_A))
+            if (Trinity::DesktopInput::KeyDown(Trinity::Code::KeyCode::KEY_A))
             {
                 m_Camera.MoveRight(-l_Speed);
             }
 
-            if (Trinity::DesktopInput::KeyDown(Trinity::Code::KeyCode::TR_KEY_D))
+            if (Trinity::DesktopInput::KeyDown(Trinity::Code::KeyCode::KEY_D))
             {
                 m_Camera.MoveRight(l_Speed);
             }
 
-            if (Trinity::DesktopInput::KeyDown(Trinity::Code::KeyCode::TR_KEY_E))
+            if (Trinity::DesktopInput::KeyDown(Trinity::Code::KeyCode::KEY_E))
             {
                 m_Camera.MoveUp(l_Speed);
             }
 
-            if (Trinity::DesktopInput::KeyDown(Trinity::Code::KeyCode::TR_KEY_Q))
+            if (Trinity::DesktopInput::KeyDown(Trinity::Code::KeyCode::KEY_Q))
             {
                 m_Camera.MoveUp(-l_Speed);
             }
@@ -192,27 +192,27 @@ namespace Forge
 
         RenderToolbar();
 
-        const bool l_InCameraMode = Trinity::DesktopInput::MouseButtonDown(Trinity::Code::MouseCode::TR_BUTTON_RIGHT);
+        const bool l_InCameraMode = Trinity::DesktopInput::MouseButtonDown(Trinity::Code::MouseCode::BUTTON_RIGHT);
         const bool l_InEditState = (m_SelectionContext->State == EditorState::Edit);
 
         if (m_IsViewportFocused && l_InEditState && !l_InCameraMode && !ImGuizmo::IsUsing())
         {
-            if (Trinity::DesktopInput::KeyPressed(Trinity::Code::KeyCode::TR_KEY_W))
+            if (Trinity::DesktopInput::KeyPressed(Trinity::Code::KeyCode::KEY_W))
             {
                 m_GizmoOperation = ImGuizmo::TRANSLATE;
             }
 
-            if (Trinity::DesktopInput::KeyPressed(Trinity::Code::KeyCode::TR_KEY_E))
+            if (Trinity::DesktopInput::KeyPressed(Trinity::Code::KeyCode::KEY_E))
             {
                 m_GizmoOperation = ImGuizmo::ROTATE;
             }
 
-            if (Trinity::DesktopInput::KeyPressed(Trinity::Code::KeyCode::TR_KEY_R))
+            if (Trinity::DesktopInput::KeyPressed(Trinity::Code::KeyCode::KEY_R))
             {
                 m_GizmoOperation = ImGuizmo::SCALE;
             }
 
-            if (Trinity::DesktopInput::KeyPressed(Trinity::Code::KeyCode::TR_KEY_Q))
+            if (Trinity::DesktopInput::KeyPressed(Trinity::Code::KeyCode::KEY_Q))
             {
                 m_GizmoOperation = static_cast<ImGuizmo::OPERATION>(-1);
             }

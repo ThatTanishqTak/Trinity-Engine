@@ -96,13 +96,13 @@ namespace Trinity
 }
 
 // Event class helper macros
-#define TR_EVENT_CLASS_TYPE(type) \
+#define EVENT_CLASS_TYPE(type) \
     static ::Trinity::EventType GetStaticType() { return ::Trinity::EventType::type; } \
     ::Trinity::EventType GetEventType() const override { return GetStaticType(); } \
     const char* GetName() const override { return #type; }
 
-#define TR_EVENT_CLASS_CATEGORY(category) \
+#define EVENT_CLASS_CATEGORY(category) \
     int GetCategoryFlags() const override { return category; }
 
 // Handy binder
-#define TR_BIND_EVENT_FN(fn) [this](auto& e) -> bool { return this->fn(e); }
+#define BIND_EVENT_FN(fn) [this](auto& e) -> bool { return this->fn(e); }

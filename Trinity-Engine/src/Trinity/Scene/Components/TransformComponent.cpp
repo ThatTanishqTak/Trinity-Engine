@@ -38,7 +38,6 @@ namespace Trinity
         {
             if (++l_Depth > l_MaxDepth)
             {
-                TR_CORE_WARN("TransformComponent::GetWorldMatrix: parent chain exceeded {} — assuming cycle, aborting walk", l_MaxDepth);
                 break;
             }
 

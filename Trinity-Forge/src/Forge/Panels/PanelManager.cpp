@@ -4,16 +4,15 @@
 
 namespace Forge
 {
-    void PanelManager::Initialize()
-    {
 
-    }
 
-    void PanelManager::Shutdown()
+    void PanelManager::DeregisterPanel()
     {
         for (auto& it_Panel : m_Panels)
         {
             it_Panel->OnShutdown();
+
+            TR_TRACE("Deregistered Panel: {}", it_Panel->GetName());
         }
 
         m_Panels.clear();

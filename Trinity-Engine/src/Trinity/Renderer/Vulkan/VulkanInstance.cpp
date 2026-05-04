@@ -20,30 +20,37 @@ namespace Trinity
 
         CreateInstance(enableValidation);
         CreateSurface(window);
-
-        TR_CORE_INFO("Vulkan instance initialized");
     }
 
     void VulkanInstance::Shutdown()
     {
         if (m_Surface != VK_NULL_HANDLE)
         {
+            TR_CORE_TRACE("Destroying Vulkan Surface");
+
             vkDestroySurfaceKHR(m_Instance, m_Surface, nullptr);
             m_Surface = VK_NULL_HANDLE;
+
+            TR_CORE_TRACE("Vulkan Surface Destroyed");
         }
 
         if (m_Instance != VK_NULL_HANDLE)
         {
+            TR_CORE_TRACE("Destroying Vulkan Instnace");
+
             vkDestroyInstance(m_Instance, nullptr);
             m_Instance = VK_NULL_HANDLE;
+
+            TR_CORE_TRACE("Vulkan Instnace Destroyed");
         }
     }
 
     void VulkanInstance::CreateInstance(bool enableValidation)
     {
+        TR_CORE_TRACE("Creating Vulkan Instance");
+
         if (enableValidation && !CheckValidationLayerSupport())
         {
-            TR_CORE_WARN("Validation layers requested but not available. Disabling.");
             m_ValidationEnabled = false;
             enableValidation = false;
         }
@@ -96,16 +103,22 @@ namespace Trinity
         }
 
         VulkanUtilities::VKCheck(vkCreateInstance(&l_CreateInfo, nullptr, &m_Instance), "Failed vkCreateInstance");
+
+        TR_CORE_TRACE("Vulkan Instance Created");
     }
 
     void VulkanInstance::CreateSurface(Window& window)
     {
+        TR_CORE_TRACE("Creating Vulkan Surface");
+
         NativeWindowHandle l_Handle = window.GetNativeHandle();
         if (!SDL_Vulkan_CreateSurface(l_Handle.Window, m_Instance, nullptr, &m_Surface))
         {
-            TR_CORE_CRITICAL("Failed to create Vulkan surface: {}", SDL_GetError());
+            TR_CORE_CRITICAL("Failed to create vulkan surface");
             std::abort();
         }
+
+        TR_CORE_TRACE("Vulkan Surface Created");
     }
 
     bool VulkanInstance::CheckValidationLayerSupport() const
@@ -124,6 +137,8 @@ namespace Trinity
                 if (strcmp(it_LayerName, it_LayerProperties.layerName) == 0)
                 {
                     l_Found = true;
+                    TR_CORE_TRACE("Validation Layer Found: {}", it_LayerProperties.layerName);
+
                     break;
                 }
             }

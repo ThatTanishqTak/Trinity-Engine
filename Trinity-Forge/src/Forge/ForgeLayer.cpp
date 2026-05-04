@@ -7,6 +7,7 @@
 #include "Trinity/Scene/SceneSerializer.h"
 #include "Trinity/Platform/Input/Desktop/DesktopInput.h"
 #include "Trinity/Platform/Input/Desktop/DesktopInputCodes.h"
+#include "Trinity/Utilities/Log.h"
 
 #include <imgui.h>
 #include <ImGuizmo.h>
@@ -82,9 +83,9 @@ ForgeLayer::~ForgeLayer() = default;
 
 void ForgeLayer::OnInitialize()
 {
-    m_SelectionContext.ActiveScene = &m_Scene;
+    TR_INFO("INITIALIZING FORGELAYER");
 
-    m_PanelManager.Initialize();
+    m_SelectionContext.ActiveScene = &m_Scene;
 
     m_ViewportPanel = m_PanelManager.RegisterPanel<Forge::ViewportPanel>("Viewport", &m_SelectionContext);
     m_HierarchyPanel = m_PanelManager.RegisterPanel<Forge::SceneHierarchyPanel>("Scene Hierarchy", &m_SelectionContext);
@@ -97,22 +98,28 @@ void ForgeLayer::OnInitialize()
     {
         RenderMenuBar();
     });
+
+    TR_INFO("FORGELAYER INITIALIZED");
 }
 
 void ForgeLayer::OnShutdown()
 {
-    m_PanelManager.Shutdown();
+    TR_INFO("SHUTTING DOWN FORGELAYER");
+
+    m_PanelManager.DeregisterPanel();
+
+    TR_INFO("FORGELAYER SHUTDOWN COMPLETE");
 }
 
 void ForgeLayer::OnUpdate(float deltaTime)
 {
-    if (Trinity::DesktopInput::KeyDown(Trinity::Code::KeyCode::TR_KEY_LEFT_CONTROL) && m_SelectionContext.State == EditorState::Edit)
+    if (Trinity::DesktopInput::KeyDown(Trinity::Code::KeyCode::KEY_LEFT_CONTROL) && m_SelectionContext.State == EditorState::Edit)
     {
-        if (Trinity::DesktopInput::KeyPressed(Trinity::Code::KeyCode::TR_KEY_N))
+        if (Trinity::DesktopInput::KeyPressed(Trinity::Code::KeyCode::KEY_N))
         {
             NewScene();
         }
-        else if (Trinity::DesktopInput::KeyPressed(Trinity::Code::KeyCode::TR_KEY_O))
+        else if (Trinity::DesktopInput::KeyPressed(Trinity::Code::KeyCode::KEY_O))
         {
             const std::string l_Path = PlatformOpenFileDialog("Trinity Scene\0*.tscene\0All Files\0*.*\0");
             if (!l_Path.empty())
@@ -120,9 +127,9 @@ void ForgeLayer::OnUpdate(float deltaTime)
                 OpenScene(l_Path);
             }
         }
-        else if (Trinity::DesktopInput::KeyPressed(Trinity::Code::KeyCode::TR_KEY_S))
+        else if (Trinity::DesktopInput::KeyPressed(Trinity::Code::KeyCode::KEY_S))
         {
-            if (Trinity::DesktopInput::KeyDown(Trinity::Code::KeyCode::TR_KEY_LEFT_SHIFT) || m_CurrentScenePath.empty())
+            if (Trinity::DesktopInput::KeyDown(Trinity::Code::KeyCode::KEY_LEFT_SHIFT) || m_CurrentScenePath.empty())
             {
                 const std::string l_Path = PlatformSaveFileDialog("Trinity Scene\0*.tscene\0All Files\0*.*\0", "tscene");
                 if (!l_Path.empty())

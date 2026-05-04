@@ -29,6 +29,8 @@ namespace Trinity
 
     void ImGuiLayer::OnInitialize()
     {
+        TR_CORE_INFO("INITIALIZING IMGUI LAYER");
+
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
 
@@ -49,18 +51,20 @@ namespace Trinity
             m_Implementation->ProcessPlatformEvent(event);
         });
 
-        TR_CORE_INFO("ImGui layer initialized");
+        TR_CORE_INFO("IMGUI LAYER INITIALIZED");
     }
 
     void ImGuiLayer::OnShutdown()
     {
+        TR_CORE_INFO("SHUTTING DOWN IMGUI LAYER");
+
         Renderer::WaitIdle();
 
         m_Implementation->Shutdown();
         m_Implementation.reset();
         ImGui::DestroyContext();
 
-        TR_CORE_INFO("ImGui layer shut down");
+        TR_CORE_INFO("IMGUI LAYER SHUTDOWN COMPLETE");
     }
 
     void ImGuiLayer::OnEvent(Event& e)
@@ -110,7 +114,6 @@ namespace Trinity
     {
         if (s_Instance == nullptr)
         {
-            TR_CORE_CRITICAL("ImGuiLayer instance not available.");
             std::abort();
         }
 

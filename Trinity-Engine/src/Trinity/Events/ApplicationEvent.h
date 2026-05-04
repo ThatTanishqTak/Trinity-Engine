@@ -26,8 +26,8 @@ namespace Trinity
             return ss.str();
         }
 
-        TR_EVENT_CLASS_TYPE(WindowResize)
-            TR_EVENT_CLASS_CATEGORY(EventCategoryApplication | EventCategoryWindow)
+        EVENT_CLASS_TYPE(WindowResize)
+            EVENT_CLASS_CATEGORY(EventCategoryApplication | EventCategoryWindow)
 
     private:
         uint32_t m_Width = 0;
@@ -39,8 +39,8 @@ namespace Trinity
     public:
         WindowCloseEvent() = default;
 
-        TR_EVENT_CLASS_TYPE(WindowClose)
-            TR_EVENT_CLASS_CATEGORY(EventCategoryApplication | EventCategoryWindow)
+        EVENT_CLASS_TYPE(WindowClose)
+            EVENT_CLASS_CATEGORY(EventCategoryApplication | EventCategoryWindow)
     };
 
     class WindowFocusEvent : public Event
@@ -48,8 +48,8 @@ namespace Trinity
     public:
         WindowFocusEvent() = default;
 
-        TR_EVENT_CLASS_TYPE(WindowFocus)
-            TR_EVENT_CLASS_CATEGORY(EventCategoryApplication | EventCategoryWindow)
+        EVENT_CLASS_TYPE(WindowFocus)
+            EVENT_CLASS_CATEGORY(EventCategoryApplication | EventCategoryWindow)
     };
 
     class WindowLostFocusEvent : public Event
@@ -57,8 +57,8 @@ namespace Trinity
     public:
         WindowLostFocusEvent() = default;
 
-        TR_EVENT_CLASS_TYPE(WindowLostFocus)
-            TR_EVENT_CLASS_CATEGORY(EventCategoryApplication | EventCategoryWindow)
+        EVENT_CLASS_TYPE(WindowLostFocus)
+            EVENT_CLASS_CATEGORY(EventCategoryApplication | EventCategoryWindow)
     };
 
     class WindowMovedEvent : public Event
@@ -80,8 +80,8 @@ namespace Trinity
             return ss.str();
         }
 
-        TR_EVENT_CLASS_TYPE(WindowMoved)
-            TR_EVENT_CLASS_CATEGORY(EventCategoryApplication | EventCategoryWindow)
+        EVENT_CLASS_TYPE(WindowMoved)
+            EVENT_CLASS_CATEGORY(EventCategoryApplication | EventCategoryWindow)
 
     private:
         int m_X = 0;

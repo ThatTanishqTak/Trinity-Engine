@@ -1,5 +1,9 @@
 #pragma once
 
+#ifndef SPDLOG_ACTIVE_LEVEL
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
+#endif
+
 // MSVC-only warning suppression
 #ifdef _MSC_VER
 #pragma warning(push, 0)
@@ -17,6 +21,9 @@
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
+
+#include <memory>
+#include <string>
 
 template<glm::length_t L, typename T, glm::qualifier Q>
 struct fmt::formatter<glm::vec<L, T, Q>> : formatter<std::string>
@@ -68,17 +75,17 @@ namespace Trinity
 }
 
 // Core log macros
-#define TR_CORE_TRACE(...) ::Trinity::CoreUtilities::Log::GetCoreLogger()->trace(__VA_ARGS__)
-#define TR_CORE_DEBUG(...) ::Trinity::CoreUtilities::Log::GetCoreLogger()->debug(__VA_ARGS__)
-#define TR_CORE_INFO(...)  ::Trinity::CoreUtilities::Log::GetCoreLogger()->info(__VA_ARGS__)
-#define TR_CORE_WARN(...)  ::Trinity::CoreUtilities::Log::GetCoreLogger()->warn(__VA_ARGS__)
-#define TR_CORE_ERROR(...) ::Trinity::CoreUtilities::Log::GetCoreLogger()->error(__VA_ARGS__)
-#define TR_CORE_CRITICAL(...) ::Trinity::CoreUtilities::Log::GetCoreLogger()->critical(__VA_ARGS__)
+#define TR_CORE_TRACE(...) SPDLOG_LOGGER_TRACE(::Trinity::CoreUtilities::Log::GetCoreLogger(), __VA_ARGS__)
+#define TR_CORE_DEBUG(...) SPDLOG_LOGGER_DEBUG(::Trinity::CoreUtilities::Log::GetCoreLogger(), __VA_ARGS__)
+#define TR_CORE_INFO(...) SPDLOG_LOGGER_INFO(::Trinity::CoreUtilities::Log::GetCoreLogger(), __VA_ARGS__)
+#define TR_CORE_WARN(...) SPDLOG_LOGGER_WARN(::Trinity::CoreUtilities::Log::GetCoreLogger(), __VA_ARGS__)
+#define TR_CORE_ERROR(...) SPDLOG_LOGGER_ERROR(::Trinity::CoreUtilities::Log::GetCoreLogger(), __VA_ARGS__)
+#define TR_CORE_CRITICAL(...) SPDLOG_LOGGER_CRITICAL(::Trinity::CoreUtilities::Log::GetCoreLogger(), __VA_ARGS__)
 
 // Client log macros
-#define TR_TRACE(...) ::Trinity::CoreUtilities::Log::GetClientLogger()->trace(__VA_ARGS__)
-#define TR_DEBUG(...) ::Trinity::CoreUtilities::Log::GetClientLogger()->debug(__VA_ARGS__)
-#define TR_INFO(...)  ::Trinity::CoreUtilities::Log::GetClientLogger()->info(__VA_ARGS__)
-#define TR_WARN(...)  ::Trinity::CoreUtilities::Log::GetClientLogger()->warn(__VA_ARGS__)
-#define TR_ERROR(...) ::Trinity::CoreUtilities::Log::GetClientLogger()->error(__VA_ARGS__)
-#define TR_CRITICAL(...) ::Trinity::CoreUtilities::Log::GetClientLogger()->critical(__VA_ARGS__)
+#define TR_TRACE(...) SPDLOG_LOGGER_TRACE(::Trinity::CoreUtilities::Log::GetClientLogger(), __VA_ARGS__)
+#define TR_DEBUG(...) SPDLOG_LOGGER_DEBUG(::Trinity::CoreUtilities::Log::GetClientLogger(), __VA_ARGS__)
+#define TR_INFO(...) SPDLOG_LOGGER_INFO(::Trinity::CoreUtilities::Log::GetClientLogger(), __VA_ARGS__)
+#define TR_WARN(...) SPDLOG_LOGGER_WARN(::Trinity::CoreUtilities::Log::GetClientLogger(), __VA_ARGS__)
+#define TR_ERROR(...) SPDLOG_LOGGER_ERROR(::Trinity::CoreUtilities::Log::GetClientLogger(), __VA_ARGS__)
+#define TR_CRITICAL(...) SPDLOG_LOGGER_CRITICAL(::Trinity::CoreUtilities::Log::GetClientLogger(), __VA_ARGS__)

@@ -114,6 +114,8 @@ namespace Trinity
 
     void VulkanCommandBuffer::Initialize(VkDevice device)
     {
+        TR_CORE_TRACE("Initializing Vulkan Command Buffer");
+
         m_Device = device;
 
         constexpr uint32_t l_PerType = 256;
@@ -135,10 +137,14 @@ namespace Trinity
         l_PoolInfo.pPoolSizes = l_PoolSizes;
 
         VulkanUtilities::VKCheck(vkCreateDescriptorPool(m_Device, &l_PoolInfo, nullptr, &m_TransientDescriptorPool), "Failed vkCreateDescriptorPool (transient)");
+
+        TR_CORE_TRACE("Vulkan Command Buffer Initialized");
     }
 
     void VulkanCommandBuffer::Shutdown()
     {
+        TR_CORE_TRACE("Shutting Down Vulkan Command Buffer");
+
         if (m_TransientDescriptorPool != VK_NULL_HANDLE && m_Device != VK_NULL_HANDLE)
         {
             vkDestroyDescriptorPool(m_Device, m_TransientDescriptorPool, nullptr);
@@ -148,6 +154,8 @@ namespace Trinity
         m_CommandBuffer = VK_NULL_HANDLE;
         m_BoundPipeline = nullptr;
         m_Device = VK_NULL_HANDLE;
+
+        TR_CORE_TRACE("Vulkan Command Buffer Shutdown Complete");
     }
 
     void VulkanCommandBuffer::Reset(VkCommandBuffer commandBuffer)

@@ -32,14 +32,20 @@ namespace Trinity
 
     RenderGraphPass& RenderGraph::AddPass(const std::string& name)
     {
+        TR_CORE_TRACE("Adding Render Pass");
+
         m_Passes.emplace_back(name);
         m_Compiled = false;
+
+        TR_CORE_TRACE("Render Pass Added: {}", name);
 
         return m_Passes.back();
     }
 
     void RenderGraph::Reset()
     {
+        TR_CORE_TRACE("Resetting Render Pass");
+
         OnReset();
 
         m_ResourceDescs.clear();
@@ -47,6 +53,8 @@ namespace Trinity
         m_Passes.clear();
         m_ExecutionOrder.clear();
         m_Compiled = false;
+
+        TR_CORE_TRACE("Render Pass Reset Complete");
     }
 
     void RenderGraph::Compile()
@@ -225,7 +233,6 @@ namespace Trinity
 
             if (l_Next == l_InvalidPass)
             {
-                TR_CORE_ERROR("[RENDER GRAPH]: Cyclic pass dependencies detected while compiling");
                 m_ExecutionOrder.clear();
 
                 return;
@@ -272,7 +279,6 @@ namespace Trinity
 
             if (l_ResolveDescription.Width == 0 || l_ResolveDescription.Height == 0)
             {
-                TR_CORE_WARN("[RENDER GRAPH]: Resource '{}' has zero extent and no swapchain fallback", l_ResolveDescription.DebugName);
                 continue;
             }
 

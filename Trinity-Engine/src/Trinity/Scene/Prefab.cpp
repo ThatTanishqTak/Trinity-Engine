@@ -104,12 +104,10 @@ namespace Trinity
         std::ofstream l_File(path);
         if (!l_File.is_open())
         {
-            TR_CORE_ERROR("Prefab: cannot write '{}'", path);
             return;
         }
 
         l_File << l_Out.c_str();
-        TR_CORE_INFO("Prefab saved: {}", path);
     }
 
     Entity Prefab::Instantiate(Scene& scene, const std::string& path)
@@ -121,13 +119,11 @@ namespace Trinity
         }
         catch (const YAML::Exception& e)
         {
-            TR_CORE_ERROR("Prefab: failed to load '{}': {}", path, e.what());
             return Entity{};
         }
 
         if (!l_Root["Prefab"])
         {
-            TR_CORE_ERROR("Prefab: missing 'Prefab' key in '{}'", path);
             return Entity{};
         }
 

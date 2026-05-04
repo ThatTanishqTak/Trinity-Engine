@@ -24,17 +24,10 @@ namespace Trinity
 
     void DesktopWindow::Initialize(const WindowProperties& properties)
     {
-        if (m_Initialized)
+        TR_CORE_INFO("INITIALIZING WINDOW");
+
+        if (!SDL_InitSubSystem(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD) || m_Initialized)
         {
-            TR_CORE_WARN("DesktopWindow::Initialize called more than once. Ignoring.");
-
-            return;
-        }
-
-        if (!SDL_InitSubSystem(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
-        {
-            TR_CORE_CRITICAL("SDL_InitSubSystem failed: {}", SDL_GetError());
-
             return;
         }
 
@@ -52,25 +45,30 @@ namespace Trinity
         }
 
         m_WindowHandle = SDL_CreateWindow(m_Data.Title.c_str(), static_cast<int>(m_Data.Width), static_cast<int>(m_Data.Height), l_WindowFlags);
+        TR_CORE_TRACE("Window Handle Created");
+
         if (m_WindowHandle == nullptr)
         {
-            TR_CORE_CRITICAL("SDL_CreateWindow failed: {}", SDL_GetError());
-
             SDL_QuitSubSystem(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD);
 
             return;
         }
 
         m_WindowID = SDL_GetWindowID(m_WindowHandle);
+        TR_CORE_TRACE("Window ID: {}", m_WindowID);
 
         m_ShouldClose = false;
         m_CursorVisible = true;
         m_CursorLocked = false;
         m_Initialized = true;
+
+        TR_CORE_INFO("WINDOW INITIALIZED");
     }
 
     void DesktopWindow::Shutdown()
     {
+        TR_CORE_INFO("SHUTTING DOWN WINDOW");
+
         if (!m_Initialized)
         {
             return;
@@ -92,12 +90,16 @@ namespace Trinity
         {
             SDL_DestroyWindow(m_WindowHandle);
             m_WindowHandle = nullptr;
+
+            TR_CORE_TRACE("Window Handle Destroyed");
         }
 
         m_WindowID = 0;
         m_Initialized = false;
 
         SDL_QuitSubSystem(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD);
+
+        TR_CORE_INFO("WINDOW SHUTDOWN COMPLETE");
     }
 
     void DesktopWindow::OnUpdate()

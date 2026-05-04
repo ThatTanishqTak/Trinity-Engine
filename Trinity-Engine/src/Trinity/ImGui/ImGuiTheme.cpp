@@ -8,13 +8,14 @@ namespace Trinity
 {
     void ImGuiTheme::LoadFonts()
     {
+        TR_CORE_TRACE("Loading Fonts");
+
         ImGuiIO& l_IO = ImGui::GetIO();
 
         // Regular weight — primary UI font
         ImFont* l_Regular = l_IO.Fonts->AddFontFromFileTTF("assets/resources/fonts/JetBrains Mono-Regular.ttf", 14.0f);
         if (!l_Regular)
         {
-            TR_CORE_WARN("Font not found: assets/fonts/JetBrains Mono-Regular.ttf — using built-in default");
             l_IO.Fonts->AddFontDefault();
         }
 
@@ -22,13 +23,16 @@ namespace Trinity
         ImFont* l_SemiBold = l_IO.Fonts->AddFontFromFileTTF("assets/resources/fonts/JetBrains Mono-SemiBold.ttf", 15.0f);
         if (!l_SemiBold)
         {
-            TR_CORE_WARN("Font not found: assets/fonts/JetBrains Mono-SemiBold.ttf — using built-in default");
             l_IO.Fonts->AddFontDefault();
         }
+
+        TR_CORE_TRACE("Fonts Loaded");
     }
 
     void ImGuiTheme::SetDarkTheme()
     {
+        TR_CORE_TRACE("Setting Up Dark Theme");
+
         ImGuiStyle& style = ImGui::GetStyle();
 
         style.WindowRounding = 4.0f;
@@ -95,5 +99,7 @@ namespace Trinity
         colors[ImGuiCol_Text] = ImVec4(0.90f, 0.90f, 0.90f, 1.00f);
         colors[ImGuiCol_TextDisabled] = ImVec4(0.45f, 0.45f, 0.45f, 1.00f);
         colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.00f, 0.00f, 0.00f, 0.45f);
+
+        TR_CORE_TRACE("Dark Theme Setup Complete");
     }
 }

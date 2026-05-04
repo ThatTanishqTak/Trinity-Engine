@@ -106,6 +106,8 @@ namespace Trinity
 
     void SceneRenderer::Initialize(uint32_t width, uint32_t height)
     {
+        TR_CORE_INFO("INITIALIZING SCENE RENDERER");
+
         m_Width = width;
         m_Height = height;
         m_Implementation = std::make_unique<Implementation>();
@@ -113,7 +115,6 @@ namespace Trinity
         m_Implementation->Graph = Renderer::GetAPI().CreateRenderGraph();
         if (!m_Implementation->Graph)
         {
-            TR_CORE_ERROR("[SCENE RENDERER]: Backend produced a null render graph");
             return;
         }
 
@@ -370,35 +371,41 @@ namespace Trinity
         l_ShadowPipelineSpecification.DebugName = "ShadowPipeline";
         m_Implementation->ShadowPipeline = Renderer::GetAPI().CreatePipeline(l_ShadowPipelineSpecification);
 
-        ShaderSpecification l_ShaderSpecification{};
-        l_ShaderSpecification.Modules.push_back({ ShaderStage::Vertex, "geometry_pass.vert.spv" });
-        l_ShaderSpecification.Modules.push_back({ ShaderStage::Fragment, "geometry_pass.frag.spv" });
-        l_ShaderSpecification.DebugName = "MeshShader";
-        auto a_Shader = Renderer::GetAPI().CreateShader(l_ShaderSpecification);
+        ShaderSpecification l_GeometryShaderSpecification{};
+        l_GeometryShaderSpecification.Modules.push_back({ ShaderStage::Vertex, "geometry_pass.vert.spv" });
+        l_GeometryShaderSpecification.Modules.push_back({ ShaderStage::Fragment, "geometry_pass.frag.spv" });
+        l_GeometryShaderSpecification.DebugName = "MeshShader";
+        auto a_Shader = Renderer::GetAPI().CreateShader(l_GeometryShaderSpecification);
 
-        PipelineSpecification l_PipelineSpecification{};
-        l_PipelineSpecification.PipelineShader = a_Shader;
-        l_PipelineSpecification.VertexAttributes =
+        PipelineSpecification l_GeometryPipelineSpecification{};
+        l_GeometryPipelineSpecification.PipelineShader = a_Shader;
+        l_GeometryPipelineSpecification.VertexAttributes =
         {
             { 0, 0, VertexAttributeFormat::Float3, 0 },
             { 1, 0, VertexAttributeFormat::Float3, 12 },
             { 2, 0, VertexAttributeFormat::Float2, 24 },
         };
-        l_PipelineSpecification.VertexStride = sizeof(Geometry::Vertex);
-        l_PipelineSpecification.PushConstants = { { ShaderStage::Vertex, 0, 128 } };
-        l_PipelineSpecification.ColorAttachmentFormats = { TextureFormat::RGBA8, TextureFormat::RGBA16F, TextureFormat::RGBA8 };
-        l_PipelineSpecification.DepthAttachmentFormat = TextureFormat::Depth32F;
-        l_PipelineSpecification.DepthTest = true;
-        l_PipelineSpecification.DepthWrite = true;
-        l_PipelineSpecification.DepthOp = DepthCompareOp::Less;
-        l_PipelineSpecification.CullingMode = CullMode::Back;
-        l_PipelineSpecification.DebugName = "MeshPipeline";
-        m_Implementation->MeshPipeline = Renderer::GetAPI().CreatePipeline(l_PipelineSpecification);
+        l_GeometryPipelineSpecification.VertexStride = sizeof(Geometry::Vertex);
+        l_GeometryPipelineSpecification.PushConstants = { { ShaderStage::Vertex, 0, 128 } };
+        l_GeometryPipelineSpecification.ColorAttachmentFormats = { TextureFormat::RGBA8, TextureFormat::RGBA16F, TextureFormat::RGBA8 };
+        l_GeometryPipelineSpecification.DepthAttachmentFormat = TextureFormat::Depth32F;
+        l_GeometryPipelineSpecification.DepthTest = true;
+        l_GeometryPipelineSpecification.DepthWrite = true;
+        l_GeometryPipelineSpecification.DepthOp = DepthCompareOp::Less;
+        l_GeometryPipelineSpecification.CullingMode = CullMode::None;
+        l_GeometryPipelineSpecification.DebugName = "MeshPipeline";
+        m_Implementation->MeshPipeline = Renderer::GetAPI().CreatePipeline(l_GeometryPipelineSpecification);
+
+        TR_CORE_INFO("SCENE RENDERER INITIALIZED");
     }
 
     void SceneRenderer::Shutdown()
     {
+        TR_CORE_INFO("SHUTTING DOWN SCENE RENDERER");
+
         m_Implementation.reset();
+
+        TR_CORE_INFO("SCENE RENDERER SHUTDOWN COMPLETE");
     }
 
     void SceneRenderer::BeginScene(const Camera& camera, const SceneRenderData& sceneData)

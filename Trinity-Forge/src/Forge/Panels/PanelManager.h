@@ -2,6 +2,8 @@
 
 #include "Forge/Panels/Panel.h"
 
+#include "Trinity/Utilities/Log.h"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -12,9 +14,6 @@ namespace Forge
     class PanelManager
     {
     public:
-        void Initialize();
-        void Shutdown();
-
         template<typename T, typename... Args>
         T* RegisterPanel(Args&&... args)
         {
@@ -22,10 +21,12 @@ namespace Forge
             T* l_Pointer = l_Panel.get();
             l_Panel->OnInitialize();
 
+            TR_TRACE("Registered Panel: {}", l_Panel->GetName());
             m_Panels.push_back(std::move(l_Panel));
 
             return l_Pointer;
         }
+        void DeregisterPanel();
 
         void UpdatePanels(float deltaTime);
         void PreRenderPanels();

@@ -29,6 +29,8 @@ namespace Trinity
 
     void VulkanRendererAPI::Initialize(Window& window, const RendererAPISpecification& specification)
     {
+        TR_CORE_INFO("INITIALIZING VULKAN");
+
         m_MaxFramesInFlight = specification.MaxFramesInFlight;
 
         m_Instance.Initialize(window, specification.EnableValidation);
@@ -44,11 +46,13 @@ namespace Trinity
         m_CommandPool.Initialize(m_Device, m_MaxFramesInFlight);
         m_SyncObjects.Initialize(m_Device.GetDevice(), m_MaxFramesInFlight, m_Swapchain.GetImageCount());
 
-        TR_CORE_INFO("Vulkan renderer initialized");
+        TR_CORE_INFO("VULKAN INITIALIZED");
     }
 
     void VulkanRendererAPI::Shutdown()
     {
+        TR_CORE_INFO("SHUTTING DOWN VULKAN");
+
         vkDeviceWaitIdle(m_Device.GetDevice());
 
         m_SyncObjects.Shutdown();
@@ -59,7 +63,7 @@ namespace Trinity
         m_Device.Shutdown();
         m_Instance.Shutdown();
 
-        TR_CORE_INFO("Vulkan renderer shut down");
+        TR_CORE_INFO("VULKAN SHUTDOWN COMPLETE");
     }
 
     bool VulkanRendererAPI::BeginFrame()
@@ -78,7 +82,6 @@ namespace Trinity
 
         if (l_Result != VK_SUCCESS && l_Result != VK_SUBOPTIMAL_KHR)
         {
-            TR_CORE_ERROR("Failed to acquire swapchain image.");
             return false;
         }
 
@@ -150,7 +153,7 @@ namespace Trinity
         }
         else if (l_Result != VK_SUCCESS)
         {
-            TR_CORE_ERROR("Failed to present swapchain image.");
+            TR_CORE_ERROR("Failed to present swapchain image");
         }
 
         m_CurrentFrameIndex = (m_CurrentFrameIndex + 1) % m_MaxFramesInFlight;
@@ -193,12 +196,20 @@ namespace Trinity
 
     std::shared_ptr<Buffer> VulkanRendererAPI::CreateBuffer(const BufferSpecification& specification)
     {
+        TR_CORE_TRACE("Creating Vulkan Buffer");
+
         return std::make_shared<VulkanBuffer>(m_Device.GetDevice(), m_Allocator.GetAllocator(), specification);
+
+        TR_CORE_TRACE("Vulkan Buffer Created");
     }
 
     std::shared_ptr<Texture> VulkanRendererAPI::CreateTexture(const TextureSpecification& specification)
     {
+        TR_CORE_TRACE("Creating Vulkan Texture");
+
         return std::make_shared<VulkanTexture>(m_Device.GetDevice(), m_Allocator.GetAllocator(), specification);
+
+        TR_CORE_TRACE("Vulkan Texture Created");
     }
 
     std::shared_ptr<Texture> VulkanRendererAPI::CreateTextureFromData(const void* data, uint32_t width, uint32_t height)
@@ -294,7 +305,6 @@ namespace Trinity
 
         if (!l_Pixels)
         {
-            TR_CORE_WARN("LoadTextureFromFile: failed to load '{}'", path);
             return nullptr;
         }
 
@@ -314,7 +324,6 @@ namespace Trinity
 
         if (!l_Pixels)
         {
-            TR_CORE_WARN("CreateTextureFromMemory: failed to decode image data");
             return nullptr;
         }
 

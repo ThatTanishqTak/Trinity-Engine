@@ -51,7 +51,6 @@ namespace Trinity
 
         if (!l_File.is_open())
         {
-            TR_CORE_ERROR("Failed to open shader file: {}", l_FullPath);
             return {};
         }
 

@@ -26,8 +26,8 @@ namespace Trinity
             return ss.str();
         }
 
-        TR_EVENT_CLASS_TYPE(MouseMoved)
-            TR_EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryMouse)
+        EVENT_CLASS_TYPE(MouseMoved)
+            EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryMouse)
 
     private:
         float m_MouseX = 0.0f;
@@ -53,8 +53,8 @@ namespace Trinity
             return ss.str();
         }
 
-        TR_EVENT_CLASS_TYPE(MouseScrolled)
-            TR_EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryMouse)
+        EVENT_CLASS_TYPE(MouseScrolled)
+            EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryMouse)
 
     private:
         float m_XOffset = 0.0f;
@@ -80,8 +80,8 @@ namespace Trinity
             return ss.str();
         }
 
-        TR_EVENT_CLASS_TYPE(MouseRawDelta)
-            TR_EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryMouse)
+        EVENT_CLASS_TYPE(MouseRawDelta)
+            EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryMouse)
 
     private:
         float m_XDelta = 0.0f;
@@ -93,7 +93,7 @@ namespace Trinity
     public:
         Code::MouseCode GetMouseButton() const { return m_Button; }
 
-        TR_EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryMouse | EventCategoryMouseButton)
+        EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryMouse | EventCategoryMouseButton)
 
     protected:
         explicit MouseButtonEvent(Code::MouseCode button) : m_Button(button)
@@ -101,7 +101,7 @@ namespace Trinity
 
         }
 
-        Code::MouseCode m_Button = Code::MouseCode::TR_BUTTON_0;
+        Code::MouseCode m_Button = Code::MouseCode::BUTTON_0;
     };
 
     class MouseButtonPressedEvent : public MouseButtonEvent
@@ -121,7 +121,7 @@ namespace Trinity
             return ss.str();
         }
 
-        TR_EVENT_CLASS_TYPE(MouseButtonPressed)
+        EVENT_CLASS_TYPE(MouseButtonPressed)
     };
 
     class MouseButtonReleasedEvent : public MouseButtonEvent
@@ -141,6 +141,6 @@ namespace Trinity
             return ss.str();
         }
 
-        TR_EVENT_CLASS_TYPE(MouseButtonReleased)
+        EVENT_CLASS_TYPE(MouseButtonReleased)
     };
 }

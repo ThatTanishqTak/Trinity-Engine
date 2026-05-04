@@ -1,5 +1,7 @@
 #include "Trinity/Renderer/Camera/EditorCamera.h"
 
+#include "Trinity/Utilities/Log.h"
+
 #include <glm/gtc/matrix_transform.hpp>
 #include <algorithm>
 #include <cmath>
@@ -8,7 +10,11 @@ namespace Trinity
 {
     EditorCamera::EditorCamera(float fovDegrees, float aspectRatio, float nearClip, float farClip) : Camera(fovDegrees, aspectRatio, nearClip, farClip)
     {
+        TR_CORE_INFO("SETTING UP EDITOR CAMERA");
+
         UpdateDirectionVectors();
+
+        TR_CORE_INFO("EDITOR CAMERA SETUP COMPLETE");
     }
 
     void EditorCamera::MoveForward(float distance)

@@ -15,7 +15,7 @@ namespace Trinity
     public:
         int GetGamepadID() const { return m_GamepadID; }
 
-        TR_EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryGamepad)
+        EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryGamepad)
 
     protected:
         explicit GamepadEvent(int gamepadID) : m_GamepadID(gamepadID)
@@ -46,7 +46,7 @@ namespace Trinity
             return ss.str();
         }
 
-        TR_EVENT_CLASS_TYPE(GamepadConnected)
+        EVENT_CLASS_TYPE(GamepadConnected)
 
     private:
         std::string m_Name;
@@ -69,7 +69,7 @@ namespace Trinity
             return ss.str();
         }
 
-        TR_EVENT_CLASS_TYPE(GamepadDisconnected)
+        EVENT_CLASS_TYPE(GamepadDisconnected)
     };
 
     class GamepadButtonEvent : public GamepadEvent
@@ -77,7 +77,7 @@ namespace Trinity
     public:
         Code::GamepadButton GetButton() const { return m_Button; }
 
-        TR_EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryGamepad)
+        EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryGamepad)
 
     protected:
         GamepadButtonEvent(int gamepadID, Code::GamepadButton button) : GamepadEvent(gamepadID), m_Button(button)
@@ -85,7 +85,7 @@ namespace Trinity
 
         }
 
-        Code::GamepadButton m_Button = Code::GamepadButton::TR_BUTTON_A;
+        Code::GamepadButton m_Button = Code::GamepadButton::BUTTON_A;
     };
 
     class GamepadButtonPressedEvent : public GamepadButtonEvent
@@ -105,7 +105,7 @@ namespace Trinity
             return ss.str();
         }
 
-        TR_EVENT_CLASS_TYPE(GamepadButtonPressed)
+        EVENT_CLASS_TYPE(GamepadButtonPressed)
     };
 
     class GamepadButtonReleasedEvent : public GamepadButtonEvent
@@ -125,7 +125,7 @@ namespace Trinity
             return ss.str();
         }
 
-        TR_EVENT_CLASS_TYPE(GamepadButtonReleased)
+        EVENT_CLASS_TYPE(GamepadButtonReleased)
     };
 
     class GamepadAxisMovedEvent : public GamepadEvent
@@ -148,11 +148,11 @@ namespace Trinity
             return ss.str();
         }
 
-        TR_EVENT_CLASS_TYPE(GamepadAxisMoved)
-            TR_EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryGamepad)
+        EVENT_CLASS_TYPE(GamepadAxisMoved)
+            EVENT_CLASS_CATEGORY(EventCategoryInput | EventCategoryGamepad)
 
     private:
-        Code::GamepadAxis m_Axis = Code::GamepadAxis::TR_AXIS_LEFT_X;
+        Code::GamepadAxis m_Axis = Code::GamepadAxis::AXIS_LEFT_X;
         float m_Value = 0.0f;
     };
 }

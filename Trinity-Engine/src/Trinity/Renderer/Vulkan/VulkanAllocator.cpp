@@ -29,6 +29,8 @@ namespace Trinity
 {
     void VulkanAllocator::Initialize(const VulkanDevice& device)
     {
+        TR_CORE_TRACE("Initializing Vulkan Memory Allocator");
+
         VmaAllocatorCreateInfo l_AllocatorInfo{};
         l_AllocatorInfo.instance = device.GetInstance();
         l_AllocatorInfo.physicalDevice = device.GetPhysicalDevice();
@@ -37,15 +39,19 @@ namespace Trinity
 
         VulkanUtilities::VKCheck(vmaCreateAllocator(&l_AllocatorInfo, &m_Allocator), "Failed vmaCreateAllocator");
 
-        TR_CORE_INFO("VMA allocator initialized");
+        TR_CORE_TRACE("Vulkan Memory Allocator Initialized");
     }
 
     void VulkanAllocator::Shutdown()
     {
         if (m_Allocator != VK_NULL_HANDLE)
         {
+            TR_CORE_TRACE("Shutting Down Vulkan Memory Allocator");
+
             vmaDestroyAllocator(m_Allocator);
             m_Allocator = VK_NULL_HANDLE;
+
+            TR_CORE_TRACE("Vulkan Memory Allocator Shutdown Complete");
         }
     }
 }

@@ -9,16 +9,16 @@ namespace Trinity
         switch (messageSeverity)
         {
             case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
-                TR_CORE_TRACE("[Vulkan] {}", pCallbackData->pMessage);
+                TR_CORE_TRACE("{}", pCallbackData->pMessage);
                 break;
             case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
-                TR_CORE_DEBUG("[Vulkan] {}", pCallbackData->pMessage);
+                TR_CORE_DEBUG("{}", pCallbackData->pMessage);
                 break;
             case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-                TR_CORE_WARN("[Vulkan] {}", pCallbackData->pMessage);
+                TR_CORE_WARN("{}", pCallbackData->pMessage);
                 break;
             case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-                TR_CORE_ERROR("[Vulkan] {}", pCallbackData->pMessage);
+                TR_CORE_ERROR("{}", pCallbackData->pMessage);
                 break;
             default:
                 break;
@@ -38,6 +38,8 @@ namespace Trinity
 
     void VulkanDebug::Initialize(VkInstance instance)
     {
+        TR_CORE_TRACE("Setting Up Vulkan Debug Messenger");
+
         m_Instance = instance;
 
         VkDebugUtilsMessengerCreateInfoEXT l_CreateInfo{};
@@ -51,7 +53,7 @@ namespace Trinity
 
             if (l_Result == VK_SUCCESS)
             {
-                TR_CORE_INFO("Vulkan debug messenger created");
+                TR_CORE_TRACE("Vulkan Debug Messenger Setup Complete");
             }
             else
             {
@@ -68,6 +70,8 @@ namespace Trinity
     {
         if (m_DebugMessenger != VK_NULL_HANDLE && m_Instance != VK_NULL_HANDLE)
         {
+            TR_CORE_TRACE("Shutting Down Vulkan Debug Messenger");
+
             auto a_DestroyFunction = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(m_Instance, "vkDestroyDebugUtilsMessengerEXT"));
 
             if (a_DestroyFunction != nullptr)
@@ -76,6 +80,8 @@ namespace Trinity
             }
 
             m_DebugMessenger = VK_NULL_HANDLE;
+
+            TR_CORE_TRACE("Vulkan Debug Messenger Shutdown Complete");
         }
     }
 }

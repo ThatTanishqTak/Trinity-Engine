@@ -8,6 +8,8 @@ namespace Trinity
 {
     void VulkanSyncObjects::Initialize(VkDevice device, uint32_t framesInFlight, uint32_t imageCount)
     {
+        TR_CORE_TRACE("Initializing Sync Objects");
+
         m_Device = device;
 
         m_ImageAvailableSemaphores.resize(framesInFlight);
@@ -32,11 +34,13 @@ namespace Trinity
             VulkanUtilities::VKCheck(vkCreateSemaphore(device, &l_SemaphoreInfo, nullptr, &m_RenderFinishedSemaphores[i]), "Failed vkCreateSemaphore");
         }
 
-        TR_CORE_INFO("Vulkan sync objects created ({} frames in flight, {} render semaphores)", framesInFlight, imageCount);
+        TR_CORE_TRACE("Sync Objects Initialized");
     }
 
     void VulkanSyncObjects::Shutdown()
     {
+        TR_CORE_TRACE("Shutting Down Sync Objects");
+
         if (m_Device == VK_NULL_HANDLE)
         {
             return;
@@ -56,6 +60,8 @@ namespace Trinity
         m_ImageAvailableSemaphores.clear();
         m_RenderFinishedSemaphores.clear();
         m_InFlightFences.clear();
+
+        TR_CORE_TRACE("Sync Objects Shutdown Complete");
     }
 
     void VulkanSyncObjects::WaitForFence(uint32_t frameIndex) const

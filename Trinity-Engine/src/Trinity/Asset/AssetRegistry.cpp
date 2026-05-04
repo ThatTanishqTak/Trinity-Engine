@@ -48,7 +48,6 @@ namespace Trinity
 
         if (l_Type == AssetType::None)
         {
-            TR_CORE_WARN("AssetRegistry: unrecognised file type '{}'", path.string());
             return InvalidAsset;
         }
 
@@ -92,7 +91,6 @@ namespace Trinity
         const AssetMetadata* l_Meta = GetMetadata(handle);
         if (!l_Meta || l_Meta->Type != AssetType::Mesh)
         {
-            TR_CORE_ERROR("AssetRegistry: no mesh metadata for handle {}", handle);
             return nullptr;
         }
 
@@ -121,7 +119,6 @@ namespace Trinity
         const AssetMetadata* l_Meta = GetMetadata(handle);
         if (!l_Meta || l_Meta->Type != AssetType::Texture)
         {
-            TR_CORE_ERROR("AssetRegistry: no texture metadata for handle {}", handle);
             return nullptr;
         }
 
@@ -159,6 +156,7 @@ namespace Trinity
                         l_Meta.UUID = l_Handle;
                         l_Meta.Type = type;
                         l_Meta.SourcePath = sourcePath.string();
+
                         m_Metadata[l_Handle] = l_Meta;
                     }
 
@@ -167,7 +165,7 @@ namespace Trinity
             }
             catch (const YAML::Exception& e)
             {
-                TR_CORE_WARN("AssetRegistry: failed to read meta '{}': {}", l_MetaPath.string(), e.what());
+                //TR_CORE_WARN("Failed to read metadata for: {}, error: {}", l_MetaPath, e.what());
             }
         }
 
@@ -192,7 +190,7 @@ namespace Trinity
         }
         else
         {
-            TR_CORE_WARN("AssetRegistry: could not write meta '{}'", l_MetaPath.string());
+           //TR_CORE_WARN("Failed to write metadata for {}", l_MetaPath);
         }
 
         return l_Handle;

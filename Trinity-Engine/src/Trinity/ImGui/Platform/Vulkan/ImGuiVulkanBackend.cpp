@@ -17,6 +17,8 @@ namespace Trinity
 {
     void ImGuiLayer::Implementation::Initialize(SDL_Window* window, VulkanRendererAPI& api)
     {
+        TR_CORE_TRACE("Initializing ImGui Vulkan Backend");
+
         Device = api.GetDevice().GetDevice();
 
         CreateDescriptorPool();
@@ -46,11 +48,13 @@ namespace Trinity
         ImGui_ImplSDL3_InitForVulkan(window);
         ImGui_ImplVulkan_Init(&l_VulkanInfo);
 
-        TR_CORE_INFO("ImGui Vulkan backend initialized");
+        TR_CORE_TRACE("ImGui Vulkan Backend Initialized");
     }
 
     void ImGuiLayer::Implementation::Shutdown()
     {
+        TR_CORE_TRACE("Shutting Down ImGui Vulkan Backend");
+
         ImGui_ImplVulkan_Shutdown();
         ImGui_ImplSDL3_Shutdown();
 
@@ -65,6 +69,8 @@ namespace Trinity
             vkDestroyDescriptorPool(Device, DescriptorPool, nullptr);
             DescriptorPool = VK_NULL_HANDLE;
         }
+
+        TR_CORE_TRACE("ImGui Vulkan Backend Shutdown Complete");
     }
 
     void ImGuiLayer::Implementation::NewFrame()
@@ -123,6 +129,8 @@ namespace Trinity
 
     void ImGuiLayer::Implementation::CreateDescriptorPool()
     {
+        TR_CORE_TRACE("Creating Descriptor Pool");
+
         VkDescriptorPoolSize l_PoolSizes[] =
         {
             { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
@@ -146,10 +154,14 @@ namespace Trinity
         l_PoolInfo.pPoolSizes = l_PoolSizes;
 
         VulkanUtilities::VKCheck(vkCreateDescriptorPool(Device, &l_PoolInfo, nullptr, &DescriptorPool), "Failed vkCreateDescriptorPool (ImGui)");
+
+        TR_CORE_TRACE("Descriptor Pool Created");
     }
 
     void ImGuiLayer::Implementation::CreateDefaultSampler()
     {
+        TR_CORE_TRACE("Creating Default Sampler");
+
         VkSamplerCreateInfo l_SamplerInfo{};
         l_SamplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
         l_SamplerInfo.magFilter = VK_FILTER_LINEAR;
@@ -161,5 +173,7 @@ namespace Trinity
         l_SamplerInfo.maxLod = VK_LOD_CLAMP_NONE;
 
         VulkanUtilities::VKCheck(vkCreateSampler(Device, &l_SamplerInfo, nullptr, &DefaultSampler), "Failed vkCreateSampler (ImGui default)");
+
+        TR_CORE_TRACE("Default Sampler Created");
     }
 }

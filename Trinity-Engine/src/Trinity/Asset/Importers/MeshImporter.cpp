@@ -21,7 +21,6 @@ namespace Trinity
 
         if (!l_Scene || (l_Scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) || !l_Scene->mRootNode)
         {
-            TR_CORE_ERROR("MeshImporter: failed to import '{}': {}", path.string(), l_Importer.GetErrorString());
             return nullptr;
         }
 
@@ -64,11 +63,8 @@ namespace Trinity
 
         if (l_Vertices.empty() || l_Indices.empty())
         {
-            TR_CORE_ERROR("MeshImporter: '{}' produced no geometry", path.string());
             return nullptr;
         }
-
-        TR_CORE_INFO("MeshImporter: imported '{}' — {} vertices, {} indices", path.filename().string(), l_Vertices.size(), l_Indices.size());
 
         auto a_Mesh = Mesh::Create(l_Vertices, l_Indices);
 
@@ -142,14 +138,13 @@ namespace Trinity
 
             if (l_Texture)
             {
-                TR_CORE_INFO("MeshImporter: loaded albedo texture for '{}'", path.filename().string());
                 a_Mesh->AlbedoTexture = l_Texture;
 
                 break;
             }
             else
             {
-                TR_CORE_WARN("MeshImporter: found diffuse slot '{}' but could not load it for '{}'", l_PathString, path.filename().string());
+
             }
         }
 

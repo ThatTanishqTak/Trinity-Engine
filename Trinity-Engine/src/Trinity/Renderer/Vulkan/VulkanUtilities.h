@@ -18,7 +18,6 @@ namespace Trinity
         {
             if (result != VK_SUCCESS)
             {
-                TR_CORE_CRITICAL("[VULKAN ERROR]: {} at {}:{}", what, __FILE__, __LINE__);
                 std::abort();
             }
         }

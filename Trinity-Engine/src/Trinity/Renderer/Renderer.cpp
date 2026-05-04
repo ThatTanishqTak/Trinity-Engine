@@ -1,21 +1,31 @@
 #include "Trinity/Renderer/Renderer.h"
 
+#include "Trinity/Utilities/Log.h"
+
+#include <string>
+
 namespace Trinity
 {
 	std::unique_ptr<RendererAPI> Renderer::s_API = nullptr;
 
 	void Renderer::Initialize(Window& window, const RendererSpecification& specification)
 	{
+        TR_CORE_INFO("INITIALIZING RENDERER");
+
 		RendererAPISpecification l_APISpecification;
 		l_APISpecification.MaxFramesInFlight = specification.MaxFramesInFlight;
 		l_APISpecification.EnableValidation = specification.EnableValidation;
 
 		s_API = RendererAPI::Create(specification.Backend);
 		s_API->Initialize(window, l_APISpecification);
+
+        TR_CORE_INFO("RENDERER INITIALIZED");
 	}
 
 	void Renderer::Shutdown()
 	{
+        TR_CORE_INFO("SHUTTING DOWN RENDERER");
+
 		if (!s_API)
 		{
 			return;
@@ -23,6 +33,8 @@ namespace Trinity
 
 		s_API->Shutdown();
 		s_API.reset();
+
+        TR_CORE_INFO("RENDERER SHUTDOWN COMPLETE");
 	}
 
 	bool Renderer::BeginFrame()
