@@ -56,6 +56,60 @@ namespace Trinity
         UInt4
     };
 
+    enum class BlendFactor : uint8_t
+    {
+        Zero = 0,
+        One,
+        SrcColor,
+        OneMinusSrcColor,
+        DstColor,
+        OneMinusDstColor,
+        SrcAlpha,
+        OneMinusSrcAlpha,
+        DstAlpha,
+        OneMinusDstAlpha,
+        ConstantColor,
+        OneMinusConstantColor,
+        ConstantAlpha,
+        OneMinusConstantAlpha,
+        SrcAlphaSaturate
+    };
+
+    enum class BlendOp : uint8_t
+    {
+        Add = 0,
+        Subtract,
+        ReverseSubtract,
+        Min,
+        Max
+    };
+
+    enum class ColorWriteMask : uint8_t
+    {
+        None = 0,
+        Red = 1 << 0,
+        Green = 1 << 1,
+        Blue = 1 << 2,
+        Alpha = 1 << 3,
+        RGB = Red | Green | Blue,
+        RGBA = Red | Green | Blue | Alpha
+    };
+
+    inline ColorWriteMask operator|(ColorWriteMask a, ColorWriteMask b) { return static_cast<ColorWriteMask>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b)); }
+    inline bool operator&(ColorWriteMask a, ColorWriteMask b) { return (static_cast<uint8_t>(a) & static_cast<uint8_t>(b)) != 0; }
+
+    struct BlendAttachmentState
+    {
+        bool BlendEnable = false;
+        BlendFactor SrcColorFactor = BlendFactor::One;
+        BlendFactor DstColorFactor = BlendFactor::Zero;
+        BlendOp ColorOp = BlendOp::Add;
+        BlendFactor SrcAlphaFactor = BlendFactor::One;
+        BlendFactor DstAlphaFactor = BlendFactor::Zero;
+        BlendOp AlphaOp = BlendOp::Add;
+        ColorWriteMask WriteMask = ColorWriteMask::RGBA;
+    };
+
     struct VertexAttribute
     {
         uint32_t Location = 0;
@@ -69,21 +123,6 @@ namespace Trinity
         ShaderStage Stage = ShaderStage::Vertex;
         uint32_t Offset = 0;
         uint32_t Size = 0;
-    };
-
-    enum class DescriptorType : uint8_t
-    {
-        CombinedImageSampler = 0,
-        UniformBuffer,
-        StorageBuffer,
-    };
-
-    struct DescriptorSetLayoutBinding
-    {
-        uint32_t Binding = 0;
-        DescriptorType Type = DescriptorType::CombinedImageSampler;
-        ShaderStage Stage = ShaderStage::Fragment;
-        uint32_t Count = 1;
     };
 
     struct PipelineSpecification
@@ -103,10 +142,14 @@ namespace Trinity
         float DepthBiasConstantFactor = 0.0f;
         float DepthBiasSlopeFactor = 0.0f;
 
-        std::vector<DescriptorSetLayoutBinding> DescriptorBindings;
+        uint32_t SampleCount = 1;
+        bool SampleShadingEnable = false;
+        float MinSampleShading = 1.0f;
+
         std::vector<std::shared_ptr<DescriptorSetLayout>> DescriptorSetLayouts;
 
         std::vector<TextureFormat> ColorAttachmentFormats;
+        std::vector<BlendAttachmentState> BlendStates;
         TextureFormat DepthAttachmentFormat = TextureFormat::None;
 
         std::string DebugName;

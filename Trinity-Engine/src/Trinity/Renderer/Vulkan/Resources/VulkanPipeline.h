@@ -9,17 +9,15 @@ namespace Trinity
     class VulkanPipeline final : public Pipeline
     {
     public:
-        VulkanPipeline(VkDevice device, const PipelineSpecification& specification);
+        VulkanPipeline(VkDevice device, const PipelineSpecification& specification, VkPipelineCache pipelineCache = VK_NULL_HANDLE);
         ~VulkanPipeline() override;
 
         VkPipeline GetPipeline() const { return m_Pipeline; }
         VkPipelineLayout GetLayout() const { return m_PipelineLayout; }
-        VkDescriptorSetLayout GetDescriptorSetLayout() const { return m_DescriptorSetLayout; }
 
     private:
         VkDevice m_Device = VK_NULL_HANDLE;
         VkPipeline m_Pipeline = VK_NULL_HANDLE;
         VkPipelineLayout m_PipelineLayout = VK_NULL_HANDLE;
-        VkDescriptorSetLayout m_DescriptorSetLayout = VK_NULL_HANDLE;
     };
 }

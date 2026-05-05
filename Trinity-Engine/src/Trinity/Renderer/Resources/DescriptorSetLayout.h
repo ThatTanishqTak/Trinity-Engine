@@ -51,6 +51,8 @@ namespace Trinity
     public:
         virtual ~DescriptorSetLayout() = default;
 
+        virtual uint64_t GetOpaqueHandle() const = 0;
+
         const DescriptorSetLayoutSpecification& GetSpecification() const { return m_Specification; }
 
     protected:
