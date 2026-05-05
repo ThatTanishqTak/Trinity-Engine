@@ -26,26 +26,65 @@ namespace Trinity
         {
             switch (format)
             {
-                case TextureFormat::RGBA8:
-                    return VK_FORMAT_R8G8B8A8_UNORM;
-                case TextureFormat::BGRA8:
-                    return VK_FORMAT_B8G8R8A8_UNORM;
-                case TextureFormat::RGBA16F:
-                    return VK_FORMAT_R16G16B16A16_SFLOAT;
-                case TextureFormat::RGBA32F:
-                    return VK_FORMAT_R32G32B32A32_SFLOAT;
-                case TextureFormat::RG16F:
-                    return VK_FORMAT_R16G16_SFLOAT;
-                case TextureFormat::RG32F:
-                    return VK_FORMAT_R32G32_SFLOAT;
                 case TextureFormat::R8:
                     return VK_FORMAT_R8_UNORM;
+                case TextureFormat::RG8:
+                    return VK_FORMAT_R8G8_UNORM;
+                case TextureFormat::RGBA8:
+                    return VK_FORMAT_R8G8B8A8_UNORM;
+                case TextureFormat::RGBA8_SRGB:
+                    return VK_FORMAT_R8G8B8A8_SRGB;
+                case TextureFormat::BGRA8:
+                    return VK_FORMAT_B8G8R8A8_UNORM;
+                case TextureFormat::BGRA8_SRGB:
+                    return VK_FORMAT_B8G8R8A8_SRGB;
+
+                case TextureFormat::R16F:
+                    return VK_FORMAT_R16_SFLOAT;
+                case TextureFormat::RG16F:
+                    return VK_FORMAT_R16G16_SFLOAT;
+                case TextureFormat::RGBA16F:
+                    return VK_FORMAT_R16G16B16A16_SFLOAT;
+
                 case TextureFormat::R32F:
                     return VK_FORMAT_R32_SFLOAT;
+                case TextureFormat::RG32F:
+                    return VK_FORMAT_R32G32_SFLOAT;
+                case TextureFormat::RGBA32F:
+                    return VK_FORMAT_R32G32B32A32_SFLOAT;
+
+                case TextureFormat::R11G11B10F:
+                    return VK_FORMAT_B10G11R11_UFLOAT_PACK32;
+                case TextureFormat::RGB10A2:
+                    return VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+
+                case TextureFormat::Depth16Unorm:
+                    return VK_FORMAT_D16_UNORM;
                 case TextureFormat::Depth32F:
                     return VK_FORMAT_D32_SFLOAT;
                 case TextureFormat::Depth24Stencil8:
                     return VK_FORMAT_D24_UNORM_S8_UINT;
+                case TextureFormat::Depth32FStencil8:
+                    return VK_FORMAT_D32_SFLOAT_S8_UINT;
+
+                case TextureFormat::BC1:
+                    return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+                case TextureFormat::BC2:
+                    return VK_FORMAT_BC2_UNORM_BLOCK;
+                case TextureFormat::BC3:
+                    return VK_FORMAT_BC3_UNORM_BLOCK;
+                case TextureFormat::BC4:
+                    return VK_FORMAT_BC4_UNORM_BLOCK;
+                case TextureFormat::BC5:
+                    return VK_FORMAT_BC5_UNORM_BLOCK;
+                case TextureFormat::BC6H:
+                    return VK_FORMAT_BC6H_UFLOAT_BLOCK;
+                case TextureFormat::BC7:
+                    return VK_FORMAT_BC7_UNORM_BLOCK;
+
+                case TextureFormat::ASTC_4x4:
+                    return VK_FORMAT_ASTC_4x4_UNORM_BLOCK;
+
                 default:
                     return VK_FORMAT_UNDEFINED;
             }
@@ -53,7 +92,25 @@ namespace Trinity
 
         inline bool IsDepthFormat(TextureFormat format)
         {
-            return format == TextureFormat::Depth32F || format == TextureFormat::Depth24Stencil8;
+            return format == TextureFormat::Depth16Unorm || format == TextureFormat::Depth32F || format == TextureFormat::Depth24Stencil8 || format == TextureFormat::Depth32FStencil8;
+        }
+
+        inline bool IsBlockCompressedFormat(TextureFormat format)
+        {
+            switch (format)
+            {
+                case TextureFormat::BC1:
+                case TextureFormat::BC2:
+                case TextureFormat::BC3:
+                case TextureFormat::BC4:
+                case TextureFormat::BC5:
+                case TextureFormat::BC6H:
+                case TextureFormat::BC7:
+                case TextureFormat::ASTC_4x4:
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         inline VkImageUsageFlags ToVkImageUsage(TextureUsage usage)
@@ -87,6 +144,11 @@ namespace Trinity
             if (usage & TextureUsage::TransferDestination)
             {
                 l_Flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+            }
+
+            if (usage & TextureUsage::InputAttachment)
+            {
+                l_Flags |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
             }
 
             return l_Flags;

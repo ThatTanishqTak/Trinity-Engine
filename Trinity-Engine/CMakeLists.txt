@@ -128,23 +128,6 @@ add_subdirectory(vendor/imguizmo)
 
 if(Trinity_Renderer STREQUAL "Vulkan")
     add_subdirectory(vendor/VulkanMemoryAllocator)
-    block()
-        vendor_build_option(SPIRV_CROSS_CLI OFF)
-        vendor_build_option(SPIRV_CROSS_ENABLE_TESTS OFF)
-        vendor_build_option(SPIRV_CROSS_ENABLE_GLSL ON)
-        vendor_build_option(SPIRV_CROSS_ENABLE_HLSL OFF)
-        vendor_build_option(SPIRV_CROSS_ENABLE_MSL OFF)
-        vendor_build_option(SPIRV_CROSS_ENABLE_CPP OFF)
-        vendor_build_option(SPIRV_CROSS_ENABLE_REFLECT OFF)
-        vendor_build_option(SPIRV_CROSS_ENABLE_C_API OFF)
-        vendor_build_option(SPIRV_CROSS_ENABLE_UTIL OFF)
-        vendor_build_option(SPIRV_CROSS_SKIP_INSTALL ON)
-        add_subdirectory(vendor/SPIRV-Cross)
-    endblock()
-
-    if(MSVC AND TARGET spirv-cross-core)
-        set_property(TARGET spirv-cross-core PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
-    endif()
 endif()
 
 if(Trinity_Renderer STREQUAL "Vulkan")
@@ -219,7 +202,6 @@ if(Trinity_Renderer STREQUAL "Vulkan")
     target_link_libraries(${PROJECT_NAME} PUBLIC
         Vulkan::Vulkan
         GPUOpen::VulkanMemoryAllocator
-        spirv-cross-core
     )
 
     target_compile_definitions(${PROJECT_NAME} PRIVATE

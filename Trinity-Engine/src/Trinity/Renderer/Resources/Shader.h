@@ -78,90 +78,10 @@ namespace Trinity
         std::string DebugName;
     };
 
-    enum class ReflectedResourceType : uint8_t
-    {
-        UniformBuffer = 0,
-        StorageBuffer,
-        SampledImage,
-        StorageImage,
-        Sampler,
-        CombinedImageSampler,
-        InputAttachment,
-        AccelerationStructure
-    };
-
-    enum class ReflectedVertexFormat : uint8_t
-    {
-        Unknown = 0,
-        Float,
-        Float2,
-        Float3,
-        Float4,
-        Int,
-        Int2,
-        Int3,
-        Int4,
-        UInt,
-        UInt2,
-        UInt3,
-        UInt4
-    };
-
-    struct ReflectedDescriptorBinding
-    {
-        uint32_t Set = 0;
-        uint32_t Binding = 0;
-        ReflectedResourceType Type = ReflectedResourceType::UniformBuffer;
-        uint32_t Count = 1;
-        bool IsRuntimeArray = false;
-        ShaderStageFlags Stages = ShaderStageFlags::None;
-        std::string Name;
-    };
-
-    struct ReflectedPushConstantRange
-    {
-        uint32_t Offset = 0;
-        uint32_t Size = 0;
-        ShaderStageFlags Stages = ShaderStageFlags::None;
-        std::string Name;
-    };
-
-    struct ReflectedVertexInput
-    {
-        uint32_t Location = 0;
-        ReflectedVertexFormat Format = ReflectedVertexFormat::Unknown;
-        std::string Name;
-    };
-
-    struct ReflectedSpecializationConstant
-    {
-        uint32_t ConstantID = 0;
-        uint32_t Size = 0;
-        ShaderStageFlags Stages = ShaderStageFlags::None;
-        std::string Name;
-    };
-
-    struct ReflectedEntryPoint
-    {
-        ShaderStage Stage = ShaderStage::None;
-        std::string Name;
-    };
-
-    struct ShaderReflection
-    {
-        std::vector<ReflectedDescriptorBinding> DescriptorBindings;
-        std::vector<ReflectedPushConstantRange> PushConstants;
-        std::vector<ReflectedVertexInput> VertexInputs;
-        std::vector<ReflectedSpecializationConstant> SpecializationConstants;
-        std::vector<ReflectedEntryPoint> EntryPoints;
-    };
-
     class Shader
     {
     public:
         virtual ~Shader() = default;
-
-        virtual const ShaderReflection& GetReflection() const = 0;
 
         const ShaderSpecification& GetSpecification() const { return m_Specification; }
 
