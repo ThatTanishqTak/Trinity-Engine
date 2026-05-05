@@ -37,7 +37,7 @@ namespace Trinity
         bool IsCompiled() const { return m_Compiled; }
         const std::vector<RenderGraphPass>& GetPasses() const { return m_Passes; }
         const std::vector<uint32_t>& GetExecutionOrder() const { return m_ExecutionOrder; }
-        const std::vector<RenderGraphTextureDescription>& GetResourceDescs() const { return m_ResourceDescs; }
+        const std::vector<RenderGraphTextureDescription>& GetResourceDescription() const { return m_ResourceDescription; }
 
     protected:
         virtual std::shared_ptr<Texture> CreateResource(const RenderGraphTextureDescription& description) = 0;
@@ -70,7 +70,7 @@ namespace Trinity
 
         bool m_Compiled = false;
 
-        std::vector<RenderGraphTextureDescription> m_ResourceDescs;
+        std::vector<RenderGraphTextureDescription> m_ResourceDescription;
         std::vector<std::shared_ptr<Texture>> m_Resources;
         std::vector<RenderGraphPass> m_Passes;
         std::vector<uint32_t> m_ExecutionOrder;

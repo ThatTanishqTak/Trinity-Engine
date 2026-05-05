@@ -1,6 +1,6 @@
 #include "Trinity/Renderer/RenderGraph/RenderGraph.h"
 
-#include "Trinity/Renderer/CommandBuffer.h"
+#include "Trinity/Renderer/CommandList.h"
 #include "Trinity/Renderer/Renderer.h"
 #include "Trinity/Utilities/Log.h"
 
@@ -14,17 +14,17 @@ namespace Trinity
         return Graph ? Graph->GetTexture(handle) : nullptr;
     }
 
-    CommandBuffer& RenderGraphContext::GetCommandBuffer() const
+    CommandList& RenderGraphContext::GetCommandList() const
     {
-        return *CommandBuf;
+        return *Cmd;
     }
 
     RenderGraphResourceHandle RenderGraph::DeclareTexture(const RenderGraphTextureDescription& description)
     {
         RenderGraphResourceHandle l_Handle{};
-        l_Handle.Index = static_cast<uint32_t>(m_ResourceDescs.size());
+        l_Handle.Index = static_cast<uint32_t>(m_ResourceDescription.size());
 
-        m_ResourceDescs.push_back(description);
+        m_ResourceDescription.push_back(description);
         m_Compiled = false;
 
         return l_Handle;
@@ -32,29 +32,27 @@ namespace Trinity
 
     RenderGraphPass& RenderGraph::AddPass(const std::string& name)
     {
-        TR_CORE_TRACE("Adding Render Pass");
-
         m_Passes.emplace_back(name);
         m_Compiled = false;
 
-        TR_CORE_TRACE("Render Pass Added: {}", name);
+        TR_CORE_TRACE("RenderGraphPass Added: {}", name);
 
         return m_Passes.back();
     }
 
     void RenderGraph::Reset()
     {
-        TR_CORE_TRACE("Resetting Render Pass");
+        TR_CORE_TRACE("Resetting Render Graph");
 
         OnReset();
 
-        m_ResourceDescs.clear();
+        m_ResourceDescription.clear();
         m_Resources.clear();
         m_Passes.clear();
         m_ExecutionOrder.clear();
         m_Compiled = false;
 
-        TR_CORE_TRACE("Render Pass Reset Complete");
+        TR_CORE_TRACE("Render Graph Reset Complete");
     }
 
     void RenderGraph::Compile()
@@ -82,7 +80,7 @@ namespace Trinity
 
         RenderGraphContext l_Context{};
         l_Context.Graph = this;
-        l_Context.CommandBuf = &Renderer::GetCommandBuffer();
+        l_Context.Cmd = &Renderer::GetCommandList();
         l_Context.Width = m_SwapchainWidth;
         l_Context.Height = m_SwapchainHeight;
 
@@ -132,7 +130,7 @@ namespace Trinity
             return;
         }
 
-        const uint32_t l_ResourceCount = static_cast<uint32_t>(m_ResourceDescs.size());
+        const uint32_t l_ResourceCount = static_cast<uint32_t>(m_ResourceDescription.size());
         constexpr uint32_t l_InvalidPass = std::numeric_limits<uint32_t>::max();
 
         std::vector<std::vector<uint32_t>> l_Dependencies(l_PassCount);
@@ -262,11 +260,11 @@ namespace Trinity
 
     void RenderGraph::AllocateResources()
     {
-        m_Resources.assign(m_ResourceDescs.size(), nullptr);
+        m_Resources.assign(m_ResourceDescription.size(), nullptr);
 
-        for (size_t i = 0; i < m_ResourceDescs.size(); i++)
+        for (size_t i = 0; i < m_ResourceDescription.size(); i++)
         {
-            RenderGraphTextureDescription l_ResolveDescription = m_ResourceDescs[i];
+            RenderGraphTextureDescription l_ResolveDescription = m_ResourceDescription[i];
             if (l_ResolveDescription.Width == 0)
             {
                 l_ResolveDescription.Width = m_SwapchainWidth;

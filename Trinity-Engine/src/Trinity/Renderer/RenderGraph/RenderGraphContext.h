@@ -10,17 +10,17 @@
 namespace Trinity
 {
     class RenderGraph;
-    class CommandBuffer;
+    class CommandList;
 
     struct RenderGraphContext
     {
         RenderGraph* Graph = nullptr;
-        CommandBuffer* CommandBuf = nullptr;
+        CommandList* Cmd = nullptr;
 
         uint32_t Width = 0;
         uint32_t Height = 0;
 
         std::shared_ptr<Texture> GetTexture(RenderGraphResourceHandle handle) const;
-        CommandBuffer& GetCommandBuffer() const;
+        CommandList& GetCommandList() const;
     };
 }

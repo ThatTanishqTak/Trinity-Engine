@@ -16,8 +16,8 @@ namespace Trinity
 {
     class RenderGraph;
 
-	class VulkanRendererAPI final : public RendererAPI
-	{
+    class VulkanRendererAPI final : public RendererAPI
+    {
     public:
         VulkanRendererAPI();
         ~VulkanRendererAPI() override;
@@ -38,7 +38,10 @@ namespace Trinity
         std::shared_ptr<Framebuffer> CreateFramebuffer(const FramebufferSpecification& specification) override;
         std::shared_ptr<Shader> CreateShader(const ShaderSpecification& specification) override;
         std::shared_ptr<Pipeline> CreatePipeline(const PipelineSpecification& specification) override;
+        std::shared_ptr<ComputePipeline> CreateComputePipeline(const ComputePipelineSpecification& specification) override;
         std::shared_ptr<Sampler> CreateSampler(const SamplerSpecification& specification) override;
+        std::shared_ptr<DescriptorSetLayout> CreateDescriptorSetLayout(const DescriptorSetLayoutSpecification& specification) override;
+        std::shared_ptr<QueryPool> CreateQueryPool(const QueryPoolSpecification& specification) override;
 
         std::unique_ptr<RenderGraph> CreateRenderGraph() override;
 
@@ -48,12 +51,17 @@ namespace Trinity
         uint32_t GetCurrentFrameIndex() const override { return m_CurrentFrameIndex; }
         uint32_t GetMaxFramesInFlight() const override { return m_MaxFramesInFlight; }
 
+        bool SupportsAsyncCompute() const override { return m_SupportsAsyncCompute; }
+        bool SupportsBindless() const override { return m_SupportsBindless; }
+        bool SupportsRayTracing() const override { return m_SupportsRayTracing; }
+        bool SupportsMeshShaders() const override { return m_SupportsMeshShaders; }
+
         VulkanDevice& GetDevice() { return m_Device; }
         VulkanAllocator& GetAllocator() { return m_Allocator; }
         VulkanCommandPool& GetCommandPool() { return m_CommandPool; }
         VulkanSwapchain& GetSwapchain() { return m_Swapchain; }
         VkCommandBuffer GetCurrentCommandBuffer() const;
-        CommandBuffer& GetCommandBuffer() override;
+        CommandList& GetCommandList() override;
         uint32_t GetCurrentImageIndex() const { return m_CurrentImageIndex; }
 
     private:
@@ -75,5 +83,10 @@ namespace Trinity
         uint32_t m_CurrentImageIndex = 0;
         bool m_FramebufferResized = false;
         bool m_FrameStarted = false;
+
+        bool m_SupportsAsyncCompute = false;
+        bool m_SupportsBindless = false;
+        bool m_SupportsRayTracing = false;
+        bool m_SupportsMeshShaders = false;
     };
 }

@@ -1,6 +1,6 @@
 #include "Trinity/Renderer/SceneRenderer.h"
 
-#include "Trinity/Renderer/CommandBuffer.h"
+#include "Trinity/Renderer/CommandList.h"
 #include "Trinity/Renderer/Mesh.h"
 #include "Trinity/Renderer/RenderGraph/RenderGraph.h"
 #include "Trinity/Renderer/RenderGraph/RenderGraphContext.h"
@@ -160,47 +160,28 @@ namespace Trinity
 
         m_Implementation->Graph->AddPass("ShadowPass").Write(a_ShadowMapHandle).SetExecuteCallback([this, a_ShadowMapHandle](RenderGraphContext& context)
         {
-            CommandBuffer& l_CommandBuffer = context.GetCommandBuffer();
+            CommandList& l_Cmd = context.GetCommandList();
             auto a_ShadowMap = context.GetTexture(a_ShadowMapHandle);
             if (!a_ShadowMap || !m_Implementation->ShadowPipeline)
             {
                 return;
             }
 
-            DepthAttachmentInfo l_DepthAttachment{};
-            l_DepthAttachment.Image = a_ShadowMap.get();
-            l_DepthAttachment.LoadOp = AttachmentLoadOp::Clear;
-            l_DepthAttachment.StoreOp = AttachmentStoreOp::Store;
-            l_DepthAttachment.ClearDepth = 1.0f;
-
             RenderingInfo l_RenderingInfo{};
-            l_RenderingInfo.RenderAreaWidth = l_ShadowMapResolution;
-            l_RenderingInfo.RenderAreaHeight = l_ShadowMapResolution;
-            l_RenderingInfo.ColorAttachments = nullptr;
-            l_RenderingInfo.ColorAttachmentCount = 0;
-            l_RenderingInfo.DepthAttachment = &l_DepthAttachment;
+            l_RenderingInfo.Width = l_ShadowMapResolution;
+            l_RenderingInfo.Height = l_ShadowMapResolution;
+            l_RenderingInfo.Depth.DepthTexture = a_ShadowMap;
+            l_RenderingInfo.Depth.ClearOnLoad = true;
+            l_RenderingInfo.Depth.ClearDepth = 1.0f;
 
-            l_CommandBuffer.BeginRendering(l_RenderingInfo);
+            l_Cmd.BeginRendering(l_RenderingInfo);
 
-            Viewport l_Viewport{};
-            l_Viewport.X = 0.0f;
-            l_Viewport.Y = 0.0f;
-            l_Viewport.Width = static_cast<float>(l_ShadowMapResolution);
-            l_Viewport.Height = static_cast<float>(l_ShadowMapResolution);
-            l_Viewport.MinDepth = 0.0f;
-            l_Viewport.MaxDepth = 1.0f;
-            l_CommandBuffer.SetViewport(l_Viewport);
-
-            ScissorRect l_Scissor{};
-            l_Scissor.X = 0;
-            l_Scissor.Y = 0;
-            l_Scissor.Width = l_ShadowMapResolution;
-            l_Scissor.Height = l_ShadowMapResolution;
-            l_CommandBuffer.SetScissor(l_Scissor);
+            l_Cmd.SetViewport(0.0f, 0.0f, static_cast<float>(l_ShadowMapResolution), static_cast<float>(l_ShadowMapResolution), 0.0f, 1.0f);
+            l_Cmd.SetScissor(0, 0, l_ShadowMapResolution, l_ShadowMapResolution);
 
             if (!m_DrawList.empty())
             {
-                l_CommandBuffer.BindPipeline(*m_Implementation->ShadowPipeline);
+                l_Cmd.BindPipeline(m_Implementation->ShadowPipeline);
 
                 const glm::mat4 l_LightViewProjection = ComputeLightViewProjection(m_Camera, m_SceneData.SunDirection, l_ShadowMapResolution);
 
@@ -218,8 +199,8 @@ namespace Trinity
                         continue;
                     }
 
-                    l_CommandBuffer.BindVertexBuffer(0, *a_VertexBuffer);
-                    l_CommandBuffer.BindIndexBuffer(*a_IndexBuffer, IndexType::UInt32);
+                    l_Cmd.BindVertexBuffer(0, a_VertexBuffer);
+                    l_Cmd.BindIndexBuffer(a_IndexBuffer, 0, true);
 
                     struct ShadowPushBlock
                     {
@@ -228,18 +209,18 @@ namespace Trinity
                     } l_Push{};
                     std::memcpy(l_Push.Model, it_DrawCommand.Transform, sizeof(l_Push.Model));
                     std::memcpy(l_Push.LightViewProjection, glm::value_ptr(l_LightViewProjection), sizeof(l_Push.LightViewProjection));
-                    l_CommandBuffer.PushConstants(ShaderStageFlags::Vertex, 0, sizeof(ShadowPushBlock), &l_Push);
+                    l_Cmd.PushConstants(0, sizeof(ShadowPushBlock), &l_Push);
 
-                    l_CommandBuffer.DrawIndexed(it_DrawCommand.MeshRef->GetIndexCount(), 1, 0, 0, 0);
+                    l_Cmd.DrawIndexed(it_DrawCommand.MeshRef->GetIndexCount(), 1, 0, 0, 0);
                 }
             }
 
-            l_CommandBuffer.EndRendering();
+            l_Cmd.EndRendering();
         });
 
         m_Implementation->Graph->AddPass("Geometry").Write(a_AlbedoHandle).Write(a_NormalHandle).Write(a_MetallicRoughnessAOHandle).Write(a_DepthHandle).Read(a_ShadowMapHandle).SetExecuteCallback([this, a_AlbedoHandle, a_NormalHandle, a_MetallicRoughnessAOHandle, a_DepthHandle](RenderGraphContext& context)
         {
-            CommandBuffer& l_CommandBuffer = context.GetCommandBuffer();
+            CommandList& l_Cmd = context.GetCommandList();
 
             auto a_Albedo = context.GetTexture(a_AlbedoHandle);
             auto a_Normal = context.GetTexture(a_NormalHandle);
@@ -251,56 +232,44 @@ namespace Trinity
                 return;
             }
 
-            ColorAttachmentInfo l_ColorAttachments[3]{};
-            l_ColorAttachments[0].Image = a_Albedo.get();
-            l_ColorAttachments[0].LoadOp = AttachmentLoadOp::Clear;
-            l_ColorAttachments[0].StoreOp = AttachmentStoreOp::Store;
-            l_ColorAttachments[0].ClearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
-
-            l_ColorAttachments[1].Image = a_Normal.get();
-            l_ColorAttachments[1].LoadOp = AttachmentLoadOp::Clear;
-            l_ColorAttachments[1].StoreOp = AttachmentStoreOp::Store;
-            l_ColorAttachments[1].ClearColor = { 0.0f, 0.0f, 0.0f, 0.0f };
-
-            l_ColorAttachments[2].Image = a_MetallicRoughnessAO.get();
-            l_ColorAttachments[2].LoadOp = AttachmentLoadOp::Clear;
-            l_ColorAttachments[2].StoreOp = AttachmentStoreOp::Store;
-            l_ColorAttachments[2].ClearColor = { 0.0f, 0.5f, 1.0f, 0.0f };
-
-            DepthAttachmentInfo l_DepthAttachment{};
-            l_DepthAttachment.Image = a_Depth.get();
-            l_DepthAttachment.LoadOp = AttachmentLoadOp::Clear;
-            l_DepthAttachment.StoreOp = AttachmentStoreOp::Store;
-            l_DepthAttachment.ClearDepth = 1.0f;
-
             RenderingInfo l_RenderingInfo{};
-            l_RenderingInfo.RenderAreaWidth = m_Width;
-            l_RenderingInfo.RenderAreaHeight = m_Height;
-            l_RenderingInfo.ColorAttachments = l_ColorAttachments;
-            l_RenderingInfo.ColorAttachmentCount = 3;
-            l_RenderingInfo.DepthAttachment = &l_DepthAttachment;
+            l_RenderingInfo.Width = m_Width;
+            l_RenderingInfo.Height = m_Height;
+            l_RenderingInfo.ColorAttachments.resize(3);
 
-            l_CommandBuffer.BeginRendering(l_RenderingInfo);
+            l_RenderingInfo.ColorAttachments[0].ColorTexture = a_Albedo;
+            l_RenderingInfo.ColorAttachments[0].ClearOnLoad = true;
+            l_RenderingInfo.ColorAttachments[0].ClearColor[0] = 0.0f;
+            l_RenderingInfo.ColorAttachments[0].ClearColor[1] = 0.0f;
+            l_RenderingInfo.ColorAttachments[0].ClearColor[2] = 0.0f;
+            l_RenderingInfo.ColorAttachments[0].ClearColor[3] = 1.0f;
 
-            Viewport l_Viewport{};
-            l_Viewport.X = 0.0f;
-            l_Viewport.Y = 0.0f;
-            l_Viewport.Width = static_cast<float>(m_Width);
-            l_Viewport.Height = static_cast<float>(m_Height);
-            l_Viewport.MinDepth = 0.0f;
-            l_Viewport.MaxDepth = 1.0f;
-            l_CommandBuffer.SetViewport(l_Viewport);
+            l_RenderingInfo.ColorAttachments[1].ColorTexture = a_Normal;
+            l_RenderingInfo.ColorAttachments[1].ClearOnLoad = true;
+            l_RenderingInfo.ColorAttachments[1].ClearColor[0] = 0.0f;
+            l_RenderingInfo.ColorAttachments[1].ClearColor[1] = 0.0f;
+            l_RenderingInfo.ColorAttachments[1].ClearColor[2] = 0.0f;
+            l_RenderingInfo.ColorAttachments[1].ClearColor[3] = 0.0f;
 
-            ScissorRect l_Scissor{};
-            l_Scissor.X = 0;
-            l_Scissor.Y = 0;
-            l_Scissor.Width = m_Width;
-            l_Scissor.Height = m_Height;
-            l_CommandBuffer.SetScissor(l_Scissor);
+            l_RenderingInfo.ColorAttachments[2].ColorTexture = a_MetallicRoughnessAO;
+            l_RenderingInfo.ColorAttachments[2].ClearOnLoad = true;
+            l_RenderingInfo.ColorAttachments[2].ClearColor[0] = 0.0f;
+            l_RenderingInfo.ColorAttachments[2].ClearColor[1] = 0.5f;
+            l_RenderingInfo.ColorAttachments[2].ClearColor[2] = 1.0f;
+            l_RenderingInfo.ColorAttachments[2].ClearColor[3] = 0.0f;
+
+            l_RenderingInfo.Depth.DepthTexture = a_Depth;
+            l_RenderingInfo.Depth.ClearOnLoad = true;
+            l_RenderingInfo.Depth.ClearDepth = 1.0f;
+
+            l_Cmd.BeginRendering(l_RenderingInfo);
+
+            l_Cmd.SetViewport(0.0f, 0.0f, static_cast<float>(m_Width), static_cast<float>(m_Height), 0.0f, 1.0f);
+            l_Cmd.SetScissor(0, 0, m_Width, m_Height);
 
             if (!m_DrawList.empty() && m_Implementation->MeshPipeline)
             {
-                l_CommandBuffer.BindPipeline(*m_Implementation->MeshPipeline);
+                l_Cmd.BindPipeline(m_Implementation->MeshPipeline);
 
                 const glm::mat4 l_ViewProjection = m_Camera.GetViewProjectionMatrix();
 
@@ -318,8 +287,8 @@ namespace Trinity
                         continue;
                     }
 
-                    l_CommandBuffer.BindVertexBuffer(0, *a_VertexBuffer);
-                    l_CommandBuffer.BindIndexBuffer(*a_IndexBuffer, IndexType::UInt32);
+                    l_Cmd.BindVertexBuffer(0, a_VertexBuffer);
+                    l_Cmd.BindIndexBuffer(a_IndexBuffer, 0, true);
 
                     struct PushBlock
                     {
@@ -328,9 +297,9 @@ namespace Trinity
                     } l_Push{};
                     std::memcpy(l_Push.Model, it_DrawCommand.Transform, sizeof(l_Push.Model));
                     std::memcpy(l_Push.ViewProjection, glm::value_ptr(l_ViewProjection), sizeof(l_Push.ViewProjection));
-                    l_CommandBuffer.PushConstants(ShaderStageFlags::Vertex, 0, sizeof(PushBlock), &l_Push);
+                    l_Cmd.PushConstants(0, sizeof(PushBlock), &l_Push);
 
-                    l_CommandBuffer.DrawIndexed(it_DrawCommand.MeshRef->GetIndexCount(), 1, 0, 0, 0);
+                    l_Cmd.DrawIndexed(it_DrawCommand.MeshRef->GetIndexCount(), 1, 0, 0, 0);
 
                     m_Implementation->Stats.DrawCalls++;
                     m_Implementation->Stats.IndexCount += it_DrawCommand.MeshRef->GetIndexCount();
@@ -338,7 +307,7 @@ namespace Trinity
                 }
             }
 
-            l_CommandBuffer.EndRendering();
+            l_Cmd.EndRendering();
         });
 
         m_Implementation->Graph->AddPass("Output").Read(a_AlbedoHandle);

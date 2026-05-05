@@ -1,4 +1,8 @@
 cmake_minimum_required(VERSION 3.30)
+
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL" CACHE STRING "" FORCE)
+set(CMAKE_POLICY_DEFAULT_CMP0091 NEW)
+
 project(Trinity)
 
 set(Trinity_Platform "Desktop" CACHE STRING "")

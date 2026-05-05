@@ -34,7 +34,7 @@ namespace Trinity
     {
         m_PassBarriers.assign(m_Passes.size(), {});
 
-        const uint32_t l_ResourceCount = static_cast<uint32_t>(m_ResourceDescs.size());
+        const uint32_t l_ResourceCount = static_cast<uint32_t>(m_ResourceDescription.size());
         std::vector<ResourceState> l_Current(l_ResourceCount);
         for (uint32_t it_OrderIndex : m_ExecutionOrder)
         {
@@ -53,7 +53,7 @@ namespace Trinity
                     continue;
                 }
 
-                const ResourceState l_Needed = GetReadState(m_ResourceDescs[it_Handle.Index]);
+                const ResourceState l_Needed = GetReadState(m_ResourceDescription[it_Handle.Index]);
                 AppendBarrierIfNeeded(a_OutBarriers, it_Handle.Index, l_Current[it_Handle.Index], l_Needed);
 
                 l_Current[it_Handle.Index] = l_Needed;
@@ -66,7 +66,7 @@ namespace Trinity
                     continue;
                 }
 
-                const ResourceState l_Needed = GetWriteState(m_ResourceDescs[it_Handle.Index]);
+                const ResourceState l_Needed = GetWriteState(m_ResourceDescription[it_Handle.Index]);
                 AppendBarrierIfNeeded(a_OutBarriers, it_Handle.Index, l_Current[it_Handle.Index], l_Needed);
 
                 l_Current[it_Handle.Index] = l_Needed;
@@ -180,7 +180,7 @@ namespace Trinity
         l_Barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         l_Barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         l_Barrier.image = a_Texture->GetImage();
-        l_Barrier.subresourceRange.aspectMask = VulkanUtilities::GetAspectFlags(m_ResourceDescs[resourceIndex].Format);
+        l_Barrier.subresourceRange.aspectMask = VulkanUtilities::GetAspectFlags(m_ResourceDescription[resourceIndex].Format);
         l_Barrier.subresourceRange.baseMipLevel = 0;
         l_Barrier.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
         l_Barrier.subresourceRange.baseArrayLayer = 0;

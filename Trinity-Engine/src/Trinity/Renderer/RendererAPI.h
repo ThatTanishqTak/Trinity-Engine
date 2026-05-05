@@ -1,8 +1,12 @@
 #pragma once
 
+#include "Trinity/Renderer/CommandList.h"
 #include "Trinity/Renderer/Resources/Buffer.h"
+#include "Trinity/Renderer/Resources/ComputePipeline.h"
+#include "Trinity/Renderer/Resources/DescriptorSetLayout.h"
 #include "Trinity/Renderer/Resources/Framebuffer.h"
 #include "Trinity/Renderer/Resources/Pipeline.h"
+#include "Trinity/Renderer/Resources/QueryPool.h"
 #include "Trinity/Renderer/Resources/Sampler.h"
 #include "Trinity/Renderer/Resources/Shader.h"
 #include "Trinity/Renderer/Resources/Texture.h"
@@ -14,7 +18,6 @@
 namespace Trinity
 {
     class Window;
-    class CommandBuffer;
     class RenderGraph;
 
     enum class RendererBackend : uint8_t
@@ -52,16 +55,24 @@ namespace Trinity
         virtual std::shared_ptr<Framebuffer> CreateFramebuffer(const FramebufferSpecification& specification) = 0;
         virtual std::shared_ptr<Shader> CreateShader(const ShaderSpecification& specification) = 0;
         virtual std::shared_ptr<Pipeline> CreatePipeline(const PipelineSpecification& specification) = 0;
+        virtual std::shared_ptr<ComputePipeline> CreateComputePipeline(const ComputePipelineSpecification& specification) = 0;
         virtual std::shared_ptr<Sampler> CreateSampler(const SamplerSpecification& specification) = 0;
+        virtual std::shared_ptr<DescriptorSetLayout> CreateDescriptorSetLayout(const DescriptorSetLayoutSpecification& specification) = 0;
+        virtual std::shared_ptr<QueryPool> CreateQueryPool(const QueryPoolSpecification& specification) = 0;
         virtual std::unique_ptr<RenderGraph> CreateRenderGraph() = 0;
 
-        virtual CommandBuffer& GetCommandBuffer() = 0;
+        virtual CommandList& GetCommandList() = 0;
 
         virtual void OnWindowResize(uint32_t width, uint32_t height) = 0;
         virtual uint32_t GetSwapchainWidth() const = 0;
         virtual uint32_t GetSwapchainHeight() const = 0;
         virtual uint32_t GetCurrentFrameIndex() const = 0;
         virtual uint32_t GetMaxFramesInFlight() const = 0;
+
+        virtual bool SupportsAsyncCompute() const = 0;
+        virtual bool SupportsBindless() const = 0;
+        virtual bool SupportsRayTracing() const = 0;
+        virtual bool SupportsMeshShaders() const = 0;
 
         RendererBackend GetBackend() const { return m_Backend; }
 

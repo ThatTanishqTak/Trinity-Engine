@@ -125,6 +125,16 @@ namespace Trinity
                 l_Flags |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
             }
 
+            if (usage & BufferUsage::IndirectBuffer)
+            {
+                l_Flags |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+            }
+
+            if (usage & BufferUsage::BufferDeviceAddress)
+            {
+                l_Flags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+            }
+
             return l_Flags;
         }
 
@@ -292,6 +302,14 @@ namespace Trinity
                     return VK_SHADER_STAGE_COMPUTE_BIT;
                 case ShaderStage::Geometry:
                     return VK_SHADER_STAGE_GEOMETRY_BIT;
+                case ShaderStage::TessControl:
+                    return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+                case ShaderStage::TessEval:
+                    return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+                case ShaderStage::Task:
+                    return VK_SHADER_STAGE_TASK_BIT_EXT;
+                case ShaderStage::Mesh:
+                    return VK_SHADER_STAGE_MESH_BIT_EXT;
                 default:
                     return VK_SHADER_STAGE_VERTEX_BIT;
             }

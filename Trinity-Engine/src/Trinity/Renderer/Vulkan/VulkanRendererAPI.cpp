@@ -189,9 +189,9 @@ namespace Trinity
         return m_CommandPool.GetCommandBuffer(m_CurrentFrameIndex);
     }
 
-    CommandBuffer& VulkanRendererAPI::GetCommandBuffer()
+    CommandList& VulkanRendererAPI::GetCommandList()
     {
-        return m_CommandPool.GetCommandBufferWrapper(m_CurrentFrameIndex);
+        return m_CommandPool.GetCommandList(m_CurrentFrameIndex);
     }
 
     std::shared_ptr<Buffer> VulkanRendererAPI::CreateBuffer(const BufferSpecification& specification)
@@ -351,6 +351,27 @@ namespace Trinity
     std::shared_ptr<Sampler> VulkanRendererAPI::CreateSampler(const SamplerSpecification& specification)
     {
         return std::make_shared<VulkanSampler>(m_Device.GetDevice(), specification);
+    }
+
+    std::shared_ptr<ComputePipeline> VulkanRendererAPI::CreateComputePipeline(const ComputePipelineSpecification& specification)
+    {
+        TR_CORE_ERROR("VulkanRendererAPI::CreateComputePipeline is not yet implemented (Phase 5.6 pending) [{}]", specification.DebugName);
+
+        return nullptr;
+    }
+
+    std::shared_ptr<DescriptorSetLayout> VulkanRendererAPI::CreateDescriptorSetLayout(const DescriptorSetLayoutSpecification& specification)
+    {
+        TR_CORE_ERROR("VulkanRendererAPI::CreateDescriptorSetLayout is not yet implemented (Phase 5.8 pending) [{}]", specification.DebugName);
+
+        return nullptr;
+    }
+
+    std::shared_ptr<QueryPool> VulkanRendererAPI::CreateQueryPool(const QueryPoolSpecification& specification)
+    {
+        TR_CORE_ERROR("VulkanRendererAPI::CreateQueryPool is not yet implemented (Phase 5.10 pending) [{}]", specification.DebugName);
+
+        return nullptr;
     }
 
     std::unique_ptr<RenderGraph> VulkanRendererAPI::CreateRenderGraph()

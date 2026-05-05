@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Trinity/Renderer/Vulkan/VulkanCommandBuffer.h"
+#include "Trinity/Renderer/Vulkan/VulkanCommandList.h"
 
 #include <vulkan/vulkan.h>
 
@@ -21,7 +21,7 @@ namespace Trinity
         void Shutdown();
 
         VkCommandBuffer GetCommandBuffer(uint32_t frameIndex) const { return m_CommandBuffers[frameIndex]; }
-        VulkanCommandBuffer& GetCommandBufferWrapper(uint32_t frameIndex) { return m_CommandBufferWrappers[frameIndex]; }
+        VulkanCommandList& GetCommandList(uint32_t frameIndex) { return m_CommandLists[frameIndex]; }
         VkCommandPool GetPool() const { return m_CommandPool; }
 
         void ResetCommandBuffer(uint32_t frameIndex);
@@ -35,6 +35,6 @@ namespace Trinity
         VulkanDevice* m_Device = nullptr;
         VkCommandPool m_CommandPool = VK_NULL_HANDLE;
         std::vector<VkCommandBuffer> m_CommandBuffers;
-        std::vector<VulkanCommandBuffer> m_CommandBufferWrappers;
+        std::vector<VulkanCommandList> m_CommandLists;
     };
 }

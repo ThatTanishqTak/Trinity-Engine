@@ -196,6 +196,8 @@ namespace Trinity
         l_PipelineInfo.renderPass = VK_NULL_HANDLE;
 
         VulkanUtilities::VKCheck(vkCreateGraphicsPipelines(m_Device, VK_NULL_HANDLE, 1, &l_PipelineInfo, nullptr, &m_Pipeline), "Failed vkCreateGraphicsPipelines");
+
+        a_VulkanShader->ReleaseModules();
     }
 
     VulkanPipeline::~VulkanPipeline()

@@ -1,28 +1,59 @@
 #pragma once
 
-#include "Trinity/Renderer/Resources/Framebuffer.h"
-
 #include <cstdint>
-#include <memory>
-#include <string>
+
+#include <glm/glm.hpp>
 
 namespace Trinity
 {
+    class CommandBuffer;
+    class RenderGraph;
+    struct RenderGraphContext;
+
+    struct FrameContext
+    {
+        uint32_t FrameIndex = 0;
+        uint32_t SwapchainWidth = 0;
+        uint32_t SwapchainHeight = 0;
+
+        float DeltaTime = 0.0f;
+        float TotalTime = 0.0f;
+
+        glm::mat4 View = glm::mat4(1.0f);
+        glm::mat4 Projection = glm::mat4(1.0f);
+        glm::mat4 ViewProjection = glm::mat4(1.0f);
+        glm::mat4 InverseView = glm::mat4(1.0f);
+        glm::mat4 InverseProjection = glm::mat4(1.0f);
+        glm::mat4 InverseViewProjection = glm::mat4(1.0f);
+
+        glm::vec3 CameraPosition = glm::vec3(0.0f);
+        glm::vec2 Jitter = glm::vec2(0.0f);
+    };
+
+    struct RenderPipelineSettings
+    {
+        bool EnableShadows = true;
+        bool EnableSSAO = true;
+        bool EnableBloom = true;
+        bool EnableTAA = true;
+        bool EnableSSR = true;
+        bool EnableVolumetricFog = true;
+    };
+
     class RenderPass
     {
     public:
         virtual ~RenderPass() = default;
 
-        virtual void Begin(uint32_t width, uint32_t height) = 0;
-        virtual void End() = 0;
+        virtual const char* GetName() const = 0;
 
-        virtual void Resize(uint32_t width, uint32_t height) = 0;
+        virtual void Setup(RenderGraph& graph, const FrameContext& frame) = 0;
+        virtual void Execute(CommandBuffer& cmd, RenderGraphContext& ctx) = 0;
 
-        virtual std::shared_ptr<Framebuffer> GetFramebuffer() const = 0;
-
-        const std::string& GetName() const { return m_String; }
-
-    protected:
-        std::string m_String;
+        virtual bool IsEnabled(const RenderPipelineSettings& settings) const
+        {
+            (void)settings;
+            return true;
+        }
     };
 }

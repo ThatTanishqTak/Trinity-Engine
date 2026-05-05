@@ -22,7 +22,7 @@ namespace Trinity
 
         TR_CORE_TRACE("Command Pool Initialized");
 
-        TR_CORE_TRACE("Initializing Command Buffer");
+        TR_CORE_TRACE("Initializing Command Lists");
 
         m_CommandBuffers.resize(framesInFlight);
 
@@ -34,27 +34,27 @@ namespace Trinity
 
         VulkanUtilities::VKCheck(vkAllocateCommandBuffers(device.GetDevice(), &l_AllocInfo, m_CommandBuffers.data()), "Failed vkAllocateCommandBuffers");
 
-        m_CommandBufferWrappers.reserve(framesInFlight);
+        m_CommandLists.reserve(framesInFlight);
         for (uint32_t i = 0; i < framesInFlight; i++)
         {
-            m_CommandBufferWrappers.emplace_back();
-            m_CommandBufferWrappers.back().Initialize(device.GetDevice());
+            m_CommandLists.emplace_back();
+            m_CommandLists.back().Initialize(device.GetDevice());
         }
 
-        TR_CORE_TRACE("Command Buffer Initialized");
+        TR_CORE_TRACE("Command Lists Initialized");
     }
 
     void VulkanCommandPool::Shutdown()
     {
-        TR_CORE_TRACE("Shutting Down Command Buffer");
+        TR_CORE_TRACE("Shutting Down Command Lists");
 
-        for (auto& it_Wrapper : m_CommandBufferWrappers)
+        for (auto& it_List : m_CommandLists)
         {
-            it_Wrapper.Shutdown();
+            it_List.Shutdown();
         }
-        m_CommandBufferWrappers.clear();
+        m_CommandLists.clear();
 
-        TR_CORE_TRACE("Command Buffer Shutdown Complete");
+        TR_CORE_TRACE("Command Lists Shutdown Complete");
 
         TR_CORE_TRACE("Shutting Down Command Pool");
 
@@ -71,7 +71,7 @@ namespace Trinity
     void VulkanCommandPool::ResetCommandBuffer(uint32_t frameIndex)
     {
         VulkanUtilities::VKCheck(vkResetCommandBuffer(m_CommandBuffers[frameIndex], 0), "Failed vkResetCommandBuffer");
-        m_CommandBufferWrappers[frameIndex].Invalidate();
+        m_CommandLists[frameIndex].Invalidate();
     }
 
     void VulkanCommandPool::BeginCommandBuffer(uint32_t frameIndex)
@@ -82,13 +82,13 @@ namespace Trinity
 
         VulkanUtilities::VKCheck(vkBeginCommandBuffer(m_CommandBuffers[frameIndex], &l_BeginInfo), "Failed vkBeginCommandBuffer");
 
-        m_CommandBufferWrappers[frameIndex].Reset(m_CommandBuffers[frameIndex]);
+        m_CommandLists[frameIndex].Reset(m_CommandBuffers[frameIndex]);
     }
 
     void VulkanCommandPool::EndCommandBuffer(uint32_t frameIndex)
     {
         VulkanUtilities::VKCheck(vkEndCommandBuffer(m_CommandBuffers[frameIndex]), "Failed vkEndCommandBuffer");
-        m_CommandBufferWrappers[frameIndex].Invalidate();
+        m_CommandLists[frameIndex].Invalidate();
     }
 
     VkCommandBuffer VulkanCommandPool::BeginSingleTimeCommands() const
