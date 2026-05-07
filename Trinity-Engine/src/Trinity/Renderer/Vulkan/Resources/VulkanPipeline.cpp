@@ -141,7 +141,7 @@ namespace Trinity
             VkVertexInputAttributeDescription l_Description{};
             l_Description.location = it_Attribute.Location;
             l_Description.binding = it_Attribute.Binding;
-            l_Description.format = VulkanUtilities::ToVkFormat(it_Attribute.Format);
+            l_Description.format = VulkanUtilities::ToVkVertexFormat(it_Attribute.Format);
             l_Description.offset = it_Attribute.Offset;
             l_AttributeDescriptions.push_back(l_Description);
         }

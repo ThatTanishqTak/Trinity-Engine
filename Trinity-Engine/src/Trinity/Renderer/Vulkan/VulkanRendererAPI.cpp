@@ -7,6 +7,8 @@
 #include "Trinity/Renderer/Vulkan/Resources/VulkanShader.h"
 #include "Trinity/Renderer/Vulkan/Resources/VulkanPipeline.h"
 #include "Trinity/Renderer/Vulkan/Resources/VulkanSampler.h"
+#include "Trinity/Renderer/Vulkan/Resources/VulkanDescriptorSet.h"
+#include "Trinity/Renderer/Vulkan/Resources/VulkanDescriptorSetLayout.h"
 #include "Trinity/Renderer/Vulkan/RenderGraph/VulkanRenderGraph.h"
 #include "Trinity/Platform/Window/Window.h"
 #include "Trinity/Utilities/Log.h"
@@ -44,6 +46,7 @@ namespace Trinity
         m_Allocator.Initialize(m_Device);
         m_Swapchain.Initialize(m_Device, window.GetWidth(), window.GetHeight(), true);
         m_CommandPool.Initialize(m_Device, m_MaxFramesInFlight);
+        m_DescriptorAllocator.Initialize(m_Device.GetDevice(), m_MaxFramesInFlight);
         m_SyncObjects.Initialize(m_Device.GetDevice(), m_MaxFramesInFlight, m_Swapchain.GetImageCount());
 
         TR_CORE_INFO("VULKAN INITIALIZED");
@@ -53,9 +56,13 @@ namespace Trinity
     {
         TR_CORE_INFO("SHUTTING DOWN VULKAN");
 
+        m_SamplerCache.clear();
+
         vkDeviceWaitIdle(m_Device.GetDevice());
 
         m_SyncObjects.Shutdown();
+        m_LayoutCache.clear();
+        m_DescriptorAllocator.Shutdown();
         m_CommandPool.Shutdown();
         m_Swapchain.Shutdown();
         m_Allocator.Shutdown();
@@ -84,6 +91,8 @@ namespace Trinity
         {
             return false;
         }
+
+        m_DescriptorAllocator.BeginFrame(m_CurrentFrameIndex);
 
         m_SyncObjects.ResetFence(m_CurrentFrameIndex);
         m_CommandPool.ResetCommandBuffer(m_CurrentFrameIndex);
@@ -350,7 +359,33 @@ namespace Trinity
 
     std::shared_ptr<Sampler> VulkanRendererAPI::CreateSampler(const SamplerSpecification& specification)
     {
-        return std::make_shared<VulkanSampler>(m_Device.GetDevice(), specification);
+        SamplerCacheKey l_Key{};
+        l_Key.MinFilter = specification.MinFilter;
+        l_Key.MagFilter = specification.MagFilter;
+        l_Key.MipmapMode = specification.MipmapMode;
+        l_Key.AddressModeU = specification.AddressModeU;
+        l_Key.AddressModeV = specification.AddressModeV;
+        l_Key.AddressModeW = specification.AddressModeW;
+        l_Key.MipLodBias = specification.MipLodBias;
+        l_Key.MinLod = specification.MinLod;
+        l_Key.MaxLod = specification.MaxLod;
+        l_Key.AnisotropyEnable = specification.AnisotropyEnable;
+        l_Key.MaxAnisotropy = specification.MaxAnisotropy;
+        l_Key.CompareEnable = specification.CompareEnable;
+        l_Key.Compare = specification.Compare;
+        l_Key.Border = specification.Border;
+        l_Key.UnnormalizedCoordinates = specification.UnnormalizedCoordinates;
+
+        auto a_Existing = m_SamplerCache.find(l_Key);
+        if (a_Existing != m_SamplerCache.end())
+        {
+            return a_Existing->second;
+        }
+
+        auto l_Sampler = std::make_shared<VulkanSampler>(m_Device.GetDevice(), specification);
+        m_SamplerCache.emplace(l_Key, l_Sampler);
+
+        return l_Sampler;
     }
 
     std::shared_ptr<ComputePipeline> VulkanRendererAPI::CreateComputePipeline(const ComputePipelineSpecification& specification)
@@ -362,9 +397,19 @@ namespace Trinity
 
     std::shared_ptr<DescriptorSetLayout> VulkanRendererAPI::CreateDescriptorSetLayout(const DescriptorSetLayoutSpecification& specification)
     {
-        TR_CORE_ERROR("VulkanRendererAPI::CreateDescriptorSetLayout is not yet implemented (Phase 5.8 pending) [{}]", specification.DebugName);
+        LayoutCacheKey l_Key;
+        l_Key.Bindings = specification.Bindings;
 
-        return nullptr;
+        auto a_Existing = m_LayoutCache.find(l_Key);
+        if (a_Existing != m_LayoutCache.end())
+        {
+            return a_Existing->second;
+        }
+
+        auto l_Layout = std::make_shared<VulkanDescriptorSetLayout>(m_Device.GetDevice(), specification);
+        m_LayoutCache.emplace(std::move(l_Key), l_Layout);
+
+        return l_Layout;
     }
 
     std::shared_ptr<QueryPool> VulkanRendererAPI::CreateQueryPool(const QueryPoolSpecification& specification)
@@ -372,6 +417,54 @@ namespace Trinity
         TR_CORE_ERROR("VulkanRendererAPI::CreateQueryPool is not yet implemented (Phase 5.10 pending) [{}]", specification.DebugName);
 
         return nullptr;
+    }
+
+    std::shared_ptr<DescriptorSet> VulkanRendererAPI::AllocateDescriptorSet(const std::shared_ptr<DescriptorSetLayout>& layout)
+    {
+        if (!layout)
+        {
+            TR_CORE_ERROR("AllocateDescriptorSet called with null layout");
+            return nullptr;
+        }
+
+        auto* a_VulkanLayout = dynamic_cast<VulkanDescriptorSetLayout*>(layout.get());
+        if (a_VulkanLayout == nullptr)
+        {
+            TR_CORE_ERROR("AllocateDescriptorSet: layout is not a VulkanDescriptorSetLayout");
+            return nullptr;
+        }
+
+        VkDescriptorSet l_Set = m_DescriptorAllocator.AllocatePersistent(a_VulkanLayout->GetVkLayout());
+        if (l_Set == VK_NULL_HANDLE)
+        {
+            return nullptr;
+        }
+
+        return std::make_shared<VulkanDescriptorSet>(m_Device.GetDevice(), l_Set, layout, &m_DescriptorAllocator, true);
+    }
+
+    std::shared_ptr<DescriptorSet> VulkanRendererAPI::AllocateTransientDescriptorSet(const std::shared_ptr<DescriptorSetLayout>& layout)
+    {
+        if (!layout)
+        {
+            TR_CORE_ERROR("AllocateTransientDescriptorSet called with null layout");
+            return nullptr;
+        }
+
+        auto* a_VulkanLayout = dynamic_cast<VulkanDescriptorSetLayout*>(layout.get());
+        if (a_VulkanLayout == nullptr)
+        {
+            TR_CORE_ERROR("AllocateTransientDescriptorSet: layout is not a VulkanDescriptorSetLayout");
+            return nullptr;
+        }
+
+        VkDescriptorSet l_Set = m_DescriptorAllocator.AllocateTransient(a_VulkanLayout->GetVkLayout(), m_CurrentFrameIndex);
+        if (l_Set == VK_NULL_HANDLE)
+        {
+            return nullptr;
+        }
+
+        return std::make_shared<VulkanDescriptorSet>(m_Device.GetDevice(), l_Set, layout, &m_DescriptorAllocator, false);
     }
 
     std::unique_ptr<RenderGraph> VulkanRendererAPI::CreateRenderGraph()

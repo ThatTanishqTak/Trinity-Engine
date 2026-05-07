@@ -19,12 +19,12 @@ namespace Trinity
         l_SamplerInfo.mipLodBias = specification.MipLodBias;
         l_SamplerInfo.anisotropyEnable = specification.AnisotropyEnable ? VK_TRUE : VK_FALSE;
         l_SamplerInfo.maxAnisotropy = specification.MaxAnisotropy;
-        l_SamplerInfo.compareEnable = VK_FALSE;
-        l_SamplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+        l_SamplerInfo.compareEnable = specification.CompareEnable ? VK_TRUE : VK_FALSE;
+        l_SamplerInfo.compareOp = VulkanUtilities::ToVkCompareOp(specification.Compare);
         l_SamplerInfo.minLod = specification.MinLod;
         l_SamplerInfo.maxLod = specification.MaxLod;
-        l_SamplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-        l_SamplerInfo.unnormalizedCoordinates = VK_FALSE;
+        l_SamplerInfo.borderColor = VulkanUtilities::ToVkBorderColor(specification.Border);
+        l_SamplerInfo.unnormalizedCoordinates = specification.UnnormalizedCoordinates ? VK_TRUE : VK_FALSE;
 
         VulkanUtilities::VKCheck(vkCreateSampler(m_Device, &l_SamplerInfo, nullptr, &m_Sampler), "Failed vkCreateSampler");
     }

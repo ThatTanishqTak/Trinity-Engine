@@ -3,6 +3,7 @@
 #include "Trinity/Renderer/CommandList.h"
 #include "Trinity/Renderer/Resources/Buffer.h"
 #include "Trinity/Renderer/Resources/ComputePipeline.h"
+#include "Trinity/Renderer/Resources/DescriptorSet.h"
 #include "Trinity/Renderer/Resources/DescriptorSetLayout.h"
 #include "Trinity/Renderer/Resources/Framebuffer.h"
 #include "Trinity/Renderer/Resources/Pipeline.h"
@@ -57,6 +58,8 @@ namespace Trinity
         virtual std::shared_ptr<Pipeline> CreatePipeline(const PipelineSpecification& specification) = 0;
         virtual std::shared_ptr<ComputePipeline> CreateComputePipeline(const ComputePipelineSpecification& specification) = 0;
         virtual std::shared_ptr<Sampler> CreateSampler(const SamplerSpecification& specification) = 0;
+        virtual std::shared_ptr<DescriptorSet> AllocateDescriptorSet(const std::shared_ptr<DescriptorSetLayout>& layout) = 0;
+        virtual std::shared_ptr<DescriptorSet> AllocateTransientDescriptorSet(const std::shared_ptr<DescriptorSetLayout>& layout) = 0;
         virtual std::shared_ptr<DescriptorSetLayout> CreateDescriptorSetLayout(const DescriptorSetLayoutSpecification& specification) = 0;
         virtual std::shared_ptr<QueryPool> CreateQueryPool(const QueryPoolSpecification& specification) = 0;
         virtual std::unique_ptr<RenderGraph> CreateRenderGraph() = 0;

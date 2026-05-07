@@ -19,9 +19,9 @@ namespace Trinity
             logSinks.emplace_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
             logSinks.emplace_back(std::make_shared<spdlog::sinks::basic_file_sink_mt>("Engine_Log.txt", true));
 
-            // Console: readable while developing.
+            // Console
             logSinks[0]->set_pattern("%^[%T] [%n] [%s:%#] %v%$");
-            // File: more detailed, includes function name.
+            // File
             logSinks[1]->set_pattern("[%Y-%m-%d %T.%e] [%n] [%-l] [%s:%#] [%!] %v");
 
             s_CoreLogger = std::make_shared<spdlog::logger>("TRINITY-ENGINE", begin(logSinks), end(logSinks));

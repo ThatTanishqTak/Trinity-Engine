@@ -18,6 +18,7 @@ namespace Trinity
         {
             if (result != VK_SUCCESS)
             {
+                TR_CORE_CRITICAL("Vulkan Error: {}", what);
                 std::abort();
             }
         }
@@ -240,6 +241,52 @@ namespace Trinity
                     return VK_SAMPLER_MIPMAP_MODE_LINEAR;
                 default:
                     return VK_SAMPLER_MIPMAP_MODE_LINEAR;
+            }
+        }
+
+        inline VkBorderColor ToVkBorderColor(BorderColor color)
+        {
+            switch (color)
+            {
+                case BorderColor::FloatTransparentBlack:
+                    return VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+                case BorderColor::FloatOpaqueBlack:
+                    return VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+                case BorderColor::FloatOpaqueWhite:
+                    return VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+                case BorderColor::IntTransparentBlack:
+                    return VK_BORDER_COLOR_INT_TRANSPARENT_BLACK;
+                case BorderColor::IntOpaqueBlack:
+                    return VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+                case BorderColor::IntOpaqueWhite:
+                    return VK_BORDER_COLOR_INT_OPAQUE_WHITE;
+                default:
+                    return VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+            }
+        }
+
+        inline VkCompareOp ToVkCompareOp(CompareOp op)
+        {
+            switch (op)
+            {
+                case CompareOp::Never:
+                    return VK_COMPARE_OP_NEVER;
+                case CompareOp::Less:
+                    return VK_COMPARE_OP_LESS;
+                case CompareOp::Equal:
+                    return VK_COMPARE_OP_EQUAL;
+                case CompareOp::LessOrEqual:
+                    return VK_COMPARE_OP_LESS_OR_EQUAL;
+                case CompareOp::Greater:
+                    return VK_COMPARE_OP_GREATER;
+                case CompareOp::NotEqual:
+                    return VK_COMPARE_OP_NOT_EQUAL;
+                case CompareOp::GreaterOrEqual:
+                    return VK_COMPARE_OP_GREATER_OR_EQUAL;
+                case CompareOp::Always:
+                    return VK_COMPARE_OP_ALWAYS;
+                default:
+                    return VK_COMPARE_OP_ALWAYS;
             }
         }
 

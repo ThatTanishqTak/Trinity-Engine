@@ -3,6 +3,7 @@
 #include "Trinity/Renderer/Vulkan/Resources/VulkanBuffer.h"
 #include "Trinity/Renderer/Vulkan/Resources/VulkanPipeline.h"
 #include "Trinity/Renderer/Vulkan/Resources/VulkanTexture.h"
+#include "Trinity/Renderer/Vulkan/Resources/VulkanDescriptorSet.h"
 #include "Trinity/Renderer/Vulkan/VulkanUtilities.h"
 #include "Trinity/Utilities/Log.h"
 
@@ -343,11 +344,23 @@ namespace Trinity
 
     void VulkanCommandList::BindDescriptorSet(uint32_t setIndex, const std::shared_ptr<DescriptorSet>& set, uint32_t dynamicOffsetCount, const uint32_t* dynamicOffsets)
     {
-        TR_CORE_ERROR("VulkanCommandList::BindDescriptorSet is not yet implemented (Phase 5.9 pending)");
-        (void)setIndex;
-        (void)set;
-        (void)dynamicOffsetCount;
-        (void)dynamicOffsets;
+        if (m_CommandBuffer == VK_NULL_HANDLE || set == nullptr || m_BoundLayout == VK_NULL_HANDLE)
+        {
+            return;
+        }
+
+        auto* a_VulkanSet = dynamic_cast<VulkanDescriptorSet*>(set.get());
+        if (a_VulkanSet == nullptr)
+        {
+            return;
+        }
+
+        a_VulkanSet->Flush();
+
+        VkDescriptorSet l_Sets[] = { a_VulkanSet->GetVkSet() };
+        const VkPipelineBindPoint l_BindPoint = (m_BoundComputePipeline != nullptr) ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
+
+        vkCmdBindDescriptorSets(m_CommandBuffer, l_BindPoint, m_BoundLayout, setIndex, 1, l_Sets, dynamicOffsetCount, dynamicOffsets);
     }
 
     void VulkanCommandList::PushConstants(uint32_t offset, uint32_t size, const void* data)

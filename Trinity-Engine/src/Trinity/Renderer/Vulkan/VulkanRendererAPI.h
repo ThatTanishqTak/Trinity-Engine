@@ -9,8 +9,11 @@
 #include "Trinity/Renderer/Vulkan/VulkanInstance.h"
 #include "Trinity/Renderer/Vulkan/VulkanSwapchain.h"
 #include "Trinity/Renderer/Vulkan/VulkanSyncObjects.h"
+#include "Trinity/Renderer/Vulkan/VulkanDescriptorAllocator.h"
 
 #include <cstdint>
+#include <unordered_map>
+#include <cstring>
 
 namespace Trinity
 {
@@ -40,6 +43,8 @@ namespace Trinity
         std::shared_ptr<Pipeline> CreatePipeline(const PipelineSpecification& specification) override;
         std::shared_ptr<ComputePipeline> CreateComputePipeline(const ComputePipelineSpecification& specification) override;
         std::shared_ptr<Sampler> CreateSampler(const SamplerSpecification& specification) override;
+        std::shared_ptr<DescriptorSet> AllocateDescriptorSet(const std::shared_ptr<DescriptorSetLayout>& layout) override;
+        std::shared_ptr<DescriptorSet> AllocateTransientDescriptorSet(const std::shared_ptr<DescriptorSetLayout>& layout) override;
         std::shared_ptr<DescriptorSetLayout> CreateDescriptorSetLayout(const DescriptorSetLayoutSpecification& specification) override;
         std::shared_ptr<QueryPool> CreateQueryPool(const QueryPoolSpecification& specification) override;
 
@@ -77,6 +82,7 @@ namespace Trinity
         VulkanSwapchain m_Swapchain;
         VulkanCommandPool m_CommandPool;
         VulkanSyncObjects m_SyncObjects;
+        VulkanDescriptorAllocator m_DescriptorAllocator;
 
         uint32_t m_MaxFramesInFlight = 2;
         uint32_t m_CurrentFrameIndex = 0;
@@ -88,5 +94,84 @@ namespace Trinity
         bool m_SupportsBindless = false;
         bool m_SupportsRayTracing = false;
         bool m_SupportsMeshShaders = false;
+
+        struct SamplerCacheKey
+        {
+            SamplerFilter MinFilter;
+            SamplerFilter MagFilter;
+            SamplerMipmapMode MipmapMode;
+            SamplerAddressMode AddressModeU;
+            SamplerAddressMode AddressModeV;
+            SamplerAddressMode AddressModeW;
+            float MipLodBias;
+            float MinLod;
+            float MaxLod;
+            bool AnisotropyEnable;
+            float MaxAnisotropy;
+            bool CompareEnable;
+            CompareOp Compare;
+            BorderColor Border;
+            bool UnnormalizedCoordinates;
+        };
+
+        struct SamplerCacheKeyHash
+        {
+            size_t operator()(const SamplerCacheKey& key) const noexcept
+            {
+                size_t l_Hash = 0xcbf29ce484222325ULL;
+                const uint8_t* a_Bytes = reinterpret_cast<const uint8_t*>(&key);
+                for (size_t i = 0; i < sizeof(SamplerCacheKey); i++)
+                {
+                    l_Hash ^= a_Bytes[i];
+                    l_Hash *= 0x100000001b3ULL;
+                }
+
+                return l_Hash;
+            }
+        };
+
+        struct SamplerCacheKeyEqual
+        {
+            bool operator()(const SamplerCacheKey& a, const SamplerCacheKey& b) const noexcept { return std::memcmp(&a, &b, sizeof(SamplerCacheKey)) == 0; }
+        };
+
+        std::unordered_map<SamplerCacheKey, std::shared_ptr<Sampler>, SamplerCacheKeyHash, SamplerCacheKeyEqual> m_SamplerCache;
+
+        struct LayoutCacheKey
+        {
+            std::vector<DescriptorBinding> Bindings;
+        };
+
+        struct LayoutCacheKeyHash
+        {
+            size_t operator()(const LayoutCacheKey& key) const noexcept
+            {
+                size_t l_Hash = 0xcbf29ce484222325ULL;
+                const uint8_t* a_Bytes = reinterpret_cast<const uint8_t*>(key.Bindings.data());
+                const size_t l_ByteCount = key.Bindings.size() * sizeof(DescriptorBinding);
+                for (size_t i = 0; i < l_ByteCount; i++)
+                {
+                    l_Hash ^= a_Bytes[i];
+                    l_Hash *= 0x100000001b3ULL;
+                }
+
+                return l_Hash;
+            }
+        };
+
+        struct LayoutCacheKeyEqual
+        {
+            bool operator()(const LayoutCacheKey& a, const LayoutCacheKey& b) const noexcept
+            {
+                if (a.Bindings.size() != b.Bindings.size())
+                {
+                    return false;
+                }
+
+                return std::memcmp(a.Bindings.data(), b.Bindings.data(), a.Bindings.size() * sizeof(DescriptorBinding)) == 0;
+            }
+        };
+
+        std::unordered_map<LayoutCacheKey, std::shared_ptr<DescriptorSetLayout>, LayoutCacheKeyHash, LayoutCacheKeyEqual> m_LayoutCache;
     };
 }
