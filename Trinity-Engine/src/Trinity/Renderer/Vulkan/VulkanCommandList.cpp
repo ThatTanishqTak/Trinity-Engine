@@ -1,6 +1,8 @@
 #include "Trinity/Renderer/Vulkan/VulkanCommandList.h"
 
 #include "Trinity/Renderer/Vulkan/Resources/VulkanBuffer.h"
+#include "Trinity/Renderer/Vulkan/Resources/VulkanComputePipeline.h"
+#include "Trinity/Renderer/Vulkan/Resources/VulkanDescriptorSet.h"
 #include "Trinity/Renderer/Vulkan/Resources/VulkanPipeline.h"
 #include "Trinity/Renderer/Vulkan/Resources/VulkanTexture.h"
 #include "Trinity/Renderer/Vulkan/VulkanUtilities.h"
@@ -342,22 +344,49 @@ namespace Trinity
 
         m_BoundGraphicsPipeline = a_VulkanPipeline;
         m_BoundLayout = a_VulkanPipeline->GetLayout();
+        m_LastBindWasCompute = false;
         vkCmdBindPipeline(m_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, a_VulkanPipeline->GetPipeline());
     }
 
     void VulkanCommandList::BindComputePipeline(const std::shared_ptr<ComputePipeline>& pipeline)
     {
-        TR_CORE_ERROR("VulkanCommandList::BindComputePipeline is not yet implemented (Phase 5.6 pending)");
-        (void)pipeline;
+        if (m_CommandBuffer == VK_NULL_HANDLE || pipeline == nullptr)
+        {
+            return;
+        }
+
+        auto* a_VulkanPipeline = dynamic_cast<VulkanComputePipeline*>(pipeline.get());
+        if (a_VulkanPipeline == nullptr)
+        {
+            return;
+        }
+
+        m_BoundComputePipeline = a_VulkanPipeline;
+        m_BoundLayout = a_VulkanPipeline->GetLayout();
+        m_LastBindWasCompute = true;
+
+        vkCmdBindPipeline(m_CommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, a_VulkanPipeline->GetPipeline());
     }
 
     void VulkanCommandList::BindDescriptorSet(uint32_t setIndex, const std::shared_ptr<DescriptorSet>& set, uint32_t dynamicOffsetCount, const uint32_t* dynamicOffsets)
     {
-        TR_CORE_ERROR("VulkanCommandList::BindDescriptorSet is not yet implemented (Phase 5.9 pending)");
-        (void)setIndex;
-        (void)set;
-        (void)dynamicOffsetCount;
-        (void)dynamicOffsets;
+        if (m_CommandBuffer == VK_NULL_HANDLE || set == nullptr || m_BoundLayout == VK_NULL_HANDLE)
+        {
+            return;
+        }
+
+        auto* a_VulkanSet = dynamic_cast<VulkanDescriptorSet*>(set.get());
+        if (a_VulkanSet == nullptr)
+        {
+            return;
+        }
+
+        a_VulkanSet->Flush();
+
+        VkDescriptorSet l_Sets[] = { a_VulkanSet->GetVkSet() };
+        const VkPipelineBindPoint l_BindPoint = m_LastBindWasCompute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
+
+        vkCmdBindDescriptorSets(m_CommandBuffer, l_BindPoint, m_BoundLayout, setIndex, 1, l_Sets, dynamicOffsetCount, dynamicOffsets);
     }
 
     void VulkanCommandList::PushConstants(uint32_t offset, uint32_t size, const void* data)
@@ -367,7 +396,16 @@ namespace Trinity
             return;
         }
 
-        VkShaderStageFlags l_Stages = PushConstantStagesFor(m_BoundGraphicsPipeline, offset, size);
+        VkShaderStageFlags l_Stages;
+        if (m_LastBindWasCompute)
+        {
+            l_Stages = VK_SHADER_STAGE_COMPUTE_BIT;
+        }
+        else
+        {
+            l_Stages = PushConstantStagesFor(m_BoundGraphicsPipeline, offset, size);
+        }
+
         vkCmdPushConstants(m_CommandBuffer, m_BoundLayout, l_Stages, offset, size, data);
     }
 

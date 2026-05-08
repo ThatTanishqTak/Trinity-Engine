@@ -77,5 +77,6 @@ namespace Trinity
         VulkanPipeline* m_BoundGraphicsPipeline = nullptr;
         VulkanComputePipeline* m_BoundComputePipeline = nullptr;
         VkPipelineLayout m_BoundLayout = VK_NULL_HANDLE;
+        bool m_LastBindWasCompute = false;
     };
 }

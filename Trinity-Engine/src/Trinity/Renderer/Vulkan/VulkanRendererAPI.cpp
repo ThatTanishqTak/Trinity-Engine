@@ -9,6 +9,7 @@
 #include "Trinity/Renderer/Vulkan/Resources/VulkanSampler.h"
 #include "Trinity/Renderer/Vulkan/Resources/VulkanDescriptorSet.h"
 #include "Trinity/Renderer/Vulkan/Resources/VulkanDescriptorSetLayout.h"
+#include "Trinity/Renderer/Vulkan/Resources/VulkanComputePipeline.h"
 #include "Trinity/Renderer/Vulkan/RenderGraph/VulkanRenderGraph.h"
 #include "Trinity/Platform/Window/Window.h"
 #include "Trinity/Utilities/Log.h"
@@ -390,9 +391,7 @@ namespace Trinity
 
     std::shared_ptr<ComputePipeline> VulkanRendererAPI::CreateComputePipeline(const ComputePipelineSpecification& specification)
     {
-        TR_CORE_ERROR("VulkanRendererAPI::CreateComputePipeline is not yet implemented (Phase 5.6 pending) [{}]", specification.DebugName);
-
-        return nullptr;
+        return std::make_shared<VulkanComputePipeline>(m_Device.GetDevice(), specification);
     }
 
     std::shared_ptr<DescriptorSetLayout> VulkanRendererAPI::CreateDescriptorSetLayout(const DescriptorSetLayoutSpecification& specification)
