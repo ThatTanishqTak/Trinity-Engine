@@ -51,6 +51,7 @@ namespace Trinity
 
         virtual uint32_t GetCount() const = 0;
         virtual QueryType GetType() const = 0;
+        virtual float GetTimestampPeriod() const = 0;
 
         const QueryPoolSpecification& GetSpecification() const { return m_Specification; }
 

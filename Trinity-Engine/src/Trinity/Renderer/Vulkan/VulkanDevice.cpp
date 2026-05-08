@@ -129,6 +129,11 @@ namespace Trinity
         l_DynamicRenderingFeature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
         l_DynamicRenderingFeature.dynamicRendering = VK_TRUE;
 
+        VkPhysicalDeviceHostQueryResetFeatures l_HostQueryResetFeature{};
+        l_HostQueryResetFeature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES;
+        l_HostQueryResetFeature.hostQueryReset = VK_TRUE;
+        l_DynamicRenderingFeature.pNext = &l_HostQueryResetFeature;
+
         VkPhysicalDeviceSynchronization2Features l_Sync2Feature{};
         l_Sync2Feature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES;
         l_Sync2Feature.synchronization2 = VK_TRUE;

@@ -4,6 +4,7 @@
 #include "Trinity/Renderer/Vulkan/Resources/VulkanComputePipeline.h"
 #include "Trinity/Renderer/Vulkan/Resources/VulkanDescriptorSet.h"
 #include "Trinity/Renderer/Vulkan/Resources/VulkanPipeline.h"
+#include "Trinity/Renderer/Vulkan/Resources/VulkanQueryPool.h"
 #include "Trinity/Renderer/Vulkan/Resources/VulkanTexture.h"
 #include "Trinity/Renderer/Vulkan/VulkanUtilities.h"
 #include "Trinity/Utilities/Log.h"
@@ -688,17 +689,34 @@ namespace Trinity
 
     void VulkanCommandList::WriteTimestamp(const std::shared_ptr<QueryPool>& pool, uint32_t index)
     {
-        TR_CORE_ERROR("VulkanCommandList::WriteTimestamp is not yet implemented (Phase 5.10 pending)");
-        (void)pool;
-        (void)index;
+        if (m_CommandBuffer == VK_NULL_HANDLE || pool == nullptr)
+        {
+            return;
+        }
+
+        auto* a_VulkanPool = dynamic_cast<VulkanQueryPool*>(pool.get());
+        if (a_VulkanPool == nullptr)
+        {
+            return;
+        }
+
+        vkCmdWriteTimestamp2(m_CommandBuffer, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, a_VulkanPool->GetVkPool(), index);
     }
 
     void VulkanCommandList::ResetQueryPool(const std::shared_ptr<QueryPool>& pool, uint32_t firstIndex, uint32_t count)
     {
-        TR_CORE_ERROR("VulkanCommandList::ResetQueryPool is not yet implemented (Phase 5.10 pending)");
-        (void)pool;
-        (void)firstIndex;
-        (void)count;
+        if (m_CommandBuffer == VK_NULL_HANDLE || pool == nullptr)
+        {
+            return;
+        }
+
+        auto* a_VulkanPool = dynamic_cast<VulkanQueryPool*>(pool.get());
+        if (a_VulkanPool == nullptr)
+        {
+            return;
+        }
+
+        vkCmdResetQueryPool(m_CommandBuffer, a_VulkanPool->GetVkPool(), firstIndex, count);
     }
 
     void VulkanCommandList::BeginDebugLabel(const std::string& name, const float color[4])

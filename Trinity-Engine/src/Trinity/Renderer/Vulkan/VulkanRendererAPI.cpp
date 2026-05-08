@@ -10,6 +10,7 @@
 #include "Trinity/Renderer/Vulkan/Resources/VulkanDescriptorSet.h"
 #include "Trinity/Renderer/Vulkan/Resources/VulkanDescriptorSetLayout.h"
 #include "Trinity/Renderer/Vulkan/Resources/VulkanComputePipeline.h"
+#include "Trinity/Renderer/Vulkan/Resources/VulkanQueryPool.h"
 #include "Trinity/Renderer/Vulkan/RenderGraph/VulkanRenderGraph.h"
 #include "Trinity/Platform/Window/Window.h"
 #include "Trinity/Utilities/Log.h"
@@ -413,9 +414,7 @@ namespace Trinity
 
     std::shared_ptr<QueryPool> VulkanRendererAPI::CreateQueryPool(const QueryPoolSpecification& specification)
     {
-        TR_CORE_ERROR("VulkanRendererAPI::CreateQueryPool is not yet implemented (Phase 5.10 pending) [{}]", specification.DebugName);
-
-        return nullptr;
+        return std::make_shared<VulkanQueryPool>(m_Device.GetDevice(), m_Device.GetProperties(), specification);
     }
 
     std::shared_ptr<DescriptorSet> VulkanRendererAPI::AllocateDescriptorSet(const std::shared_ptr<DescriptorSetLayout>& layout)

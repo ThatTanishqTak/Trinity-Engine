@@ -22,7 +22,7 @@ namespace Trinity
             // Console
             logSinks[0]->set_pattern("%^[%T] [%n] [%s:%#] %v%$");
             // File
-            logSinks[1]->set_pattern("[%Y-%m-%d %T.%e] [%n] [%-l] [%s:%#] [%!] %v");
+            logSinks[1]->set_pattern("[%d-%m-%Y %T] [%n] [%-l] [%s:%#] [%!] \n%v [procress: %P] [thread: %t]\n");
 
             s_CoreLogger = std::make_shared<spdlog::logger>("TRINITY-ENGINE", begin(logSinks), end(logSinks));
 
