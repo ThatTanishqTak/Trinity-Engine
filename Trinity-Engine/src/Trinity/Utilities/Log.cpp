@@ -14,22 +14,22 @@ namespace Trinity
 
         void Log::Initialize()
         {
-            std::vector<spdlog::sink_ptr> logSinks;
+            std::vector<spdlog::sink_ptr> l_LogSinks;
 
-            logSinks.emplace_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
-            logSinks.emplace_back(std::make_shared<spdlog::sinks::basic_file_sink_mt>("Engine_Log.txt", true));
+            l_LogSinks.emplace_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
+            l_LogSinks.emplace_back(std::make_shared<spdlog::sinks::basic_file_sink_mt>("Engine_Log.txt", true));
 
             // Console
-            logSinks[0]->set_pattern("%^[%T] [%n] [%s:%#] %v%$");
+            l_LogSinks[0]->set_pattern("%^[%T.%e] [%n] [%s:%#] %v%$");
             // File
-            logSinks[1]->set_pattern("[%d-%m-%Y %T] [%n] [%-l] [%s:%#] [%!] \n%v [procress: %P] [thread: %t]\n");
+            l_LogSinks[1]->set_pattern("[%d-%m-%Y %T.%e] [%n] [%-l] [pid:%P] [thread:%t] [%s:%#] [%!] %v");
 
-            s_CoreLogger = std::make_shared<spdlog::logger>("TRINITY-ENGINE", begin(logSinks), end(logSinks));
+            s_CoreLogger = std::make_shared<spdlog::logger>("TRINITY-ENGINE", begin(l_LogSinks), end(l_LogSinks));
 
             spdlog::register_logger(s_CoreLogger);
             s_CoreLogger->set_level(spdlog::level::trace);
             s_CoreLogger->flush_on(spdlog::level::trace);
-            s_ClientLogger = std::make_shared<spdlog::logger>("TRINITY-FORGE", begin(logSinks), end(logSinks));
+            s_ClientLogger = std::make_shared<spdlog::logger>("TRINITY-FORGE", begin(l_LogSinks), end(l_LogSinks));
 
             spdlog::register_logger(s_ClientLogger);
             s_ClientLogger->set_level(spdlog::level::trace);
