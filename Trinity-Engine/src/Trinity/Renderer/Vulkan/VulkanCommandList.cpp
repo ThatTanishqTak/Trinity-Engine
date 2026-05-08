@@ -3,7 +3,6 @@
 #include "Trinity/Renderer/Vulkan/Resources/VulkanBuffer.h"
 #include "Trinity/Renderer/Vulkan/Resources/VulkanPipeline.h"
 #include "Trinity/Renderer/Vulkan/Resources/VulkanTexture.h"
-#include "Trinity/Renderer/Vulkan/Resources/VulkanDescriptorSet.h"
 #include "Trinity/Renderer/Vulkan/VulkanUtilities.h"
 #include "Trinity/Utilities/Log.h"
 
@@ -318,6 +317,16 @@ namespace Trinity
         vkCmdSetScissor(m_CommandBuffer, 0, 1, &l_Scissor);
     }
 
+    void VulkanCommandList::SetDepthBias(float constantFactor, float clamp, float slopeFactor)
+    {
+        if (m_CommandBuffer == VK_NULL_HANDLE)
+        {
+            return;
+        }
+
+        vkCmdSetDepthBias(m_CommandBuffer, constantFactor, clamp, slopeFactor);
+    }
+
     void VulkanCommandList::BindPipeline(const std::shared_ptr<Pipeline>& pipeline)
     {
         if (m_CommandBuffer == VK_NULL_HANDLE || pipeline == nullptr)
@@ -344,23 +353,11 @@ namespace Trinity
 
     void VulkanCommandList::BindDescriptorSet(uint32_t setIndex, const std::shared_ptr<DescriptorSet>& set, uint32_t dynamicOffsetCount, const uint32_t* dynamicOffsets)
     {
-        if (m_CommandBuffer == VK_NULL_HANDLE || set == nullptr || m_BoundLayout == VK_NULL_HANDLE)
-        {
-            return;
-        }
-
-        auto* a_VulkanSet = dynamic_cast<VulkanDescriptorSet*>(set.get());
-        if (a_VulkanSet == nullptr)
-        {
-            return;
-        }
-
-        a_VulkanSet->Flush();
-
-        VkDescriptorSet l_Sets[] = { a_VulkanSet->GetVkSet() };
-        const VkPipelineBindPoint l_BindPoint = (m_BoundComputePipeline != nullptr) ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
-
-        vkCmdBindDescriptorSets(m_CommandBuffer, l_BindPoint, m_BoundLayout, setIndex, 1, l_Sets, dynamicOffsetCount, dynamicOffsets);
+        TR_CORE_ERROR("VulkanCommandList::BindDescriptorSet is not yet implemented (Phase 5.9 pending)");
+        (void)setIndex;
+        (void)set;
+        (void)dynamicOffsetCount;
+        (void)dynamicOffsets;
     }
 
     void VulkanCommandList::PushConstants(uint32_t offset, uint32_t size, const void* data)
@@ -647,133 +644,8 @@ namespace Trinity
 
     void VulkanCommandList::GenerateMips(const std::shared_ptr<Texture>& texture)
     {
-        if (m_CommandBuffer == VK_NULL_HANDLE || texture == nullptr)
-        {
-            return;
-        }
-
-        auto* a_VulkanTexture = dynamic_cast<VulkanTexture*>(texture.get());
-        if (a_VulkanTexture == nullptr)
-        {
-            return;
-        }
-
-        if (VulkanUtilities::IsBlockCompressedFormat(a_VulkanTexture->GetSpecification().Format))
-        {
-            TR_CORE_WARN("GenerateMips called on block-compressed texture [{}] - skipping (BC content must include mips)", a_VulkanTexture->GetSpecification().DebugName);
-            return;
-        }
-
-        const uint32_t l_MipLevels = a_VulkanTexture->GetMipLevels();
-        if (l_MipLevels <= 1)
-        {
-            return;
-        }
-
-        const uint32_t l_LayerCount = a_VulkanTexture->GetArrayLayers();
-        const VkImageAspectFlags l_Aspect = AspectFromFormat(a_VulkanTexture->GetVkFormat());
-        VkImage l_Image = a_VulkanTexture->GetImage();
-
-        int32_t l_MipWidth = static_cast<int32_t>(a_VulkanTexture->GetWidth());
-        int32_t l_MipHeight = static_cast<int32_t>(a_VulkanTexture->GetHeight());
-
-        for (uint32_t i = 1; i < l_MipLevels; i++)
-        {
-            VkImageMemoryBarrier2 l_SrcBarrier{};
-            l_SrcBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-            l_SrcBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-            l_SrcBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-            l_SrcBarrier.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-            l_SrcBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
-            l_SrcBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-            l_SrcBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-            l_SrcBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            l_SrcBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            l_SrcBarrier.image = l_Image;
-            l_SrcBarrier.subresourceRange.aspectMask = l_Aspect;
-            l_SrcBarrier.subresourceRange.baseMipLevel = i - 1;
-            l_SrcBarrier.subresourceRange.levelCount = 1;
-            l_SrcBarrier.subresourceRange.baseArrayLayer = 0;
-            l_SrcBarrier.subresourceRange.layerCount = l_LayerCount;
-
-            VkDependencyInfo l_SrcDependency{};
-            l_SrcDependency.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-            l_SrcDependency.imageMemoryBarrierCount = 1;
-            l_SrcDependency.pImageMemoryBarriers = &l_SrcBarrier;
-            vkCmdPipelineBarrier2(m_CommandBuffer, &l_SrcDependency);
-
-            VkImageBlit l_Blit{};
-            l_Blit.srcSubresource.aspectMask = l_Aspect;
-            l_Blit.srcSubresource.mipLevel = i - 1;
-            l_Blit.srcSubresource.baseArrayLayer = 0;
-            l_Blit.srcSubresource.layerCount = l_LayerCount;
-            l_Blit.srcOffsets[0] = { 0, 0, 0 };
-            l_Blit.srcOffsets[1] = { l_MipWidth, l_MipHeight, 1 };
-            l_Blit.dstSubresource.aspectMask = l_Aspect;
-            l_Blit.dstSubresource.mipLevel = i;
-            l_Blit.dstSubresource.baseArrayLayer = 0;
-            l_Blit.dstSubresource.layerCount = l_LayerCount;
-            l_Blit.dstOffsets[0] = { 0, 0, 0 };
-            l_Blit.dstOffsets[1] = { l_MipWidth > 1 ? l_MipWidth / 2 : 1, l_MipHeight > 1 ? l_MipHeight / 2 : 1, 1 };
-
-            vkCmdBlitImage(m_CommandBuffer, l_Image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, l_Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &l_Blit, VK_FILTER_LINEAR);
-
-            VkImageMemoryBarrier2 l_FinalSrcBarrier{};
-            l_FinalSrcBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-            l_FinalSrcBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-            l_FinalSrcBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
-            l_FinalSrcBarrier.dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-            l_FinalSrcBarrier.dstAccessMask = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT;
-            l_FinalSrcBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-            l_FinalSrcBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            l_FinalSrcBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            l_FinalSrcBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            l_FinalSrcBarrier.image = l_Image;
-            l_FinalSrcBarrier.subresourceRange.aspectMask = l_Aspect;
-            l_FinalSrcBarrier.subresourceRange.baseMipLevel = i - 1;
-            l_FinalSrcBarrier.subresourceRange.levelCount = 1;
-            l_FinalSrcBarrier.subresourceRange.baseArrayLayer = 0;
-            l_FinalSrcBarrier.subresourceRange.layerCount = l_LayerCount;
-
-            VkDependencyInfo l_FinalSrcDependency{};
-            l_FinalSrcDependency.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-            l_FinalSrcDependency.imageMemoryBarrierCount = 1;
-            l_FinalSrcDependency.pImageMemoryBarriers = &l_FinalSrcBarrier;
-            vkCmdPipelineBarrier2(m_CommandBuffer, &l_FinalSrcDependency);
-
-            if (l_MipWidth > 1)
-            {
-                l_MipWidth /= 2;
-            }
-
-            if (l_MipHeight > 1)
-            {
-                l_MipHeight /= 2;
-            }
-        }
-
-        VkImageMemoryBarrier2 l_FinalDstBarrier{};
-        l_FinalDstBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-        l_FinalDstBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-        l_FinalDstBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-        l_FinalDstBarrier.dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-        l_FinalDstBarrier.dstAccessMask = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT;
-        l_FinalDstBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        l_FinalDstBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        l_FinalDstBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        l_FinalDstBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        l_FinalDstBarrier.image = l_Image;
-        l_FinalDstBarrier.subresourceRange.aspectMask = l_Aspect;
-        l_FinalDstBarrier.subresourceRange.baseMipLevel = l_MipLevels - 1;
-        l_FinalDstBarrier.subresourceRange.levelCount = 1;
-        l_FinalDstBarrier.subresourceRange.baseArrayLayer = 0;
-        l_FinalDstBarrier.subresourceRange.layerCount = l_LayerCount;
-
-        VkDependencyInfo l_FinalDstDependency{};
-        l_FinalDstDependency.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-        l_FinalDstDependency.imageMemoryBarrierCount = 1;
-        l_FinalDstDependency.pImageMemoryBarriers = &l_FinalDstBarrier;
-        vkCmdPipelineBarrier2(m_CommandBuffer, &l_FinalDstDependency);
+        TR_CORE_ERROR("VulkanCommandList::GenerateMips is not yet implemented (Phase 5.2 mip-chain support pending)");
+        (void)texture;
     }
 
     void VulkanCommandList::WriteTimestamp(const std::shared_ptr<QueryPool>& pool, uint32_t index)

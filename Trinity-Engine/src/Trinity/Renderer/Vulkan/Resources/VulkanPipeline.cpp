@@ -14,38 +14,22 @@ namespace Trinity
         {
             switch (factor)
             {
-                case BlendFactor::Zero:
-                    return VK_BLEND_FACTOR_ZERO;
-                case BlendFactor::One:
-                    return VK_BLEND_FACTOR_ONE;
-                case BlendFactor::SrcColor:
-                    return VK_BLEND_FACTOR_SRC_COLOR;
-                case BlendFactor::OneMinusSrcColor:
-                    return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
-                case BlendFactor::DstColor:
-                    return VK_BLEND_FACTOR_DST_COLOR;
-                case BlendFactor::OneMinusDstColor:
-                    return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
-                case BlendFactor::SrcAlpha:
-                    return VK_BLEND_FACTOR_SRC_ALPHA;
-                case BlendFactor::OneMinusSrcAlpha:
-                    return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-                case BlendFactor::DstAlpha:
-                    return VK_BLEND_FACTOR_DST_ALPHA;
-                case BlendFactor::OneMinusDstAlpha:
-                    return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
-                case BlendFactor::ConstantColor:
-                    return VK_BLEND_FACTOR_CONSTANT_COLOR;
-                case BlendFactor::OneMinusConstantColor:
-                    return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
-                case BlendFactor::ConstantAlpha:
-                    return VK_BLEND_FACTOR_CONSTANT_ALPHA;
-                case BlendFactor::OneMinusConstantAlpha:
-                    return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA;
-                case BlendFactor::SrcAlphaSaturate:
-                    return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
-                default:
-                    return VK_BLEND_FACTOR_ONE;
+                case BlendFactor::Zero:                  return VK_BLEND_FACTOR_ZERO;
+                case BlendFactor::One:                   return VK_BLEND_FACTOR_ONE;
+                case BlendFactor::SrcColor:              return VK_BLEND_FACTOR_SRC_COLOR;
+                case BlendFactor::OneMinusSrcColor:      return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+                case BlendFactor::DstColor:              return VK_BLEND_FACTOR_DST_COLOR;
+                case BlendFactor::OneMinusDstColor:      return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+                case BlendFactor::SrcAlpha:              return VK_BLEND_FACTOR_SRC_ALPHA;
+                case BlendFactor::OneMinusSrcAlpha:      return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+                case BlendFactor::DstAlpha:              return VK_BLEND_FACTOR_DST_ALPHA;
+                case BlendFactor::OneMinusDstAlpha:      return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+                case BlendFactor::ConstantColor:         return VK_BLEND_FACTOR_CONSTANT_COLOR;
+                case BlendFactor::OneMinusConstantColor: return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
+                case BlendFactor::ConstantAlpha:         return VK_BLEND_FACTOR_CONSTANT_ALPHA;
+                case BlendFactor::OneMinusConstantAlpha: return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA;
+                case BlendFactor::SrcAlphaSaturate:      return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
+                default:                                 return VK_BLEND_FACTOR_ONE;
             }
         }
 
@@ -53,43 +37,22 @@ namespace Trinity
         {
             switch (op)
             {
-                case BlendOp::Add:
-                    return VK_BLEND_OP_ADD;
-                case BlendOp::Subtract:
-                    return VK_BLEND_OP_SUBTRACT;
-                case BlendOp::ReverseSubtract:
-                    return VK_BLEND_OP_REVERSE_SUBTRACT;
-                case BlendOp::Min:
-                    return VK_BLEND_OP_MIN;
-                case BlendOp::Max:
-                    return VK_BLEND_OP_MAX;
-                default:
-                    return VK_BLEND_OP_ADD;
+                case BlendOp::Add:             return VK_BLEND_OP_ADD;
+                case BlendOp::Subtract:        return VK_BLEND_OP_SUBTRACT;
+                case BlendOp::ReverseSubtract: return VK_BLEND_OP_REVERSE_SUBTRACT;
+                case BlendOp::Min:             return VK_BLEND_OP_MIN;
+                case BlendOp::Max:             return VK_BLEND_OP_MAX;
+                default:                       return VK_BLEND_OP_ADD;
             }
         }
 
         VkColorComponentFlags ToVkColorComponents(ColorWriteMask mask)
         {
             VkColorComponentFlags l_Flags = 0;
-            if (mask & ColorWriteMask::Red)
-            {
-                l_Flags |= VK_COLOR_COMPONENT_R_BIT;
-            }
-
-            if (mask & ColorWriteMask::Green)
-            {
-                l_Flags |= VK_COLOR_COMPONENT_G_BIT;
-            }
-
-            if (mask & ColorWriteMask::Blue)
-            {
-                l_Flags |= VK_COLOR_COMPONENT_B_BIT;
-            }
-
-            if (mask & ColorWriteMask::Alpha)
-            {
-                l_Flags |= VK_COLOR_COMPONENT_A_BIT;
-            }
+            if (mask & ColorWriteMask::Red)   l_Flags |= VK_COLOR_COMPONENT_R_BIT;
+            if (mask & ColorWriteMask::Green) l_Flags |= VK_COLOR_COMPONENT_G_BIT;
+            if (mask & ColorWriteMask::Blue)  l_Flags |= VK_COLOR_COMPONENT_B_BIT;
+            if (mask & ColorWriteMask::Alpha) l_Flags |= VK_COLOR_COMPONENT_A_BIT;
 
             return l_Flags;
         }
@@ -98,22 +61,14 @@ namespace Trinity
         {
             switch (samples)
             {
-                case 1:
-                    return VK_SAMPLE_COUNT_1_BIT;
-                case 2:
-                    return VK_SAMPLE_COUNT_2_BIT;
-                case 4:
-                    return VK_SAMPLE_COUNT_4_BIT;
-                case 8:
-                    return VK_SAMPLE_COUNT_8_BIT;
-                case 16:
-                    return VK_SAMPLE_COUNT_16_BIT;
-                case 32:
-                    return VK_SAMPLE_COUNT_32_BIT;
-                case 64:
-                    return VK_SAMPLE_COUNT_64_BIT;
-                default:
-                    return VK_SAMPLE_COUNT_1_BIT;
+                case 1:  return VK_SAMPLE_COUNT_1_BIT;
+                case 2:  return VK_SAMPLE_COUNT_2_BIT;
+                case 4:  return VK_SAMPLE_COUNT_4_BIT;
+                case 8:  return VK_SAMPLE_COUNT_8_BIT;
+                case 16: return VK_SAMPLE_COUNT_16_BIT;
+                case 32: return VK_SAMPLE_COUNT_32_BIT;
+                case 64: return VK_SAMPLE_COUNT_64_BIT;
+                default: return VK_SAMPLE_COUNT_1_BIT;
             }
         }
     }
@@ -286,15 +241,10 @@ namespace Trinity
             l_ColorFormats.push_back(VulkanUtilities::ToVkFormat(it_Format));
         }
 
-        if (l_ColorFormats.empty())
-        {
-            l_ColorFormats.push_back(VK_FORMAT_B8G8R8A8_SRGB);
-        }
-
         VkPipelineRenderingCreateInfo l_RenderingInfo{};
         l_RenderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
         l_RenderingInfo.colorAttachmentCount = static_cast<uint32_t>(l_ColorFormats.size());
-        l_RenderingInfo.pColorAttachmentFormats = l_ColorFormats.data();
+        l_RenderingInfo.pColorAttachmentFormats = l_ColorFormats.empty() ? nullptr : l_ColorFormats.data();
 
         if (specification.DepthAttachmentFormat != TextureFormat::None)
         {

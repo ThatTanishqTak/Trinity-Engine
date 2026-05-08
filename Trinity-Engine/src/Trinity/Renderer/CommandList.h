@@ -63,6 +63,7 @@ namespace Trinity
 
         virtual void SetViewport(float x, float y, float width, float height, float minDepth, float maxDepth) = 0;
         virtual void SetScissor(int32_t x, int32_t y, uint32_t width, uint32_t height) = 0;
+        virtual void SetDepthBias(float constantFactor, float clamp, float slopeFactor) = 0;
 
         virtual void BindPipeline(const std::shared_ptr<Pipeline>& pipeline) = 0;
         virtual void BindComputePipeline(const std::shared_ptr<ComputePipeline>& pipeline) = 0;

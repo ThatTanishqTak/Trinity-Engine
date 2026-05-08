@@ -178,6 +178,7 @@ namespace Trinity
 
             l_Cmd.SetViewport(0.0f, 0.0f, static_cast<float>(l_ShadowMapResolution), static_cast<float>(l_ShadowMapResolution), 0.0f, 1.0f);
             l_Cmd.SetScissor(0, 0, l_ShadowMapResolution, l_ShadowMapResolution);
+            l_Cmd.SetDepthBias(1.25f, 0.0f, 1.75f);
 
             if (!m_DrawList.empty())
             {
