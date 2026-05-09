@@ -9,6 +9,7 @@ namespace Trinity
     class CommandBuffer;
     class RenderGraph;
     struct RenderGraphContext;
+    struct RenderPipelineSettings;
 
     struct FrameContext
     {
@@ -28,16 +29,6 @@ namespace Trinity
 
         glm::vec3 CameraPosition = glm::vec3(0.0f);
         glm::vec2 Jitter = glm::vec2(0.0f);
-    };
-
-    struct RenderPipelineSettings
-    {
-        bool EnableShadows = true;
-        bool EnableSSAO = true;
-        bool EnableBloom = true;
-        bool EnableTAA = true;
-        bool EnableSSR = true;
-        bool EnableVolumetricFog = true;
     };
 
     class RenderPass

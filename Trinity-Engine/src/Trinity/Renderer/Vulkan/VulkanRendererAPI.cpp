@@ -60,7 +60,7 @@ namespace Trinity
 
         m_SamplerCache.clear();
 
-        vkDeviceWaitIdle(m_Device.GetDevice());
+        WaitIdle();
 
         m_SyncObjects.Shutdown();
         m_LayoutCache.clear();

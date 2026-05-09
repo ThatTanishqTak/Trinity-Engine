@@ -378,6 +378,11 @@ namespace Trinity
         TR_CORE_INFO("SCENE RENDERER SHUTDOWN COMPLETE");
     }
 
+    void SceneRenderer::SetSettings(const RenderPipelineSettings& settings)
+    {
+        m_Settings = settings;
+    }
+
     void SceneRenderer::BeginScene(const Camera& camera, const SceneRenderData& sceneData)
     {
         m_Camera = camera;
