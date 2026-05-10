@@ -129,39 +129,104 @@ namespace Trinity
             l_QueueCreateInfos.push_back(l_QueueCreateInfo);
         }
 
-        VkPhysicalDeviceFeatures l_DeviceFeatures{};
-        l_DeviceFeatures.samplerAnisotropy = VK_TRUE;
-        l_DeviceFeatures.fillModeNonSolid = VK_TRUE;
-        l_DeviceFeatures.wideLines = VK_TRUE;
-        l_DeviceFeatures.geometryShader = VK_TRUE;
+        VkPhysicalDeviceVulkan13Features l_Features13Supported{};
+        l_Features13Supported.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
 
-        VkPhysicalDeviceTimelineSemaphoreFeatures l_TimelineSemaphoreFeature{};
-        l_TimelineSemaphoreFeature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES;
-        l_TimelineSemaphoreFeature.timelineSemaphore = VK_TRUE;
+        VkPhysicalDeviceVulkan12Features l_Features12Supported{};
+        l_Features12Supported.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+        l_Features12Supported.pNext = &l_Features13Supported;
 
-        VkPhysicalDeviceHostQueryResetFeatures l_HostQueryResetFeature{};
-        l_HostQueryResetFeature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES;
-        l_HostQueryResetFeature.hostQueryReset = VK_TRUE;
-        l_HostQueryResetFeature.pNext = &l_TimelineSemaphoreFeature;
+        VkPhysicalDeviceFeatures2 l_FeaturesSupported{};
+        l_FeaturesSupported.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+        l_FeaturesSupported.pNext = &l_Features12Supported;
 
-        VkPhysicalDeviceDynamicRenderingFeatures l_DynamicRenderingFeature{};
-        l_DynamicRenderingFeature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
-        l_DynamicRenderingFeature.dynamicRendering = VK_TRUE;
-        l_DynamicRenderingFeature.pNext = &l_HostQueryResetFeature;
+        vkGetPhysicalDeviceFeatures2(m_PhysicalDevice, &l_FeaturesSupported);
 
-        VkPhysicalDeviceSynchronization2Features l_Sync2Feature{};
-        l_Sync2Feature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES;
-        l_Sync2Feature.synchronization2 = VK_TRUE;
-        l_Sync2Feature.pNext = &l_DynamicRenderingFeature;
+        struct RequiredFeature
+        {
+            const char* Name;
+            bool Supported;
+        };
+
+        const RequiredFeature l_Required[] =
+        {
+            { "samplerAnisotropy", l_FeaturesSupported.features.samplerAnisotropy == VK_TRUE },
+            { "fillModeNonSolid", l_FeaturesSupported.features.fillModeNonSolid == VK_TRUE },
+            { "wideLines", l_FeaturesSupported.features.wideLines == VK_TRUE },
+            { "geometryShader", l_FeaturesSupported.features.geometryShader == VK_TRUE },
+            { "shaderInt64", l_FeaturesSupported.features.shaderInt64 == VK_TRUE },
+            { "multiDrawIndirect", l_FeaturesSupported.features.multiDrawIndirect == VK_TRUE },
+            { "drawIndirectFirstInstance", l_FeaturesSupported.features.drawIndirectFirstInstance == VK_TRUE },
+            { "bufferDeviceAddress", l_Features12Supported.bufferDeviceAddress == VK_TRUE },
+            { "descriptorIndexing", l_Features12Supported.descriptorIndexing == VK_TRUE },
+            { "descriptorBindingSampledImageUpdateAfterBind", l_Features12Supported.descriptorBindingSampledImageUpdateAfterBind == VK_TRUE },
+            { "descriptorBindingPartiallyBound", l_Features12Supported.descriptorBindingPartiallyBound == VK_TRUE },
+            { "descriptorBindingVariableDescriptorCount", l_Features12Supported.descriptorBindingVariableDescriptorCount == VK_TRUE },
+            { "runtimeDescriptorArray", l_Features12Supported.runtimeDescriptorArray == VK_TRUE },
+            { "shaderSampledImageArrayNonUniformIndexing", l_Features12Supported.shaderSampledImageArrayNonUniformIndexing == VK_TRUE },
+            { "scalarBlockLayout", l_Features12Supported.scalarBlockLayout == VK_TRUE },
+            { "timelineSemaphore", l_Features12Supported.timelineSemaphore == VK_TRUE },
+            { "hostQueryReset", l_Features12Supported.hostQueryReset == VK_TRUE },
+            { "drawIndirectCount", l_Features12Supported.drawIndirectCount == VK_TRUE },
+            { "synchronization2", l_Features13Supported.synchronization2 == VK_TRUE },
+            { "dynamicRendering", l_Features13Supported.dynamicRendering == VK_TRUE },
+        };
+
+        bool l_AllSupported = true;
+        for (const auto& it_Feature : l_Required)
+        {
+            if (!it_Feature.Supported)
+            {
+                TR_CORE_CRITICAL("Required Vulkan device feature not supported: {}", it_Feature.Name);
+                l_AllSupported = false;
+            }
+        }
+
+        if (!l_AllSupported)
+        {
+            TR_CORE_CRITICAL("Selected GPU does not satisfy Trinity-Engine's required Vulkan 1.3 feature set");
+            std::abort();
+        }
+
+        VkPhysicalDeviceVulkan13Features l_Features13{};
+        l_Features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+        l_Features13.synchronization2 = VK_TRUE;
+        l_Features13.dynamicRendering = VK_TRUE;
+
+        VkPhysicalDeviceVulkan12Features l_Features12{};
+        l_Features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+        l_Features12.bufferDeviceAddress = VK_TRUE;
+        l_Features12.descriptorIndexing = VK_TRUE;
+        l_Features12.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
+        l_Features12.descriptorBindingPartiallyBound = VK_TRUE;
+        l_Features12.descriptorBindingVariableDescriptorCount = VK_TRUE;
+        l_Features12.runtimeDescriptorArray = VK_TRUE;
+        l_Features12.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+        l_Features12.scalarBlockLayout = VK_TRUE;
+        l_Features12.timelineSemaphore = VK_TRUE;
+        l_Features12.hostQueryReset = VK_TRUE;
+        l_Features12.drawIndirectCount = VK_TRUE;
+        l_Features12.pNext = &l_Features13;
+
+        VkPhysicalDeviceFeatures2 l_Features2{};
+        l_Features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+        l_Features2.features.samplerAnisotropy = VK_TRUE;
+        l_Features2.features.fillModeNonSolid = VK_TRUE;
+        l_Features2.features.wideLines = VK_TRUE;
+        l_Features2.features.geometryShader = VK_TRUE;
+        l_Features2.features.shaderInt64 = VK_TRUE;
+        l_Features2.features.multiDrawIndirect = VK_TRUE;
+        l_Features2.features.drawIndirectFirstInstance = VK_TRUE;
+        l_Features2.pNext = &l_Features12;
 
         VkDeviceCreateInfo l_CreateInfo{};
         l_CreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
         l_CreateInfo.queueCreateInfoCount = static_cast<uint32_t>(l_QueueCreateInfos.size());
         l_CreateInfo.pQueueCreateInfos = l_QueueCreateInfos.data();
-        l_CreateInfo.pEnabledFeatures = &l_DeviceFeatures;
+        l_CreateInfo.pEnabledFeatures = nullptr;
         l_CreateInfo.enabledExtensionCount = static_cast<uint32_t>(s_DeviceExtensions.size());
         l_CreateInfo.ppEnabledExtensionNames = s_DeviceExtensions.data();
-        l_CreateInfo.pNext = &l_Sync2Feature;
+        l_CreateInfo.pNext = &l_Features2;
 
         if (enableValidation)
         {
@@ -202,7 +267,7 @@ namespace Trinity
 
         m_HasTimelineSemaphore = true;
 
-        TR_CORE_TRACE("Logical Device Created (graphicsFamily={}, computeFamily={}, transferFamily={}, dedicatedCompute={}, dedicatedTransfer={}, timelineSemaphore={})", m_QueueFamilyIndices.GraphicsFamily.value(), GetComputeQueueFamily(), GetTransferQueueFamily(), m_HasDedicatedCompute, m_HasDedicatedTransfer, m_HasTimelineSemaphore);
+        TR_CORE_TRACE("Logical Device Created (Graphics Family = {}, Compute Family = {}, Transfer Family = {}, Dedicated Compute = {}, Dedicated Transfer = {}, Timeline Semaphore = {})", m_QueueFamilyIndices.GraphicsFamily.value(), GetComputeQueueFamily(), GetTransferQueueFamily(), m_HasDedicatedCompute, m_HasDedicatedTransfer, m_HasTimelineSemaphore);
     }
 
     QueueFamilyIndices VulkanDevice::FindQueueFamilies(VkPhysicalDevice device) const
