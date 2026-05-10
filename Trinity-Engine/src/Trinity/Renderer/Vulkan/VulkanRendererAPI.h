@@ -63,6 +63,8 @@ namespace Trinity
         bool SupportsBindless() const override { return m_SupportsBindless; }
         bool SupportsRayTracing() const override { return m_SupportsRayTracing; }
         bool SupportsMeshShaders() const override { return m_SupportsMeshShaders; }
+        bool SupportsFragmentShadingRate() const override { return m_SupportsFragmentShadingRate; }
+        bool SupportsHDRDisplayOutput() const override { return m_SupportsHDRDisplayOutput; }
 
         VulkanDevice& GetDevice() { return m_Device; }
         VulkanAllocator& GetAllocator() { return m_Allocator; }
@@ -96,6 +98,8 @@ namespace Trinity
         bool m_SupportsBindless = false;
         bool m_SupportsRayTracing = false;
         bool m_SupportsMeshShaders = false;
+        bool m_SupportsFragmentShadingRate = false;
+        bool m_SupportsHDRDisplayOutput = false;
 
         struct SamplerCacheKey
         {

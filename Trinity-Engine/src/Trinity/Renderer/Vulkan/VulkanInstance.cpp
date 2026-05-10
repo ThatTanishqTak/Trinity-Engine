@@ -55,6 +55,23 @@ namespace Trinity
             enableValidation = false;
         }
 
+        uint32_t l_AvailableExtensionCount = 0;
+        vkEnumerateInstanceExtensionProperties(nullptr, &l_AvailableExtensionCount, nullptr);
+        std::vector<VkExtensionProperties> l_AvailableExtensions(l_AvailableExtensionCount);
+        vkEnumerateInstanceExtensionProperties(nullptr, &l_AvailableExtensionCount, l_AvailableExtensions.data());
+
+        auto l_HasInstanceExtension = [&l_AvailableExtensions](const char* name)
+        {
+            for (const auto& it_Extension : l_AvailableExtensions)
+            {
+                if (strcmp(it_Extension.extensionName, name) == 0)
+                {
+                    return true;
+                }
+            }
+            return false;
+        };
+
         VkApplicationInfo l_ApplicationInfo{};
         l_ApplicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
         l_ApplicationInfo.pApplicationName = "Trinity Engine";
@@ -76,6 +93,17 @@ namespace Trinity
 #ifdef __APPLE__
         l_Extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
 #endif
+
+        if (l_HasInstanceExtension(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME))
+        {
+            l_Extensions.push_back(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
+            m_HasSwapchainColorspace = true;
+            TR_CORE_TRACE("Optional instance extension enabled: {}", VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
+        }
+        else
+        {
+            TR_CORE_TRACE("Optional instance extension not available: {}", VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
+        }
 
         VkInstanceCreateInfo l_CreateInfo{};
         l_CreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;

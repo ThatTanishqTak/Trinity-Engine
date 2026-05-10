@@ -77,6 +77,8 @@ namespace Trinity
         virtual bool SupportsBindless() const = 0;
         virtual bool SupportsRayTracing() const = 0;
         virtual bool SupportsMeshShaders() const = 0;
+        virtual bool SupportsFragmentShadingRate() const = 0;
+        virtual bool SupportsHDRDisplayOutput() const = 0;
 
         RendererBackend GetBackend() const { return m_Backend; }
 

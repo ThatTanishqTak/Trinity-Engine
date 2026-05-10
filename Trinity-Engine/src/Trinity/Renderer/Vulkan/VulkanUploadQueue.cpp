@@ -55,7 +55,7 @@ namespace Trinity
             VulkanUtilities::VKCheck(vkCreateSemaphore(m_Device, &l_SemInfo, nullptr, &m_TimelineSemaphore), "Failed to create upload timeline semaphore");
         }
 
-        TR_CORE_INFO("Vulkan Upload Queue Initialized (async={}, dedicatedTransfer={}, timelineSem={}, ownershipTransfer={})", IsAsync(), m_HasDedicatedTransfer, m_HasTimelineSemaphore, m_RequiresOwnershipTransfer);
+        TR_CORE_INFO("Vulkan Upload Queue Initialized (Async = {}, Dedicated Transfer = {}, Timeline Semaphore = {}, Ownership Transfer = {})", IsAsync(), m_HasDedicatedTransfer, m_HasTimelineSemaphore, m_RequiresOwnershipTransfer);
     }
 
     void VulkanUploadQueue::Shutdown()
@@ -170,9 +170,10 @@ namespace Trinity
         VkResult l_Result = vmaCreateBuffer(m_Allocator, &l_BufferInfo, &l_AllocInfo, &l_NewChunk.Buffer, &l_NewChunk.Allocation, &l_StagingInfo);
         if (l_Result != VK_SUCCESS)
         {
-            TR_CORE_ERROR("Upload Queue: failed to allocate staging chunk of {} bytes (VkResult={})", l_AllocSize, static_cast<int>(l_Result));
+            TR_CORE_ERROR("Failed to allocate staging chunk of {} bytes (VkResult = {})", l_AllocSize, static_cast<int>(l_Result));
             outOffset = 0;
             outChunkIndex = UINT32_MAX;
+
             return nullptr;
         }
         l_NewChunk.MappedData = l_StagingInfo.pMappedData;
@@ -184,7 +185,7 @@ namespace Trinity
         outOffset = 0;
         outChunkIndex = m_CurrentChunkIndex;
 
-        TR_CORE_DEBUG("Upload Queue: allocated staging chunk #{} ({} MB)", m_CurrentChunkIndex, l_AllocSize / (1024 * 1024));
+        TR_CORE_DEBUG("Allocated staging chunk #{} ({} MB)", m_CurrentChunkIndex, l_AllocSize / (1024 * 1024));
 
         return &m_StagingChunks.back();
     }
@@ -193,7 +194,7 @@ namespace Trinity
     {
         if (size == 0 || data == nullptr || destination == VK_NULL_HANDLE)
         {
-            TR_CORE_WARN("Upload Queue: EnqueueBufferUpload called with invalid args (size={}, data={}, dst={})", size, data != nullptr, destination != VK_NULL_HANDLE);
+            TR_CORE_WARN("EnqueueBufferUpload called with invalid args (Size = {}, Data = {}, Destination = {})", size, data != nullptr, destination != VK_NULL_HANDLE);
             return;
         }
 
@@ -219,14 +220,14 @@ namespace Trinity
 
         m_PendingBufferUploads.push_back(l_Op);
 
-        TR_CORE_TRACE("Upload Queue: enqueued buffer copy ({} bytes, chunk #{}, offset {})", size, l_ChunkIndex, l_Offset);
+        TR_CORE_TRACE("Enqueued buffer copy ({} Bytes, Chunk #{}, Offset {})", size, l_ChunkIndex, l_Offset);
     }
 
     void VulkanUploadQueue::EnqueueTextureUpload(VkImage destination, VkImageAspectFlags aspect, uint32_t mipLevel, uint32_t arrayLayer, uint32_t width, uint32_t height, uint32_t depth, const void* data, uint64_t size)
     {
         if (size == 0 || data == nullptr || destination == VK_NULL_HANDLE)
         {
-            TR_CORE_WARN("Upload Queue: EnqueueTextureUpload called with invalid args (size={}, data={}, dst={})", size, data != nullptr, destination != VK_NULL_HANDLE);
+            TR_CORE_WARN("EnqueueTextureUpload called with invalid args (Size = {}, Data = {}, Destination = {})", size, data != nullptr, destination != VK_NULL_HANDLE);
             return;
         }
 
@@ -256,7 +257,7 @@ namespace Trinity
 
         m_PendingTextureUploads.push_back(l_Op);
 
-        TR_CORE_TRACE("Upload Queue: enqueued texture copy ({}x{}x{} mip {} layer {}, {} bytes, chunk #{}, offset {})", width, height, depth, mipLevel, arrayLayer, size, l_ChunkIndex, l_Offset);
+        TR_CORE_TRACE("Enqueued texture copy ({}x{}x{} mip {} layer {}, {} Bytes, Chunk #{}, Offset: {})", width, height, depth, mipLevel, arrayLayer, size, l_ChunkIndex, l_Offset);
     }
 
     void VulkanUploadQueue::BeginFrame()
@@ -507,7 +508,7 @@ namespace Trinity
         m_PendingBufferUploads.clear();
         m_PendingTextureUploads.clear();
 
-        TR_CORE_DEBUG("Upload Queue: submitted batch (value={}, buffers={}, textures={}, sync={})", l_SignalValue, l_BufferOps, l_TextureOps, waitSync);
+        TR_CORE_DEBUG("Submitted batch (Value = {}, Buffers = {}, Textures = {}, Sync = {})", l_SignalValue, l_BufferOps, l_TextureOps, waitSync);
     }
 
     void VulkanUploadQueue::RecordAcquireBarriers(VkCommandBuffer consumerCommandBuffer)
@@ -555,7 +556,7 @@ namespace Trinity
         l_DepInfo.pImageMemoryBarriers = l_Barriers.data();
         vkCmdPipelineBarrier2(consumerCommandBuffer, &l_DepInfo);
 
-        TR_CORE_TRACE("Upload Queue: recorded {} acquire barriers", m_PendingAcquireBarriers.size());
+        TR_CORE_TRACE("Recorded {} acquire barriers", m_PendingAcquireBarriers.size());
 
         m_PendingAcquireBarriers.clear();
     }

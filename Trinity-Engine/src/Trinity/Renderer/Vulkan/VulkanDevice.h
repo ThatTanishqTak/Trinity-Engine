@@ -58,6 +58,10 @@ namespace Trinity
         bool HasDedicatedTransferQueue() const { return m_HasDedicatedTransfer; }
         bool HasTimelineSemaphore() const { return m_HasTimelineSemaphore; }
 
+        bool SupportsRayTracing() const { return m_HasRayTracing; }
+        bool SupportsMeshShaders() const { return m_HasMeshShaders; }
+        bool SupportsFragmentShadingRate() const { return m_HasFragmentShadingRate; }
+
         const QueueFamilyIndices& GetQueueFamilyIndices() const { return m_QueueFamilyIndices; }
         const VkPhysicalDeviceProperties& GetProperties() const { return m_Properties; }
 
@@ -84,6 +88,10 @@ namespace Trinity
         bool m_HasDedicatedCompute = false;
         bool m_HasDedicatedTransfer = false;
         bool m_HasTimelineSemaphore = false;
+
+        bool m_HasRayTracing = false;
+        bool m_HasMeshShaders = false;
+        bool m_HasFragmentShadingRate = false;
 
         QueueFamilyIndices m_QueueFamilyIndices;
         VkPhysicalDeviceProperties m_Properties{};

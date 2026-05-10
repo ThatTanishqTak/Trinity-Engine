@@ -90,6 +90,13 @@ namespace Trinity
         m_Instance.Initialize(window, specification.EnableValidation);
         m_Device.Initialize(m_Instance, specification.EnableValidation);
 
+        m_SupportsAsyncCompute = m_Device.HasDedicatedComputeQueue();
+        m_SupportsBindless = true;
+        m_SupportsRayTracing = m_Device.SupportsRayTracing();
+        m_SupportsMeshShaders = m_Device.SupportsMeshShaders();
+        m_SupportsFragmentShadingRate = m_Device.SupportsFragmentShadingRate();
+        m_SupportsHDRDisplayOutput = m_Instance.HasSwapchainColorspace();
+
         if (m_Instance.IsValidationEnabled())
         {
             m_Debug.Initialize(m_Instance.GetInstance());

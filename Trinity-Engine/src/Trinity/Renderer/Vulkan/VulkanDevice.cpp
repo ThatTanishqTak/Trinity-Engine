@@ -111,6 +111,7 @@ namespace Trinity
         {
             l_UniqueQueueFamilies.insert(m_QueueFamilyIndices.ComputeFamily.value());
         }
+
         if (m_QueueFamilyIndices.TransferFamily.has_value())
         {
             l_UniqueQueueFamilies.insert(m_QueueFamilyIndices.TransferFamily.value());
@@ -129,12 +130,66 @@ namespace Trinity
             l_QueueCreateInfos.push_back(l_QueueCreateInfo);
         }
 
+        uint32_t l_AvailableExtensionCount = 0;
+        vkEnumerateDeviceExtensionProperties(m_PhysicalDevice, nullptr, &l_AvailableExtensionCount, nullptr);
+        std::vector<VkExtensionProperties> l_AvailableExtensions(l_AvailableExtensionCount);
+        vkEnumerateDeviceExtensionProperties(m_PhysicalDevice, nullptr, &l_AvailableExtensionCount, l_AvailableExtensions.data());
+
+        std::set<std::string> l_AvailableExtensionSet;
+        for (const auto& it_Extension : l_AvailableExtensions)
+        {
+            l_AvailableExtensionSet.insert(it_Extension.extensionName);
+        }
+
+        auto l_HasExtension = [&l_AvailableExtensionSet](const char* name) { return l_AvailableExtensionSet.count(name) > 0; };
+        const bool l_RayTracingExtsPresent = l_HasExtension(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME) && l_HasExtension(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) && l_HasExtension(VK_KHR_RAY_QUERY_EXTENSION_NAME) && l_HasExtension(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+        const bool l_MeshShaderExtPresent = l_HasExtension(VK_EXT_MESH_SHADER_EXTENSION_NAME);
+        const bool l_FragmentShadingRateExtPresent = l_HasExtension(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME);
+
         VkPhysicalDeviceVulkan13Features l_Features13Supported{};
         l_Features13Supported.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
 
         VkPhysicalDeviceVulkan12Features l_Features12Supported{};
         l_Features12Supported.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
         l_Features12Supported.pNext = &l_Features13Supported;
+
+        VkPhysicalDeviceMeshShaderFeaturesEXT l_MeshShaderSupported{};
+        l_MeshShaderSupported.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
+
+        VkPhysicalDeviceFragmentShadingRateFeaturesKHR l_FragmentShadingRateSupported{};
+        l_FragmentShadingRateSupported.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
+
+        VkPhysicalDeviceRayTracingPipelineFeaturesKHR l_RayTracingPipelineSupported{};
+        l_RayTracingPipelineSupported.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
+
+        VkPhysicalDeviceAccelerationStructureFeaturesKHR l_AccelerationStructureSupported{};
+        l_AccelerationStructureSupported.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+
+        VkPhysicalDeviceRayQueryFeaturesKHR l_RayQuerySupported{};
+        l_RayQuerySupported.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
+
+        void** l_OptionalNext = &l_Features13Supported.pNext;
+        if (l_MeshShaderExtPresent)
+        {
+            *l_OptionalNext = &l_MeshShaderSupported;
+            l_OptionalNext = &l_MeshShaderSupported.pNext;
+        }
+
+        if (l_FragmentShadingRateExtPresent)
+        {
+            *l_OptionalNext = &l_FragmentShadingRateSupported;
+            l_OptionalNext = &l_FragmentShadingRateSupported.pNext;
+        }
+
+        if (l_RayTracingExtsPresent)
+        {
+            *l_OptionalNext = &l_RayTracingPipelineSupported;
+            l_OptionalNext = &l_RayTracingPipelineSupported.pNext;
+            *l_OptionalNext = &l_AccelerationStructureSupported;
+            l_OptionalNext = &l_AccelerationStructureSupported.pNext;
+            *l_OptionalNext = &l_RayQuerySupported;
+            l_OptionalNext = &l_RayQuerySupported.pNext;
+        }
 
         VkPhysicalDeviceFeatures2 l_FeaturesSupported{};
         l_FeaturesSupported.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
@@ -188,6 +243,30 @@ namespace Trinity
             std::abort();
         }
 
+        const bool l_EnableMeshShader = l_MeshShaderExtPresent && l_MeshShaderSupported.meshShader == VK_TRUE && l_MeshShaderSupported.taskShader == VK_TRUE;
+        const bool l_EnableFragmentShadingRate = l_FragmentShadingRateExtPresent && l_FragmentShadingRateSupported.pipelineFragmentShadingRate == VK_TRUE;
+        const bool l_EnableRayTracing = l_RayTracingExtsPresent && l_RayTracingPipelineSupported.rayTracingPipeline == VK_TRUE && l_AccelerationStructureSupported.accelerationStructure == VK_TRUE && l_RayQuerySupported.rayQuery == VK_TRUE;
+
+        std::vector<const char*> l_EnabledExtensions(s_DeviceExtensions.begin(), s_DeviceExtensions.end());
+
+        if (l_EnableMeshShader)
+        {
+            l_EnabledExtensions.push_back(VK_EXT_MESH_SHADER_EXTENSION_NAME);
+        }
+
+        if (l_EnableFragmentShadingRate)
+        {
+            l_EnabledExtensions.push_back(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME);
+        }
+
+        if (l_EnableRayTracing)
+        {
+            l_EnabledExtensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+            l_EnabledExtensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+            l_EnabledExtensions.push_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+            l_EnabledExtensions.push_back(VK_KHR_RAY_QUERY_EXTENSION_NAME);
+        }
+
         VkPhysicalDeviceVulkan13Features l_Features13{};
         l_Features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
         l_Features13.synchronization2 = VK_TRUE;
@@ -208,6 +287,52 @@ namespace Trinity
         l_Features12.drawIndirectCount = VK_TRUE;
         l_Features12.pNext = &l_Features13;
 
+        VkPhysicalDeviceMeshShaderFeaturesEXT l_MeshShaderEnable{};
+        l_MeshShaderEnable.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT;
+        l_MeshShaderEnable.meshShader = VK_TRUE;
+        l_MeshShaderEnable.taskShader = VK_TRUE;
+
+        VkPhysicalDeviceFragmentShadingRateFeaturesKHR l_FragmentShadingRateEnable{};
+        l_FragmentShadingRateEnable.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
+        l_FragmentShadingRateEnable.pipelineFragmentShadingRate = VK_TRUE;
+        l_FragmentShadingRateEnable.primitiveFragmentShadingRate = l_FragmentShadingRateSupported.primitiveFragmentShadingRate;
+        l_FragmentShadingRateEnable.attachmentFragmentShadingRate = l_FragmentShadingRateSupported.attachmentFragmentShadingRate;
+
+        VkPhysicalDeviceRayTracingPipelineFeaturesKHR l_RayTracingPipelineEnable{};
+        l_RayTracingPipelineEnable.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
+        l_RayTracingPipelineEnable.rayTracingPipeline = VK_TRUE;
+
+        VkPhysicalDeviceAccelerationStructureFeaturesKHR l_AccelerationStructureEnable{};
+        l_AccelerationStructureEnable.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+        l_AccelerationStructureEnable.accelerationStructure = VK_TRUE;
+
+        VkPhysicalDeviceRayQueryFeaturesKHR l_RayQueryEnable{};
+        l_RayQueryEnable.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
+        l_RayQueryEnable.rayQuery = VK_TRUE;
+
+        void** l_OptionalEnableNext = &l_Features13.pNext;
+        if (l_EnableMeshShader)
+        {
+            *l_OptionalEnableNext = &l_MeshShaderEnable;
+            l_OptionalEnableNext = &l_MeshShaderEnable.pNext;
+        }
+
+        if (l_EnableFragmentShadingRate)
+        {
+            *l_OptionalEnableNext = &l_FragmentShadingRateEnable;
+            l_OptionalEnableNext = &l_FragmentShadingRateEnable.pNext;
+        }
+
+        if (l_EnableRayTracing)
+        {
+            *l_OptionalEnableNext = &l_RayTracingPipelineEnable;
+            l_OptionalEnableNext = &l_RayTracingPipelineEnable.pNext;
+            *l_OptionalEnableNext = &l_AccelerationStructureEnable;
+            l_OptionalEnableNext = &l_AccelerationStructureEnable.pNext;
+            *l_OptionalEnableNext = &l_RayQueryEnable;
+            l_OptionalEnableNext = &l_RayQueryEnable.pNext;
+        }
+
         VkPhysicalDeviceFeatures2 l_Features2{};
         l_Features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
         l_Features2.features.samplerAnisotropy = VK_TRUE;
@@ -224,8 +349,8 @@ namespace Trinity
         l_CreateInfo.queueCreateInfoCount = static_cast<uint32_t>(l_QueueCreateInfos.size());
         l_CreateInfo.pQueueCreateInfos = l_QueueCreateInfos.data();
         l_CreateInfo.pEnabledFeatures = nullptr;
-        l_CreateInfo.enabledExtensionCount = static_cast<uint32_t>(s_DeviceExtensions.size());
-        l_CreateInfo.ppEnabledExtensionNames = s_DeviceExtensions.data();
+        l_CreateInfo.enabledExtensionCount = static_cast<uint32_t>(l_EnabledExtensions.size());
+        l_CreateInfo.ppEnabledExtensionNames = l_EnabledExtensions.data();
         l_CreateInfo.pNext = &l_Features2;
 
         if (enableValidation)
@@ -266,8 +391,11 @@ namespace Trinity
         }
 
         m_HasTimelineSemaphore = true;
+        m_HasRayTracing = l_EnableRayTracing;
+        m_HasMeshShaders = l_EnableMeshShader;
+        m_HasFragmentShadingRate = l_EnableFragmentShadingRate;
 
-        TR_CORE_TRACE("Logical Device Created (Graphics Family = {}, Compute Family = {}, Transfer Family = {}, Dedicated Compute = {}, Dedicated Transfer = {}, Timeline Semaphore = {})", m_QueueFamilyIndices.GraphicsFamily.value(), GetComputeQueueFamily(), GetTransferQueueFamily(), m_HasDedicatedCompute, m_HasDedicatedTransfer, m_HasTimelineSemaphore);
+        TR_CORE_TRACE("Logical Device Created (GraphicsFamily = {}, ComputeFamily = {}, TransferFamily = {}, DedicatedCompute = {}, DedicatedTransfer = {}, TimelineSemaphore = {}, RayTracing = {}, MeshShaders = {}, FragmentShadingRate = {})", m_QueueFamilyIndices.GraphicsFamily.value(), GetComputeQueueFamily(), GetTransferQueueFamily(), m_HasDedicatedCompute, m_HasDedicatedTransfer, m_HasTimelineSemaphore, m_HasRayTracing, m_HasMeshShaders, m_HasFragmentShadingRate);
     }
 
     QueueFamilyIndices VulkanDevice::FindQueueFamilies(VkPhysicalDevice device) const
