@@ -3,6 +3,7 @@
 
 #include "Trinity/ImGui/ImGuiLayer.h"
 #include "Trinity/Renderer/Renderer.h"
+#include "Trinity/Utilities/Log.h"
 
 #include <imgui.h>
 
@@ -157,14 +158,7 @@ namespace Forge
 
         const IconDefincation l_Definations[] =
         {
-            { FileIconType::Folder, 212, 175, 55, "DIR", "assets/resources/icons/folder.png" },
-            { FileIconType::Scene, 76, 175, 80, "SCN", "assets/resources/icons/scene.png" },
-            { FileIconType::Mesh, 33, 150, 243, "MSH", "assets/resources/icons/mesh.png" },
-            { FileIconType::Texture, 233, 30, 99, "TEX", "assets/resources/icons/Texture.png" },
-            { FileIconType::Audio, 255, 87, 34, "AUD", "assets/resources/icons/audio.png" },
-            { FileIconType::Script, 156, 39, 176, "LUA", "assets/resources/icons/script.png" },
-            { FileIconType::Prefab, 0, 188, 212, "PFB", "assets/resources/icons/prefab.png" },
-            { FileIconType::Generic, 158, 158, 158, "FILE", "assets/assets/resources/icons/file.png" },
+            { FileIconType::Folder, 212, 175, 55, "DIR", "assets/resources/icons/folder.png" }
         };
 
         for (const auto& it_Defination : l_Definations)
@@ -183,7 +177,23 @@ namespace Forge
                 // Fall back to procedurally generated Texture
                 std::vector<uint8_t> l_Pixels = (it_Defination.Type == FileIconType::Folder) ? MakeFolderPixels(it_Defination.R, it_Defination.G, it_Defination.B) : MakeIconPixels(it_Defination.R, it_Defination.G, it_Defination.B);
 
-                l_Texture = Trinity::Renderer::CreateTextureFromData(l_Pixels.data(), 32, 32);
+                Trinity::TextureSpecification l_Spec{};
+                l_Spec.Width = 32;
+                l_Spec.Height = 32;
+                l_Spec.Format = Trinity::TextureFormat::RGBA8;
+                l_Spec.Usage = Trinity::TextureUsage::Sampled;
+                l_Spec.DebugName = std::string("ContentBrowser::Icon::") + it_Defination.Label;
+
+                l_Texture = Trinity::Renderer::GetAPI().CreateTexture(l_Spec);
+                if (l_Texture)
+                {
+                    l_Texture->Upload(l_Pixels.data(), l_Pixels.size(), 0, 0);
+                    Trinity::Renderer::FlushUploads();
+                }
+                else
+                {
+                    TR_CORE_ERROR("ContentBrowserPanel: failed to create icon texture for '{}'", it_Defination.Label);
+                }
             }
 
             if (l_Texture)

@@ -104,7 +104,17 @@ namespace Trinity
     {
         TR_CORE_TRACE("Creating Logical Device");
 
-        std::set<uint32_t> l_UniqueQueueFamilies = { m_QueueFamilyIndices.GraphicsFamily.value(), m_QueueFamilyIndices.PresentFamily.value() };
+        std::set<uint32_t> l_UniqueQueueFamilies;
+        l_UniqueQueueFamilies.insert(m_QueueFamilyIndices.GraphicsFamily.value());
+        l_UniqueQueueFamilies.insert(m_QueueFamilyIndices.PresentFamily.value());
+        if (m_QueueFamilyIndices.ComputeFamily.has_value())
+        {
+            l_UniqueQueueFamilies.insert(m_QueueFamilyIndices.ComputeFamily.value());
+        }
+        if (m_QueueFamilyIndices.TransferFamily.has_value())
+        {
+            l_UniqueQueueFamilies.insert(m_QueueFamilyIndices.TransferFamily.value());
+        }
 
         float l_QueuePriority = 1.0f;
         std::vector<VkDeviceQueueCreateInfo> l_QueueCreateInfos;
@@ -125,13 +135,18 @@ namespace Trinity
         l_DeviceFeatures.wideLines = VK_TRUE;
         l_DeviceFeatures.geometryShader = VK_TRUE;
 
-        VkPhysicalDeviceDynamicRenderingFeatures l_DynamicRenderingFeature{};
-        l_DynamicRenderingFeature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
-        l_DynamicRenderingFeature.dynamicRendering = VK_TRUE;
+        VkPhysicalDeviceTimelineSemaphoreFeatures l_TimelineSemaphoreFeature{};
+        l_TimelineSemaphoreFeature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES;
+        l_TimelineSemaphoreFeature.timelineSemaphore = VK_TRUE;
 
         VkPhysicalDeviceHostQueryResetFeatures l_HostQueryResetFeature{};
         l_HostQueryResetFeature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES;
         l_HostQueryResetFeature.hostQueryReset = VK_TRUE;
+        l_HostQueryResetFeature.pNext = &l_TimelineSemaphoreFeature;
+
+        VkPhysicalDeviceDynamicRenderingFeatures l_DynamicRenderingFeature{};
+        l_DynamicRenderingFeature.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
+        l_DynamicRenderingFeature.dynamicRendering = VK_TRUE;
         l_DynamicRenderingFeature.pNext = &l_HostQueryResetFeature;
 
         VkPhysicalDeviceSynchronization2Features l_Sync2Feature{};
@@ -163,7 +178,31 @@ namespace Trinity
         vkGetDeviceQueue(m_Device, m_QueueFamilyIndices.GraphicsFamily.value(), 0, &m_GraphicsQueue);
         vkGetDeviceQueue(m_Device, m_QueueFamilyIndices.PresentFamily.value(), 0, &m_PresentQueue);
 
-        TR_CORE_TRACE("Logical Device Created");
+        if (m_QueueFamilyIndices.ComputeFamily.has_value())
+        {
+            vkGetDeviceQueue(m_Device, m_QueueFamilyIndices.ComputeFamily.value(), 0, &m_ComputeQueue);
+            m_HasDedicatedCompute = true;
+        }
+        else
+        {
+            m_ComputeQueue = m_GraphicsQueue;
+            m_HasDedicatedCompute = false;
+        }
+
+        if (m_QueueFamilyIndices.TransferFamily.has_value())
+        {
+            vkGetDeviceQueue(m_Device, m_QueueFamilyIndices.TransferFamily.value(), 0, &m_TransferQueue);
+            m_HasDedicatedTransfer = true;
+        }
+        else
+        {
+            m_TransferQueue = m_GraphicsQueue;
+            m_HasDedicatedTransfer = false;
+        }
+
+        m_HasTimelineSemaphore = true;
+
+        TR_CORE_TRACE("Logical Device Created (graphicsFamily={}, computeFamily={}, transferFamily={}, dedicatedCompute={}, dedicatedTransfer={}, timelineSemaphore={})", m_QueueFamilyIndices.GraphicsFamily.value(), GetComputeQueueFamily(), GetTransferQueueFamily(), m_HasDedicatedCompute, m_HasDedicatedTransfer, m_HasTimelineSemaphore);
     }
 
     QueueFamilyIndices VulkanDevice::FindQueueFamilies(VkPhysicalDevice device) const
@@ -180,22 +219,45 @@ namespace Trinity
 
         for (uint32_t i = 0; i < l_QueueFamilyCount; i++)
         {
-            if (l_QueueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+            const VkQueueFlags l_Flags = l_QueueFamilies[i].queueFlags;
+
+            const bool l_HasGraphics = (l_Flags & VK_QUEUE_GRAPHICS_BIT) != 0;
+            const bool l_HasCompute = (l_Flags & VK_QUEUE_COMPUTE_BIT) != 0;
+            const bool l_HasTransfer = (l_Flags & VK_QUEUE_TRANSFER_BIT) != 0;
+
+            if (l_HasGraphics && !l_Indices.GraphicsFamily.has_value())
             {
                 l_Indices.GraphicsFamily = i;
             }
 
-            VkBool32 l_PresentSupport = false;
+            VkBool32 l_PresentSupport = VK_FALSE;
             vkGetPhysicalDeviceSurfaceSupportKHR(device, i, l_Surface, &l_PresentSupport);
-
-            if (l_PresentSupport)
+            if (l_PresentSupport && !l_Indices.PresentFamily.has_value())
             {
                 l_Indices.PresentFamily = i;
             }
 
-            if (l_Indices.IsComplete())
+            if (l_HasCompute && !l_HasGraphics && !l_Indices.ComputeFamily.has_value())
             {
-                break;
+                l_Indices.ComputeFamily = i;
+            }
+
+            if (l_HasTransfer && !l_HasGraphics && !l_HasCompute && !l_Indices.TransferFamily.has_value())
+            {
+                l_Indices.TransferFamily = i;
+            }
+        }
+
+        if (!l_Indices.TransferFamily.has_value())
+        {
+            for (uint32_t i = 0; i < l_QueueFamilyCount; i++)
+            {
+                const VkQueueFlags l_Flags = l_QueueFamilies[i].queueFlags;
+                if ((l_Flags & VK_QUEUE_TRANSFER_BIT) && !(l_Flags & VK_QUEUE_GRAPHICS_BIT))
+                {
+                    l_Indices.TransferFamily = i;
+                    break;
+                }
             }
         }
 
