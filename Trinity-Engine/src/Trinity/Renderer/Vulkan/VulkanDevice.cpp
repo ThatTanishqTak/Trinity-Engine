@@ -225,6 +225,7 @@ namespace Trinity
             { "drawIndirectCount", l_Features12Supported.drawIndirectCount == VK_TRUE },
             { "synchronization2", l_Features13Supported.synchronization2 == VK_TRUE },
             { "dynamicRendering", l_Features13Supported.dynamicRendering == VK_TRUE },
+            { "descriptorBindingUpdateUnusedWhilePending", l_Features12Supported.descriptorBindingUpdateUnusedWhilePending == VK_TRUE },
         };
 
         bool l_AllSupported = true;
@@ -285,6 +286,7 @@ namespace Trinity
         l_Features12.timelineSemaphore = VK_TRUE;
         l_Features12.hostQueryReset = VK_TRUE;
         l_Features12.drawIndirectCount = VK_TRUE;
+        l_Features12.descriptorBindingUpdateUnusedWhilePending = VK_TRUE;
         l_Features12.pNext = &l_Features13;
 
         VkPhysicalDeviceMeshShaderFeaturesEXT l_MeshShaderEnable{};

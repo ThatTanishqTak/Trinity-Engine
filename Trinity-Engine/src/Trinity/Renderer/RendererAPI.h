@@ -33,6 +33,7 @@ namespace Trinity
     {
         uint32_t MaxFramesInFlight = 2;
         bool EnableValidation = false;
+        std::string PipelineCachePath = "Trinity-PipelineCache.bin";
     };
 
     class RendererAPI

@@ -89,6 +89,7 @@ namespace Trinity
 
         m_Instance.Initialize(window, specification.EnableValidation);
         m_Device.Initialize(m_Instance, specification.EnableValidation);
+        m_PipelineCache.Initialize(m_Device.GetDevice(), m_Device.GetProperties(), specification.PipelineCachePath);
 
         m_SupportsAsyncCompute = m_Device.HasDedicatedComputeQueue();
         m_SupportsBindless = true;
@@ -106,6 +107,7 @@ namespace Trinity
         m_Swapchain.Initialize(m_Device, window.GetWidth(), window.GetHeight(), true);
         m_CommandPool.Initialize(m_Device, m_MaxFramesInFlight);
         m_DescriptorAllocator.Initialize(m_Device.GetDevice(), m_MaxFramesInFlight);
+        m_BindlessHeap.Initialize(m_Device.GetDevice());
         m_SyncObjects.Initialize(m_Device.GetDevice(), m_MaxFramesInFlight, m_Swapchain.GetImageCount());
 
         UploadQueueSpecification l_UploadSpec{};
@@ -133,6 +135,8 @@ namespace Trinity
         m_UploadQueue.Shutdown();
         m_SyncObjects.Shutdown();
         m_LayoutCache.clear();
+        m_BindlessHeap.Shutdown();
+        m_PipelineCache.Shutdown();
         m_DescriptorAllocator.Shutdown();
         m_CommandPool.Shutdown();
         m_Swapchain.Shutdown();
@@ -404,7 +408,7 @@ namespace Trinity
 
     std::shared_ptr<Pipeline> VulkanRendererAPI::CreatePipeline(const PipelineSpecification& specification)
     {
-        return std::make_shared<VulkanPipeline>(m_Device.GetDevice(), specification);
+        return std::make_shared<VulkanPipeline>(m_Device.GetDevice(), specification, m_PipelineCache.GetCache());
     }
 
     std::shared_ptr<Sampler> VulkanRendererAPI::CreateSampler(const SamplerSpecification& specification)
@@ -440,7 +444,7 @@ namespace Trinity
 
     std::shared_ptr<ComputePipeline> VulkanRendererAPI::CreateComputePipeline(const ComputePipelineSpecification& specification)
     {
-        return std::make_shared<VulkanComputePipeline>(m_Device.GetDevice(), specification);
+        return std::make_shared<VulkanComputePipeline>(m_Device.GetDevice(), specification, m_PipelineCache.GetCache());
     }
 
     std::shared_ptr<DescriptorSetLayout> VulkanRendererAPI::CreateDescriptorSetLayout(const DescriptorSetLayoutSpecification& specification)

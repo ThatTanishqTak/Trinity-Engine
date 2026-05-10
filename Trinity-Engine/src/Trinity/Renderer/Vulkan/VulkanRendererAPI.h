@@ -11,6 +11,8 @@
 #include "Trinity/Renderer/Vulkan/VulkanSyncObjects.h"
 #include "Trinity/Renderer/Vulkan/VulkanDescriptorAllocator.h"
 #include "Trinity/Renderer/Vulkan/VulkanUploadQueue.h"
+#include "Trinity/Renderer/Vulkan/VulkanBindlessHeap.h"
+#include "Trinity/Renderer/Vulkan/VulkanPipelineCache.h"
 
 #include <cstdint>
 #include <unordered_map>
@@ -71,6 +73,8 @@ namespace Trinity
         VulkanCommandPool& GetCommandPool() { return m_CommandPool; }
         VulkanSwapchain& GetSwapchain() { return m_Swapchain; }
         VulkanUploadQueue& GetUploadQueue() { return m_UploadQueue; }
+        VulkanBindlessHeap& GetBindlessHeap() { return m_BindlessHeap; }
+        VulkanPipelineCache& GetPipelineCache() { return m_PipelineCache; }
         VkCommandBuffer GetCurrentCommandBuffer() const;
         CommandList& GetCommandList() override;
         uint32_t GetCurrentImageIndex() const { return m_CurrentImageIndex; }
@@ -87,6 +91,8 @@ namespace Trinity
         VulkanSyncObjects m_SyncObjects;
         VulkanDescriptorAllocator m_DescriptorAllocator;
         VulkanUploadQueue m_UploadQueue;
+        VulkanBindlessHeap m_BindlessHeap;
+        VulkanPipelineCache m_PipelineCache;
 
         uint32_t m_MaxFramesInFlight = 2;
         uint32_t m_CurrentFrameIndex = 0;

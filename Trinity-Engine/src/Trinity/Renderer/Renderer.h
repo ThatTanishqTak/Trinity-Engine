@@ -11,8 +11,8 @@ namespace Trinity
     {
         RendererBackend Backend = RendererBackend::Vulkan;
         uint32_t MaxFramesInFlight = 2;
-
         bool EnableValidation = false;
+        std::string PipelineCachePath = "Trinity-PipelineCache.bin";
     };
 
     class Renderer

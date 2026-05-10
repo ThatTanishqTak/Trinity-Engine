@@ -15,6 +15,7 @@ namespace Trinity
         RendererAPISpecification l_APISpecification;
         l_APISpecification.MaxFramesInFlight = specification.MaxFramesInFlight;
         l_APISpecification.EnableValidation = specification.EnableValidation;
+        l_APISpecification.PipelineCachePath = specification.PipelineCachePath;
 
         s_API = RendererAPI::Create(specification.Backend);
         s_API->Initialize(window, l_APISpecification);
