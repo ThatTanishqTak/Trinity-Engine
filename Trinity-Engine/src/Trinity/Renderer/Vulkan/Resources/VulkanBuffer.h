@@ -7,10 +7,12 @@
 
 namespace Trinity
 {
+    class VulkanUploadQueue;
+
     class VulkanBuffer final : public Buffer
     {
     public:
-        VulkanBuffer(VkDevice device, VmaAllocator allocator, const BufferSpecification& specification);
+        VulkanBuffer(VkDevice device, VmaAllocator allocator, const BufferSpecification& specification, VulkanUploadQueue* uploadQueue = nullptr);
         ~VulkanBuffer() override;
 
         void SetData(const void* data, uint64_t size, uint64_t offset = 0) override;
@@ -19,10 +21,11 @@ namespace Trinity
         uint64_t GetSize() const override { return m_Specification.Size; }
 
         VkBuffer GetBuffer() const { return m_Buffer; }
- 
+
     private:
         VkDevice m_Device = VK_NULL_HANDLE;
         VmaAllocator m_Allocator = VK_NULL_HANDLE;
+        VulkanUploadQueue* m_UploadQueue = nullptr;
         VkBuffer m_Buffer = VK_NULL_HANDLE;
         VmaAllocation m_Allocation = VK_NULL_HANDLE;
         void* m_MappedData = nullptr;

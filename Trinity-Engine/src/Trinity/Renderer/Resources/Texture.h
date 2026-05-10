@@ -56,11 +56,7 @@ namespace Trinity
     };
 
     inline TextureUsage operator|(TextureUsage a, TextureUsage b) { return static_cast<TextureUsage>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b)); }
-    inline TextureUsage& operator|=(TextureUsage& a, TextureUsage b)
-    {
-        a = a | b;
-        return a;
-    }
+    inline TextureUsage& operator|=(TextureUsage& a, TextureUsage b) { a = a | b; return a; }
     inline bool operator&(TextureUsage a, TextureUsage b) { return (static_cast<uint32_t>(a) & static_cast<uint32_t>(b)) != 0; }
 
     struct TextureSpecification
@@ -95,6 +91,8 @@ namespace Trinity
         virtual uint32_t GetSampleCount() const { return 1; }
         virtual bool IsCubemap() const { return false; }
         virtual bool IsVolume() const { return false; }
+
+        virtual void Upload(const void* data, uint64_t size, uint32_t mipLevel = 0, uint32_t arrayLayer = 0) = 0;
 
         const TextureSpecification& GetSpecification() const { return m_Specification; }
 

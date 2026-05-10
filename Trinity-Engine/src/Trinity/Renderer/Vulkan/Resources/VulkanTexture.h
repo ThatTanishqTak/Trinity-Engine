@@ -7,10 +7,12 @@
 
 namespace Trinity
 {
+    class VulkanUploadQueue;
+
     class VulkanTexture final : public Texture
     {
     public:
-        VulkanTexture(VkDevice device, VmaAllocator allocator, const TextureSpecification& specification);
+        VulkanTexture(VkDevice device, VmaAllocator allocator, const TextureSpecification& specification, VulkanUploadQueue* uploadQueue = nullptr);
         ~VulkanTexture() override;
 
         uint64_t GetOpaqueHandle() const override { return reinterpret_cast<uint64_t>(m_ImageView); }
@@ -22,6 +24,8 @@ namespace Trinity
         uint32_t GetSampleCount() const override { return m_Specification.Samples; }
         bool IsCubemap() const override { return m_Specification.IsCubemap; }
         bool IsVolume() const override { return m_Specification.IsVolume; }
+
+        void Upload(const void* data, uint64_t size, uint32_t mipLevel = 0, uint32_t arrayLayer = 0) override;
 
         VkImage GetImage() const { return m_Image; }
         VkImageView GetImageView() const { return m_ImageView; }
@@ -37,6 +41,7 @@ namespace Trinity
     private:
         VkDevice m_Device = VK_NULL_HANDLE;
         VmaAllocator m_Allocator = VK_NULL_HANDLE;
+        VulkanUploadQueue* m_UploadQueue = nullptr;
         VkImage m_Image = VK_NULL_HANDLE;
         VmaAllocation m_Allocation = VK_NULL_HANDLE;
         VkImageView m_ImageView = VK_NULL_HANDLE;

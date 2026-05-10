@@ -1,6 +1,10 @@
 #include "Trinity/Renderer/Vulkan/Resources/VulkanTexture.h"
 
+#include "Trinity/Renderer/Vulkan/VulkanUploadQueue.h"
 #include "Trinity/Renderer/Vulkan/VulkanUtilities.h"
+#include "Trinity/Utilities/Log.h"
+
+#include <algorithm>
 
 namespace Trinity
 {
@@ -84,7 +88,7 @@ namespace Trinity
         }
     }
 
-    VulkanTexture::VulkanTexture(VkDevice device, VmaAllocator allocator, const TextureSpecification& specification) : m_Device(device), m_Allocator(allocator)
+    VulkanTexture::VulkanTexture(VkDevice device, VmaAllocator allocator, const TextureSpecification& specification, VulkanUploadQueue* uploadQueue) : m_Device(device), m_Allocator(allocator), m_UploadQueue(uploadQueue)
     {
         m_Specification = specification;
         m_VkFormat = VulkanUtilities::ToVkFormat(specification.Format);
@@ -127,6 +131,10 @@ namespace Trinity
         l_ImageInfo.samples = ToSampleCount(m_Specification.Samples);
         l_ImageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
         l_ImageInfo.usage = VulkanUtilities::ToVkImageUsage(m_Specification.Usage);
+        if (m_UploadQueue != nullptr)
+        {
+            l_ImageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        }
         l_ImageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         l_ImageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
@@ -182,5 +190,41 @@ namespace Trinity
         l_ViewNameInfo.objectHandle = reinterpret_cast<uint64_t>(m_ImageView);
         l_ViewNameInfo.pObjectName = m_Specification.DebugName.c_str();
         s_SetObjectName(m_Device, &l_ViewNameInfo);
+    }
+
+    void VulkanTexture::Upload(const void* data, uint64_t size, uint32_t mipLevel, uint32_t arrayLayer)
+    {
+        if (data == nullptr || size == 0)
+        {
+            TR_CORE_WARN("VulkanTexture::Upload [{}] called with empty data (size={}, data={})", m_Specification.DebugName, size, data != nullptr);
+            return;
+        }
+
+        if (m_UploadQueue == nullptr)
+        {
+            TR_CORE_ERROR("VulkanTexture::Upload [{}] called without an upload queue", m_Specification.DebugName);
+            return;
+        }
+
+        if (mipLevel >= m_Specification.MipLevels)
+        {
+            TR_CORE_ERROR("VulkanTexture::Upload [{}] mipLevel {} out of range (mipCount={})", m_Specification.DebugName, mipLevel, m_Specification.MipLevels);
+            return;
+        }
+
+        if (arrayLayer >= m_EffectiveLayerCount)
+        {
+            TR_CORE_ERROR("VulkanTexture::Upload [{}] arrayLayer {} out of range (layerCount={})", m_Specification.DebugName, arrayLayer, m_EffectiveLayerCount);
+            return;
+        }
+
+        const uint32_t l_MipWidth = std::max<uint32_t>(1, m_Specification.Width >> mipLevel);
+        const uint32_t l_MipHeight = std::max<uint32_t>(1, m_Specification.Height >> mipLevel);
+        const uint32_t l_MipDepth = std::max<uint32_t>(1, m_Specification.Depth >> mipLevel);
+        const VkImageAspectFlags l_Aspect = VulkanUtilities::GetAspectFlags(m_Specification.Format);
+
+        TR_CORE_TRACE("VulkanTexture::Upload [{}] mip {} layer {} ({}x{}x{}, {} bytes)", m_Specification.DebugName, mipLevel, arrayLayer, l_MipWidth, l_MipHeight, l_MipDepth, size);
+
+        m_UploadQueue->EnqueueTextureUpload(m_Image, l_Aspect, mipLevel, arrayLayer, l_MipWidth, l_MipHeight, l_MipDepth, data, size);
     }
 }

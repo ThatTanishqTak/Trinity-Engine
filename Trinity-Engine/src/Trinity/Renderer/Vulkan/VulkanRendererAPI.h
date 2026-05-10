@@ -10,10 +10,12 @@
 #include "Trinity/Renderer/Vulkan/VulkanSwapchain.h"
 #include "Trinity/Renderer/Vulkan/VulkanSyncObjects.h"
 #include "Trinity/Renderer/Vulkan/VulkanDescriptorAllocator.h"
+#include "Trinity/Renderer/Vulkan/VulkanUploadQueue.h"
 
 #include <cstdint>
 #include <unordered_map>
 #include <cstring>
+#include <vector>
 
 namespace Trinity
 {
@@ -35,7 +37,6 @@ namespace Trinity
 
         std::shared_ptr<Buffer> CreateBuffer(const BufferSpecification& specification) override;
         std::shared_ptr<Texture> CreateTexture(const TextureSpecification& specification) override;
-        std::shared_ptr<Texture> CreateTextureFromData(const void* data, uint32_t width, uint32_t height) override;
         std::shared_ptr<Texture> CreateTextureFromMemory(const uint8_t* data, size_t size) override;
         std::shared_ptr<Texture> LoadTextureFromFile(const std::string& path) override;
         std::shared_ptr<Framebuffer> CreateFramebuffer(const FramebufferSpecification& specification) override;
@@ -49,6 +50,8 @@ namespace Trinity
         std::shared_ptr<QueryPool> CreateQueryPool(const QueryPoolSpecification& specification) override;
 
         std::unique_ptr<RenderGraph> CreateRenderGraph() override;
+
+        void FlushUploads() override;
 
         void OnWindowResize(uint32_t width, uint32_t height) override;
         uint32_t GetSwapchainWidth() const override;
@@ -65,12 +68,10 @@ namespace Trinity
         VulkanAllocator& GetAllocator() { return m_Allocator; }
         VulkanCommandPool& GetCommandPool() { return m_CommandPool; }
         VulkanSwapchain& GetSwapchain() { return m_Swapchain; }
+        VulkanUploadQueue& GetUploadQueue() { return m_UploadQueue; }
         VkCommandBuffer GetCurrentCommandBuffer() const;
         CommandList& GetCommandList() override;
         uint32_t GetCurrentImageIndex() const { return m_CurrentImageIndex; }
-
-    private:
-        void TransitionImageLayout(VkCommandBuffer command, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout) const;
 
     private:
         Window* m_Window = nullptr;
@@ -83,6 +84,7 @@ namespace Trinity
         VulkanCommandPool m_CommandPool;
         VulkanSyncObjects m_SyncObjects;
         VulkanDescriptorAllocator m_DescriptorAllocator;
+        VulkanUploadQueue m_UploadQueue;
 
         uint32_t m_MaxFramesInFlight = 2;
         uint32_t m_CurrentFrameIndex = 0;

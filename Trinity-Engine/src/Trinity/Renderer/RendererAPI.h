@@ -50,7 +50,6 @@ namespace Trinity
 
         virtual std::shared_ptr<Buffer> CreateBuffer(const BufferSpecification& specification) = 0;
         virtual std::shared_ptr<Texture> CreateTexture(const TextureSpecification& specification) = 0;
-        virtual std::shared_ptr<Texture> CreateTextureFromData(const void* data, uint32_t width, uint32_t height) = 0;
         virtual std::shared_ptr<Texture> CreateTextureFromMemory(const uint8_t* data, size_t size) = 0;
         virtual std::shared_ptr<Texture> LoadTextureFromFile(const std::string& path) = 0;
         virtual std::shared_ptr<Framebuffer> CreateFramebuffer(const FramebufferSpecification& specification) = 0;
@@ -63,6 +62,8 @@ namespace Trinity
         virtual std::shared_ptr<DescriptorSetLayout> CreateDescriptorSetLayout(const DescriptorSetLayoutSpecification& specification) = 0;
         virtual std::shared_ptr<QueryPool> CreateQueryPool(const QueryPoolSpecification& specification) = 0;
         virtual std::unique_ptr<RenderGraph> CreateRenderGraph() = 0;
+
+        virtual void FlushUploads() = 0;
 
         virtual CommandList& GetCommandList() = 0;
 

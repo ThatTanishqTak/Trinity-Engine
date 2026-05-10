@@ -14,6 +14,33 @@
 
 namespace Trinity
 {
+    namespace
+    {
+        std::shared_ptr<Texture> UploadEmbeddedRGBA(const uint8_t* pixels, uint32_t width, uint32_t height, const std::string& debugName)
+        {
+            TextureSpecification l_Spec{};
+            l_Spec.Width = width;
+            l_Spec.Height = height;
+            l_Spec.Format = TextureFormat::RGBA8;
+            l_Spec.Usage = TextureUsage::Sampled;
+            l_Spec.DebugName = debugName;
+
+            auto a_Texture = Renderer::GetAPI().CreateTexture(l_Spec);
+            if (a_Texture == nullptr)
+            {
+                TR_CORE_ERROR("MeshImporter::UploadEmbeddedRGBA failed to create texture ({}x{})", width, height);
+                return nullptr;
+            }
+
+            const uint64_t l_DataSize = static_cast<uint64_t>(width) * static_cast<uint64_t>(height) * 4ull;
+            a_Texture->Upload(pixels, l_DataSize, 0, 0);
+
+            Renderer::FlushUploads();
+
+            return a_Texture;
+        }
+    }
+
     std::shared_ptr<Mesh> MeshImporter::Import(const std::filesystem::path& path)
     {
         Assimp::Importer l_Importer;
@@ -121,7 +148,8 @@ namespace Trinity
                             l_RGBA[i * 4 + 3] = a_EmbededTexture->pcData[i].a;
                         }
 
-                        l_Texture = Renderer::CreateTextureFromData(l_RGBA.data(), a_EmbededTexture->mWidth, a_EmbededTexture->mHeight);
+                        const std::string l_DebugName = path.filename().string() + "::Embedded[" + std::to_string(l_EmbeddedIndex) + "]";
+                        l_Texture = UploadEmbeddedRGBA(l_RGBA.data(), a_EmbededTexture->mWidth, a_EmbededTexture->mHeight, l_DebugName);
                     }
                 }
             }
