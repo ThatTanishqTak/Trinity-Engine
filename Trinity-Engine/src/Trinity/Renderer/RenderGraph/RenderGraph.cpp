@@ -61,9 +61,11 @@ namespace Trinity
 
         m_ExecutionOrder.clear();
         m_Resources.clear();
+        m_Lifetimes.clear();
         m_Compiled = false;
 
         BuildExecutionOrder();
+        ComputeLifetimes();
         AllocateResources();
 
         OnCompile();
@@ -258,29 +260,71 @@ namespace Trinity
         }
     }
 
-    void RenderGraph::AllocateResources()
+    void RenderGraph::ComputeLifetimes()
     {
-        m_Resources.assign(m_ResourceDescription.size(), nullptr);
+        const uint32_t l_ResourceCount = static_cast<uint32_t>(m_ResourceDescription.size());
+        m_Lifetimes.assign(l_ResourceCount, ResourceLifetime{});
 
-        for (size_t i = 0; i < m_ResourceDescription.size(); i++)
+        if (l_ResourceCount == 0 || m_ExecutionOrder.empty())
         {
-            RenderGraphTextureDescription l_ResolveDescription = m_ResourceDescription[i];
-            if (l_ResolveDescription.Width == 0)
-            {
-                l_ResolveDescription.Width = m_SwapchainWidth;
-            }
+            return;
+        }
 
-            if (l_ResolveDescription.Height == 0)
-            {
-                l_ResolveDescription.Height = m_SwapchainHeight;
-            }
-
-            if (l_ResolveDescription.Width == 0 || l_ResolveDescription.Height == 0)
+        for (uint32_t l_OrderIdx = 0; l_OrderIdx < m_ExecutionOrder.size(); ++l_OrderIdx)
+        {
+            const uint32_t l_PassIdx = m_ExecutionOrder[l_OrderIdx];
+            if (l_PassIdx >= m_Passes.size())
             {
                 continue;
             }
 
-            m_Resources[i] = CreateResource(l_ResolveDescription);
+            const auto& a_Pass = m_Passes[l_PassIdx];
+
+            auto a_Touch = [&](uint32_t resourceIdx)
+            {
+                if (resourceIdx >= l_ResourceCount)
+                {
+                    return;
+                }
+
+                ResourceLifetime& a_Lifetime = m_Lifetimes[resourceIdx];
+                if (l_OrderIdx < a_Lifetime.FirstUse)
+                {
+                    a_Lifetime.FirstUse = l_OrderIdx;
+                }
+                if (l_OrderIdx > a_Lifetime.LastUse)
+                {
+                    a_Lifetime.LastUse = l_OrderIdx;
+                }
+            };
+
+            for (const auto& it_Handle : a_Pass.GetReads())
+            {
+                if (it_Handle.IsValid())
+                {
+                    a_Touch(it_Handle.Index);
+                }
+            }
+            for (const auto& it_Handle : a_Pass.GetWrites())
+            {
+                if (it_Handle.IsValid())
+                {
+                    a_Touch(it_Handle.Index);
+                }
+            }
         }
+
+        for (uint32_t i = 0; i < l_ResourceCount; ++i)
+        {
+            if (!m_Lifetimes[i].IsValid())
+            {
+                TR_CORE_WARN("Resource '{}' (index {}) declared but never used by any pass", m_ResourceDescription[i].DebugName, i);
+            }
+        }
+    }
+
+    void RenderGraph::AllocateResources()
+    {
+        m_Resources = AllocateResourceBatch(m_ResourceDescription, m_Lifetimes);
     }
 }

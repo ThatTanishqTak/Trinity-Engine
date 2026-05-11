@@ -12,6 +12,17 @@
 
 namespace Trinity
 {
+    struct ResourceLifetime
+    {
+        uint32_t FirstUse = UINT32_MAX;
+        uint32_t LastUse = 0;
+
+        bool IsValid() const
+        {
+            return FirstUse <= LastUse && FirstUse != UINT32_MAX;
+        }
+    };
+
     class RenderGraph
     {
     public:
@@ -38,9 +49,10 @@ namespace Trinity
         const std::vector<RenderGraphPass>& GetPasses() const { return m_Passes; }
         const std::vector<uint32_t>& GetExecutionOrder() const { return m_ExecutionOrder; }
         const std::vector<RenderGraphTextureDescription>& GetResourceDescription() const { return m_ResourceDescription; }
+        const std::vector<ResourceLifetime>& GetLifetimes() const { return m_Lifetimes; }
 
     protected:
-        virtual std::shared_ptr<Texture> CreateResource(const RenderGraphTextureDescription& description) = 0;
+        virtual std::vector<std::shared_ptr<Texture>> AllocateResourceBatch(const std::vector<RenderGraphTextureDescription>& descriptions, const std::vector<ResourceLifetime>& lifetimes) = 0;
 
         virtual void OnReset()
         {
@@ -74,9 +86,11 @@ namespace Trinity
         std::vector<std::shared_ptr<Texture>> m_Resources;
         std::vector<RenderGraphPass> m_Passes;
         std::vector<uint32_t> m_ExecutionOrder;
+        std::vector<ResourceLifetime> m_Lifetimes;
 
     private:
         void BuildExecutionOrder();
+        void ComputeLifetimes();
         void AllocateResources();
     };
 }

@@ -12,22 +12,89 @@ namespace Trinity
         m_SwapchainHeight = renderer.GetSwapchainHeight();
     }
 
-    std::shared_ptr<Texture> VulkanRenderGraph::CreateResource(const RenderGraphTextureDescription& description)
+    std::vector<std::shared_ptr<Texture>> VulkanRenderGraph::AllocateResourceBatch(const std::vector<RenderGraphTextureDescription>& descriptions, const std::vector<ResourceLifetime>& lifetimes)
     {
-        TextureSpecification l_TextureSpecification{};
-        l_TextureSpecification.Width = description.Width;
-        l_TextureSpecification.Height = description.Height;
-        l_TextureSpecification.MipLevels = 1;
-        l_TextureSpecification.Format = description.Format;
-        l_TextureSpecification.Usage = description.Usage;
-        l_TextureSpecification.DebugName = description.DebugName;
+        const size_t l_Count = descriptions.size();
+        std::vector<std::shared_ptr<Texture>> l_Output(l_Count);
+        m_AliasedResources.assign(l_Count, false);
 
-        return std::make_shared<VulkanTexture>(m_Renderer->GetDevice().GetDevice(), m_Renderer->GetAllocator().GetAllocator(), l_TextureSpecification);
+        if (l_Count == 0)
+        {
+            return l_Output;
+        }
+
+        std::vector<VulkanTransientPool::AllocationRequest> l_TransientRequests;
+        std::vector<uint32_t> l_TransientOriginalIndex;
+        l_TransientRequests.reserve(l_Count);
+        l_TransientOriginalIndex.reserve(l_Count);
+
+        for (size_t i = 0; i < l_Count; ++i)
+        {
+            const auto& a_Desc = descriptions[i];
+
+            const uint32_t l_EffWidth = a_Desc.Width > 0 ? a_Desc.Width : m_SwapchainWidth;
+            const uint32_t l_EffHeight = a_Desc.Height > 0 ? a_Desc.Height : m_SwapchainHeight;
+
+            if (l_EffWidth == 0 || l_EffHeight == 0)
+            {
+                TR_CORE_ERROR("VulkanRenderGraph: resource '{}' has zero size and no swapchain fallback available", a_Desc.DebugName);
+                continue;
+            }
+
+            if (a_Desc.Persistent || !lifetimes[i].IsValid())
+            {
+                TextureSpecification l_Spec{};
+                l_Spec.Width = l_EffWidth;
+                l_Spec.Height = l_EffHeight;
+                l_Spec.MipLevels = a_Desc.MipLevels > 0 ? a_Desc.MipLevels : 1;
+                l_Spec.ArrayLayers = a_Desc.ArrayLayers > 0 ? a_Desc.ArrayLayers : 1;
+                l_Spec.Format = a_Desc.Format;
+                l_Spec.Usage = a_Desc.Usage;
+                l_Spec.DebugName = a_Desc.DebugName;
+
+                l_Output[i] = std::make_shared<VulkanTexture>(m_Renderer->GetDevice().GetDevice(), m_Renderer->GetAllocator().GetAllocator(), l_Spec);
+                continue;
+            }
+
+            VulkanTransientPool::AllocationRequest l_Request{};
+            l_Request.Spec.Width = l_EffWidth;
+            l_Request.Spec.Height = l_EffHeight;
+            l_Request.Spec.MipLevels = a_Desc.MipLevels > 0 ? a_Desc.MipLevels : 1;
+            l_Request.Spec.ArrayLayers = a_Desc.ArrayLayers > 0 ? a_Desc.ArrayLayers : 1;
+            l_Request.Spec.Format = a_Desc.Format;
+            l_Request.Spec.Usage = a_Desc.Usage;
+            l_Request.Spec.DebugName = a_Desc.DebugName;
+            l_Request.FirstUse = lifetimes[i].FirstUse;
+            l_Request.LastUse = lifetimes[i].LastUse;
+
+            l_TransientRequests.push_back(l_Request);
+            l_TransientOriginalIndex.push_back(static_cast<uint32_t>(i));
+        }
+
+        if (l_TransientRequests.empty())
+        {
+            return l_Output;
+        }
+
+        auto l_Allocations = m_Renderer->GetTransientPool().AllocateBatch(l_TransientRequests);
+
+        for (size_t j = 0; j < l_Allocations.size(); ++j)
+        {
+            const uint32_t l_OrigIndex = l_TransientOriginalIndex[j];
+            l_Output[l_OrigIndex] = l_Allocations[j].Texture;
+            m_AliasedResources[l_OrigIndex] = l_Allocations[j].AliasedReuse;
+        }
+
+        const VulkanTransientPool& l_Pool = m_Renderer->GetTransientPool();
+        TR_CORE_DEBUG("VulkanRenderGraph: allocated {} transient + {} persistent resources (TransientSum = {} KB, TransientPeak = {} KB, Savings = {} KB, Blocks = {})", l_Allocations.size(), l_Count - l_Allocations.size(), l_Pool.GetLastBatchSumBytes() / 1024, l_Pool.GetLastBatchUsedBytes() / 1024, l_Pool.GetLastAliasingSavingsBytes() / 1024, l_Pool.GetBlockCount());
+
+        return l_Output;
     }
 
     void VulkanRenderGraph::OnReset()
     {
         m_PassBarriers.clear();
+        m_AliasedResources.clear();
     }
 
     void VulkanRenderGraph::OnCompile()
@@ -185,6 +252,12 @@ namespace Trinity
         l_Barrier.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
         l_Barrier.subresourceRange.baseArrayLayer = 0;
         l_Barrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
+
+        if (current.Layout == VK_IMAGE_LAYOUT_UNDEFINED && resourceIndex < m_AliasedResources.size() && m_AliasedResources[resourceIndex])
+        {
+            l_Barrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+            l_Barrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
+        }
 
         out.push_back(l_Barrier);
     }

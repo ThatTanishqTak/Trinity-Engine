@@ -18,13 +18,13 @@ namespace Trinity
         ~VulkanRenderGraph() override = default;
 
     protected:
-        std::shared_ptr<Texture> CreateResource(const RenderGraphTextureDescription& description) override;
+        std::vector<std::shared_ptr<Texture>> AllocateResourceBatch(const std::vector<RenderGraphTextureDescription>& descriptions, const std::vector<ResourceLifetime>& lifetimes) override;
 
         void OnReset() override;
         void OnCompile() override;
         void OnExecutePassBegin(uint32_t passIndex, RenderGraphContext& context) override;
         void OnExecutePassEnd(uint32_t passIndex, RenderGraphContext& context) override;
-    
+
     private:
         struct ResourceState
         {
@@ -47,5 +47,6 @@ namespace Trinity
         VulkanRendererAPI* m_Renderer = nullptr;
 
         std::vector<PassBarriers> m_PassBarriers;
+        std::vector<bool> m_AliasedResources;
     };
 }

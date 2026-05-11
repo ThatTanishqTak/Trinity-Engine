@@ -18,14 +18,15 @@ namespace Trinity
 		bool operator!=(const RenderGraphResourceHandle& other) const { return Index != other.Index; }
 	};
 
-	struct RenderGraphTextureDescription
-	{
-		uint32_t Width = 0;
-		uint32_t Height = 0;
-
-		TextureFormat Format = TextureFormat::None;
-		TextureUsage Usage = TextureUsage::None;
-
-		std::string DebugName;
-	};
+    struct RenderGraphTextureDescription
+    {
+        uint32_t Width = 0;
+        uint32_t Height = 0;
+        uint32_t MipLevels = 1;
+        uint32_t ArrayLayers = 1;
+        TextureFormat Format = TextureFormat::None;
+        TextureUsage Usage = TextureUsage::None;
+        bool Persistent = false;
+        std::string DebugName;
+    };
 }

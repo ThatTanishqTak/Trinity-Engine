@@ -118,22 +118,22 @@ namespace Trinity
 
     VulkanTexture::~VulkanTexture()
     {
+        if (m_Allocator == VK_NULL_HANDLE)
+        {
+            return;
+        }
+
         if (m_ImageView != VK_NULL_HANDLE)
         {
             vkDestroyImageView(m_Device, m_ImageView, nullptr);
             m_ImageView = VK_NULL_HANDLE;
         }
 
-        if (m_Allocator != VK_NULL_HANDLE && m_Allocation != VK_NULL_HANDLE && m_Image != VK_NULL_HANDLE)
+        if (m_Allocation != VK_NULL_HANDLE && m_Image != VK_NULL_HANDLE)
         {
             vmaDestroyImage(m_Allocator, m_Image, m_Allocation);
             m_Image = VK_NULL_HANDLE;
             m_Allocation = VK_NULL_HANDLE;
-        }
-        else if (m_Image != VK_NULL_HANDLE)
-        {
-            vkDestroyImage(m_Device, m_Image, nullptr);
-            m_Image = VK_NULL_HANDLE;
         }
     }
 
