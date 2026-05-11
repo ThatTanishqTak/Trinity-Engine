@@ -104,16 +104,36 @@ namespace Trinity
         SetDebugName();
     }
 
+    VulkanTexture::VulkanTexture(VkDevice device, VkImage externalImage, VkImageView externalView, const TextureSpecification& specification) : m_Device(device), m_Image(externalImage), m_ImageView(externalView)
+    {
+        m_Specification = specification;
+        m_VkFormat = VulkanUtilities::ToVkFormat(specification.Format);
+        m_ViewType = VK_IMAGE_VIEW_TYPE_2D;
+        m_EffectiveLayerCount = specification.ArrayLayers > 0 ? specification.ArrayLayers : 1;
+        m_Allocator = VK_NULL_HANDLE;
+        m_Allocation = VK_NULL_HANDLE;
+
+        SetDebugName();
+    }
+
     VulkanTexture::~VulkanTexture()
     {
         if (m_ImageView != VK_NULL_HANDLE)
         {
             vkDestroyImageView(m_Device, m_ImageView, nullptr);
+            m_ImageView = VK_NULL_HANDLE;
         }
 
-        if (m_Image != VK_NULL_HANDLE)
+        if (m_Allocator != VK_NULL_HANDLE && m_Allocation != VK_NULL_HANDLE && m_Image != VK_NULL_HANDLE)
         {
             vmaDestroyImage(m_Allocator, m_Image, m_Allocation);
+            m_Image = VK_NULL_HANDLE;
+            m_Allocation = VK_NULL_HANDLE;
+        }
+        else if (m_Image != VK_NULL_HANDLE)
+        {
+            vkDestroyImage(m_Device, m_Image, nullptr);
+            m_Image = VK_NULL_HANDLE;
         }
     }
 

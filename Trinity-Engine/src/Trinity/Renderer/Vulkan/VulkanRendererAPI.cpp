@@ -90,6 +90,7 @@ namespace Trinity
         m_Instance.Initialize(window, specification.EnableValidation);
         m_Device.Initialize(m_Instance, specification.EnableValidation);
         m_PipelineCache.Initialize(m_Device.GetDevice(), m_Device.GetProperties(), specification.PipelineCachePath);
+        m_TransientPool.Initialize(m_Device);
 
         m_SupportsAsyncCompute = m_Device.HasDedicatedComputeQueue();
         m_SupportsBindless = true;
@@ -136,6 +137,7 @@ namespace Trinity
         m_SyncObjects.Shutdown();
         m_LayoutCache.clear();
         m_BindlessHeap.Shutdown();
+        m_TransientPool.Shutdown();
         m_PipelineCache.Shutdown();
         m_DescriptorAllocator.Shutdown();
         m_CommandPool.Shutdown();

@@ -13,6 +13,7 @@ namespace Trinity
     {
     public:
         VulkanTexture(VkDevice device, VmaAllocator allocator, const TextureSpecification& specification, VulkanUploadQueue* uploadQueue = nullptr);
+        VulkanTexture(VkDevice device, VkImage externalImage, VkImageView externalView, const TextureSpecification& specification);
         ~VulkanTexture() override;
 
         uint64_t GetOpaqueHandle() const override { return reinterpret_cast<uint64_t>(m_ImageView); }

@@ -13,6 +13,7 @@
 #include "Trinity/Renderer/Vulkan/VulkanUploadQueue.h"
 #include "Trinity/Renderer/Vulkan/VulkanBindlessHeap.h"
 #include "Trinity/Renderer/Vulkan/VulkanPipelineCache.h"
+#include "Trinity/Renderer/Vulkan/VulkanTransientPool.h"
 
 #include <cstdint>
 #include <unordered_map>
@@ -75,6 +76,7 @@ namespace Trinity
         VulkanUploadQueue& GetUploadQueue() { return m_UploadQueue; }
         VulkanBindlessHeap& GetBindlessHeap() { return m_BindlessHeap; }
         VulkanPipelineCache& GetPipelineCache() { return m_PipelineCache; }
+        VulkanTransientPool& GetTransientPool() { return m_TransientPool; }
         VkCommandBuffer GetCurrentCommandBuffer() const;
         CommandList& GetCommandList() override;
         uint32_t GetCurrentImageIndex() const { return m_CurrentImageIndex; }
@@ -93,6 +95,7 @@ namespace Trinity
         VulkanUploadQueue m_UploadQueue;
         VulkanBindlessHeap m_BindlessHeap;
         VulkanPipelineCache m_PipelineCache;
+        VulkanTransientPool m_TransientPool;
 
         uint32_t m_MaxFramesInFlight = 2;
         uint32_t m_CurrentFrameIndex = 0;
