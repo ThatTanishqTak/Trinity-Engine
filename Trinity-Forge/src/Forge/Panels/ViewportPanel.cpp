@@ -13,6 +13,7 @@
 #include "Trinity/Scene/Components/MeshComponent.h"
 #include "Trinity/Scene/Components/TextureComponent.h"
 #include "Trinity/Scene/Components/LightComponent.h"
+#include "Trinity/Scene/Components/MaterialComponent.h"
 
 #include "Trinity/Asset/AssetRegistry.h"
 #include "Trinity/ImGui/ImGuiLayer.h"
@@ -149,7 +150,23 @@ namespace Forge
                 Trinity::MeshDrawCommand l_Command{};
                 l_Command.MeshRef = a_Mesh.MeshData;
                 l_Command.MaterialHandle = a_Mesh.MeshAssetUUID;
-                l_Command.BaseColor = a_Mesh.BaseColor;
+
+                if (a_Registry.all_of<Trinity::MaterialComponent>(it_Entity))
+                {
+                    const auto& a_Material = a_Registry.get<Trinity::MaterialComponent>(it_Entity);
+                    l_Command.Material = a_Material.GetEditableProperties();
+
+                    if (l_Command.Material.AlbedoTexture.TextureData)
+                    {
+                        l_Command.AlbedoTexture = l_Command.Material.AlbedoTexture.TextureData;
+                        l_Command.UseAlbedoTexture = l_Command.Material.AlbedoTexture.Enabled;
+                    }
+                }
+                else
+                {
+                    l_Command.Material.BaseColor = a_Mesh.BaseColor;
+                }
+
                 const glm::mat4 l_ModelMatrix = a_Transform.GetWorldMatrix(*m_SelectionContext->ActiveScene);
 
                 std::memcpy(l_Command.Transform, glm::value_ptr(l_ModelMatrix), sizeof(l_Command.Transform));

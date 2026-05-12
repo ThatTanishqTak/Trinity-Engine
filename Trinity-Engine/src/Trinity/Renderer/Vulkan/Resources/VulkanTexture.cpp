@@ -31,11 +31,6 @@ namespace Trinity
                 return VK_IMAGE_TYPE_3D;
             }
 
-            if (spec.Height <= 1)
-            {
-                return VK_IMAGE_TYPE_1D;
-            }
-
             return VK_IMAGE_TYPE_2D;
         }
 
@@ -54,11 +49,6 @@ namespace Trinity
                 }
 
                 return VK_IMAGE_VIEW_TYPE_CUBE;
-            }
-
-            if (spec.Height <= 1)
-            {
-                return effectiveLayers > 1 ? VK_IMAGE_VIEW_TYPE_1D_ARRAY : VK_IMAGE_VIEW_TYPE_1D;
             }
 
             return effectiveLayers > 1 ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;

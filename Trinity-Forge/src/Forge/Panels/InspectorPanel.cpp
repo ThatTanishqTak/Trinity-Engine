@@ -8,6 +8,7 @@
 #include "Trinity/Scene/Components/TextureComponent.h"
 #include "Trinity/Scene/Components/CameraComponent.h"
 #include "Trinity/Scene/Components/LightComponent.h"
+#include "Trinity/Scene/Components/MaterialComponent.h"
 #include "Trinity/Asset/AssetRegistry.h"
 
 #include <imgui.h>
@@ -146,6 +147,17 @@ namespace Forge
                 if (ImGui::MenuItem("Texture"))
                 {
                     registry.emplace<Trinity::TextureComponent>(entity);
+                    ImGui::CloseCurrentPopup();
+                }
+
+                l_AnyVisible = true;
+            }
+
+            if (!registry.all_of<Trinity::MaterialComponent>(entity) && Matches("Material"))
+            {
+                if (ImGui::MenuItem("Material"))
+                {
+                    registry.emplace<Trinity::MaterialComponent>(entity);
                     ImGui::CloseCurrentPopup();
                 }
 
@@ -418,6 +430,133 @@ namespace Forge
             {
                 ImGui::EndDisabled();
             }
+        });
+
+        ImGui::Spacing();
+
+        // Material
+        DrawComponent<Trinity::MaterialComponent>("Material", l_Registry, l_Entity, [](Trinity::MaterialComponent& materialComponent)
+        {
+            Trinity::MaterialProperties& a_Properties = materialComponent.GetEditableProperties();
+
+            ImGui::Checkbox("Use Override Properties", &materialComponent.UseOverrideProperties);
+
+            ImGui::Spacing();
+
+            ImGui::ColorEdit4("Base Color", glm::value_ptr(a_Properties.BaseColor));
+
+            ImGui::DragFloat("Metallic", &a_Properties.Metallic, 0.01f, 0.0f, 1.0f);
+            ImGui::DragFloat("Roughness", &a_Properties.Roughness, 0.01f, 0.02f, 1.0f);
+            ImGui::DragFloat("Ambient Occlusion", &a_Properties.AmbientOcclusion, 0.01f, 0.0f, 1.0f);
+
+            ImGui::Spacing();
+
+            ImGui::ColorEdit3("Emissive Color", glm::value_ptr(a_Properties.EmissiveColor));
+            ImGui::DragFloat("Emissive Strength", &a_Properties.EmissiveStrength, 0.01f, 0.0f, 100.0f);
+
+            ImGui::Spacing();
+
+            static const char* const l_AlphaModes[] = { "Opaque", "Masked", "Blend" };
+            int l_AlphaMode = static_cast<int>(a_Properties.AlphaMode);
+            if (ImGui::Combo("Alpha Mode", &l_AlphaMode, l_AlphaModes, IM_ARRAYSIZE(l_AlphaModes)))
+            {
+                a_Properties.AlphaMode = static_cast<Trinity::MaterialAlphaMode>(l_AlphaMode);
+            }
+
+            if (a_Properties.AlphaMode == Trinity::MaterialAlphaMode::Masked)
+            {
+                ImGui::DragFloat("Alpha Cutoff", &a_Properties.AlphaCutoff, 0.01f, 0.0f, 1.0f);
+            }
+
+            ImGui::Spacing();
+            ImGui::SeparatorText("Textures");
+
+            Trinity::MaterialTextureSlot& a_AlbedoSlot = a_Properties.AlbedoTexture;
+
+            const float l_AvailableWidth = ImGui::GetContentRegionAvail().x;
+            const float l_ButtonSize = ImGui::GetFrameHeight();
+            const float l_Spacing = ImGui::GetStyle().ItemSpacing.x;
+            const float l_SlotWidth = l_AvailableWidth - l_ButtonSize - l_Spacing;
+            const float l_SlotHeight = l_ButtonSize + 4.0f;
+
+            ImGui::TextUnformatted("Albedo");
+            const ImVec2 l_SlotPosition = ImGui::GetCursorScreenPos();
+            ImGui::InvisibleButton("##MaterialAlbedoSlot", ImVec2(l_SlotWidth, l_SlotHeight));
+
+            ImDrawList* l_DrawList = ImGui::GetWindowDrawList();
+            const ImU32 l_BorderColor = a_AlbedoSlot.TextureData != nullptr ? ImGui::GetColorU32(ImGuiCol_Border) : ImGui::GetColorU32(ImGuiCol_Border, 0.4f);
+            l_DrawList->AddRect(l_SlotPosition, ImVec2(l_SlotPosition.x + l_SlotWidth, l_SlotPosition.y + l_SlotHeight), l_BorderColor, 3.0f, 0, 1.0f);
+
+            constexpr float l_IconSize = 14.0f;
+            constexpr float l_IconPad = 5.0f;
+
+            const ImVec2 l_IconMin(l_SlotPosition.x + l_IconPad, l_SlotPosition.y + (l_SlotHeight - l_IconSize) * 0.5f);
+            const ImVec2 l_IconMax(l_IconMin.x + l_IconSize, l_IconMin.y + l_IconSize);
+
+            const float l_TextX = l_IconMax.x + 6.0f;
+            const float l_TextY = l_SlotPosition.y + (l_SlotHeight - ImGui::GetTextLineHeight()) * 0.5f;
+
+            if (a_AlbedoSlot.TextureData)
+            {
+                l_DrawList->AddRectFilled(l_IconMin, l_IconMax, IM_COL32(233, 30, 99, 255), 2.0f);
+
+                std::string l_FileName = "Albedo Texture";
+                const Trinity::AssetMetadata* l_Meta = Trinity::AssetRegistry::Get().GetMetadata(a_AlbedoSlot.TextureAssetUUID);
+                if (l_Meta)
+                {
+                    l_FileName = std::filesystem::path(l_Meta->SourcePath).stem().string();
+                }
+
+                l_DrawList->AddText(ImVec2(l_TextX, l_TextY), ImGui::GetColorU32(ImGuiCol_Text), l_FileName.c_str());
+            }
+            else
+            {
+                l_DrawList->AddRectFilled(l_IconMin, l_IconMax, IM_COL32(233, 30, 99, 60), 2.0f);
+                l_DrawList->AddText(ImVec2(l_TextX, l_TextY), ImGui::GetColorU32(ImGuiCol_TextDisabled), "Drop Albedo Texture Here");
+            }
+
+            if (ImGui::BeginDragDropTarget())
+            {
+                if (const ImGuiPayload* l_Payload = ImGui::AcceptDragDropPayload(AssetPayloadID))
+                {
+                    const auto* a_Asset = static_cast<const AssetPayload*>(l_Payload->Data);
+                    if (a_Asset->Type == Trinity::AssetType::Texture)
+                    {
+                        const Trinity::AssetHandle l_Handle = Trinity::AssetRegistry::Get().ImportAsset(a_Asset->Path);
+                        if (l_Handle != Trinity::InvalidAsset)
+                        {
+                            auto a_Texture = Trinity::AssetRegistry::Get().LoadTexture(l_Handle);
+                            if (a_Texture)
+                            {
+                                a_AlbedoSlot.TextureAssetUUID = l_Handle;
+                                a_AlbedoSlot.TextureData = a_Texture;
+                                a_AlbedoSlot.Enabled = true;
+                            }
+                        }
+                    }
+                }
+
+                ImGui::EndDragDropTarget();
+            }
+
+            ImGui::SameLine(0.0f, l_Spacing);
+
+            if (a_AlbedoSlot.TextureData == nullptr)
+            {
+                ImGui::BeginDisabled();
+            }
+
+            if (ImGui::Button("x##MaterialAlbedo", ImVec2(l_ButtonSize, l_SlotHeight)))
+            {
+                a_AlbedoSlot.Clear();
+            }
+
+            if (a_AlbedoSlot.TextureData == nullptr)
+            {
+                ImGui::EndDisabled();
+            }
+
+            ImGui::Checkbox("Use Albedo Texture", &a_AlbedoSlot.Enabled);
         });
 
         ImGui::Spacing();

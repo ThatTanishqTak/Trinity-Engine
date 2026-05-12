@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Trinity/Renderer/Camera/Camera.h"
+#include "Trinity/Renderer/Resources/Material.h"
 #include "Trinity/Renderer/Resources/Texture.h"
 #include "Trinity/Scene/Components/LightComponent.h"
 
@@ -19,7 +20,12 @@ namespace Trinity
     {
         std::shared_ptr<Mesh> MeshRef;
         uint64_t MaterialHandle = 0;
-        glm::vec4 BaseColor = glm::vec4(1.0f);
+
+        MaterialProperties Material;
+
+        std::shared_ptr<Texture> AlbedoTexture;
+        bool UseAlbedoTexture = false;
+
         float Transform[16] = {};
     };
 
@@ -69,7 +75,13 @@ namespace Trinity
     {
         float Model[16];
         float ViewProjection[16];
+
         float BaseColor[4];
+
+        float MaterialData[4];
+        float EmissiveColorStrength[4];
+
+        float TextureFlags[4];
     };
 
     class SceneRenderer
