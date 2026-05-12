@@ -26,13 +26,31 @@ namespace Forge
 
         ImGui::Separator();
 
-        // These require VkQueryPool timestamp queries, gap until SceneRenderer exposes them
-        ImGui::TextDisabled("Draw Calls:     --");
-        ImGui::TextDisabled("Vertices:       --");
-        ImGui::TextDisabled("Geometry Pass:  -- ms");
-        ImGui::TextDisabled("Shadow Pass:    -- ms");
-        ImGui::TextDisabled("GPU Total:      -- ms");
+        const Trinity::SceneRendererStats* l_Stats = m_StatsProvider ? m_StatsProvider() : nullptr;
+
+        if (l_Stats)
+        {
+            ImGui::Text("Draw Calls:     %u", l_Stats->DrawCalls);
+            ImGui::Text("Vertices:       %u", l_Stats->VertexCount);
+            ImGui::Text("Indices:        %u", l_Stats->IndexCount);
+            ImGui::Text("Geometry Pass:  %.3f ms", l_Stats->GeometryPassMs);
+            ImGui::Text("Shadow Pass:    %.3f ms", l_Stats->ShadowPassMs);
+            ImGui::Text("GPU Total:      %.3f ms", l_Stats->TotalGPUMs);
+        }
+        else
+        {
+            ImGui::TextDisabled("Draw Calls:     --");
+            ImGui::TextDisabled("Vertices:       --");
+            ImGui::TextDisabled("Geometry Pass:  -- ms");
+            ImGui::TextDisabled("Shadow Pass:    -- ms");
+            ImGui::TextDisabled("GPU Total:      -- ms");
+        }
 
         ImGui::End();
+    }
+
+    void RendererStatsPanel::SetStatsProvider(std::function<const Trinity::SceneRendererStats* ()> provider)
+    {
+        m_StatsProvider = std::move(provider);
     }
 }

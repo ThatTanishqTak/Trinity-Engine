@@ -78,6 +78,12 @@ namespace Trinity
         if (!m_Compiled)
         {
             Compile();
+
+            if (m_ExecutionOrder.empty() && !m_Passes.empty())
+            {
+                TR_CORE_ERROR("RenderGraph execution skipped because no valid execution order exists");
+                return;
+            }
         }
 
         RenderGraphContext l_Context{};
@@ -233,6 +239,7 @@ namespace Trinity
 
             if (l_Next == l_InvalidPass)
             {
+                TR_CORE_ERROR("RenderGraph dependency cycle detected Execution order could not be built");
                 m_ExecutionOrder.clear();
 
                 return;

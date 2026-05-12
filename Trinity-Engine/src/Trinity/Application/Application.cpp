@@ -166,6 +166,8 @@ namespace Trinity
             {
                 constexpr auto a_MinimizedSleep = std::chrono::milliseconds(16);
                 std::this_thread::sleep_for(a_MinimizedSleep);
+
+                continue;
             }
 
             for (const std::unique_ptr<Layer>& it_Layer : m_LayerStack)

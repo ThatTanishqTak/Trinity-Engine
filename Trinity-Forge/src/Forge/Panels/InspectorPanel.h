@@ -19,7 +19,7 @@ namespace Forge
 
     private:
         template<typename T, typename DrawFunction>
-        static void DrawComponent(const char* label, entt::registry& registry, entt::entity entity, DrawFunction drawFunction)
+        static void DrawComponent(const char* label, entt::registry& registry, entt::entity entity, DrawFunction drawFunction, bool removable = true)
         {
             if (!registry.all_of<T>(entity))
             {
@@ -34,7 +34,7 @@ namespace Forge
             const bool l_Open = ImGui::TreeNodeEx(label, l_Flags);
 
             bool l_Remove = false;
-            if (ImGui::BeginPopupContextItem("##ComponentContext"))
+            if (removable && ImGui::BeginPopupContextItem("##ComponentContext"))
             {
                 if (ImGui::MenuItem("Remove Component"))
                 {

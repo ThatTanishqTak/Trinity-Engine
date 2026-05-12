@@ -32,6 +32,10 @@ namespace Trinity
         entt::registry& GetRegistry() { return m_Registry; }
         const entt::registry& GetRegistry() const { return m_Registry; }
 
+        void OnRuntimeStart();
+        void OnRuntimeUpdate(float deltaTime);
+        void OnRuntimeStop();
+
     private:
         std::string m_Name;
         entt::registry m_Registry;

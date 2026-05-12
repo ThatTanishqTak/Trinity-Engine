@@ -53,11 +53,17 @@ namespace Trinity
 
         std::vector<Geometry::Vertex> l_Vertices;
         std::vector<uint32_t> l_Indices;
+        std::vector<SubMesh> l_SubMeshes;
 
         for (uint32_t it_MeshIndex = 0; it_MeshIndex < l_Scene->mNumMeshes; ++it_MeshIndex)
         {
             const aiMesh* l_Mesh = l_Scene->mMeshes[it_MeshIndex];
             const uint32_t l_BaseVertex = static_cast<uint32_t>(l_Vertices.size());
+
+            SubMesh l_SubMesh{};
+            l_SubMesh.BaseVertex = l_BaseVertex;
+            l_SubMesh.BaseIndex = static_cast<uint32_t>(l_Indices.size());
+            l_SubMesh.MaterialIndex = l_Mesh->mMaterialIndex;
 
             for (uint32_t i = 0; i < l_Mesh->mNumVertices; ++i)
             {
@@ -75,6 +81,11 @@ namespace Trinity
                     l_Vertex.UV = { l_Mesh->mTextureCoords[0][i].x, l_Mesh->mTextureCoords[0][i].y };
                 }
 
+                if (l_Mesh->HasTangentsAndBitangents())
+                {
+                    l_Vertex.Tangent = { l_Mesh->mTangents[i].x, l_Mesh->mTangents[i].y, l_Mesh->mTangents[i].z };
+                }
+
                 l_Vertices.push_back(l_Vertex);
             }
 
@@ -85,6 +96,9 @@ namespace Trinity
                 {
                     l_Indices.push_back(l_BaseVertex + l_Face.mIndices[j]);
                 }
+
+                l_SubMesh.IndexCount = static_cast<uint32_t>(l_Indices.size()) - l_SubMesh.BaseIndex;
+                l_SubMeshes.push_back(l_SubMesh);
             }
         }
 
@@ -93,7 +107,7 @@ namespace Trinity
             return nullptr;
         }
 
-        auto a_Mesh = Mesh::Create(l_Vertices, l_Indices);
+        auto a_Mesh = Mesh::Create(l_Vertices, l_Indices, l_SubMeshes);
 
         const std::filesystem::path l_SourceDir = path.parent_path();
         for (uint32_t it_MeshIndex = 0; it_MeshIndex < l_Scene->mNumMeshes; ++it_MeshIndex)

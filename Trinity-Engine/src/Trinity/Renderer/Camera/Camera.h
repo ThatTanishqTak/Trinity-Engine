@@ -14,6 +14,7 @@ namespace Trinity
 		void SetProjection(float fovDegrees, float aspectRatio, float nearClip, float farClip);
 		void SetAspectRatio(float aspectRatio);
 		void SetPosition(const glm::vec3& position);
+        void SetTransform(const glm::vec3& position, const glm::vec3& rotationRadians);
 
 		const glm::mat4& GetViewMatrix() const { return m_ViewMatrix; }
 		const glm::mat4& GetProjectionMatrix() const { return m_ProjectionMatrix; }

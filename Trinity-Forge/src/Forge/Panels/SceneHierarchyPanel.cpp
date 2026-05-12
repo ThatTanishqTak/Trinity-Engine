@@ -6,6 +6,9 @@
 #include "Trinity/Scene/Components/TagComponent.h"
 #include "Trinity/Scene/Components/TransformComponent.h"
 #include "Trinity/Scene/Components/MeshComponent.h"
+#include "Trinity/Scene/Components/CameraComponent.h"
+#include "Trinity/Scene/Components/LightComponent.h"
+#include "Trinity/Scene/Components/TextureComponent.h"
 #include "Trinity/Renderer/Mesh.h"
 #include "Trinity/Geometry/Geometry.h"
 #include "Trinity/Asset/AssetRegistry.h"
@@ -56,11 +59,27 @@ namespace Forge
                     Trinity::Entity l_Entity = m_Context->ActiveScene->CreateEntity(tag);
 
                     const auto& l_Data = Trinity::Geometry::GetPrimitive(type);
-                    auto a_Mesh = Trinity::Mesh::Create(l_Data.Vertices, l_Data.Indices);
+                    auto a_Mesh = Trinity::Mesh::Create(l_Data.Vertices, l_Data.Indices, l_Data.SubMesh);
 
                     auto& a_MeshComponent = l_Entity.AddComponent<Trinity::MeshComponent>();
                     a_MeshComponent.MeshAssetUUID = Trinity::AssetRegistry::Get().RegisterMesh(a_Mesh);
                     a_MeshComponent.MeshData = std::move(a_Mesh);
+
+                    switch (type)
+                    {
+                        case Trinity::Geometry::PrimitiveType::Triangle:
+                            a_MeshComponent.BuiltinType = Trinity::BuiltinMeshType::Triangle;
+                            break;
+                        case Trinity::Geometry::PrimitiveType::Quad:
+                            a_MeshComponent.BuiltinType = Trinity::BuiltinMeshType::Quad;
+                            break;
+                        case Trinity::Geometry::PrimitiveType::Cube:
+                            a_MeshComponent.BuiltinType = Trinity::BuiltinMeshType::Cube;
+                            break;
+                        default:
+                            a_MeshComponent.BuiltinType = Trinity::BuiltinMeshType::None;
+                            break;
+                    }
                 };
 
                 if (ImGui::MenuItem("Create Triangle"))
@@ -81,7 +100,7 @@ namespace Forge
                 ImGui::EndPopup();
             }
 
-            if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+            if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered())
             {
                 m_Context->SelectedEntity = entt::null;
             }
@@ -113,7 +132,7 @@ namespace Forge
         }
 
         ImGuiTreeNodeFlags l_Flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
-        if (!l_Children.empty())
+        if (l_Children.empty())
         {
             l_Flags |= ImGuiTreeNodeFlags_Leaf;
         }
@@ -148,6 +167,34 @@ namespace Forge
             return;
         }
 
+        auto CopyIfExists = [&a_Registry](entt::entity source, entt::entity destination)
+        {
+            if (a_Registry.all_of<Trinity::TransformComponent>(source))
+            {
+                a_Registry.get<Trinity::TransformComponent>(destination) = a_Registry.get<Trinity::TransformComponent>(source);
+            }
+
+            if (a_Registry.all_of<Trinity::MeshComponent>(source))
+            {
+                a_Registry.emplace_or_replace<Trinity::MeshComponent>(destination, a_Registry.get<Trinity::MeshComponent>(source));
+            }
+
+            if (a_Registry.all_of<Trinity::TextureComponent>(source))
+            {
+                a_Registry.emplace_or_replace<Trinity::TextureComponent>(destination, a_Registry.get<Trinity::TextureComponent>(source));
+            }
+
+            if (a_Registry.all_of<Trinity::CameraComponent>(source))
+            {
+                a_Registry.emplace_or_replace<Trinity::CameraComponent>(destination, a_Registry.get<Trinity::CameraComponent>(source));
+            }
+
+            if (a_Registry.all_of<Trinity::LightComponent>(source))
+            {
+               a_Registry.emplace_or_replace<Trinity::LightComponent>(destination, a_Registry.get<Trinity::LightComponent>(source));
+            }
+        };
+
         const bool l_NodeOpen = ImGui::TreeNodeEx(reinterpret_cast<void*>(static_cast<uintptr_t>(static_cast<uint32_t>(entity))), l_Flags, "%s", a_Tag.Tag.c_str());
 
         if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
@@ -166,8 +213,10 @@ namespace Forge
 
             if (ImGui::MenuItem("Duplicate"))
             {
-                Trinity::Entity l_New = m_Context->ActiveScene->CreateEntity(a_Tag.Tag);
-                (void)l_New;
+                Trinity::Entity l_New = m_Context->ActiveScene->CreateEntity(a_Tag.Tag + " Copy");
+
+                CopyIfExists(entity, l_New.GetHandle());
+                m_Context->SelectedEntity = l_New.GetHandle();
             }
 
             ImGui::Separator();

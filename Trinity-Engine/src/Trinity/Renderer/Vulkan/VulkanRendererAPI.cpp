@@ -129,10 +129,9 @@ namespace Trinity
     {
         TR_CORE_INFO("SHUTTING DOWN VULKAN");
 
-        m_SamplerCache.clear();
-
         WaitIdle();
 
+        m_SamplerCache.clear();
         m_UploadQueue.Shutdown();
         m_SyncObjects.Shutdown();
         m_LayoutCache.clear();
@@ -268,7 +267,10 @@ namespace Trinity
         if (l_Result == VK_ERROR_OUT_OF_DATE_KHR || l_Result == VK_SUBOPTIMAL_KHR || m_FramebufferResized)
         {
             m_FramebufferResized = false;
-            m_Swapchain.Recreate(m_Swapchain.GetExtent().width, m_Swapchain.GetExtent().height);
+            const uint32_t l_Width = m_PendingResizeWidth != 0 ? m_PendingResizeWidth : m_Swapchain.GetExtent().width;
+            const uint32_t l_Height = m_PendingResizeHeight != 0 ? m_PendingResizeHeight : m_Swapchain.GetExtent().height;
+
+            m_Swapchain.Recreate(l_Width, l_Height);
         }
         else if (l_Result != VK_SUCCESS)
         {
@@ -289,6 +291,9 @@ namespace Trinity
         {
             return;
         }
+
+        m_PendingResizeWidth = width;
+        m_PendingResizeHeight = height;
 
         m_FramebufferResized = true;
     }

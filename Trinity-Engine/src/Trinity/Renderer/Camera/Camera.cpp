@@ -1,8 +1,8 @@
 #include "Trinity/Renderer/Camera/Camera.h"
 
-#include <glm/gtc/matrix_transform.hpp>
-
 #include "Trinity/Utilities/Log.h"
+
+#include <glm/gtc/matrix_transform.hpp>
 
 namespace Trinity
 {
@@ -35,6 +35,22 @@ namespace Trinity
 
 		RecalculateViewMatrix();
 	}
+
+    void Camera::SetTransform(const glm::vec3& position, const glm::vec3& rotationRadians)
+    {
+        m_Position = position;
+
+        glm::mat4 l_Rotation = glm::mat4(1.0f);
+        l_Rotation = glm::rotate(l_Rotation, rotationRadians.x, glm::vec3(1.0f, 0.0f, 0.0f));
+        l_Rotation = glm::rotate(l_Rotation, rotationRadians.y, glm::vec3(0.0f, 1.0f, 0.0f));
+        l_Rotation = glm::rotate(l_Rotation, rotationRadians.z, glm::vec3(0.0f, 0.0f, 1.0f));
+
+        m_Forward = glm::normalize(glm::vec3(l_Rotation * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f)));
+        m_Right = glm::normalize(glm::cross(m_Forward, glm::vec3(0.0f, 1.0f, 0.0f)));
+        m_Up = glm::normalize(glm::cross(m_Right, m_Forward));
+
+        RecalculateViewMatrix();
+    }
 
 	void Camera::RecalculateViewMatrix()
 	{

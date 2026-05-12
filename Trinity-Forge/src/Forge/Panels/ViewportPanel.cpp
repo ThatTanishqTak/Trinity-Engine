@@ -9,6 +9,7 @@
 #include "Trinity/Scene/Scene.h"
 #include "Trinity/Scene/Entity.h"
 #include "Trinity/Scene/Components/TransformComponent.h"
+#include "Trinity/Scene/Components/CameraComponent.h"
 #include "Trinity/Scene/Components/MeshComponent.h"
 #include "Trinity/Scene/Components/TextureComponent.h"
 #include "Trinity/Scene/Components/LightComponent.h"
@@ -23,10 +24,12 @@
 #include <imgui.h>
 #include <ImGuizmo.h>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include <cmath>
 #include <cstring>
 #include <memory>
+#include <variant>
 
 namespace Forge
 {
@@ -71,8 +74,62 @@ namespace Forge
             m_SceneRenderer.OnResize(m_PendingResizeWidth, m_PendingResizeHeight);
         }
 
+        Trinity::Camera* l_ActiveCamera = &m_Camera;
+        Trinity::Camera l_SceneCamera;
+
+        if (m_SelectionContext && m_SelectionContext->ActiveScene && m_SelectionContext->State != EditorState::Edit)
+        {
+            auto& a_Registry = m_SelectionContext->ActiveScene->GetRegistry();
+            auto a_View = a_Registry.view<Trinity::TransformComponent, Trinity::CameraComponent>();
+
+            for (auto it_Entity : a_View)
+            {
+                auto& a_Camera = a_View.get<Trinity::CameraComponent>(it_Entity);
+                if (!a_Camera.Primary)
+                {
+                    continue;
+                }
+
+                auto& a_Transform = a_View.get<Trinity::TransformComponent>(it_Entity);
+
+                const float l_Aspect = m_LastHeight > 0 ? static_cast<float>(m_LastWidth) / static_cast<float>(m_LastHeight) : 16.0f / 9.0f;
+
+                l_SceneCamera.SetProjection(a_Camera.FOV, l_Aspect, a_Camera.NearClip, a_Camera.FarClip);
+                l_SceneCamera.SetTransform(a_Transform.Position, a_Transform.Rotation);
+
+                l_ActiveCamera = &l_SceneCamera;
+                break;
+            }
+        }
+
         Trinity::SceneRenderData l_SceneData{};
-        m_SceneRenderer.BeginScene(m_Camera, l_SceneData);
+        if (m_SelectionContext && m_SelectionContext->ActiveScene)
+        {
+            auto& a_Registry = m_SelectionContext->ActiveScene->GetRegistry();
+            auto a_View = a_Registry.view<Trinity::TransformComponent, Trinity::LightComponent>();
+
+            for (auto it_Entity : a_View)
+            {
+                auto& a_Transform = a_View.get<Trinity::TransformComponent>(it_Entity);
+                auto& a_Light = a_View.get<Trinity::LightComponent>(it_Entity);
+
+                if (std::holds_alternative<Trinity::DirectionalLight>(a_Light.Data))
+                {
+                    l_SceneData.SunLight = std::get<Trinity::DirectionalLight>(a_Light.Data);
+
+                    glm::mat4 l_Rotation = glm::mat4(1.0f);
+                    l_Rotation = glm::rotate(l_Rotation, a_Transform.Rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
+                    l_Rotation = glm::rotate(l_Rotation, a_Transform.Rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
+                    l_Rotation = glm::rotate(l_Rotation, a_Transform.Rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
+
+                    l_SceneData.SunDirection = glm::normalize(glm::vec3(l_Rotation * glm::vec4(0.0f, -1.0f, 0.0f, 0.0f)));
+
+                    break;
+                }
+            }
+        }
+
+        m_SceneRenderer.BeginScene(*l_ActiveCamera, l_SceneData);
 
         if (m_SelectionContext && m_SelectionContext->ActiveScene)
         {
@@ -91,7 +148,7 @@ namespace Forge
 
                 Trinity::MeshDrawCommand l_Command{};
                 l_Command.MeshRef = a_Mesh.MeshData;
-                const glm::mat4 l_ModelMatrix = a_Transform.GetLocalMatrix();
+                const glm::mat4 l_ModelMatrix = a_Transform.GetWorldMatrix(*m_SelectionContext->ActiveScene);
 
                 std::memcpy(l_Command.Transform, glm::value_ptr(l_ModelMatrix), sizeof(l_Command.Transform));
                 m_SceneRenderer.SubmitMesh(l_Command);
@@ -252,8 +309,10 @@ namespace Forge
 
         if (m_SelectionContext->State != EditorState::Edit)
         {
-            const ImVec2 l_TextPosition = ImVec2(8.0f, ImGui::GetCursorStartPos().y + 36.0f);
-            ImGui::GetWindowDrawList()->AddText(l_TextPosition, IM_COL32(255, 200, 0, 180), "No Scene Camera \xE2\x80\x94 using editor camera fallback");
+            const ImVec2 l_WindowPosition = ImGui::GetWindowPos();
+            const ImVec2 l_TextPosition = ImVec2(l_WindowPosition.x + 8.0f, l_WindowPosition.y + 36.0f);
+
+            ImGui::GetWindowDrawList()->AddText(l_TextPosition, IM_COL32(255, 200, 0, 180), "No Scene Camera - using editor camera fallback");
         }
 
         RenderGizmos();

@@ -3,9 +3,10 @@
 
 namespace Trinity
 {
-    std::shared_ptr<Mesh> Mesh::Create(const std::vector<Geometry::Vertex>& vertices, const std::vector<uint32_t>& indices)
+    std::shared_ptr<Mesh> Mesh::Create(const std::vector<Geometry::Vertex>& vertices, const std::vector<uint32_t>& indices, const std::vector<SubMesh>& subMeshes)
     {
         auto a_Mesh = std::make_shared<Mesh>();
+        a_Mesh->m_SubMeshes = subMeshes;
         a_Mesh->m_VertexCount = static_cast<uint32_t>(vertices.size());
         a_Mesh->m_IndexCount = static_cast<uint32_t>(indices.size());
 

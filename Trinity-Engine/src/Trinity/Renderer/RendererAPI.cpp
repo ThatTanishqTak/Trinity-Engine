@@ -21,9 +21,12 @@ namespace Trinity
             }
 #endif
             default:
+            {
+                TR_CORE_CRITICAL("Unsupported renderer backend: {}", static_cast<int>(backend));
                 std::abort();
 
                 return nullptr;
+            }
         }
     }
 }

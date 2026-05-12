@@ -9,6 +9,7 @@
 #include <array>
 #include <filesystem>
 #include <memory>
+#include <vector>
 
 namespace Forge
 {

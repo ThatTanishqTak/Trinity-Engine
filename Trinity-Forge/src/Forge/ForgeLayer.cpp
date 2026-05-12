@@ -94,6 +94,8 @@ void ForgeLayer::OnInitialize()
     m_StatsPanel = m_PanelManager.RegisterPanel<Forge::RendererStatsPanel>("Renderer Stats");
     m_LogPanel = m_PanelManager.RegisterPanel<Forge::LogPanel>("Log");
 
+    m_StatsPanel->SetStatsProvider([this]() -> const Trinity::SceneRendererStats* { return m_ViewportPanel ? &m_ViewportPanel->GetStats() : nullptr; });
+
     Trinity::ImGuiLayer::Get().SetMenuBarCallback([this]()
     {
         RenderMenuBar();
@@ -113,7 +115,10 @@ void ForgeLayer::OnShutdown()
 
 void ForgeLayer::OnUpdate(float deltaTime)
 {
-    if (Trinity::DesktopInput::KeyDown(Trinity::Code::KeyCode::KEY_LEFT_CONTROL) && m_SelectionContext.State == EditorState::Edit)
+    const ImGuiIO& l_IO = ImGui::GetIO();
+    const bool l_AllowShortcuts = !l_IO.WantCaptureKeyboard && !l_IO.WantTextInput;
+
+    if (l_AllowShortcuts && Trinity::DesktopInput::KeyDown(Trinity::Code::KeyCode::KEY_LEFT_CONTROL) && m_SelectionContext.State == EditorState::Edit)
     {
         if (Trinity::DesktopInput::KeyPressed(Trinity::Code::KeyCode::KEY_N))
         {
@@ -149,9 +154,12 @@ void ForgeLayer::OnUpdate(float deltaTime)
         if (m_SelectionContext.State == EditorState::Play && m_LastEditorState == EditorState::Edit)
         {
             m_SceneSnapshot = Trinity::SceneSerializer::SerializeToString(m_Scene);
+            m_Scene.OnRuntimeStart();
         }
         else if (m_SelectionContext.State == EditorState::Edit && (m_LastEditorState == EditorState::Play || m_LastEditorState == EditorState::Pause))
         {
+            m_Scene.OnRuntimeStop();
+
             if (!m_SceneSnapshot.empty())
             {
                 m_Scene = Trinity::Scene();
@@ -168,6 +176,11 @@ void ForgeLayer::OnUpdate(float deltaTime)
 
     const float l_EffectiveDelta = (m_SelectionContext.State == EditorState::Pause) ? 0.0f : deltaTime;
     m_PanelManager.UpdatePanels(l_EffectiveDelta);
+
+    if (m_SelectionContext.State == EditorState::Play)
+    {
+        m_Scene.OnRuntimeUpdate(l_EffectiveDelta);
+    }
 }
 
 void ForgeLayer::OnRender()
@@ -270,7 +283,7 @@ void ForgeLayer::RenderMenuBar()
 
         ImGui::Separator();
 
-        if (!m_CurrentScenePath.empty())
+        if (m_CurrentScenePath.empty())
         {
             ImGui::BeginDisabled();
         }
@@ -280,7 +293,7 @@ void ForgeLayer::RenderMenuBar()
             SaveScene();
         }
 
-        if (!m_CurrentScenePath.empty())
+        if (m_CurrentScenePath.empty())
         {
             ImGui::EndDisabled();
         }

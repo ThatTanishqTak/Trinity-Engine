@@ -8,6 +8,8 @@
 
 #include <fstream>
 #include <random>
+#include <algorithm>
+#include <cctype>
 
 namespace Trinity
 {
@@ -29,7 +31,8 @@ namespace Trinity
 
     AssetHandle AssetRegistry::ImportAsset(const std::filesystem::path& path)
     {
-        const std::string l_Extension = path.extension().string();
+        std::string l_Extension = path.extension().string();
+        std::transform(l_Extension.begin(), l_Extension.end(), l_Extension.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
         AssetType l_Type = AssetType::None;
 

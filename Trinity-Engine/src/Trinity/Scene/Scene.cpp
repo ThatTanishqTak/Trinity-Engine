@@ -82,4 +82,19 @@ namespace Trinity
 
         return a_Entity != m_EntityByUUID.end() ? a_Entity->second : entt::null;
     }
+
+    void Scene::OnRuntimeStart()
+    {
+        TR_CORE_INFO("Scene runtime started: {}", m_Name);
+    }
+
+    void Scene::OnRuntimeUpdate(float deltaTime)
+    {
+        (void)deltaTime;
+    }
+
+    void Scene::OnRuntimeStop()
+    {
+        TR_CORE_INFO("Scene runtime stopped: {}", m_Name);
+    }
 }

@@ -231,7 +231,7 @@ namespace Forge
             textureComponent.Rotation = glm::radians(l_RotationDegree);
 
             DrawVec3Control("Scale", textureComponent.Scale, 1.0f);
-        });
+        }, false);
 
         ImGui::Spacing();
 

@@ -90,7 +90,7 @@ namespace Trinity
                 vkGetPhysicalDeviceProperties(l_Device, &m_Properties);
                 m_QueueFamilyIndices = FindQueueFamilies(l_Device);
 
-                TR_CORE_TRACE("Selected Fallback GPU: {}");
+                TR_CORE_TRACE("Selected Fallback GPU: {}", m_Properties.deviceName);
 
                 return;
             }
@@ -145,6 +145,9 @@ namespace Trinity
         const bool l_RayTracingExtsPresent = l_HasExtension(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME) && l_HasExtension(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) && l_HasExtension(VK_KHR_RAY_QUERY_EXTENSION_NAME) && l_HasExtension(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
         const bool l_MeshShaderExtPresent = l_HasExtension(VK_EXT_MESH_SHADER_EXTENSION_NAME);
         const bool l_FragmentShadingRateExtPresent = l_HasExtension(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME);
+#ifdef __APPLE__
+        const bool l_PortabilitySubsetPresent = l_HasExtension("VK_KHR_portability_subset");
+#endif
 
         VkPhysicalDeviceVulkan13Features l_Features13Supported{};
         l_Features13Supported.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
@@ -267,6 +270,13 @@ namespace Trinity
             l_EnabledExtensions.push_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
             l_EnabledExtensions.push_back(VK_KHR_RAY_QUERY_EXTENSION_NAME);
         }
+
+#ifdef __APPLE__
+        if (l_PortabilitySubsetPresent)
+        {
+            l_EnabledExtensions.push_back("VK_KHR_portability_subset");
+        }
+#endif
 
         VkPhysicalDeviceVulkan13Features l_Features13{};
         l_Features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;

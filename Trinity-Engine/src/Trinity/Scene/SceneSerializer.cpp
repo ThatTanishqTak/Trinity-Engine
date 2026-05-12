@@ -1,5 +1,7 @@
 #include "Trinity/Scene/SceneSerializer.h"
 
+#include "Trinity/Geometry/Geometry.h"
+#include "Trinity/Renderer/Mesh.h"
 #include "Trinity/Scene/Scene.h"
 #include "Trinity/Scene/Entity.h"
 #include "Trinity/Scene/Components/UUIDComponent.h"
@@ -8,6 +10,7 @@
 #include "Trinity/Scene/Components/MeshComponent.h"
 #include "Trinity/Scene/Components/CameraComponent.h"
 #include "Trinity/Scene/Components/LightComponent.h"
+#include "Trinity/Scene/Components/TextureComponent.h"
 #include "Trinity/Asset/AssetRegistry.h"
 #include "Trinity/Utilities/Log.h"
 
@@ -77,6 +80,7 @@ namespace Trinity
             const auto& a_MeshComponent = entity.GetComponent<MeshComponent>();
             out << YAML::Key << "MeshComponent" << YAML::Value << YAML::BeginMap;
             out << YAML::Key << "MeshAssetUUID" << YAML::Value << a_MeshComponent.MeshAssetUUID;
+            out << YAML::Key << "BuiltinType" << YAML::Value << static_cast<uint32_t>(a_MeshComponent.BuiltinType);
 
             const AssetMetadata* l_MetaData = AssetRegistry::Get().GetMetadata(a_MeshComponent.MeshAssetUUID);
             out << YAML::Key << "MeshSourcePath" << YAML::Value << (l_MetaData ? l_MetaData->SourcePath : std::string{});
@@ -133,6 +137,19 @@ namespace Trinity
                     out << YAML::Key << "Radius" << YAML::Value << variant.Radius;
                 }
             }, l_Light.Data);
+
+            out << YAML::EndMap;
+        }
+
+        if (entity.HasComponent<TextureComponent>())
+        {
+            const auto& a_TextureComponent = entity.GetComponent<TextureComponent>();
+
+            out << YAML::Key << "TextureComponent" << YAML::Value << YAML::BeginMap;
+            out << YAML::Key << "TextureAssetUUID" << YAML::Value << a_TextureComponent.TextureAssetUUID;
+
+            const AssetMetadata* l_MetaData = AssetRegistry::Get().GetMetadata(a_TextureComponent.TextureAssetUUID);
+            out << YAML::Key << "TextureSourcePath" << YAML::Value << (l_MetaData ? l_MetaData->SourcePath : std::string{});
 
             out << YAML::EndMap;
         }
@@ -200,12 +217,19 @@ namespace Trinity
                 a_MeshComponent.MeshAssetUUID = l_UUID;
                 if (l_UUID != InvalidAsset)
                 {
+                    AssetHandle l_FinalHandle = l_UUID;
+
                     if (!l_SourcePath.empty())
                     {
-                        AssetRegistry::Get().ImportAsset(l_SourcePath);
+                        AssetHandle l_ImportedHandle = AssetRegistry::Get().ImportAsset(l_SourcePath);
+                        if (l_ImportedHandle != InvalidAsset)
+                        {
+                            l_FinalHandle = l_ImportedHandle;
+                        }
                     }
 
-                    a_MeshComponent.MeshData = AssetRegistry::Get().LoadMesh(l_UUID);
+                    a_MeshComponent.MeshAssetUUID = l_FinalHandle;
+                    a_MeshComponent.MeshData = AssetRegistry::Get().LoadMesh(l_FinalHandle);
                 }
             }
 
@@ -273,6 +297,29 @@ namespace Trinity
                 {
                     a_Light.Data = DirectionalLight{ l_Color, l_Intensity };
                 }
+            }
+
+            const auto a_TextureNode = it_EntityNode["TextureComponent"];
+            if (a_TextureNode)
+            {
+                const AssetHandle l_UUID = a_TextureNode["TextureAssetUUID"].as<uint64_t>(InvalidAsset);
+                const std::string l_SourcePath = a_TextureNode["TextureSourcePath"].as<std::string>("");
+
+                auto& a_TextureComponent = l_Entity.AddComponent<TextureComponent>();
+
+                AssetHandle l_FinalHandle = l_UUID;
+
+                if (!l_SourcePath.empty())
+                {
+                    AssetHandle l_ImportedHandle = AssetRegistry::Get().ImportAsset(l_SourcePath);
+                    if (l_ImportedHandle != InvalidAsset)
+                    {
+                        l_FinalHandle = l_ImportedHandle;
+                    }
+                }
+
+                a_TextureComponent.TextureAssetUUID = l_FinalHandle;
+                a_TextureComponent.TextureData = AssetRegistry::Get().LoadTexture(l_FinalHandle);
             }
         }
 

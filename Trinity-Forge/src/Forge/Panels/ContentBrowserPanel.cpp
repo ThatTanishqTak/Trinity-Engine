@@ -35,6 +35,29 @@ namespace
             }
         }
     }
+
+    static std::filesystem::path FindAssetsDirectory()
+    {
+        std::filesystem::path l_Current = std::filesystem::current_path();
+
+        while (!l_Current.empty())
+        {
+            std::filesystem::path l_Candidate = l_Current / "assets";
+            if (std::filesystem::exists(l_Candidate) && std::filesystem::is_directory(l_Candidate))
+            {
+                return l_Candidate;
+            }
+
+            if (l_Current == l_Current.parent_path())
+            {
+                break;
+            }
+
+            l_Current = l_Current.parent_path();
+        }
+
+        return "assets";
+    }
 }
 
 namespace Forge
@@ -120,7 +143,7 @@ namespace Forge
         return l_Pixels;
     }
 
-    ContentBrowserPanel::ContentBrowserPanel(std::string name) : Panel(std::move(name)), m_BaseDirectory("assets"), m_CurrentDirectory(m_BaseDirectory)
+    ContentBrowserPanel::ContentBrowserPanel(std::string name) : Panel(std::move(name)), m_BaseDirectory(FindAssetsDirectory()), m_CurrentDirectory(m_BaseDirectory)
     {
 
     }
@@ -213,7 +236,7 @@ namespace Forge
             return FileIconType::Scene;
         }
 
-        if (extension == ".fbx" || extension == ".obj" || extension == ".gltf" || extension == ".glb")
+        if (extension == ".fbx" || extension == ".obj" || extension == ".gltf" || extension == ".glb" || extension == ".dae")
         {
             return FileIconType::Mesh;
         }
@@ -358,7 +381,8 @@ namespace Forge
         // Files
         for (const auto& it_File : l_Files)
         {
-            const std::string l_Extension = it_File.path().extension().string();
+            std::string l_Extension = it_File.path().extension().string();
+            std::transform(l_Extension.begin(), l_Extension.end(), l_Extension.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
             if (l_Extension == ".meta")
             {

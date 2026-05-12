@@ -683,8 +683,24 @@ namespace Trinity
 
     void VulkanCommandList::GenerateMips(const std::shared_ptr<Texture>& texture)
     {
-        TR_CORE_ERROR("VulkanCommandList::GenerateMips is not yet implemented (Phase 5.2 mip-chain support pending)");
-        (void)texture;
+        if (m_CommandBuffer == VK_NULL_HANDLE || texture == nullptr)
+        {
+            return;
+        }
+
+        auto* a_Texture = dynamic_cast<VulkanTexture*>(texture.get());
+        if (a_Texture == nullptr)
+        {
+            return;
+        }
+
+        if (a_Texture->GetMipLevels() <= 1)
+        {
+            return;
+        }
+
+        // TODO: Full mip generation needs per-level transitions and vkCmdBlitImage
+        TR_CORE_WARN("GenerateMips skipped for texture because full mip generation is not implemented yet");
     }
 
     void VulkanCommandList::WriteTimestamp(const std::shared_ptr<QueryPool>& pool, uint32_t index)

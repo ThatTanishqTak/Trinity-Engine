@@ -230,6 +230,8 @@ namespace Trinity
                         }
                     }
 
+                    m_Gamepads[l_GamepadID] = l_Gamepad;
+
                     const char* l_Name = SDL_GetGamepadName(l_Gamepad);
                     m_EventQueue.PushEvent(std::make_unique<GamepadConnectedEvent>(l_GamepadID, l_Name != nullptr ? l_Name : "", true));
                 }

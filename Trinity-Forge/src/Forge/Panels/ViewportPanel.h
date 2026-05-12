@@ -25,6 +25,8 @@ namespace Forge
         void OnPreRender() override;
         void OnRender() override;
 
+        const Trinity::SceneRendererStats& GetStats() const { return m_SceneRenderer.GetStats(); }
+
     private:
         void RenderToolbar();
         void RenderGizmos();

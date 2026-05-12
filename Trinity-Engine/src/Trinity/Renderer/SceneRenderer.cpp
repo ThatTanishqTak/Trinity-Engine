@@ -18,6 +18,7 @@
 #include <cstring>
 #include <limits>
 #include <memory>
+#include <cstddef>
 
 namespace Trinity
 {
@@ -291,14 +292,14 @@ namespace Trinity
                     l_Cmd.BindVertexBuffer(0, a_VertexBuffer);
                     l_Cmd.BindIndexBuffer(a_IndexBuffer, 0, true);
 
-                    struct PushBlock
-                    {
-                        float Model[16];
-                        float ViewProjection[16];
-                    } l_Push{};
-                    std::memcpy(l_Push.Model, it_DrawCommand.Transform, sizeof(l_Push.Model));
-                    std::memcpy(l_Push.ViewProjection, glm::value_ptr(l_ViewProjection), sizeof(l_Push.ViewProjection));
-                    l_Cmd.PushConstants(0, sizeof(PushBlock), &l_Push);
+                    m_PushBlock.BaseColor[0] = 1.0f;
+                    m_PushBlock.BaseColor[1] = 1.0f;
+                    m_PushBlock.BaseColor[2] = 1.0f;
+                    m_PushBlock.BaseColor[3] = 1.0f;
+
+                    std::memcpy(m_PushBlock.Model, it_DrawCommand.Transform, sizeof(m_PushBlock.Model));
+                    std::memcpy(m_PushBlock.ViewProjection, glm::value_ptr(l_ViewProjection), sizeof(m_PushBlock.ViewProjection));
+                    l_Cmd.PushConstants(0, sizeof(PushBlock), &m_PushBlock);
 
                     l_Cmd.DrawIndexed(it_DrawCommand.MeshRef->GetIndexCount(), 1, 0, 0, 0);
 
@@ -351,12 +352,13 @@ namespace Trinity
         l_GeometryPipelineSpecification.PipelineShader = a_Shader;
         l_GeometryPipelineSpecification.VertexAttributes =
         {
-            { 0, 0, VertexAttributeFormat::Float3, 0 },
-            { 1, 0, VertexAttributeFormat::Float3, 12 },
-            { 2, 0, VertexAttributeFormat::Float2, 24 },
+            { 0, 0, VertexAttributeFormat::Float3, offsetof(Geometry::Vertex, Position) },
+            { 1, 0, VertexAttributeFormat::Float3, offsetof(Geometry::Vertex, Normal) },
+            { 2, 0, VertexAttributeFormat::Float2, offsetof(Geometry::Vertex, UV) },
+            { 3, 0, VertexAttributeFormat::Float3, offsetof(Geometry::Vertex, Tangent) },
         };
         l_GeometryPipelineSpecification.VertexStride = sizeof(Geometry::Vertex);
-        l_GeometryPipelineSpecification.PushConstants = { { ShaderStage::Vertex, 0, 128 } };
+        l_GeometryPipelineSpecification.PushConstants = { { ShaderStage::Vertex, 0, sizeof(PushBlock) } };
         l_GeometryPipelineSpecification.ColorAttachmentFormats = { TextureFormat::RGBA8, TextureFormat::RGBA16F, TextureFormat::RGBA8 };
         l_GeometryPipelineSpecification.DepthAttachmentFormat = TextureFormat::Depth32F;
         l_GeometryPipelineSpecification.DepthTest = true;
@@ -447,6 +449,13 @@ namespace Trinity
 
     const SceneRendererStats& SceneRenderer::GetStats() const
     {
+        static SceneRendererStats s_EmptyStats{};
+
+        if (!m_Implementation)
+        {
+            return s_EmptyStats;
+        }
+
         return m_Implementation->Stats;
     }
 }

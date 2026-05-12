@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Trinity/Renderer/Camera/Camera.h"
+#include "Trinity/Renderer/RenderPass.h"
 #include "Trinity/Scene/Components/LightComponent.h"
 
 #include <cstdint>
@@ -61,6 +62,13 @@ namespace Trinity
         uint32_t GeometryBufferMemoryMB = 0;
     };
 
+    struct PushBlock
+    {
+        float Model[16];
+        float ViewProjection[16];
+        float BaseColor[4];
+    };
+
     class SceneRenderer
     {
     public:
@@ -84,8 +92,15 @@ namespace Trinity
         const SceneRendererStats& GetStats() const;
 
     private:
+        class ShadowPass;
+        class GeometryPass;
+        class OutputPass;
+
+    private:
         struct Implementation;
         std::unique_ptr<Implementation> m_Implementation;
+
+        std::vector<std::unique_ptr<RenderPass>> m_RenderPasses;
 
         std::vector<MeshDrawCommand> m_DrawList;
         Camera m_Camera;
@@ -93,5 +108,7 @@ namespace Trinity
         RenderPipelineSettings m_Settings;
         uint32_t m_Width = 0;
         uint32_t m_Height = 0;
+
+        PushBlock m_PushBlock;
     };
 }

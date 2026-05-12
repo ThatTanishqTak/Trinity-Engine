@@ -100,6 +100,8 @@ namespace Trinity
         uint32_t m_MaxFramesInFlight = 2;
         uint32_t m_CurrentFrameIndex = 0;
         uint32_t m_CurrentImageIndex = 0;
+        uint32_t m_PendingResizeWidth = 0;
+        uint32_t m_PendingResizeHeight = 0;
         bool m_FramebufferResized = false;
         bool m_FrameStarted = false;
 
