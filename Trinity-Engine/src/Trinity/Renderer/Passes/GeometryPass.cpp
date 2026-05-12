@@ -36,13 +36,33 @@ namespace Trinity
 
             return l_Texture;
         }
+
+        std::shared_ptr<Texture> CreateDefaultNormalTexture()
+        {
+            TextureSpecification l_TextureSpecification{};
+            l_TextureSpecification.Width = 1;
+            l_TextureSpecification.Height = 1;
+            l_TextureSpecification.Format = TextureFormat::RGBA8;
+            l_TextureSpecification.Usage = TextureUsage::Sampled | TextureUsage::TransferDestination;
+            l_TextureSpecification.DebugName = "DefaultNormalTexture";
+
+            auto l_Texture = Renderer::GetAPI().CreateTexture(l_TextureSpecification);
+
+            if (l_Texture)
+            {
+                constexpr uint32_t l_DefaultNormalPixel = 0xFFFF8080u;
+                l_Texture->Upload(&l_DefaultNormalPixel, sizeof(l_DefaultNormalPixel));
+            }
+
+            return l_Texture;
+        }
     }
 
     void GeometryPass::Initialize()
     {
         DescriptorSetLayoutSpecification l_DescriptorSetLayoutSpecification{};
         l_DescriptorSetLayoutSpecification.DebugName = "GeometryMaterialDescriptorSetLayout";
-        l_DescriptorSetLayoutSpecification.Bindings = { { 0, DescriptorBindingType::CombinedImageSampler, ShaderStage::Fragment, 1, DescriptorBindingFlags::None } };
+        l_DescriptorSetLayoutSpecification.Bindings = { { 0, DescriptorBindingType::CombinedImageSampler, ShaderStage::Fragment, 1, DescriptorBindingFlags::None }, { 1, DescriptorBindingType::CombinedImageSampler, ShaderStage::Fragment, 1, DescriptorBindingFlags::None } };
         m_DescriptorSetLayout = Renderer::GetAPI().CreateDescriptorSetLayout(l_DescriptorSetLayoutSpecification);
 
         SamplerSpecification l_SamplerSpecification{};
@@ -56,6 +76,7 @@ namespace Trinity
         m_Sampler = Renderer::GetAPI().CreateSampler(l_SamplerSpecification);
 
         m_WhiteTexture = CreateWhiteTexture();
+        m_DefaultNormalTexture = CreateDefaultNormalTexture();
 
         ShaderSpecification l_GeometryShaderSpecification{};
         l_GeometryShaderSpecification.Modules.push_back({ ShaderStage::Vertex, "geometry_pass.vert.spv" });
@@ -84,6 +105,7 @@ namespace Trinity
     void GeometryPass::Shutdown()
     {
         m_DescriptorSet.reset();
+        m_DefaultNormalTexture.reset();
         m_WhiteTexture.reset();
         m_Sampler.reset();
         m_DescriptorSetLayout.reset();
@@ -135,19 +157,26 @@ namespace Trinity
         }
 
         std::shared_ptr<Texture> l_AlbedoTexture = m_WhiteTexture;
+        std::shared_ptr<Texture> l_NormalTexture = m_DefaultNormalTexture;
 
         if (drawCommand.AlbedoTexture)
         {
             l_AlbedoTexture = drawCommand.AlbedoTexture;
         }
 
-        if (!l_AlbedoTexture)
+        if (drawCommand.NormalTexture)
+        {
+            l_NormalTexture = drawCommand.NormalTexture;
+        }
+
+        if (!l_AlbedoTexture || !l_NormalTexture)
         {
             return;
         }
 
         m_DescriptorSet = Renderer::GetAPI().AllocateTransientDescriptorSet(m_DescriptorSetLayout);
         m_DescriptorSet->WriteSampledImage(0, l_AlbedoTexture, m_Sampler);
+        m_DescriptorSet->WriteSampledImage(1, l_NormalTexture, m_Sampler);
         m_DescriptorSet->Flush();
     }
 
@@ -254,7 +283,7 @@ namespace Trinity
                 l_PushBlock.EmissiveColorStrength[3] = it_DrawCommand.Material.EmissiveStrength;
 
                 l_PushBlock.TextureFlags[0] = it_DrawCommand.UseAlbedoTexture ? 1.0f : 0.0f;
-                l_PushBlock.TextureFlags[1] = 0.0f;
+                l_PushBlock.TextureFlags[1] = it_DrawCommand.UseNormalTexture ? 1.0f : 0.0f;
                 l_PushBlock.TextureFlags[2] = 0.0f;
                 l_PushBlock.TextureFlags[3] = 0.0f;
 

@@ -557,6 +557,85 @@ namespace Forge
             }
 
             ImGui::Checkbox("Use Albedo Texture", &a_AlbedoSlot.Enabled);
+
+            ImGui::Spacing();
+
+            Trinity::MaterialTextureSlot& a_NormalSlot = a_Properties.NormalTexture;
+
+            ImGui::TextUnformatted("Normal");
+            const ImVec2 l_NormalSlotPosition = ImGui::GetCursorScreenPos();
+            ImGui::InvisibleButton("##MaterialNormalSlot", ImVec2(l_SlotWidth, l_SlotHeight));
+
+            const ImU32 l_NormalBorderColor = a_NormalSlot.TextureData != nullptr ? ImGui::GetColorU32(ImGuiCol_Border) : ImGui::GetColorU32(ImGuiCol_Border, 0.4f);
+            l_DrawList->AddRect(l_NormalSlotPosition, ImVec2(l_NormalSlotPosition.x + l_SlotWidth, l_NormalSlotPosition.y + l_SlotHeight), l_NormalBorderColor, 3.0f, 0, 1.0f);
+
+            const ImVec2 l_NormalIconMin(l_NormalSlotPosition.x + l_IconPad, l_NormalSlotPosition.y + (l_SlotHeight - l_IconSize) * 0.5f);
+            const ImVec2 l_NormalIconMax(l_NormalIconMin.x + l_IconSize, l_NormalIconMin.y + l_IconSize);
+
+            const float l_NormalTextX = l_NormalIconMax.x + 6.0f;
+            const float l_NormalTextY = l_NormalSlotPosition.y + (l_SlotHeight - ImGui::GetTextLineHeight()) * 0.5f;
+
+            if (a_NormalSlot.TextureData)
+            {
+                l_DrawList->AddRectFilled(l_NormalIconMin, l_NormalIconMax, IM_COL32(103, 58, 183, 255), 2.0f);
+
+                std::string l_FileName = "Normal Texture";
+                const Trinity::AssetMetadata* l_Meta = Trinity::AssetRegistry::Get().GetMetadata(a_NormalSlot.TextureAssetUUID);
+                if (l_Meta)
+                {
+                    l_FileName = std::filesystem::path(l_Meta->SourcePath).stem().string();
+                }
+
+                l_DrawList->AddText(ImVec2(l_NormalTextX, l_NormalTextY), ImGui::GetColorU32(ImGuiCol_Text), l_FileName.c_str());
+            }
+            else
+            {
+                l_DrawList->AddRectFilled(l_NormalIconMin, l_NormalIconMax, IM_COL32(103, 58, 183, 60), 2.0f);
+                l_DrawList->AddText(ImVec2(l_NormalTextX, l_NormalTextY), ImGui::GetColorU32(ImGuiCol_TextDisabled), "Drop Normal Texture Here");
+            }
+
+            if (ImGui::BeginDragDropTarget())
+            {
+                if (const ImGuiPayload* l_Payload = ImGui::AcceptDragDropPayload(AssetPayloadID))
+                {
+                    const auto* a_Asset = static_cast<const AssetPayload*>(l_Payload->Data);
+                    if (a_Asset->Type == Trinity::AssetType::Texture)
+                    {
+                        const Trinity::AssetHandle l_Handle = Trinity::AssetRegistry::Get().ImportAsset(a_Asset->Path);
+                        if (l_Handle != Trinity::InvalidAsset)
+                        {
+                            auto a_Texture = Trinity::AssetRegistry::Get().LoadTexture(l_Handle);
+                            if (a_Texture)
+                            {
+                                a_NormalSlot.TextureAssetUUID = l_Handle;
+                                a_NormalSlot.TextureData = a_Texture;
+                                a_NormalSlot.Enabled = true;
+                            }
+                        }
+                    }
+                }
+
+                ImGui::EndDragDropTarget();
+            }
+
+            ImGui::SameLine(0.0f, l_Spacing);
+
+            if (a_NormalSlot.TextureData == nullptr)
+            {
+                ImGui::BeginDisabled();
+            }
+
+            if (ImGui::Button("x##MaterialNormal", ImVec2(l_ButtonSize, l_SlotHeight)))
+            {
+                a_NormalSlot.Clear();
+            }
+
+            if (a_NormalSlot.TextureData == nullptr)
+            {
+                ImGui::EndDisabled();
+            }
+
+            ImGui::Checkbox("Use Normal Texture", &a_NormalSlot.Enabled);
         });
 
         ImGui::Spacing();

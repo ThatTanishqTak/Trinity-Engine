@@ -161,6 +161,12 @@ namespace Forge
                         l_Command.AlbedoTexture = l_Command.Material.AlbedoTexture.TextureData;
                         l_Command.UseAlbedoTexture = l_Command.Material.AlbedoTexture.Enabled;
                     }
+
+                    if (l_Command.Material.NormalTexture.TextureData)
+                    {
+                        l_Command.NormalTexture = l_Command.Material.NormalTexture.TextureData;
+                        l_Command.UseNormalTexture = l_Command.Material.NormalTexture.Enabled;
+                    }
                 }
                 else
                 {

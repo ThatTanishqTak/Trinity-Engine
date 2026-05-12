@@ -39,6 +39,8 @@ namespace Trinity
         std::shared_ptr<DescriptorSetLayout> m_DescriptorSetLayout;
         std::shared_ptr<DescriptorSet> m_DescriptorSet;
         std::shared_ptr<Sampler> m_Sampler;
+
         std::shared_ptr<Texture> m_WhiteTexture;
+        std::shared_ptr<Texture> m_DefaultNormalTexture;
     };
 }

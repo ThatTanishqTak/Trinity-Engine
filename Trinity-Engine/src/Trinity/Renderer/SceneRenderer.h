@@ -26,6 +26,9 @@ namespace Trinity
         std::shared_ptr<Texture> AlbedoTexture;
         bool UseAlbedoTexture = false;
 
+        std::shared_ptr<Texture> NormalTexture;
+        bool UseNormalTexture = false;
+
         float Transform[16] = {};
     };
 
