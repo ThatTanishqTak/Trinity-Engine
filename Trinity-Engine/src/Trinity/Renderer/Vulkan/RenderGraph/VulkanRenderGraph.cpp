@@ -2,7 +2,11 @@
 
 #include "Trinity/Renderer/Vulkan/VulkanRendererAPI.h"
 #include "Trinity/Renderer/Vulkan/VulkanUtilities.h"
+#include "Trinity/Renderer/Vulkan/Resources/VulkanBuffer.h"
 #include "Trinity/Renderer/Vulkan/Resources/VulkanTexture.h"
+#include "Trinity/Utilities/Log.h"
+
+#include <algorithm>
 
 namespace Trinity
 {
@@ -12,11 +16,12 @@ namespace Trinity
         m_SwapchainHeight = renderer.GetSwapchainHeight();
     }
 
-    std::vector<std::shared_ptr<Texture>> VulkanRenderGraph::AllocateResourceBatch(const std::vector<RenderGraphTextureDescription>& descriptions, const std::vector<ResourceLifetime>& lifetimes)
+    std::vector<std::shared_ptr<Texture>> VulkanRenderGraph::AllocateTextureBatch(const std::vector<RenderGraphTextureDescription>& descriptions, const std::vector<RenderGraphResourceLifetime>& lifetimes)
     {
         const size_t l_Count = descriptions.size();
+
         std::vector<std::shared_ptr<Texture>> l_Output(l_Count);
-        m_AliasedResources.assign(l_Count, false);
+        m_AliasedTextures.assign(l_Count, false);
 
         if (l_Count == 0)
         {
@@ -25,84 +30,122 @@ namespace Trinity
 
         std::vector<VulkanTransientPool::AllocationRequest> l_TransientRequests;
         std::vector<uint32_t> l_TransientOriginalIndex;
+
         l_TransientRequests.reserve(l_Count);
         l_TransientOriginalIndex.reserve(l_Count);
 
-        for (size_t i = 0; i < l_Count; ++i)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(l_Count); ++i)
         {
-            const auto& a_Desc = descriptions[i];
+            const RenderGraphTextureDescription& l_Description = descriptions[i];
 
-            const uint32_t l_EffWidth = a_Desc.Width > 0 ? a_Desc.Width : m_SwapchainWidth;
-            const uint32_t l_EffHeight = a_Desc.Height > 0 ? a_Desc.Height : m_SwapchainHeight;
+            const bool l_UseSwapchainSize = l_Description.MatchSwapchainSize || l_Description.Width == 0 || l_Description.Height == 0;
 
-            if (l_EffWidth == 0 || l_EffHeight == 0)
+            const uint32_t l_EffectiveWidth = l_UseSwapchainSize ? m_SwapchainWidth : l_Description.Width;
+            const uint32_t l_EffectiveHeight = l_UseSwapchainSize ? m_SwapchainHeight : l_Description.Height;
+
+            if (l_Description.Imported)
             {
-                TR_CORE_ERROR("VulkanRenderGraph: resource '{}' has zero size and no swapchain fallback available", a_Desc.DebugName);
+                l_Output[i] = m_Textures[i];
                 continue;
             }
 
-            if (a_Desc.Persistent || !lifetimes[i].IsValid())
+            if (l_EffectiveWidth == 0 || l_EffectiveHeight == 0)
             {
-                TextureSpecification l_Spec{};
-                l_Spec.Width = l_EffWidth;
-                l_Spec.Height = l_EffHeight;
-                l_Spec.MipLevels = a_Desc.MipLevels > 0 ? a_Desc.MipLevels : 1;
-                l_Spec.ArrayLayers = a_Desc.ArrayLayers > 0 ? a_Desc.ArrayLayers : 1;
-                l_Spec.Format = a_Desc.Format;
-                l_Spec.Usage = a_Desc.Usage;
-                l_Spec.DebugName = a_Desc.DebugName;
+                TR_CORE_ERROR("VulkanRenderGraph: texture '{}' has zero size and no swapchain fallback available", l_Description.DebugName);
 
-                l_Output[i] = std::make_shared<VulkanTexture>(m_Renderer->GetDevice().GetDevice(), m_Renderer->GetAllocator().GetAllocator(), l_Spec);
+                continue;
+            }
+
+            TextureSpecification l_TextureSpecification{};
+            l_TextureSpecification.Width = l_EffectiveWidth;
+            l_TextureSpecification.Height = l_EffectiveHeight;
+            l_TextureSpecification.MipLevels = std::max(1u, l_Description.MipLevels);
+            l_TextureSpecification.ArrayLayers = std::max(1u, l_Description.ArrayLayers);
+            l_TextureSpecification.Samples = std::max(1u, l_Description.SampleCount);
+            l_TextureSpecification.Format = l_Description.Format;
+            l_TextureSpecification.Usage = l_Description.Usage;
+            l_TextureSpecification.DebugName = l_Description.DebugName;
+
+            const bool l_ShouldAllocatePersistent = l_Description.Persistent || !lifetimes[i].IsValid();
+
+            if (l_ShouldAllocatePersistent)
+            {
+                l_Output[i] = std::make_shared<VulkanTexture>(m_Renderer->GetDevice().GetDevice(), m_Renderer->GetAllocator().GetAllocator(), l_TextureSpecification);
+
                 continue;
             }
 
             VulkanTransientPool::AllocationRequest l_Request{};
-            l_Request.Spec.Width = l_EffWidth;
-            l_Request.Spec.Height = l_EffHeight;
-            l_Request.Spec.MipLevels = a_Desc.MipLevels > 0 ? a_Desc.MipLevels : 1;
-            l_Request.Spec.ArrayLayers = a_Desc.ArrayLayers > 0 ? a_Desc.ArrayLayers : 1;
-            l_Request.Spec.Format = a_Desc.Format;
-            l_Request.Spec.Usage = a_Desc.Usage;
-            l_Request.Spec.DebugName = a_Desc.DebugName;
+            l_Request.Spec = l_TextureSpecification;
             l_Request.FirstUse = lifetimes[i].FirstUse;
             l_Request.LastUse = lifetimes[i].LastUse;
 
             l_TransientRequests.push_back(l_Request);
-            l_TransientOriginalIndex.push_back(static_cast<uint32_t>(i));
+            l_TransientOriginalIndex.push_back(i);
         }
 
-        if (l_TransientRequests.empty())
+        if (!l_TransientRequests.empty())
         {
-            return l_Output;
+            auto l_Allocations = m_Renderer->GetTransientPool().AllocateBatch(l_TransientRequests);
+
+            for (uint32_t i = 0; i < static_cast<uint32_t>(l_Allocations.size()); ++i)
+            {
+                const uint32_t l_OriginalIndex = l_TransientOriginalIndex[i];
+
+                l_Output[l_OriginalIndex] = l_Allocations[i].Texture;
+                m_AliasedTextures[l_OriginalIndex] = l_Allocations[i].AliasedReuse;
+            }
+
+            const VulkanTransientPool& l_Pool = m_Renderer->GetTransientPool();
+
+            TR_CORE_DEBUG("VulkanRenderGraph: allocated {} transient + {} persistent/imported textures (TransientSum = {} KB, TransientPeak = {} KB, Savings = {} KB, Blocks = {})", l_Allocations.size(), l_Count - l_Allocations.size(), l_Pool.GetLastBatchSumBytes() / 1024, l_Pool.GetLastBatchUsedBytes() / 1024, l_Pool.GetLastAliasingSavingsBytes() / 1024, l_Pool.GetBlockCount());
         }
-
-        auto l_Allocations = m_Renderer->GetTransientPool().AllocateBatch(l_TransientRequests);
-
-        for (size_t j = 0; j < l_Allocations.size(); ++j)
-        {
-            const uint32_t l_OrigIndex = l_TransientOriginalIndex[j];
-            l_Output[l_OrigIndex] = l_Allocations[j].Texture;
-            m_AliasedResources[l_OrigIndex] = l_Allocations[j].AliasedReuse;
-        }
-
-        const VulkanTransientPool& l_Pool = m_Renderer->GetTransientPool();
-        TR_CORE_DEBUG("VulkanRenderGraph: allocated {} transient + {} persistent resources (TransientSum = {} KB, TransientPeak = {} KB, Savings = {} KB, Blocks = {})", l_Allocations.size(), l_Count - l_Allocations.size(), l_Pool.GetLastBatchSumBytes() / 1024, l_Pool.GetLastBatchUsedBytes() / 1024, l_Pool.GetLastAliasingSavingsBytes() / 1024, l_Pool.GetBlockCount());
 
         return l_Output;
+    }
+
+    std::shared_ptr<Buffer> VulkanRenderGraph::AllocateBuffer(const RenderGraphBufferDescription& description)
+    {
+        BufferSpecification l_Specification{};
+        l_Specification.Size = description.Size;
+        l_Specification.Usage = description.Usage;
+        l_Specification.MemoryType = description.MemoryType;
+        l_Specification.DebugName = description.DebugName;
+
+        return m_Renderer->CreateBuffer(l_Specification);
     }
 
     void VulkanRenderGraph::OnReset()
     {
         m_PassBarriers.clear();
-        m_AliasedResources.clear();
+        m_AliasedTextures.clear();
+        m_DebugLabelOpen.clear();
     }
 
     void VulkanRenderGraph::OnCompile()
     {
         m_PassBarriers.assign(m_Passes.size(), {});
+        m_DebugLabelOpen.assign(m_Passes.size(), false);
 
-        const uint32_t l_ResourceCount = static_cast<uint32_t>(m_ResourceDescription.size());
-        std::vector<ResourceState> l_Current(l_ResourceCount);
+        std::vector<ImageState> l_CurrentImageStates(m_TextureDescriptions.size());
+        std::vector<BufferState> l_CurrentBufferStates(m_BufferDescriptions.size());
+
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_TextureDescriptions.size()); ++i)
+        {
+            if (i < m_TextureInitialAccesses.size() && m_TextureInitialAccesses[i] != RenderGraphAccess::None)
+            {
+                l_CurrentImageStates[i] = GetInitialImageState(m_TextureInitialAccesses[i], m_TextureDescriptions[i].Format);
+            }
+        }
+
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_BufferDescriptions.size()); ++i)
+        {
+            if (i < m_BufferInitialAccesses.size() && m_BufferInitialAccesses[i] != RenderGraphAccess::None)
+            {
+                l_CurrentBufferStates[i] = GetInitialBufferState(m_BufferInitialAccesses[i]);
+            }
+        }
+
         for (uint32_t it_OrderIndex : m_ExecutionOrder)
         {
             if (it_OrderIndex >= m_Passes.size())
@@ -110,123 +153,351 @@ namespace Trinity
                 continue;
             }
 
-            const auto& a_Pass = m_Passes[it_OrderIndex];
-            auto& a_OutBarriers = m_PassBarriers[it_OrderIndex].Barriers;
+            const RenderGraphPass& l_Pass = m_Passes[it_OrderIndex];
 
-            for (const auto& it_Handle : a_Pass.GetReads())
+            auto ProcessUsage = [&](const RenderGraphResourceUsage& usage)
             {
-                if (!it_Handle.IsValid() || it_Handle.Index >= l_ResourceCount)
+                if (!usage.Resource.IsValid())
                 {
-                    continue;
+                    return;
                 }
 
-                const ResourceState l_Needed = GetReadState(m_ResourceDescription[it_Handle.Index]);
-                AppendBarrierIfNeeded(a_OutBarriers, it_Handle.Index, l_Current[it_Handle.Index], l_Needed);
+                if (usage.Resource.IsTexture())
+                {
+                    ProcessTextureUsage(it_OrderIndex, usage.Resource.Index, usage.Access, l_CurrentImageStates);
+                }
+                else if (usage.Resource.IsBuffer())
+                {
+                    ProcessBufferUsage(it_OrderIndex, usage.Resource.Index, usage.Access, l_CurrentBufferStates);
+                }
+            };
 
-                l_Current[it_Handle.Index] = l_Needed;
+            for (const RenderGraphResourceUsage& it_Read : l_Pass.GetReads())
+            {
+                ProcessUsage(it_Read);
             }
 
-            for (const auto& it_Handle : a_Pass.GetWrites())
+            for (const RenderGraphResourceUsage& it_Write : l_Pass.GetWrites())
             {
-                if (!it_Handle.IsValid() || it_Handle.Index >= l_ResourceCount)
-                {
-                    continue;
-                }
+                ProcessUsage(it_Write);
+            }
 
-                const ResourceState l_Needed = GetWriteState(m_ResourceDescription[it_Handle.Index]);
-                AppendBarrierIfNeeded(a_OutBarriers, it_Handle.Index, l_Current[it_Handle.Index], l_Needed);
-
-                l_Current[it_Handle.Index] = l_Needed;
+            for (const RenderGraphResourceUsage& it_ReadWrite : l_Pass.GetReadWrites())
+            {
+                ProcessUsage(it_ReadWrite);
             }
         }
     }
+
     void VulkanRenderGraph::OnExecutePassBegin(uint32_t passIndex, RenderGraphContext& context)
     {
-        (void)context;
+        if (passIndex < m_Passes.size())
+        {
+            const RenderGraphPass& l_Pass = m_Passes[passIndex];
 
-        if (passIndex >= m_PassBarriers.size() || m_PassBarriers[passIndex].Barriers.empty())
+            context.GetCommandList().BeginDebugLabel(l_Pass.GetName(), l_Pass.GetDebugColor().data());
+            if (passIndex < m_DebugLabelOpen.size())
+            {
+                m_DebugLabelOpen[passIndex] = true;
+            }
+        }
+
+        if (passIndex >= m_PassBarriers.size())
         {
             return;
         }
 
-        VkCommandBuffer l_Cmd = m_Renderer->GetCurrentCommandBuffer();
-        if (l_Cmd == VK_NULL_HANDLE)
+        const PassBarriers& l_Barriers = m_PassBarriers[passIndex];
+
+        if (l_Barriers.ImageBarriers.empty() && l_Barriers.BufferBarriers.empty())
+        {
+            return;
+        }
+
+        VkCommandBuffer l_CommandBuffer = m_Renderer->GetCurrentCommandBuffer();
+        if (l_CommandBuffer == VK_NULL_HANDLE)
         {
             return;
         }
 
         VkDependencyInfo l_DependencyInfo{};
         l_DependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-        l_DependencyInfo.imageMemoryBarrierCount = static_cast<uint32_t>(m_PassBarriers[passIndex].Barriers.size());
-        l_DependencyInfo.pImageMemoryBarriers = m_PassBarriers[passIndex].Barriers.data();
-        vkCmdPipelineBarrier2(l_Cmd, &l_DependencyInfo);
+
+        l_DependencyInfo.imageMemoryBarrierCount = static_cast<uint32_t>(l_Barriers.ImageBarriers.size());
+        l_DependencyInfo.pImageMemoryBarriers = l_Barriers.ImageBarriers.empty() ? nullptr : l_Barriers.ImageBarriers.data();
+
+        l_DependencyInfo.bufferMemoryBarrierCount = static_cast<uint32_t>(l_Barriers.BufferBarriers.size());
+        l_DependencyInfo.pBufferMemoryBarriers = l_Barriers.BufferBarriers.empty() ? nullptr : l_Barriers.BufferBarriers.data();
+
+        vkCmdPipelineBarrier2(l_CommandBuffer, &l_DependencyInfo);
     }
 
     void VulkanRenderGraph::OnExecutePassEnd(uint32_t passIndex, RenderGraphContext& context)
     {
-        (void)passIndex;
-        (void)context;
+        if (passIndex < m_DebugLabelOpen.size() && m_DebugLabelOpen[passIndex])
+        {
+            context.GetCommandList().EndDebugLabel();
+            m_DebugLabelOpen[passIndex] = false;
+        }
     }
 
-    VulkanRenderGraph::ResourceState VulkanRenderGraph::GetReadState(const RenderGraphTextureDescription& description) const
+    VulkanRenderGraph::ImageState VulkanRenderGraph::GetInitialImageState(RenderGraphAccess access, TextureFormat format) const
     {
-        ResourceState l_State{};
-        if (VulkanUtilities::IsDepthFormat(description.Format))
+        if (access == RenderGraphAccess::None)
         {
-            l_State.Layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-            l_State.Stage = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-            l_State.Access = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT;
+            return {};
         }
-        else if (description.Usage & TextureUsage::Storage)
+
+        return GetImageState(access, format);
+    }
+
+    VulkanRenderGraph::BufferState VulkanRenderGraph::GetInitialBufferState(RenderGraphAccess access) const
+    {
+        if (access == RenderGraphAccess::None)
         {
-            l_State.Layout = VK_IMAGE_LAYOUT_GENERAL;
-            l_State.Stage = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
-            l_State.Access = VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_SAMPLED_READ_BIT;
+            return {};
         }
-        else
+
+        return GetBufferState(access);
+    }
+
+    VulkanRenderGraph::ImageState VulkanRenderGraph::GetImageState(RenderGraphAccess access, TextureFormat format) const
+    {
+        ImageState l_State{};
+
+        const bool l_DepthFormat = VulkanUtilities::IsDepthFormat(format);
+
+        switch (access)
         {
-            l_State.Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            l_State.Stage = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-            l_State.Access = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT;
+            case RenderGraphAccess::ColorAttachmentRead:
+            {
+                l_State.Layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                l_State.Stage = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+                l_State.Access = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
+
+                break;
+            }
+
+            case RenderGraphAccess::ColorAttachmentWrite:
+            {
+                l_State.Layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                l_State.Stage = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+                l_State.Access = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+
+                break;
+            }
+
+            case RenderGraphAccess::DepthStencilRead:
+            {
+                l_State.Layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+                l_State.Stage = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+                l_State.Access = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+
+                break;
+            }
+
+            case RenderGraphAccess::DepthStencilWrite:
+            {
+                l_State.Layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+                l_State.Stage = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+                l_State.Access = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+                break;
+            }
+
+            case RenderGraphAccess::ShaderSampledRead:
+            {
+                l_State.Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                l_State.Stage = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+                l_State.Access = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT;
+
+                break;
+            }
+
+            case RenderGraphAccess::ShaderStorageRead:
+            {
+                l_State.Layout = VK_IMAGE_LAYOUT_GENERAL;
+                l_State.Stage = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+                l_State.Access = VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+
+                break;
+            }
+
+            case RenderGraphAccess::ShaderStorageWrite:
+            {
+                l_State.Layout = VK_IMAGE_LAYOUT_GENERAL;
+                l_State.Stage = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+                l_State.Access = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+
+                break;
+            }
+
+            case RenderGraphAccess::ShaderStorageReadWrite:
+            {
+                l_State.Layout = VK_IMAGE_LAYOUT_GENERAL;
+                l_State.Stage = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+                l_State.Access = VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+
+                break;
+            }
+
+            case RenderGraphAccess::TransferRead:
+            {
+                l_State.Layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+                l_State.Stage = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+                l_State.Access = VK_ACCESS_2_TRANSFER_READ_BIT;
+
+                break;
+            }
+
+            case RenderGraphAccess::TransferWrite:
+            {
+                l_State.Layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+                l_State.Stage = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+                l_State.Access = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+
+                break;
+            }
+
+            case RenderGraphAccess::Present:
+            {
+                l_State.Layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+                l_State.Stage = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
+                l_State.Access = 0;
+
+                break;
+            }
+
+            case RenderGraphAccess::None:
+            case RenderGraphAccess::VertexBufferRead:
+            case RenderGraphAccess::IndexBufferRead:
+            case RenderGraphAccess::UniformBufferRead:
+            case RenderGraphAccess::StorageBufferRead:
+            case RenderGraphAccess::StorageBufferWrite:
+            case RenderGraphAccess::StorageBufferReadWrite:
+            case RenderGraphAccess::IndirectCommandRead:
+            default:
+            {
+                l_State.Layout = VK_IMAGE_LAYOUT_UNDEFINED;
+                l_State.Stage = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+                l_State.Access = 0;
+
+                break;
+            }
         }
 
         return l_State;
     }
 
-    VulkanRenderGraph::ResourceState VulkanRenderGraph::GetWriteState(const RenderGraphTextureDescription& description) const
+    VulkanRenderGraph::BufferState VulkanRenderGraph::GetBufferState(RenderGraphAccess access) const
     {
-        ResourceState l_State{};
-        if (VulkanUtilities::IsDepthFormat(description.Format))
+        BufferState l_State{};
+
+        switch (access)
         {
-            l_State.Layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-            l_State.Stage = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
-            l_State.Access = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        }
-        else if (description.Usage & TextureUsage::Storage)
-        {
-            l_State.Layout = VK_IMAGE_LAYOUT_GENERAL;
-            l_State.Stage = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-            l_State.Access = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
-        }
-        else
-        {
-            l_State.Layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-            l_State.Stage = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-            l_State.Access = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+            case RenderGraphAccess::VertexBufferRead:
+            {
+                l_State.Stage = VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT;
+                l_State.Access = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
+
+                break;
+            }
+
+            case RenderGraphAccess::IndexBufferRead:
+            {
+                l_State.Stage = VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT;
+                l_State.Access = VK_ACCESS_2_INDEX_READ_BIT;
+
+                break;
+            }
+
+            case RenderGraphAccess::UniformBufferRead:
+            {
+                l_State.Stage = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+                l_State.Access = VK_ACCESS_2_UNIFORM_READ_BIT;
+
+                break;
+            }
+
+            case RenderGraphAccess::StorageBufferRead:
+            {
+                l_State.Stage = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+                l_State.Access = VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+
+                break;
+            }
+
+            case RenderGraphAccess::StorageBufferWrite:
+            {
+                l_State.Stage = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+                l_State.Access = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+
+                break;
+            }
+
+            case RenderGraphAccess::StorageBufferReadWrite:
+            {
+                l_State.Stage = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+                l_State.Access = VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+
+                break;
+            }
+
+            case RenderGraphAccess::TransferRead:
+            {
+                l_State.Stage = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+                l_State.Access = VK_ACCESS_2_TRANSFER_READ_BIT;
+
+                break;
+            }
+
+            case RenderGraphAccess::TransferWrite:
+            {
+                l_State.Stage = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+                l_State.Access = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+
+                break;
+            }
+
+            case RenderGraphAccess::IndirectCommandRead:
+            {
+                l_State.Stage = VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
+                l_State.Access = VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
+
+                break;
+            }
+
+            case RenderGraphAccess::None:
+            case RenderGraphAccess::ColorAttachmentRead:
+            case RenderGraphAccess::ColorAttachmentWrite:
+            case RenderGraphAccess::DepthStencilRead:
+            case RenderGraphAccess::DepthStencilWrite:
+            case RenderGraphAccess::ShaderSampledRead:
+            case RenderGraphAccess::ShaderStorageRead:
+            case RenderGraphAccess::ShaderStorageWrite:
+            case RenderGraphAccess::ShaderStorageReadWrite:
+            case RenderGraphAccess::Present:
+            default:
+            {
+                l_State.Stage = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+                l_State.Access = 0;
+
+                break;
+            }
         }
 
         return l_State;
     }
 
-    void VulkanRenderGraph::AppendBarrierIfNeeded(std::vector<VkImageMemoryBarrier2>& out, uint32_t resourceIndex, const ResourceState& current, const ResourceState& next)
+    void VulkanRenderGraph::AppendTextureBarrierIfNeeded(std::vector<VkImageMemoryBarrier2>& out, uint32_t textureIndex, const ImageState& current, const ImageState& next)
     {
-        if (resourceIndex >= m_Resources.size())
+        if (textureIndex >= m_Textures.size())
         {
             return;
         }
 
-        auto a_Texture = std::dynamic_pointer_cast<VulkanTexture>(m_Resources[resourceIndex]);
-        if (!a_Texture)
+        auto l_Texture = std::dynamic_pointer_cast<VulkanTexture>(m_Textures[textureIndex]);
+        if (!l_Texture)
         {
             return;
         }
@@ -238,27 +509,112 @@ namespace Trinity
 
         VkImageMemoryBarrier2 l_Barrier{};
         l_Barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+
         l_Barrier.srcStageMask = current.Stage;
         l_Barrier.srcAccessMask = current.Access;
         l_Barrier.dstStageMask = next.Stage;
         l_Barrier.dstAccessMask = next.Access;
+
         l_Barrier.oldLayout = current.Layout;
         l_Barrier.newLayout = next.Layout;
+
         l_Barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         l_Barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        l_Barrier.image = a_Texture->GetImage();
-        l_Barrier.subresourceRange.aspectMask = VulkanUtilities::GetAspectFlags(m_ResourceDescription[resourceIndex].Format);
+
+        l_Barrier.image = l_Texture->GetImage();
+
+        l_Barrier.subresourceRange.aspectMask = VulkanUtilities::GetAspectFlags(m_TextureDescriptions[textureIndex].Format);
         l_Barrier.subresourceRange.baseMipLevel = 0;
         l_Barrier.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
         l_Barrier.subresourceRange.baseArrayLayer = 0;
         l_Barrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
 
-        if (current.Layout == VK_IMAGE_LAYOUT_UNDEFINED && resourceIndex < m_AliasedResources.size() && m_AliasedResources[resourceIndex])
+        const bool l_IsAliased = textureIndex < m_AliasedTextures.size() && m_AliasedTextures[textureIndex];
+
+        if (current.Layout == VK_IMAGE_LAYOUT_UNDEFINED && l_IsAliased)
         {
             l_Barrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
             l_Barrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
         }
 
         out.push_back(l_Barrier);
+    }
+
+    void VulkanRenderGraph::AppendBufferBarrierIfNeeded(std::vector<VkBufferMemoryBarrier2>& out, uint32_t bufferIndex, const BufferState& current, const BufferState& next)
+    {
+        if (bufferIndex >= m_Buffers.size())
+        {
+            return;
+        }
+
+        auto l_Buffer = std::dynamic_pointer_cast<VulkanBuffer>(m_Buffers[bufferIndex]);
+        if (!l_Buffer)
+        {
+            return;
+        }
+
+        if (current.Stage == next.Stage && current.Access == next.Access)
+        {
+            return;
+        }
+
+        VkBufferMemoryBarrier2 l_Barrier{};
+        l_Barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+
+        l_Barrier.srcStageMask = current.Stage;
+        l_Barrier.srcAccessMask = current.Access;
+        l_Barrier.dstStageMask = next.Stage;
+        l_Barrier.dstAccessMask = next.Access;
+
+        l_Barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        l_Barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+        l_Barrier.buffer = l_Buffer->GetBuffer();
+        l_Barrier.offset = 0;
+        l_Barrier.size = VK_WHOLE_SIZE;
+
+        out.push_back(l_Barrier);
+    }
+
+    void VulkanRenderGraph::ProcessTextureUsage(uint32_t passIndex, uint32_t textureIndex, RenderGraphAccess access, std::vector<ImageState>& currentStates)
+    {
+        if (passIndex >= m_PassBarriers.size())
+        {
+            return;
+        }
+
+        if (textureIndex >= currentStates.size() || textureIndex >= m_TextureDescriptions.size())
+        {
+            return;
+        }
+
+        const ImageState l_NextState = GetImageState(access, m_TextureDescriptions[textureIndex].Format);
+
+        AppendTextureBarrierIfNeeded(m_PassBarriers[passIndex].ImageBarriers, textureIndex, currentStates[textureIndex], l_NextState);
+
+        currentStates[textureIndex] = l_NextState;
+    }
+
+    void VulkanRenderGraph::ProcessBufferUsage(
+        uint32_t passIndex,
+        uint32_t bufferIndex,
+        RenderGraphAccess access,
+        std::vector<BufferState>& currentStates)
+    {
+        if (passIndex >= m_PassBarriers.size())
+        {
+            return;
+        }
+
+        if (bufferIndex >= currentStates.size() || bufferIndex >= m_BufferDescriptions.size())
+        {
+            return;
+        }
+
+        const BufferState l_NextState = GetBufferState(access);
+
+        AppendBufferBarrierIfNeeded(m_PassBarriers[passIndex].BufferBarriers, bufferIndex, currentStates[bufferIndex], l_NextState);
+
+        currentStates[bufferIndex] = l_NextState;
     }
 }

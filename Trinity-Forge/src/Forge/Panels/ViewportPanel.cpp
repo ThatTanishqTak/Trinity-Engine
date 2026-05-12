@@ -148,6 +148,8 @@ namespace Forge
 
                 Trinity::MeshDrawCommand l_Command{};
                 l_Command.MeshRef = a_Mesh.MeshData;
+                l_Command.MaterialHandle = a_Mesh.MeshAssetUUID;
+                l_Command.BaseColor = a_Mesh.BaseColor;
                 const glm::mat4 l_ModelMatrix = a_Transform.GetWorldMatrix(*m_SelectionContext->ActiveScene);
 
                 std::memcpy(l_Command.Transform, glm::value_ptr(l_ModelMatrix), sizeof(l_Command.Transform));

@@ -3,6 +3,8 @@
 #include "Trinity/Asset/AssetHandle.h"
 #include "Trinity/Renderer/Mesh.h"
 
+#include <glm/glm.hpp>
+
 #include <memory>
 
 namespace Trinity
@@ -21,5 +23,7 @@ namespace Trinity
         std::shared_ptr<Mesh> MeshData;
 
         BuiltinMeshType BuiltinType = BuiltinMeshType::None;
+
+        glm::vec4 BaseColor = glm::vec4(1.0f);
     };
 }

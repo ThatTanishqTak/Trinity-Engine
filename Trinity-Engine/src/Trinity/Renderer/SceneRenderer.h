@@ -1,31 +1,32 @@
 #pragma once
 
 #include "Trinity/Renderer/Camera/Camera.h"
-#include "Trinity/Renderer/RenderPass.h"
+#include "Trinity/Renderer/Resources/Texture.h"
 #include "Trinity/Scene/Components/LightComponent.h"
+
+#include <glm/glm.hpp>
 
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace Trinity
 {
     class Mesh;
-    class RenderGraph;
-    class Pipeline;
-    class Texture;
 
     struct MeshDrawCommand
     {
         std::shared_ptr<Mesh> MeshRef;
         uint64_t MaterialHandle = 0;
+        glm::vec4 BaseColor = glm::vec4(1.0f);
         float Transform[16] = {};
     };
 
     struct SceneRenderData
     {
         DirectionalLight SunLight;
-        glm::vec3 SunDirection = { 0.0f, -1.0f, 0.0f };
+        glm::vec3 SunDirection = glm::normalize(glm::vec3(-0.4f, -1.0f, -0.2f));
     };
 
     enum class AntiAliasingMode : uint8_t
@@ -39,15 +40,15 @@ namespace Trinity
     struct RenderPipelineSettings
     {
         bool LightingEnabled = true;
-        bool SsaoEnabled = true;
-        bool BloomEnabled = true;
-        bool TaaEnabled = true;
+        bool SsaoEnabled = false;
+        bool BloomEnabled = false;
+        bool TaaEnabled = false;
         bool VolumetricsEnabled = false;
         bool SsrEnabled = false;
         bool RayTracedShadowsEnabled = false;
 
-        AntiAliasingMode AntiAliasing = AntiAliasingMode::TAA;
-        uint32_t ShadowCascadeCount = 4;
+        AntiAliasingMode AntiAliasing = AntiAliasingMode::None;
+        uint32_t ShadowCascadeCount = 1;
         uint32_t ShadowMapResolution = 2048;
     };
 
@@ -56,9 +57,11 @@ namespace Trinity
         uint32_t DrawCalls = 0;
         uint32_t VertexCount = 0;
         uint32_t IndexCount = 0;
+
         float GeometryPassMs = 0.0f;
         float ShadowPassMs = 0.0f;
         float TotalGPUMs = 0.0f;
+
         uint32_t GeometryBufferMemoryMB = 0;
     };
 
@@ -75,13 +78,16 @@ namespace Trinity
         SceneRenderer();
         ~SceneRenderer();
 
+        SceneRenderer(const SceneRenderer&) = delete;
+        SceneRenderer& operator=(const SceneRenderer&) = delete;
+
         void Initialize(uint32_t width, uint32_t height);
         void Shutdown();
 
         void SetSettings(const RenderPipelineSettings& settings);
         const RenderPipelineSettings& GetSettings() const { return m_Settings; }
 
-        void BeginScene(const Camera& camera, const SceneRenderData& sceneData);
+        void BeginScene(const Camera& camera, const SceneRenderData& sceneData = {});
         void SubmitMesh(const MeshDrawCommand& command);
         void EndScene();
 
@@ -89,26 +95,23 @@ namespace Trinity
         void OnResize(uint32_t width, uint32_t height);
 
         std::shared_ptr<Texture> GetFinalOutput() const;
+
         const SceneRendererStats& GetStats() const;
 
-    private:
-        class ShadowPass;
-        class GeometryPass;
-        class OutputPass;
+        std::string DumpRenderGraphText() const;
+        std::string DumpRenderGraphDot() const;
 
     private:
         struct Implementation;
         std::unique_ptr<Implementation> m_Implementation;
 
-        std::vector<std::unique_ptr<RenderPass>> m_RenderPasses;
-
         std::vector<MeshDrawCommand> m_DrawList;
+
         Camera m_Camera;
         SceneRenderData m_SceneData;
         RenderPipelineSettings m_Settings;
+
         uint32_t m_Width = 0;
         uint32_t m_Height = 0;
-
-        PushBlock m_PushBlock;
     };
 }

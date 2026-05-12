@@ -321,6 +321,9 @@ namespace Forge
                 ImGui::EndDisabled();
             }
 
+            ImGui::Spacing();
+            ImGui::ColorEdit4("Base Color", glm::value_ptr(meshComponent.BaseColor));
+
             if (meshComponent.MeshData)
             {
                 ImGui::Spacing();

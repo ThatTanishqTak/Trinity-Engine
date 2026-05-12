@@ -1,108 +1,34 @@
 #include "Trinity/Renderer/SceneRenderer.h"
 
-#include "Trinity/Renderer/CommandList.h"
-#include "Trinity/Renderer/Mesh.h"
+#include "Trinity/Renderer/Passes/DeferredLightingPass.h"
+#include "Trinity/Renderer/Passes/GeometryPass.h"
+#include "Trinity/Renderer/Passes/SceneRenderPassContext.h"
+#include "Trinity/Renderer/Passes/ShadowPass.h"
 #include "Trinity/Renderer/RenderGraph/RenderGraph.h"
-#include "Trinity/Renderer/RenderGraph/RenderGraphContext.h"
 #include "Trinity/Renderer/Renderer.h"
-#include "Trinity/Renderer/Resources/Pipeline.h"
-#include "Trinity/Renderer/Resources/Shader.h"
 #include "Trinity/Utilities/Log.h"
 
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-
-#include <algorithm>
-#include <cmath>
-#include <cstring>
-#include <limits>
 #include <memory>
-#include <cstddef>
 
 namespace Trinity
 {
-    namespace
-    {
-        constexpr uint32_t l_ShadowMapResolution = 2048;
-
-        glm::mat4 ComputeLightViewProjection(const Camera& camera, const glm::vec3& sunDirection, uint32_t shadowMapResolution)
-        {
-            const glm::mat4 l_InverseViewProjection = glm::inverse(camera.GetViewProjectionMatrix());
-
-            const glm::vec4 l_NdcCorners[8] =
-            {
-                { -1.0f, -1.0f, 0.0f, 1.0f },
-                {  1.0f, -1.0f, 0.0f, 1.0f },
-                { -1.0f,  1.0f, 0.0f, 1.0f },
-                {  1.0f,  1.0f, 0.0f, 1.0f },
-                { -1.0f, -1.0f, 1.0f, 1.0f },
-                {  1.0f, -1.0f, 1.0f, 1.0f },
-                { -1.0f,  1.0f, 1.0f, 1.0f },
-                {  1.0f,  1.0f, 1.0f, 1.0f },
-            };
-
-            glm::vec3 l_FrustumCornersWorld[8];
-            glm::vec3 l_FrustumCentre(0.0f);
-            for (int i = 0; i < 8; ++i)
-            {
-                glm::vec4 l_Corner = l_InverseViewProjection * l_NdcCorners[i];
-                l_FrustumCornersWorld[i] = glm::vec3(l_Corner) / l_Corner.w;
-                l_FrustumCentre += l_FrustumCornersWorld[i];
-            }
-            l_FrustumCentre /= 8.0f;
-
-            const glm::vec3 l_LightDirection = glm::normalize(sunDirection);
-            const glm::vec3 l_Up = std::abs(l_LightDirection.y) > 0.99f ? glm::vec3(0.0f, 0.0f, 1.0f) : glm::vec3(0.0f, 1.0f, 0.0f);
-            const glm::mat4 l_LightView = glm::lookAt(l_FrustumCentre - l_LightDirection, l_FrustumCentre, l_Up);
-
-            glm::vec3 l_Min(std::numeric_limits<float>::max());
-            glm::vec3 l_Max(std::numeric_limits<float>::lowest());
-            for (int i = 0; i < 8; ++i)
-            {
-                const glm::vec3 l_LocalCorner = glm::vec3(l_LightView * glm::vec4(l_FrustumCornersWorld[i], 1.0f));
-                l_Min = glm::min(l_Min, l_LocalCorner);
-                l_Max = glm::max(l_Max, l_LocalCorner);
-            }
-
-            constexpr float l_ZExtension = 50.0f;
-            l_Min.z -= l_ZExtension;
-
-            const float l_WorldUnitsPerTexelX = (l_Max.x - l_Min.x) / static_cast<float>(shadowMapResolution);
-            const float l_WorldUnitsPerTexelY = (l_Max.y - l_Min.y) / static_cast<float>(shadowMapResolution);
-
-            if (l_WorldUnitsPerTexelX > 0.0f && l_WorldUnitsPerTexelY > 0.0f)
-            {
-                l_Min.x = std::floor(l_Min.x / l_WorldUnitsPerTexelX) * l_WorldUnitsPerTexelX;
-                l_Max.x = std::floor(l_Max.x / l_WorldUnitsPerTexelX) * l_WorldUnitsPerTexelX;
-                l_Min.y = std::floor(l_Min.y / l_WorldUnitsPerTexelY) * l_WorldUnitsPerTexelY;
-                l_Max.y = std::floor(l_Max.y / l_WorldUnitsPerTexelY) * l_WorldUnitsPerTexelY;
-            }
-
-            glm::mat4 l_LightProjection = glm::ortho(l_Min.x, l_Max.x, l_Min.y, l_Max.y, l_Min.z, l_Max.z);
-            l_LightProjection[1][1] *= -1.0f;
-
-            return l_LightProjection * l_LightView;
-        }
-    }
-
     struct SceneRenderer::Implementation
     {
         SceneRendererStats Stats;
         bool SceneActive = false;
+
         std::unique_ptr<RenderGraph> Graph;
 
-        std::shared_ptr<Pipeline> MeshPipeline;
-        std::shared_ptr<Pipeline> ShadowPipeline;
+        SceneRenderGraphResources Resources;
+        SceneRenderPassContext PassContext;
 
-        RenderGraphResourceHandle AlbedoHandle;
-        RenderGraphResourceHandle NormalHandle;
-        RenderGraphResourceHandle MetallicRoughnessAOHandle;
-        RenderGraphResourceHandle DepthHandle;
-        RenderGraphResourceHandle ShadowMapHandle;
+        ShadowPass Shadow;
+        GeometryPass Geometry;
+        DeferredLightingPass DeferredLighting;
     };
 
     SceneRenderer::SceneRenderer() = default;
+
     SceneRenderer::~SceneRenderer() = default;
 
     void SceneRenderer::Initialize(uint32_t width, uint32_t height)
@@ -111,262 +37,44 @@ namespace Trinity
 
         m_Width = width;
         m_Height = height;
+
         m_Implementation = std::make_unique<Implementation>();
 
         m_Implementation->Graph = Renderer::GetAPI().CreateRenderGraph();
+
         if (!m_Implementation->Graph)
         {
+            TR_CORE_ERROR("SceneRenderer failed to create RenderGraph");
             return;
         }
 
         m_Implementation->Graph->OnResize(width, height);
 
-        RenderGraphTextureDescription l_AlbedoDescription{};
-        l_AlbedoDescription.Format = TextureFormat::RGBA8;
-        l_AlbedoDescription.Usage = TextureUsage::ColorAttachment | TextureUsage::Sampled;
-        l_AlbedoDescription.DebugName = "GeometryBuffer-Albedo";
-        m_Implementation->AlbedoHandle = m_Implementation->Graph->DeclareTexture(l_AlbedoDescription);
+        m_Implementation->PassContext.Width = width;
+        m_Implementation->PassContext.Height = height;
+        m_Implementation->PassContext.Stats = &m_Implementation->Stats;
+        m_Implementation->PassContext.ActiveCamera = &m_Camera;
+        m_Implementation->PassContext.SceneData = &m_SceneData;
+        m_Implementation->PassContext.DrawList = &m_DrawList;
 
-        RenderGraphTextureDescription l_NormalDescription{};
-        l_NormalDescription.Format = TextureFormat::RGBA16F;
-        l_NormalDescription.Usage = TextureUsage::ColorAttachment | TextureUsage::Sampled;
-        l_NormalDescription.DebugName = "GeometryBuffer-Normal";
-        m_Implementation->NormalHandle = m_Implementation->Graph->DeclareTexture(l_NormalDescription);
+        m_Implementation->Shadow.Initialize();
+        m_Implementation->Geometry.Initialize();
+        m_Implementation->DeferredLighting.Initialize();
 
-        RenderGraphTextureDescription l_MetallicRoughnessAODescription{};
-        l_MetallicRoughnessAODescription.Format = TextureFormat::RGBA8;
-        l_MetallicRoughnessAODescription.Usage = TextureUsage::ColorAttachment | TextureUsage::Sampled;
-        l_MetallicRoughnessAODescription.DebugName = "GeometryBuffer-MR-AO";
-        m_Implementation->MetallicRoughnessAOHandle = m_Implementation->Graph->DeclareTexture(l_MetallicRoughnessAODescription);
+        m_Implementation->Shadow.DeclareResources(*m_Implementation->Graph, m_Implementation->Resources);
+        m_Implementation->Geometry.DeclareResources(*m_Implementation->Graph, m_Implementation->Resources);
+        m_Implementation->DeferredLighting.DeclareResources(*m_Implementation->Graph, m_Implementation->Resources);
 
-        RenderGraphTextureDescription l_DepthDescription{};
-        l_DepthDescription.Format = TextureFormat::Depth32F;
-        l_DepthDescription.Usage = TextureUsage::DepthStencilAttachment | TextureUsage::Sampled;
-        l_DepthDescription.DebugName = "GeometryBuffer-Depth";
-        m_Implementation->DepthHandle = m_Implementation->Graph->DeclareTexture(l_DepthDescription);
+        m_Implementation->Shadow.AddToGraph(*m_Implementation->Graph, m_Implementation->Resources, m_Implementation->PassContext);
+        m_Implementation->Geometry.AddToGraph(*m_Implementation->Graph, m_Implementation->Resources, m_Implementation->PassContext);
+        m_Implementation->DeferredLighting.AddToGraph(*m_Implementation->Graph, m_Implementation->Resources, m_Implementation->PassContext);
 
-        RenderGraphTextureDescription l_ShadowMapDescription{};
-        l_ShadowMapDescription.Width = l_ShadowMapResolution;
-        l_ShadowMapDescription.Height = l_ShadowMapResolution;
-        l_ShadowMapDescription.Format = TextureFormat::Depth32F;
-        l_ShadowMapDescription.Usage = TextureUsage::DepthStencilAttachment | TextureUsage::Sampled;
-        l_ShadowMapDescription.DebugName = "ShadowMap-Depth";
-        m_Implementation->ShadowMapHandle = m_Implementation->Graph->DeclareTexture(l_ShadowMapDescription);
-
-        const auto a_AlbedoHandle = m_Implementation->AlbedoHandle;
-        const auto a_NormalHandle = m_Implementation->NormalHandle;
-        const auto a_MetallicRoughnessAOHandle = m_Implementation->MetallicRoughnessAOHandle;
-        const auto a_DepthHandle = m_Implementation->DepthHandle;
-        const auto a_ShadowMapHandle = m_Implementation->ShadowMapHandle;
-
-        m_Implementation->Graph->AddPass("ShadowPass").Write(a_ShadowMapHandle).SetExecuteCallback([this, a_ShadowMapHandle](RenderGraphContext& context)
+        m_Implementation->Graph->AddPass("ViewportOutput").SetType(RenderGraphPassType::Graphics).SetCullable(false).SetDebugColor(0.05f, 0.65f, 0.25f, 1.0f).Read(m_Implementation->Resources.LitOutput, RenderGraphAccess::ShaderSampledRead).SetExecuteCallback([](RenderGraphContext& context)
         {
-            CommandList& l_Cmd = context.GetCommandList();
-            auto a_ShadowMap = context.GetTexture(a_ShadowMapHandle);
-            if (!a_ShadowMap || !m_Implementation->ShadowPipeline)
-            {
-                return;
-            }
-
-            RenderingInfo l_RenderingInfo{};
-            l_RenderingInfo.Width = l_ShadowMapResolution;
-            l_RenderingInfo.Height = l_ShadowMapResolution;
-            l_RenderingInfo.Depth.DepthTexture = a_ShadowMap;
-            l_RenderingInfo.Depth.ClearOnLoad = true;
-            l_RenderingInfo.Depth.ClearDepth = 1.0f;
-
-            l_Cmd.BeginRendering(l_RenderingInfo);
-
-            l_Cmd.SetViewport(0.0f, 0.0f, static_cast<float>(l_ShadowMapResolution), static_cast<float>(l_ShadowMapResolution), 0.0f, 1.0f);
-            l_Cmd.SetScissor(0, 0, l_ShadowMapResolution, l_ShadowMapResolution);
-            l_Cmd.SetDepthBias(1.25f, 0.0f, 1.75f);
-
-            if (!m_DrawList.empty())
-            {
-                l_Cmd.BindPipeline(m_Implementation->ShadowPipeline);
-
-                const glm::mat4 l_LightViewProjection = ComputeLightViewProjection(m_Camera, m_SceneData.SunDirection, l_ShadowMapResolution);
-
-                for (const auto& it_DrawCommand : m_DrawList)
-                {
-                    if (!it_DrawCommand.MeshRef)
-                    {
-                        continue;
-                    }
-
-                    auto a_VertexBuffer = it_DrawCommand.MeshRef->GetVertexBuffer();
-                    auto a_IndexBuffer = it_DrawCommand.MeshRef->GetIndexBuffer();
-                    if (!a_VertexBuffer || !a_IndexBuffer)
-                    {
-                        continue;
-                    }
-
-                    l_Cmd.BindVertexBuffer(0, a_VertexBuffer);
-                    l_Cmd.BindIndexBuffer(a_IndexBuffer, 0, true);
-
-                    struct ShadowPushBlock
-                    {
-                        float Model[16];
-                        float LightViewProjection[16];
-                    } l_Push{};
-                    std::memcpy(l_Push.Model, it_DrawCommand.Transform, sizeof(l_Push.Model));
-                    std::memcpy(l_Push.LightViewProjection, glm::value_ptr(l_LightViewProjection), sizeof(l_Push.LightViewProjection));
-                    l_Cmd.PushConstants(0, sizeof(ShadowPushBlock), &l_Push);
-
-                    l_Cmd.DrawIndexed(it_DrawCommand.MeshRef->GetIndexCount(), 1, 0, 0, 0);
-                }
-            }
-
-            l_Cmd.EndRendering();
+            (void)context;
         });
 
-        m_Implementation->Graph->AddPass("Geometry").Write(a_AlbedoHandle).Write(a_NormalHandle).Write(a_MetallicRoughnessAOHandle).Write(a_DepthHandle).Read(a_ShadowMapHandle).SetExecuteCallback([this, a_AlbedoHandle, a_NormalHandle, a_MetallicRoughnessAOHandle, a_DepthHandle](RenderGraphContext& context)
-        {
-            CommandList& l_Cmd = context.GetCommandList();
-
-            auto a_Albedo = context.GetTexture(a_AlbedoHandle);
-            auto a_Normal = context.GetTexture(a_NormalHandle);
-            auto a_MetallicRoughnessAO = context.GetTexture(a_MetallicRoughnessAOHandle);
-            auto a_Depth = context.GetTexture(a_DepthHandle);
-
-            if (!a_Albedo || !a_Normal || !a_MetallicRoughnessAO || !a_Depth)
-            {
-                return;
-            }
-
-            RenderingInfo l_RenderingInfo{};
-            l_RenderingInfo.Width = m_Width;
-            l_RenderingInfo.Height = m_Height;
-            l_RenderingInfo.ColorAttachments.resize(3);
-
-            l_RenderingInfo.ColorAttachments[0].ColorTexture = a_Albedo;
-            l_RenderingInfo.ColorAttachments[0].ClearOnLoad = true;
-            l_RenderingInfo.ColorAttachments[0].ClearColor[0] = 0.0f;
-            l_RenderingInfo.ColorAttachments[0].ClearColor[1] = 0.0f;
-            l_RenderingInfo.ColorAttachments[0].ClearColor[2] = 0.0f;
-            l_RenderingInfo.ColorAttachments[0].ClearColor[3] = 1.0f;
-
-            l_RenderingInfo.ColorAttachments[1].ColorTexture = a_Normal;
-            l_RenderingInfo.ColorAttachments[1].ClearOnLoad = true;
-            l_RenderingInfo.ColorAttachments[1].ClearColor[0] = 0.0f;
-            l_RenderingInfo.ColorAttachments[1].ClearColor[1] = 0.0f;
-            l_RenderingInfo.ColorAttachments[1].ClearColor[2] = 0.0f;
-            l_RenderingInfo.ColorAttachments[1].ClearColor[3] = 0.0f;
-
-            l_RenderingInfo.ColorAttachments[2].ColorTexture = a_MetallicRoughnessAO;
-            l_RenderingInfo.ColorAttachments[2].ClearOnLoad = true;
-            l_RenderingInfo.ColorAttachments[2].ClearColor[0] = 0.0f;
-            l_RenderingInfo.ColorAttachments[2].ClearColor[1] = 0.5f;
-            l_RenderingInfo.ColorAttachments[2].ClearColor[2] = 1.0f;
-            l_RenderingInfo.ColorAttachments[2].ClearColor[3] = 0.0f;
-
-            l_RenderingInfo.Depth.DepthTexture = a_Depth;
-            l_RenderingInfo.Depth.ClearOnLoad = true;
-            l_RenderingInfo.Depth.ClearDepth = 1.0f;
-
-            l_Cmd.BeginRendering(l_RenderingInfo);
-
-            l_Cmd.SetViewport(0.0f, 0.0f, static_cast<float>(m_Width), static_cast<float>(m_Height), 0.0f, 1.0f);
-            l_Cmd.SetScissor(0, 0, m_Width, m_Height);
-
-            if (!m_DrawList.empty() && m_Implementation->MeshPipeline)
-            {
-                l_Cmd.BindPipeline(m_Implementation->MeshPipeline);
-
-                const glm::mat4 l_ViewProjection = m_Camera.GetViewProjectionMatrix();
-
-                for (const auto& it_DrawCommand : m_DrawList)
-                {
-                    if (!it_DrawCommand.MeshRef)
-                    {
-                        continue;
-                    }
-
-                    auto a_VertexBuffer = it_DrawCommand.MeshRef->GetVertexBuffer();
-                    auto a_IndexBuffer = it_DrawCommand.MeshRef->GetIndexBuffer();
-                    if (!a_VertexBuffer || !a_IndexBuffer)
-                    {
-                        continue;
-                    }
-
-                    l_Cmd.BindVertexBuffer(0, a_VertexBuffer);
-                    l_Cmd.BindIndexBuffer(a_IndexBuffer, 0, true);
-
-                    m_PushBlock.BaseColor[0] = 1.0f;
-                    m_PushBlock.BaseColor[1] = 1.0f;
-                    m_PushBlock.BaseColor[2] = 1.0f;
-                    m_PushBlock.BaseColor[3] = 1.0f;
-
-                    std::memcpy(m_PushBlock.Model, it_DrawCommand.Transform, sizeof(m_PushBlock.Model));
-                    std::memcpy(m_PushBlock.ViewProjection, glm::value_ptr(l_ViewProjection), sizeof(m_PushBlock.ViewProjection));
-                    l_Cmd.PushConstants(0, sizeof(PushBlock), &m_PushBlock);
-
-                    l_Cmd.DrawIndexed(it_DrawCommand.MeshRef->GetIndexCount(), 1, 0, 0, 0);
-
-                    m_Implementation->Stats.DrawCalls++;
-                    m_Implementation->Stats.IndexCount += it_DrawCommand.MeshRef->GetIndexCount();
-                    m_Implementation->Stats.VertexCount += it_DrawCommand.MeshRef->GetVertexCount();
-                }
-            }
-
-            l_Cmd.EndRendering();
-        });
-
-        m_Implementation->Graph->AddPass("Output").Read(a_AlbedoHandle);
-
-        ShaderSpecification l_ShadowShaderSpecification{};
-        l_ShadowShaderSpecification.Modules.push_back({ ShaderStage::Vertex, "shadow_pass.vert.spv" });
-        l_ShadowShaderSpecification.Modules.push_back({ ShaderStage::Fragment, "shadow_pass.frag.spv" });
-        l_ShadowShaderSpecification.DebugName = "ShadowShader";
-        auto a_ShadowShader = Renderer::GetAPI().CreateShader(l_ShadowShaderSpecification);
-
-        PipelineSpecification l_ShadowPipelineSpecification{};
-        l_ShadowPipelineSpecification.PipelineShader = a_ShadowShader;
-        l_ShadowPipelineSpecification.VertexAttributes =
-        {
-            { 0, 0, VertexAttributeFormat::Float3, 0 },
-            { 1, 0, VertexAttributeFormat::Float3, 12 },
-            { 2, 0, VertexAttributeFormat::Float2, 24 },
-        };
-        l_ShadowPipelineSpecification.VertexStride = sizeof(Geometry::Vertex);
-        l_ShadowPipelineSpecification.PushConstants = { { ShaderStage::Vertex, 0, 128 } };
-        l_ShadowPipelineSpecification.ColorAttachmentFormats = {};
-        l_ShadowPipelineSpecification.DepthAttachmentFormat = TextureFormat::Depth32F;
-        l_ShadowPipelineSpecification.DepthTest = true;
-        l_ShadowPipelineSpecification.DepthWrite = true;
-        l_ShadowPipelineSpecification.DepthOp = DepthCompareOp::Less;
-        l_ShadowPipelineSpecification.CullingMode = CullMode::Front;
-        l_ShadowPipelineSpecification.DepthBias = true;
-        l_ShadowPipelineSpecification.DepthBiasConstantFactor = 1.25f;
-        l_ShadowPipelineSpecification.DepthBiasSlopeFactor = 1.75f;
-        l_ShadowPipelineSpecification.DebugName = "ShadowPipeline";
-        m_Implementation->ShadowPipeline = Renderer::GetAPI().CreatePipeline(l_ShadowPipelineSpecification);
-
-        ShaderSpecification l_GeometryShaderSpecification{};
-        l_GeometryShaderSpecification.Modules.push_back({ ShaderStage::Vertex, "geometry_pass.vert.spv" });
-        l_GeometryShaderSpecification.Modules.push_back({ ShaderStage::Fragment, "geometry_pass.frag.spv" });
-        l_GeometryShaderSpecification.DebugName = "MeshShader";
-        auto a_Shader = Renderer::GetAPI().CreateShader(l_GeometryShaderSpecification);
-
-        PipelineSpecification l_GeometryPipelineSpecification{};
-        l_GeometryPipelineSpecification.PipelineShader = a_Shader;
-        l_GeometryPipelineSpecification.VertexAttributes =
-        {
-            { 0, 0, VertexAttributeFormat::Float3, offsetof(Geometry::Vertex, Position) },
-            { 1, 0, VertexAttributeFormat::Float3, offsetof(Geometry::Vertex, Normal) },
-            { 2, 0, VertexAttributeFormat::Float2, offsetof(Geometry::Vertex, UV) },
-            { 3, 0, VertexAttributeFormat::Float3, offsetof(Geometry::Vertex, Tangent) },
-        };
-        l_GeometryPipelineSpecification.VertexStride = sizeof(Geometry::Vertex);
-        l_GeometryPipelineSpecification.PushConstants = { { ShaderStage::Vertex, 0, sizeof(PushBlock) } };
-        l_GeometryPipelineSpecification.ColorAttachmentFormats = { TextureFormat::RGBA8, TextureFormat::RGBA16F, TextureFormat::RGBA8 };
-        l_GeometryPipelineSpecification.DepthAttachmentFormat = TextureFormat::Depth32F;
-        l_GeometryPipelineSpecification.DepthTest = true;
-        l_GeometryPipelineSpecification.DepthWrite = true;
-        l_GeometryPipelineSpecification.DepthOp = DepthCompareOp::Less;
-        l_GeometryPipelineSpecification.CullingMode = CullMode::None;
-        l_GeometryPipelineSpecification.DebugName = "MeshPipeline";
-        m_Implementation->MeshPipeline = Renderer::GetAPI().CreatePipeline(l_GeometryPipelineSpecification);
+        m_Implementation->Graph->MarkOutput(m_Implementation->Resources.LitOutput);
 
         TR_CORE_INFO("SCENE RENDERER INITIALIZED");
     }
@@ -375,7 +83,13 @@ namespace Trinity
     {
         TR_CORE_INFO("SHUTTING DOWN SCENE RENDERER");
 
-        m_Implementation.reset();
+        if (m_Implementation)
+        {
+            m_Implementation->DeferredLighting.Shutdown();
+            m_Implementation->Geometry.Shutdown();
+            m_Implementation->Shadow.Shutdown();
+            m_Implementation.reset();
+        }
 
         TR_CORE_INFO("SCENE RENDERER SHUTDOWN COMPLETE");
     }
@@ -389,9 +103,23 @@ namespace Trinity
     {
         m_Camera = camera;
         m_SceneData = sceneData;
+
         m_DrawList.clear();
+
+        if (!m_Implementation)
+        {
+            return;
+        }
+
         m_Implementation->Stats = {};
         m_Implementation->SceneActive = true;
+
+        m_Implementation->PassContext.Width = m_Width;
+        m_Implementation->PassContext.Height = m_Height;
+        m_Implementation->PassContext.Stats = &m_Implementation->Stats;
+        m_Implementation->PassContext.ActiveCamera = &m_Camera;
+        m_Implementation->PassContext.SceneData = &m_SceneData;
+        m_Implementation->PassContext.DrawList = &m_DrawList;
     }
 
     void SceneRenderer::SubmitMesh(const MeshDrawCommand& command)
@@ -401,12 +129,17 @@ namespace Trinity
 
     void SceneRenderer::EndScene()
     {
+        if (!m_Implementation)
+        {
+            return;
+        }
+
         m_Implementation->SceneActive = false;
     }
 
     void SceneRenderer::Render()
     {
-        if (!m_Implementation || !m_Implementation->Graph || !m_Implementation->MeshPipeline)
+        if (!m_Implementation || !m_Implementation->Graph || !m_Implementation->Geometry.IsReady() || !m_Implementation->DeferredLighting.IsReady())
         {
             return;
         }
@@ -431,7 +164,15 @@ namespace Trinity
         m_Width = width;
         m_Height = height;
 
-        if (m_Implementation && m_Implementation->Graph)
+        if (!m_Implementation)
+        {
+            return;
+        }
+
+        m_Implementation->PassContext.Width = width;
+        m_Implementation->PassContext.Height = height;
+
+        if (m_Implementation->Graph)
         {
             m_Implementation->Graph->OnResize(width, height);
         }
@@ -444,7 +185,7 @@ namespace Trinity
             return nullptr;
         }
 
-        return m_Implementation->Graph->GetTexture(m_Implementation->AlbedoHandle);
+        return m_Implementation->Graph->GetTexture(m_Implementation->Resources.LitOutput);
     }
 
     const SceneRendererStats& SceneRenderer::GetStats() const
@@ -457,5 +198,25 @@ namespace Trinity
         }
 
         return m_Implementation->Stats;
+    }
+
+    std::string SceneRenderer::DumpRenderGraphText() const
+    {
+        if (!m_Implementation || !m_Implementation->Graph)
+        {
+            return {};
+        }
+
+        return m_Implementation->Graph->DumpText();
+    }
+
+    std::string SceneRenderer::DumpRenderGraphDot() const
+    {
+        if (!m_Implementation || !m_Implementation->Graph)
+        {
+            return {};
+        }
+
+        return m_Implementation->Graph->DumpDot();
     }
 }
