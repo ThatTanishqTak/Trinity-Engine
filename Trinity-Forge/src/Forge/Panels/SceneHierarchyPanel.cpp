@@ -59,27 +59,11 @@ namespace Forge
                     Trinity::Entity l_Entity = m_Context->ActiveScene->CreateEntity(tag);
 
                     const auto& l_Data = Trinity::Geometry::GetPrimitive(type);
-                    auto a_Mesh = Trinity::Mesh::Create(l_Data.Vertices, l_Data.Indices, l_Data.SubMesh);
+                    auto a_Mesh = Trinity::Mesh::Create(l_Data.Vertices, l_Data.Indices);
 
                     auto& a_MeshComponent = l_Entity.AddComponent<Trinity::MeshComponent>();
                     a_MeshComponent.MeshAssetUUID = Trinity::AssetRegistry::Get().RegisterMesh(a_Mesh);
                     a_MeshComponent.MeshData = std::move(a_Mesh);
-
-                    switch (type)
-                    {
-                        case Trinity::Geometry::PrimitiveType::Triangle:
-                            a_MeshComponent.BuiltinType = Trinity::BuiltinMeshType::Triangle;
-                            break;
-                        case Trinity::Geometry::PrimitiveType::Quad:
-                            a_MeshComponent.BuiltinType = Trinity::BuiltinMeshType::Quad;
-                            break;
-                        case Trinity::Geometry::PrimitiveType::Cube:
-                            a_MeshComponent.BuiltinType = Trinity::BuiltinMeshType::Cube;
-                            break;
-                        default:
-                            a_MeshComponent.BuiltinType = Trinity::BuiltinMeshType::None;
-                            break;
-                    }
                 };
 
                 if (ImGui::MenuItem("Create Triangle"))

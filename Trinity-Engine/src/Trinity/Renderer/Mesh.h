@@ -23,7 +23,7 @@ namespace Trinity
     class Mesh
     {
     public:
-        static std::shared_ptr<Mesh> Create(const std::vector<Geometry::Vertex>& vertices, const std::vector<uint32_t>& indices, const std::vector<SubMesh>& subMeshes);
+        static std::shared_ptr<Mesh> Create(const std::vector<Geometry::Vertex>& vertices, const std::vector<uint32_t>& indices, const std::vector<SubMesh>& subMeshes = {});
 
         std::shared_ptr<Buffer> GetVertexBuffer() const { return m_VertexBuffer; }
         std::shared_ptr<Buffer> GetIndexBuffer() const { return m_IndexBuffer; }
