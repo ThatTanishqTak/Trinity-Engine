@@ -6,12 +6,10 @@ layout(set = 0, binding = 0) uniform sampler2D u_AlbedoTexture;
 layout(set = 0, binding = 1) uniform sampler2D u_NormalTexture;
 layout(set = 0, binding = 2) uniform sampler2D u_MetallicRoughnessAOTexture;
 layout(set = 0, binding = 3) uniform sampler2D u_DepthTexture;
-layout(set = 0, binding = 4) uniform sampler2D u_ShadowMap;
 
 layout(push_constant) uniform PushBlock
 {
     mat4 InverseViewProjection;
-    mat4 LightViewProjection;
 
     vec4 CameraPosition;
     vec4 ScreenSize;
@@ -36,45 +34,6 @@ vec3 ReconstructWorldPosition(vec2 uv, float depth)
     vec4 l_WorldPosition = u_Push.InverseViewProjection * l_ClipPosition;
 
     return l_WorldPosition.xyz / l_WorldPosition.w;
-}
-
-float CalculateShadowVisibility(vec3 worldPosition, vec3 normal, vec3 lightDirection)
-{
-    vec4 l_LightClipPosition = u_Push.LightViewProjection * vec4(worldPosition, 1.0);
-    vec3 l_ShadowCoord = l_LightClipPosition.xyz / l_LightClipPosition.w;
-
-    vec2 l_ShadowUV = l_ShadowCoord.xy * 0.5 + 0.5;
-    l_ShadowUV.y = 1.0 - l_ShadowUV.y;
-
-    float l_CurrentDepth = l_ShadowCoord.z;
-
-    if (l_ShadowUV.x < 0.0 || l_ShadowUV.x > 1.0 || l_ShadowUV.y < 0.0 || l_ShadowUV.y > 1.0)
-    {
-        return 1.0;
-    }
-
-    if (l_CurrentDepth < 0.0 || l_CurrentDepth > 1.0)
-    {
-        return 1.0;
-    }
-
-    float l_NdotL = max(dot(normal, lightDirection), 0.0);
-    float l_Bias = max(0.0015 * (1.0 - l_NdotL), 0.00035);
-
-    vec2 l_TexelSize = 1.0 / vec2(textureSize(u_ShadowMap, 0));
-
-    float l_Visibility = 0.0;
-
-    for (int x = -1; x <= 1; x++)
-    {
-        for (int y = -1; y <= 1; y++)
-        {
-            float l_ClosestDepth = texture(u_ShadowMap, l_ShadowUV + vec2(x, y) * l_TexelSize).r;
-            l_Visibility += (l_CurrentDepth - l_Bias) <= l_ClosestDepth ? 1.0 : 0.0;
-        }
-    }
-
-    return l_Visibility / 9.0;
 }
 
 float DistributionGGX(vec3 normal, vec3 halfway, float roughness)
@@ -169,8 +128,7 @@ void main()
 
     vec3 l_Diffuse = l_KD * l_Albedo / PI;
 
-    float l_ShadowVisibility = CalculateShadowVisibility(l_WorldPosition, l_Normal, l_LightDirection);
-    vec3 l_DirectLighting = (l_Diffuse + l_Specular) * l_LightColor * l_NdotL * l_ShadowVisibility;
+    vec3 l_DirectLighting = (l_Diffuse + l_Specular) * l_LightColor * l_NdotL;
 
     vec3 l_Ambient = l_Albedo * 0.03 * l_AmbientOcclusion;
     vec3 l_Color = l_Ambient + l_DirectLighting;

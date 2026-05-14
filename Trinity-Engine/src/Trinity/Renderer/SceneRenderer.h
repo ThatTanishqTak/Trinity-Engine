@@ -55,11 +55,8 @@ namespace Trinity
         bool TaaEnabled = false;
         bool VolumetricsEnabled = false;
         bool SsrEnabled = false;
-        bool RayTracedShadowsEnabled = false;
 
         AntiAliasingMode AntiAliasing = AntiAliasingMode::None;
-        uint32_t ShadowCascadeCount = 1;
-        uint32_t ShadowMapResolution = 2048;
     };
 
     struct SceneRendererStats
@@ -69,7 +66,6 @@ namespace Trinity
         uint32_t IndexCount = 0;
 
         float GeometryPassMs = 0.0f;
-        float ShadowPassMs = 0.0f;
         float TotalGPUMs = 0.0f;
 
         uint32_t GeometryBufferMemoryMB = 0;

@@ -14,7 +14,6 @@ namespace Trinity
         RenderGraphResourceHandle Normal;
         RenderGraphResourceHandle MetallicRoughnessAO;
         RenderGraphResourceHandle Depth;
-        RenderGraphResourceHandle ShadowMap;
         RenderGraphResourceHandle LitOutput;
     };
 

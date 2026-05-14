@@ -141,7 +141,7 @@ namespace Trinity
 
     void GeometryPass::AddToGraph(RenderGraph& graph, SceneRenderGraphResources& resources, SceneRenderPassContext& context)
     {
-        graph.AddPass("Geometry").SetType(RenderGraphPassType::Graphics).SetDebugColor(0.15f, 0.35f, 0.95f, 1.0f).Read(resources.ShadowMap, RenderGraphAccess::ShaderSampledRead).Write(resources.Albedo, RenderGraphAccess::ColorAttachmentWrite).Write(resources.Normal, RenderGraphAccess::ColorAttachmentWrite).Write(resources.MetallicRoughnessAO, RenderGraphAccess::ColorAttachmentWrite).Write(resources.Depth, RenderGraphAccess::DepthStencilWrite).SetExecuteCallback([this, &resources, &context](RenderGraphContext& graphContext)
+        graph.AddPass("Geometry").SetType(RenderGraphPassType::Graphics).SetDebugColor(0.15f, 0.35f, 0.95f, 1.0f).Write(resources.Albedo, RenderGraphAccess::ColorAttachmentWrite).Write(resources.Normal, RenderGraphAccess::ColorAttachmentWrite).Write(resources.MetallicRoughnessAO, RenderGraphAccess::ColorAttachmentWrite).Write(resources.Depth, RenderGraphAccess::DepthStencilWrite).SetExecuteCallback([this, &resources, &context](RenderGraphContext& graphContext)
         {
             Execute(graphContext, resources, context);
         });
