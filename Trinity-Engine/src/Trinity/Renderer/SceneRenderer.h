@@ -34,6 +34,7 @@ namespace Trinity
 
     struct SceneRenderData
     {
+        bool HasDirectionalLight = false;
         DirectionalLight SunLight;
         glm::vec3 SunDirection = glm::normalize(glm::vec3(-0.4f, -1.0f, -0.2f));
     };

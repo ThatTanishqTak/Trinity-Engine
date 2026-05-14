@@ -78,7 +78,6 @@ namespace Trinity
             }
 
             glm::mat4 l_LightProjection = glm::ortho(l_Min.x, l_Max.x, l_Min.y, l_Max.y, l_Min.z, l_Max.z);
-            l_LightProjection[1][1] *= -1.0f;
 
             return l_LightProjection * l_LightView;
         }
@@ -108,10 +107,10 @@ namespace Trinity
         l_ShadowPipelineSpecification.DepthTest = true;
         l_ShadowPipelineSpecification.DepthWrite = true;
         l_ShadowPipelineSpecification.DepthOp = DepthCompareOp::Less;
-        l_ShadowPipelineSpecification.CullingMode = CullMode::Front;
+        l_ShadowPipelineSpecification.CullingMode = CullMode::None;
         l_ShadowPipelineSpecification.DepthBias = true;
-        l_ShadowPipelineSpecification.DepthBiasConstantFactor = 1.25f;
-        l_ShadowPipelineSpecification.DepthBiasSlopeFactor = 1.75f;
+        l_ShadowPipelineSpecification.DepthBiasConstantFactor = 0.15f;
+        l_ShadowPipelineSpecification.DepthBiasSlopeFactor = 0.75f;
         l_ShadowPipelineSpecification.DebugName = "ShadowPipeline";
 
         m_Pipeline = Renderer::GetAPI().CreatePipeline(l_ShadowPipelineSpecification);
@@ -168,7 +167,7 @@ namespace Trinity
         l_CommandList.BeginRendering(l_RenderingInfo);
         l_CommandList.SetViewport(0.0f, 0.0f, static_cast<float>(l_ShadowMapResolution), static_cast<float>(l_ShadowMapResolution), 0.0f, 1.0f);
         l_CommandList.SetScissor(0, 0, l_ShadowMapResolution, l_ShadowMapResolution);
-        l_CommandList.SetDepthBias(1.25f, 0.0f, 1.75f);
+        l_CommandList.SetDepthBias(0.15f, 0.0f, 0.75f);
 
         if (!passContext.DrawList->empty())
         {

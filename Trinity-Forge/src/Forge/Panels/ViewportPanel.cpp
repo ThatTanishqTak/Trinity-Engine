@@ -116,6 +116,7 @@ namespace Forge
 
                 if (std::holds_alternative<Trinity::DirectionalLight>(a_Light.Data))
                 {
+                    l_SceneData.HasDirectionalLight = true;
                     l_SceneData.SunLight = std::get<Trinity::DirectionalLight>(a_Light.Data);
 
                     glm::mat4 l_Rotation = glm::mat4(1.0f);

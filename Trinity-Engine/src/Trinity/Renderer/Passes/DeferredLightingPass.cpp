@@ -89,7 +89,6 @@ namespace Trinity
             }
 
             glm::mat4 l_LightProjection = glm::ortho(l_Min.x, l_Max.x, l_Min.y, l_Max.y, l_Min.z, l_Max.z);
-            l_LightProjection[1][1] *= -1.0f;
 
             return l_LightProjection * l_LightView;
         }
@@ -261,7 +260,7 @@ namespace Trinity
         l_PushBlock.SunColorIntensity[0] = passContext.SceneData->SunLight.Color.r;
         l_PushBlock.SunColorIntensity[1] = passContext.SceneData->SunLight.Color.g;
         l_PushBlock.SunColorIntensity[2] = passContext.SceneData->SunLight.Color.b;
-        l_PushBlock.SunColorIntensity[3] = passContext.SceneData->SunLight.Intensity;
+        l_PushBlock.SunColorIntensity[3] = passContext.SceneData->HasDirectionalLight ? passContext.SceneData->SunLight.Intensity : 0.0f;
 
         l_CommandList.PushConstants(0, sizeof(DeferredLightingPushBlock), &l_PushBlock);
         l_CommandList.Draw(3, 1, 0, 0);
