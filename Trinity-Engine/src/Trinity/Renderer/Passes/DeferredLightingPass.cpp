@@ -6,15 +6,93 @@
 #include "Trinity/Renderer/Renderer.h"
 #include "Trinity/Renderer/Resources/Shader.h"
 
+#include <glm/gtc/matrix_inverse.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+#include <algorithm>
+#include <cmath>
+#include <limits>
+
 namespace Trinity
 {
     namespace
     {
         struct DeferredLightingPushBlock
         {
+            float InverseViewProjection[16];
+            float LightViewProjection[16];
+
+            float CameraPosition[4];
+            float ScreenSize[4];
+
             float SunDirection[4];
             float SunColorIntensity[4];
         };
+
+        constexpr uint32_t l_ShadowMapResolution = 2048;
+
+        glm::mat4 ComputeLightViewProjection(const Camera& camera, const glm::vec3& sunDirection, uint32_t shadowMapResolution)
+        {
+            const glm::mat4 l_InverseViewProjection = glm::inverse(camera.GetViewProjectionMatrix());
+
+            const glm::vec4 l_NdcCorners[8] =
+            {
+                { -1.0f, -1.0f, 0.0f, 1.0f },
+                {  1.0f, -1.0f, 0.0f, 1.0f },
+                { -1.0f,  1.0f, 0.0f, 1.0f },
+                {  1.0f,  1.0f, 0.0f, 1.0f },
+                { -1.0f, -1.0f, 1.0f, 1.0f },
+                {  1.0f, -1.0f, 1.0f, 1.0f },
+                { -1.0f,  1.0f, 1.0f, 1.0f },
+                {  1.0f,  1.0f, 1.0f, 1.0f },
+            };
+
+            glm::vec3 l_FrustumCornersWorld[8];
+            glm::vec3 l_FrustumCentre(0.0f);
+
+            for (int i = 0; i < 8; ++i)
+            {
+                glm::vec4 l_Corner = l_InverseViewProjection * l_NdcCorners[i];
+                l_FrustumCornersWorld[i] = glm::vec3(l_Corner) / l_Corner.w;
+                l_FrustumCentre += l_FrustumCornersWorld[i];
+            }
+
+            l_FrustumCentre /= 8.0f;
+
+            const glm::vec3 l_LightDirection = glm::normalize(sunDirection);
+            const glm::vec3 l_Up = std::abs(l_LightDirection.y) > 0.99f ? glm::vec3(0.0f, 0.0f, 1.0f) : glm::vec3(0.0f, 1.0f, 0.0f);
+            const glm::mat4 l_LightView = glm::lookAt(l_FrustumCentre - l_LightDirection, l_FrustumCentre, l_Up);
+
+            glm::vec3 l_Min(std::numeric_limits<float>::max());
+            glm::vec3 l_Max(std::numeric_limits<float>::lowest());
+
+            for (int i = 0; i < 8; ++i)
+            {
+                const glm::vec3 l_LocalCorner = glm::vec3(l_LightView * glm::vec4(l_FrustumCornersWorld[i], 1.0f));
+                l_Min = glm::min(l_Min, l_LocalCorner);
+                l_Max = glm::max(l_Max, l_LocalCorner);
+            }
+
+            constexpr float l_ZExtension = 50.0f;
+            l_Min.z -= l_ZExtension;
+
+            const float l_WorldUnitsPerTexelX = (l_Max.x - l_Min.x) / static_cast<float>(shadowMapResolution);
+            const float l_WorldUnitsPerTexelY = (l_Max.y - l_Min.y) / static_cast<float>(shadowMapResolution);
+
+            if (l_WorldUnitsPerTexelX > 0.0f && l_WorldUnitsPerTexelY > 0.0f)
+            {
+                l_Min.x = std::floor(l_Min.x / l_WorldUnitsPerTexelX) * l_WorldUnitsPerTexelX;
+                l_Max.x = std::floor(l_Max.x / l_WorldUnitsPerTexelX) * l_WorldUnitsPerTexelX;
+                l_Min.y = std::floor(l_Min.y / l_WorldUnitsPerTexelY) * l_WorldUnitsPerTexelY;
+                l_Max.y = std::floor(l_Max.y / l_WorldUnitsPerTexelY) * l_WorldUnitsPerTexelY;
+            }
+
+            glm::mat4 l_LightProjection = glm::ortho(l_Min.x, l_Max.x, l_Min.y, l_Max.y, l_Min.z, l_Max.z);
+            l_LightProjection[1][1] *= -1.0f;
+
+            return l_LightProjection * l_LightView;
+        }
     }
 
     void DeferredLightingPass::Initialize()
@@ -111,7 +189,7 @@ namespace Trinity
 
     void DeferredLightingPass::Execute(RenderGraphContext& context, SceneRenderGraphResources& resources, SceneRenderPassContext& passContext)
     {
-        if (!m_Pipeline || !passContext.SceneData)
+        if (!m_Pipeline || !passContext.SceneData || !passContext.ActiveCamera)
         {
             return;
         }
@@ -150,10 +228,36 @@ namespace Trinity
         l_CommandList.BindDescriptorSet(0, m_DescriptorSet);
 
         DeferredLightingPushBlock l_PushBlock{};
+
+        const glm::mat4 l_InverseViewProjection = glm::inverse(passContext.ActiveCamera->GetViewProjectionMatrix());
+        const glm::mat4 l_LightViewProjection = ComputeLightViewProjection(*passContext.ActiveCamera, passContext.SceneData->SunDirection, l_ShadowMapResolution);
+
+        const float* l_InverseViewProjectionData = glm::value_ptr(l_InverseViewProjection);
+        const float* l_LightViewProjectionData = glm::value_ptr(l_LightViewProjection);
+
+        for (uint32_t i = 0; i < 16; i++)
+        {
+            l_PushBlock.InverseViewProjection[i] = l_InverseViewProjectionData[i];
+            l_PushBlock.LightViewProjection[i] = l_LightViewProjectionData[i];
+        }
+
+        const glm::vec3& l_CameraPosition = passContext.ActiveCamera->GetPosition();
+
+        l_PushBlock.CameraPosition[0] = l_CameraPosition.x;
+        l_PushBlock.CameraPosition[1] = l_CameraPosition.y;
+        l_PushBlock.CameraPosition[2] = l_CameraPosition.z;
+        l_PushBlock.CameraPosition[3] = 1.0f;
+
+        l_PushBlock.ScreenSize[0] = static_cast<float>(passContext.Width);
+        l_PushBlock.ScreenSize[1] = static_cast<float>(passContext.Height);
+        l_PushBlock.ScreenSize[2] = passContext.Width > 0 ? 1.0f / static_cast<float>(passContext.Width) : 0.0f;
+        l_PushBlock.ScreenSize[3] = passContext.Height > 0 ? 1.0f / static_cast<float>(passContext.Height) : 0.0f;
+
         l_PushBlock.SunDirection[0] = passContext.SceneData->SunDirection.x;
         l_PushBlock.SunDirection[1] = passContext.SceneData->SunDirection.y;
         l_PushBlock.SunDirection[2] = passContext.SceneData->SunDirection.z;
         l_PushBlock.SunDirection[3] = 0.0f;
+
         l_PushBlock.SunColorIntensity[0] = passContext.SceneData->SunLight.Color.r;
         l_PushBlock.SunColorIntensity[1] = passContext.SceneData->SunLight.Color.g;
         l_PushBlock.SunColorIntensity[2] = passContext.SceneData->SunLight.Color.b;
