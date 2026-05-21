@@ -15,6 +15,7 @@ namespace Trinity
         RenderGraphResourceHandle MetallicRoughnessAO;
         RenderGraphResourceHandle Depth;
         RenderGraphResourceHandle LitOutput;
+        RenderGraphResourceHandle ShadowAtlas;
     };
 
     struct SceneRenderPassContext

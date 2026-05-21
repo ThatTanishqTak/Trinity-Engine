@@ -67,6 +67,8 @@ namespace Trinity
     struct LightComponent
     {
         LightData Data = DirectionalLight{};
+        bool CastShadows = true;
+        float ImportanceBias = 0.0f;
     };
 
     inline LightType GetLightType(const LightComponent& light)

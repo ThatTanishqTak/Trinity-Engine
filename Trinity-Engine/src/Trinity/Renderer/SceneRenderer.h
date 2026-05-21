@@ -4,6 +4,7 @@
 #include "Trinity/Renderer/Resources/Material.h"
 #include "Trinity/Renderer/Resources/Texture.h"
 #include "Trinity/Scene/Components/LightComponent.h"
+#include "Trinity/Renderer/Passes/ShadowTypes.h"
 
 #include <glm/glm.hpp>
 
@@ -57,6 +58,8 @@ namespace Trinity
         bool SsrEnabled = false;
 
         AntiAliasingMode AntiAliasing = AntiAliasingMode::None;
+
+        ShadowSettings Shadow;
     };
 
     struct SceneRendererStats

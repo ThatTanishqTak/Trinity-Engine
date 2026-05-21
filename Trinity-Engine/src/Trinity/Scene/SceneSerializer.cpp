@@ -138,6 +138,9 @@ namespace Trinity
                 }
             }, l_Light.Data);
 
+            out << YAML::Key << "CastShadows" << YAML::Value << l_Light.CastShadows;
+            out << YAML::Key << "ImportanceBias" << YAML::Value << l_Light.ImportanceBias;
+
             out << YAML::EndMap;
         }
 
@@ -297,6 +300,9 @@ namespace Trinity
                 {
                     a_Light.Data = DirectionalLight{ l_Color, l_Intensity };
                 }
+
+                a_Light.CastShadows = a_LightNode["CastShadows"].as<bool>(true);
+                a_Light.ImportanceBias = a_LightNode["ImportanceBias"].as<float>(0.0f);
             }
 
             const auto a_TextureNode = it_EntityNode["TextureComponent"];
