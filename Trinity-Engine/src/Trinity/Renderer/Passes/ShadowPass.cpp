@@ -10,6 +10,7 @@
 
 #include <glm/glm.hpp>
 
+#include <algorithm>
 #include <cstddef>
 
 namespace Trinity
@@ -86,27 +87,100 @@ namespace Trinity
 
     void ShadowPass::AddToGraph(RenderGraph& graph, SceneRenderGraphResources& resources, SceneRenderPassContext& context)
     {
-        (void)context;
-
-        graph.AddPass("Shadow").SetType(RenderGraphPassType::Graphics).SetCullable(false).SetDebugColor(0.85f, 0.85f, 0.30f, 1.0f).Write(resources.ShadowAtlas, RenderGraphAccess::DepthStencilWrite).SetExecuteCallback([this, &resources](RenderGraphContext& graphContext)
+        graph.AddPass("Shadow").SetType(RenderGraphPassType::Graphics).SetCullable(false).SetDebugColor(0.85f, 0.85f, 0.30f, 1.0f).Write(resources.ShadowAtlas, RenderGraphAccess::DepthStencilWrite).SetExecuteCallback([this, &resources, &context](RenderGraphContext& graphContext)
         {
-            auto l_Atlas = graphContext.GetTexture(resources.ShadowAtlas);
-            if (!l_Atlas)
-            {
-                return;
-            }
-
-            CommandList& l_CommandList = graphContext.GetCommandList();
-
-            RenderingInfo l_RenderingInfo{};
-            l_RenderingInfo.Width = m_Settings.Directional.AtlasResolution;
-            l_RenderingInfo.Height = m_Settings.Directional.AtlasResolution;
-            l_RenderingInfo.Depth.DepthTexture = l_Atlas;
-            l_RenderingInfo.Depth.ClearOnLoad = true;
-            l_RenderingInfo.Depth.ClearDepth = 1.0f;
-
-            l_CommandList.BeginRendering(l_RenderingInfo);
-            l_CommandList.EndRendering();
+            Execute(graphContext, resources, context);
         });
+    }
+
+    void ShadowPass::Execute(RenderGraphContext& context, SceneRenderGraphResources& resources, SceneRenderPassContext& passContext)
+    {
+        if (!m_OpaquePipeline || !passContext.ActiveCamera || !passContext.SceneData)
+        {
+            return;
+        }
+
+        auto l_Atlas = context.GetTexture(resources.ShadowAtlas);
+        if (!l_Atlas)
+        {
+            return;
+        }
+
+        const uint32_t l_CascadeCount = std::min(m_Settings.Directional.CascadeCount, 4u);
+        const uint32_t l_AtlasResolution = m_Settings.Directional.AtlasResolution;
+        const uint32_t l_CascadeResolution = l_AtlasResolution / 2;
+
+        float l_Splits[5] = {};
+        const float l_NearClip = passContext.ActiveCamera->GetNearClip();
+        const float l_FarClip = std::min(passContext.ActiveCamera->GetFarClip(), m_Settings.Directional.MaxShadowDistance);
+
+        RendererUtilities::ComputeCascadeSplits(l_NearClip, l_FarClip, l_CascadeCount, m_Settings.Directional.SplitLambda, l_Splits);
+
+        const glm::vec3 l_SunDirection = passContext.SceneData->HasDirectionalLight ? passContext.SceneData->SunDirection : glm::vec3(0.0f, -1.0f, 0.0f);
+
+        for (uint32_t it_Cascade = 0; it_Cascade < l_CascadeCount; ++it_Cascade)
+        {
+            m_Cascades[it_Cascade] = RendererUtilities::ComputeCascadeMatrix(*passContext.ActiveCamera, l_SunDirection, l_Splits[it_Cascade], l_Splits[it_Cascade + 1], l_CascadeResolution);
+        }
+
+        CommandList& l_CommandList = context.GetCommandList();
+
+        RenderingInfo l_RenderingInfo{};
+        l_RenderingInfo.Width = l_AtlasResolution;
+        l_RenderingInfo.Height = l_AtlasResolution;
+        l_RenderingInfo.Depth.DepthTexture = l_Atlas;
+        l_RenderingInfo.Depth.ClearOnLoad = true;
+        l_RenderingInfo.Depth.ClearDepth = 1.0f;
+
+        l_CommandList.BeginRendering(l_RenderingInfo);
+
+        const bool l_HasShadowCasters = m_Settings.Directional.Enabled && passContext.SceneData->HasDirectionalLight && passContext.SceneData->SunCastShadows && passContext.DrawList && !passContext.DrawList->empty();
+
+        if (l_HasShadowCasters)
+        {
+            l_CommandList.BindPipeline(m_OpaquePipeline);
+
+            for (uint32_t it_Cascade = 0; it_Cascade < l_CascadeCount; ++it_Cascade)
+            {
+                const uint32_t l_QuadrantX = (it_Cascade % 2) * l_CascadeResolution;
+                const uint32_t l_QuadrantY = (it_Cascade / 2) * l_CascadeResolution;
+
+                l_CommandList.SetViewport(static_cast<float>(l_QuadrantX), static_cast<float>(l_QuadrantY), static_cast<float>(l_CascadeResolution), static_cast<float>(l_CascadeResolution), 0.0f, 1.0f);
+                l_CommandList.SetScissor(l_QuadrantX, l_QuadrantY, l_CascadeResolution, l_CascadeResolution);
+
+                for (const auto& it_DrawCommand : *passContext.DrawList)
+                {
+                    if (!it_DrawCommand.MeshRef)
+                    {
+                        continue;
+                    }
+
+                    auto l_VertexBuffer = it_DrawCommand.MeshRef->GetVertexBuffer();
+                    auto l_IndexBuffer = it_DrawCommand.MeshRef->GetIndexBuffer();
+
+                    if (!l_VertexBuffer || !l_IndexBuffer)
+                    {
+                        continue;
+                    }
+
+                    l_CommandList.BindVertexBuffer(0, l_VertexBuffer);
+                    l_CommandList.BindIndexBuffer(l_IndexBuffer, 0, true);
+
+                    ShadowPushBlock l_PushBlock{};
+                    std::memcpy(&l_PushBlock.Model, it_DrawCommand.Transform, sizeof(glm::mat4));
+                    l_PushBlock.LightViewProjection = m_Cascades[it_Cascade].ViewProjection;
+
+                    l_CommandList.PushConstants(0, sizeof(ShadowPushBlock), &l_PushBlock);
+                    l_CommandList.DrawIndexed(it_DrawCommand.MeshRef->GetIndexCount(), 1, 0, 0, 0);
+
+                    if (passContext.Stats)
+                    {
+                        passContext.Stats->DrawCalls++;
+                    }
+                }
+            }
+        }
+
+        l_CommandList.EndRendering();
     }
 }

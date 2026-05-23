@@ -26,6 +26,15 @@ namespace Trinity
 
         glm::mat4 ComputeDirectionalLightViewProjection(const Camera& camera, const glm::vec3& sunDirection, uint32_t shadowMapResolution, float shadowRadius);
 
+        struct CascadeData
+        {
+            glm::mat4 ViewProjection = glm::mat4(1.0f);
+            float SplitDepthView = 0.0f;
+        };
+
+        void ComputeCascadeSplits(float nearClip, float farClip, uint32_t cascadeCount, float lambda, float* outSplits);
+        CascadeData ComputeCascadeMatrix(const Camera& camera, const glm::vec3& sunDirection, float splitNear, float splitFar, uint32_t cascadeResolution);
+
         glm::vec3 RotateDirection(const glm::vec3& rotationRadians, const glm::vec3& baseDirection);
 
         inline void PackMat4(float dst[16], const glm::mat4& src)

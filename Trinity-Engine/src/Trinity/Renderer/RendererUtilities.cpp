@@ -97,6 +97,96 @@ namespace Trinity
             return l_LightProjection * l_LightView;
         }
 
+        void ComputeCascadeSplits(float nearClip, float farClip, uint32_t cascadeCount, float lambda, float* outSplits)
+        {
+            if (cascadeCount == 0 || nearClip >= farClip || outSplits == nullptr)
+            {
+                TR_CORE_WARN("ComputeCascadeSplits invalid parameters count={} near={} far={}", cascadeCount, nearClip, farClip);
+                return;
+            }
+
+            outSplits[0] = nearClip;
+
+            const float l_Range = farClip - nearClip;
+            const float l_Ratio = farClip / nearClip;
+
+            for (uint32_t it_Cascade = 1; it_Cascade <= cascadeCount; ++it_Cascade)
+            {
+                const float l_Fraction = static_cast<float>(it_Cascade) / static_cast<float>(cascadeCount);
+                const float l_LogSplit = nearClip * std::pow(l_Ratio, l_Fraction);
+                const float l_UniformSplit = nearClip + l_Range * l_Fraction;
+                outSplits[it_Cascade] = lambda * (l_LogSplit - l_UniformSplit) + l_UniformSplit;
+            }
+        }
+
+        CascadeData ComputeCascadeMatrix(const Camera& camera, const glm::vec3& sunDirection, float splitNear, float splitFar, uint32_t cascadeResolution)
+        {
+            CascadeData l_Result{};
+            l_Result.SplitDepthView = splitFar;
+
+            if (cascadeResolution == 0 || splitFar <= splitNear)
+            {
+                TR_CORE_WARN("ComputeCascadeMatrix invalid parameters resolution={} near={} far={}", cascadeResolution, splitNear, splitFar);
+                return l_Result;
+            }
+
+            glm::vec3 l_FullCorners[8];
+            ComputeFrustumCornersWorld(camera, l_FullCorners);
+
+            const float l_CameraNear = camera.GetNearClip();
+            const float l_CameraFar = camera.GetFarClip();
+            const float l_NearT = (splitNear - l_CameraNear) / (l_CameraFar - l_CameraNear);
+            const float l_FarT = (splitFar - l_CameraNear) / (l_CameraFar - l_CameraNear);
+
+            glm::vec3 l_SliceCorners[8];
+            for (int it_Corner = 0; it_Corner < 4; ++it_Corner)
+            {
+                const glm::vec3 l_Direction = l_FullCorners[it_Corner + 4] - l_FullCorners[it_Corner];
+                l_SliceCorners[it_Corner] = l_FullCorners[it_Corner] + l_Direction * l_NearT;
+                l_SliceCorners[it_Corner + 4] = l_FullCorners[it_Corner] + l_Direction * l_FarT;
+            }
+
+            glm::vec3 l_Center(0.0f);
+            for (int it_Corner = 0; it_Corner < 8; ++it_Corner)
+            {
+                l_Center += l_SliceCorners[it_Corner];
+            }
+            l_Center /= 8.0f;
+
+            float l_Radius = 0.0f;
+            for (int it_Corner = 0; it_Corner < 8; ++it_Corner)
+            {
+                l_Radius = std::max(l_Radius, glm::length(l_SliceCorners[it_Corner] - l_Center));
+            }
+            l_Radius = std::ceil(l_Radius * 16.0f) / 16.0f;
+
+            const glm::vec3 l_LightDirection = glm::normalize(sunDirection);
+            const glm::vec3 l_WorldUp = std::abs(l_LightDirection.y) > 0.99f ? glm::vec3(0.0f, 0.0f, 1.0f) : glm::vec3(0.0f, 1.0f, 0.0f);
+            const glm::vec3 l_Right = glm::normalize(glm::cross(l_WorldUp, l_LightDirection));
+            const glm::vec3 l_TrueUp = glm::normalize(glm::cross(l_LightDirection, l_Right));
+
+            const float l_TexelSize = (2.0f * l_Radius) / static_cast<float>(cascadeResolution);
+
+            const float l_CenterRight = glm::dot(l_Center, l_Right);
+            const float l_CenterUp = glm::dot(l_Center, l_TrueUp);
+            const float l_CenterForward = glm::dot(l_Center, l_LightDirection);
+
+            const float l_SnappedRight = std::floor(l_CenterRight / l_TexelSize) * l_TexelSize;
+            const float l_SnappedUp = std::floor(l_CenterUp / l_TexelSize) * l_TexelSize;
+
+            const glm::vec3 l_SnappedCenter = l_Right * l_SnappedRight + l_TrueUp * l_SnappedUp + l_LightDirection * l_CenterForward;
+
+            const glm::vec3 l_LightEye = l_SnappedCenter - l_LightDirection * l_Radius;
+            const glm::mat4 l_LightView = glm::lookAt(l_LightEye, l_SnappedCenter, l_TrueUp);
+            const glm::mat4 l_LightProjection = Orthographic(-l_Radius, l_Radius, -l_Radius, l_Radius, 0.0f, 2.0f * l_Radius);
+
+            l_Result.ViewProjection = l_LightProjection * l_LightView;
+
+            TR_CORE_TRACE("Shadow cascade near={:.2f} far={:.2f} radius={:.2f} texel={:.4f} centre=({:.2f},{:.2f},{:.2f})", splitNear, splitFar, l_Radius, l_TexelSize, l_SnappedCenter.x, l_SnappedCenter.y, l_SnappedCenter.z);
+
+            return l_Result;
+        }
+
         glm::vec3 RotateDirection(const glm::vec3& rotationRadians, const glm::vec3& baseDirection)
         {
             glm::mat4 l_Rotation = glm::mat4(1.0f);

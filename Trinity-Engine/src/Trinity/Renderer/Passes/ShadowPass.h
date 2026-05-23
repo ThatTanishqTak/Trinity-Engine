@@ -2,13 +2,16 @@
 
 #include "Trinity/Renderer/Passes/SceneRenderPassContext.h"
 #include "Trinity/Renderer/Passes/ShadowTypes.h"
+#include "Trinity/Renderer/RendererUtilities.h"
 #include "Trinity/Renderer/Resources/Pipeline.h"
 
+#include <array>
 #include <memory>
 
 namespace Trinity
 {
     class RenderGraph;
+    struct RenderGraphContext;
 
     class ShadowPass
     {
@@ -25,7 +28,11 @@ namespace Trinity
         const ShadowSettings& GetSettings() const { return m_Settings; }
 
     private:
+        void Execute(RenderGraphContext& context, SceneRenderGraphResources& resources, SceneRenderPassContext& passContext);
+
+    private:
         ShadowSettings m_Settings;
         std::shared_ptr<Pipeline> m_OpaquePipeline;
+        std::array<RendererUtilities::CascadeData, 4> m_Cascades;
     };
 }
