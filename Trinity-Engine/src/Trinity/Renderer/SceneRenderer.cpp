@@ -3,7 +3,6 @@
 #include "Trinity/Renderer/Passes/DeferredLightingPass.h"
 #include "Trinity/Renderer/Passes/GeometryPass.h"
 #include "Trinity/Renderer/Passes/SceneRenderPassContext.h"
-#include "Trinity/Renderer/Passes/ShadowPass.h"
 #include "Trinity/Renderer/RenderGraph/RenderGraph.h"
 #include "Trinity/Renderer/Renderer.h"
 #include "Trinity/Utilities/Log.h"
@@ -22,7 +21,6 @@ namespace Trinity
         SceneRenderGraphResources Resources;
         SceneRenderPassContext PassContext;
 
-        ShadowPass Shadow;
         GeometryPass Geometry;
         DeferredLightingPass DeferredLighting;
     };
@@ -57,17 +55,12 @@ namespace Trinity
         m_Implementation->PassContext.SceneData = &m_SceneData;
         m_Implementation->PassContext.DrawList = &m_DrawList;
 
-        m_Implementation->Shadow.SetSettings(m_Settings.Shadow);
-
-        m_Implementation->Shadow.Initialize();
         m_Implementation->Geometry.Initialize();
         m_Implementation->DeferredLighting.Initialize();
 
-        m_Implementation->Shadow.DeclareResources(*m_Implementation->Graph, m_Implementation->Resources);
         m_Implementation->Geometry.DeclareResources(*m_Implementation->Graph, m_Implementation->Resources);
         m_Implementation->DeferredLighting.DeclareResources(*m_Implementation->Graph, m_Implementation->Resources);
 
-        m_Implementation->Shadow.AddToGraph(*m_Implementation->Graph, m_Implementation->Resources, m_Implementation->PassContext);
         m_Implementation->Geometry.AddToGraph(*m_Implementation->Graph, m_Implementation->Resources, m_Implementation->PassContext);
         m_Implementation->DeferredLighting.AddToGraph(*m_Implementation->Graph, m_Implementation->Resources, m_Implementation->PassContext);
 
@@ -89,7 +82,6 @@ namespace Trinity
         {
             m_Implementation->DeferredLighting.Shutdown();
             m_Implementation->Geometry.Shutdown();
-            m_Implementation->Shadow.Shutdown();
             m_Implementation.reset();
         }
 
@@ -99,11 +91,6 @@ namespace Trinity
     void SceneRenderer::SetSettings(const RenderPipelineSettings& settings)
     {
         m_Settings = settings;
-
-        if (m_Implementation)
-        {
-            m_Implementation->Shadow.SetSettings(m_Settings.Shadow);
-        }
     }
 
     void SceneRenderer::BeginScene(const Camera& camera, const SceneRenderData& sceneData)
@@ -146,7 +133,7 @@ namespace Trinity
 
     void SceneRenderer::Render()
     {
-        if (!m_Implementation || !m_Implementation->Graph || !m_Implementation->Shadow.IsReady() || !m_Implementation->Geometry.IsReady() || !m_Implementation->DeferredLighting.IsReady())
+        if (!m_Implementation || !m_Implementation->Graph || !m_Implementation->Geometry.IsReady() || !m_Implementation->DeferredLighting.IsReady())
         {
             return;
         }

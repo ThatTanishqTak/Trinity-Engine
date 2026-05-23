@@ -4,7 +4,6 @@
 #include "Trinity/Renderer/Resources/Material.h"
 #include "Trinity/Renderer/Resources/Texture.h"
 #include "Trinity/Scene/Components/LightComponent.h"
-#include "Trinity/Renderer/Passes/ShadowTypes.h"
 
 #include <glm/glm.hpp>
 
@@ -36,9 +35,8 @@ namespace Trinity
     struct SceneRenderData
     {
         bool HasDirectionalLight = false;
-        bool SunCastShadows = true;
         DirectionalLight SunLight;
-        glm::vec3 SunDirection = glm::normalize(glm::vec3(-0.4f, -1.0f, -0.2f));
+        glm::vec3 SunDirection = glm::normalize(glm::vec3(0.0f, 1.0f, 0.0f));
     };
 
     enum class AntiAliasingMode : uint8_t
@@ -59,8 +57,6 @@ namespace Trinity
         bool SsrEnabled = false;
 
         AntiAliasingMode AntiAliasing = AntiAliasingMode::None;
-
-        ShadowSettings Shadow;
     };
 
     struct SceneRendererStats

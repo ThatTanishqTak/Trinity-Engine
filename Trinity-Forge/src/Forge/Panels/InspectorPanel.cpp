@@ -705,24 +705,6 @@ namespace Forge
                     ImGui::DragFloat("Radius", &light.Radius, 0.01f, 0.0f, 100.0f);
                 }
             }, lightComponent.Data);
-
-            const Trinity::LightType l_Type = Trinity::GetLightType(lightComponent);
-            const bool l_SupportsShadows = l_Type == Trinity::LightType::Directional || l_Type == Trinity::LightType::Point || l_Type == Trinity::LightType::Spot;
-
-            ImGui::Spacing();
-
-            if (!l_SupportsShadows)
-            {
-                ImGui::BeginDisabled();
-            }
-
-            ImGui::Checkbox("Cast Shadows", &lightComponent.CastShadows);
-            ImGui::DragFloat("Shadow Importance", &lightComponent.ImportanceBias, 0.01f, -10.0f, 10.0f);
-
-            if (!l_SupportsShadows)
-            {
-                ImGui::EndDisabled();
-            }
         });
 
         ImGui::Spacing();
