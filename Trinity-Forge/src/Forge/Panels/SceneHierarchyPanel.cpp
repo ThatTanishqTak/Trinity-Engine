@@ -201,13 +201,20 @@ namespace Forge
 
             if (ImGui::MenuItem("Delete"))
             {
-                if (m_Context->SelectedEntity == entity)
+                Trinity::Entity l_Wrapper(entity, m_Context->ActiveScene);
+                m_Context->ActiveScene->DestroyEntity(l_Wrapper);
+
+                auto& a_Registry = m_Context->ActiveScene->GetRegistry();
+                if (m_Context->SelectedEntity != entt::null && !a_Registry.valid(m_Context->SelectedEntity))
                 {
                     m_Context->SelectedEntity = entt::null;
                 }
 
-                Trinity::Entity l_Wrapper(entity, m_Context->ActiveScene);
-                m_Context->ActiveScene->DestroyEntity(l_Wrapper);
+                if (m_RenameTarget != entt::null && !a_Registry.valid(m_RenameTarget))
+                {
+                    m_RenameTarget = entt::null;
+                    m_RenameRequested = false;
+                }
 
                 ImGui::EndPopup();
 
