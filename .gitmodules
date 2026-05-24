@@ -22,3 +22,12 @@
 [submodule "Trinity-Engine/vendor/imgui"]
 	path = Trinity-Engine/vendor/imgui
 	url = https://github.com/ThatTanishqTak/imgui.git
+[submodule "Trinity-Engine/vendor/stb"]
+	path = Trinity-Engine/vendor/stb
+	url = https://github.com/ThatTanishqTak/stb.git
+[submodule "Trinity-Engine/vendor/yaml-cpp"]
+	path = Trinity-Engine/vendor/yaml-cpp
+	url = https://github.com/ThatTanishqTak/yaml-cpp.git
+[submodule "Trinity-Engine/vendor/spdlog"]
+	path = Trinity-Engine/vendor/spdlog
+	url = https://github.com/ThatTanishqTak/spdlog.git
