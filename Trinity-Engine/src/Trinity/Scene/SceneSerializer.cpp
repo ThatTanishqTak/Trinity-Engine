@@ -10,6 +10,7 @@
 #include "Trinity/Scene/Components/MeshComponent.h"
 #include "Trinity/Scene/Components/CameraComponent.h"
 #include "Trinity/Scene/Components/TextureComponent.h"
+#include "Trinity/Scene/Components/MaterialComponent.h"
 #include "Trinity/Asset/AssetRegistry.h"
 #include "Trinity/Utilities/Log.h"
 
@@ -48,6 +49,37 @@ namespace YAML
             return true;
         }
     };
+
+    template<>
+    struct convert<glm::vec4>
+    {
+        static Node encode(const glm::vec4& v)
+        {
+            Node l_Node;
+            l_Node.push_back(v.x);
+            l_Node.push_back(v.y);
+            l_Node.push_back(v.z);
+            l_Node.push_back(v.w);
+            l_Node.SetStyle(EmitterStyle::Flow);
+
+            return l_Node;
+        }
+
+        static bool decode(const Node& node, glm::vec4& v)
+        {
+            if (!node.IsSequence() || node.size() != 4)
+            {
+                return false;
+            }
+
+            v.x = node[0].as<float>();
+            v.y = node[1].as<float>();
+            v.z = node[2].as<float>();
+            v.w = node[3].as<float>();
+
+            return true;
+        }
+    };
 }
 
 namespace Trinity
@@ -55,6 +87,13 @@ namespace Trinity
     static YAML::Emitter& operator<<(YAML::Emitter& out, const glm::vec3& v)
     {
         out << YAML::Flow << YAML::BeginSeq << v.x << v.y << v.z << YAML::EndSeq;
+
+        return out;
+    }
+
+    static YAML::Emitter& operator<<(YAML::Emitter& out, const glm::vec4& v)
+    {
+        out << YAML::Flow << YAML::BeginSeq << v.x << v.y << v.z << v.w << YAML::EndSeq;
 
         return out;
     }
@@ -100,12 +139,53 @@ namespace Trinity
         if (entity.HasComponent<TextureComponent>())
         {
             const auto& a_TextureComponent = entity.GetComponent<TextureComponent>();
-
             out << YAML::Key << "TextureComponent" << YAML::Value << YAML::BeginMap;
             out << YAML::Key << "TextureAssetUUID" << YAML::Value << a_TextureComponent.TextureAssetUUID;
 
             const AssetMetadata* l_MetaData = AssetRegistry::Get().GetMetadata(a_TextureComponent.TextureAssetUUID);
             out << YAML::Key << "TextureSourcePath" << YAML::Value << (l_MetaData ? l_MetaData->SourcePath : std::string{});
+
+            out << YAML::EndMap;
+        }
+
+        if (entity.HasComponent<MaterialComponent>())
+        {
+            const auto& a_MaterialComponent = entity.GetComponent<MaterialComponent>();
+            const auto& a_Properties = a_MaterialComponent.GetEditableProperties();
+
+            out << YAML::Key << "MaterialComponent" << YAML::Value << YAML::BeginMap;
+            out << YAML::Key << "MaterialAssetUUID" << YAML::Value << a_MaterialComponent.MaterialAssetUUID;
+            out << YAML::Key << "UseOverrideProperties" << YAML::Value << a_MaterialComponent.UseOverrideProperties;
+            out << YAML::Key << "Name" << YAML::Value << (a_MaterialComponent.MaterialData ? a_MaterialComponent.MaterialData->GetName() : std::string{});
+
+            out << YAML::Key << "OverrideProperties" << YAML::Value << YAML::BeginMap;
+            out << YAML::Key << "BaseColor" << YAML::Value << a_Properties.BaseColor;
+            out << YAML::Key << "Metallic" << YAML::Value << a_Properties.Metallic;
+            out << YAML::Key << "Roughness" << YAML::Value << a_Properties.Roughness;
+            out << YAML::Key << "AmbientOcclusion" << YAML::Value << a_Properties.AmbientOcclusion;
+            out << YAML::Key << "EmissiveColor" << YAML::Value << a_Properties.EmissiveColor;
+            out << YAML::Key << "EmissiveStrength" << YAML::Value << a_Properties.EmissiveStrength;
+            out << YAML::Key << "AlphaCutoff" << YAML::Value << a_Properties.AlphaCutoff;
+            out << YAML::Key << "AlphaMode" << YAML::Value << static_cast<uint32_t>(a_Properties.AlphaMode);
+
+            auto EmitTextureSlot = [&out](const char* key, const MaterialTextureSlot& slot)
+            {
+                out << YAML::Key << key << YAML::Value << YAML::BeginMap;
+                out << YAML::Key << "TextureAssetUUID" << YAML::Value << slot.TextureAssetUUID;
+
+                const AssetMetadata* l_MetaData = AssetRegistry::Get().GetMetadata(slot.TextureAssetUUID);
+                out << YAML::Key << "TextureSourcePath" << YAML::Value << (l_MetaData ? l_MetaData->SourcePath : std::string{});
+                out << YAML::Key << "Enabled" << YAML::Value << slot.Enabled;
+                out << YAML::EndMap;
+            };
+
+            EmitTextureSlot("AlbedoTexture", a_Properties.AlbedoTexture);
+            EmitTextureSlot("NormalTexture", a_Properties.NormalTexture);
+            EmitTextureSlot("MetallicRoughnessTexture", a_Properties.MetallicRoughnessTexture);
+            EmitTextureSlot("AmbientOcclusionTexture", a_Properties.AmbientOcclusionTexture);
+            EmitTextureSlot("EmissiveTexture", a_Properties.EmissiveTexture);
+
+            out << YAML::EndMap;
 
             out << YAML::EndMap;
         }
@@ -220,6 +300,74 @@ namespace Trinity
 
                 a_TextureComponent.TextureAssetUUID = l_FinalHandle;
                 a_TextureComponent.TextureData = AssetRegistry::Get().LoadTexture(l_FinalHandle);
+            }
+
+            const auto a_MaterialNode = it_EntityNode["MaterialComponent"];
+            if (a_MaterialNode)
+            {
+                auto& a_MaterialComponent = l_Entity.AddComponent<MaterialComponent>();
+                a_MaterialComponent.MaterialAssetUUID = a_MaterialNode["MaterialAssetUUID"].as<uint64_t>(InvalidAsset);
+                a_MaterialComponent.UseOverrideProperties = a_MaterialNode["UseOverrideProperties"].as<bool>(true);
+
+                const std::string l_Name = a_MaterialNode["Name"].as<std::string>("Default Material");
+                a_MaterialComponent.MaterialData = std::make_shared<Material>(l_Name);
+
+                MaterialProperties l_Properties{};
+
+                const auto a_PropertiesNode = a_MaterialNode["OverrideProperties"];
+                if (a_PropertiesNode)
+                {
+                    l_Properties.BaseColor = a_PropertiesNode["BaseColor"].as<glm::vec4>(glm::vec4(1.0f));
+                    l_Properties.Metallic = a_PropertiesNode["Metallic"].as<float>(0.0f);
+                    l_Properties.Roughness = a_PropertiesNode["Roughness"].as<float>(0.5f);
+                    l_Properties.AmbientOcclusion = a_PropertiesNode["AmbientOcclusion"].as<float>(1.0f);
+                    l_Properties.EmissiveColor = a_PropertiesNode["EmissiveColor"].as<glm::vec3>(glm::vec3(0.0f));
+                    l_Properties.EmissiveStrength = a_PropertiesNode["EmissiveStrength"].as<float>(0.0f);
+                    l_Properties.AlphaCutoff = a_PropertiesNode["AlphaCutoff"].as<float>(0.5f);
+                    l_Properties.AlphaMode = static_cast<MaterialAlphaMode>(a_PropertiesNode["AlphaMode"].as<uint32_t>(0));
+
+                    auto LoadTextureSlot = [](const YAML::Node& node, MaterialTextureSlot& slot)
+                    {
+                        if (!node)
+                        {
+                            return;
+                        }
+
+                        const AssetHandle l_UUID = node["TextureAssetUUID"].as<uint64_t>(InvalidAsset);
+                        const std::string l_SourcePath = node["TextureSourcePath"].as<std::string>("");
+                        slot.Enabled = node["Enabled"].as<bool>(false);
+
+                        AssetHandle l_FinalHandle = l_UUID;
+                        if (!l_SourcePath.empty())
+                        {
+                            AssetHandle l_ImportedHandle = AssetRegistry::Get().ImportAsset(l_SourcePath);
+                            if (l_ImportedHandle != InvalidAsset)
+                            {
+                                l_FinalHandle = l_ImportedHandle;
+                            }
+                        }
+
+                        slot.TextureAssetUUID = l_FinalHandle;
+                        if (l_FinalHandle != InvalidAsset)
+                        {
+                            slot.TextureData = AssetRegistry::Get().LoadTexture(l_FinalHandle);
+                        }
+                    };
+
+                    LoadTextureSlot(a_PropertiesNode["AlbedoTexture"], l_Properties.AlbedoTexture);
+                    LoadTextureSlot(a_PropertiesNode["NormalTexture"], l_Properties.NormalTexture);
+                    LoadTextureSlot(a_PropertiesNode["MetallicRoughnessTexture"], l_Properties.MetallicRoughnessTexture);
+                    LoadTextureSlot(a_PropertiesNode["AmbientOcclusionTexture"], l_Properties.AmbientOcclusionTexture);
+                    LoadTextureSlot(a_PropertiesNode["EmissiveTexture"], l_Properties.EmissiveTexture);
+                }
+
+                a_MaterialComponent.OverrideProperties = l_Properties;
+                if (a_MaterialComponent.MaterialData)
+                {
+                    a_MaterialComponent.MaterialData->GetProperties() = l_Properties;
+                }
+
+                TR_CORE_TRACE("SceneSerializer: deserialised MaterialComponent (uuid={}, override={})", a_MaterialComponent.MaterialAssetUUID, a_MaterialComponent.UseOverrideProperties);
             }
         }
 
