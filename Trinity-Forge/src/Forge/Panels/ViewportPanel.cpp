@@ -12,7 +12,6 @@
 #include "Trinity/Scene/Components/CameraComponent.h"
 #include "Trinity/Scene/Components/MeshComponent.h"
 #include "Trinity/Scene/Components/TextureComponent.h"
-#include "Trinity/Scene/Components/LightComponent.h"
 #include "Trinity/Scene/Components/MaterialComponent.h"
 
 #include "Trinity/Asset/AssetRegistry.h"
@@ -104,33 +103,6 @@ namespace Forge
         }
 
         Trinity::SceneRenderData l_SceneData{};
-        if (m_SelectionContext && m_SelectionContext->ActiveScene)
-        {
-            auto& a_Registry = m_SelectionContext->ActiveScene->GetRegistry();
-            auto a_View = a_Registry.view<Trinity::TransformComponent, Trinity::LightComponent>();
-
-            for (auto it_Entity : a_View)
-            {
-                auto& a_Transform = a_View.get<Trinity::TransformComponent>(it_Entity);
-                auto& a_Light = a_View.get<Trinity::LightComponent>(it_Entity);
-
-                if (std::holds_alternative<Trinity::DirectionalLight>(a_Light.Data))
-                {
-                    l_SceneData.HasDirectionalLight = true;
-                    l_SceneData.SunLight = std::get<Trinity::DirectionalLight>(a_Light.Data);
-
-                    glm::mat4 l_Rotation = glm::mat4(1.0f);
-                    l_Rotation = glm::rotate(l_Rotation, a_Transform.Rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
-                    l_Rotation = glm::rotate(l_Rotation, a_Transform.Rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
-                    l_Rotation = glm::rotate(l_Rotation, a_Transform.Rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
-
-                    l_SceneData.SunDirection = glm::normalize(glm::vec3(l_Rotation * glm::vec4(0.0f, -1.0f, 0.0f, 0.0f)));
-
-                    break;
-                }
-            }
-        }
-
         m_SceneRenderer.BeginScene(*l_ActiveCamera, l_SceneData);
 
         if (m_SelectionContext && m_SelectionContext->ActiveScene)

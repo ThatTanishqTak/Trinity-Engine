@@ -9,7 +9,6 @@
 #include "Trinity/Scene/Components/TransformComponent.h"
 #include "Trinity/Scene/Components/MeshComponent.h"
 #include "Trinity/Scene/Components/CameraComponent.h"
-#include "Trinity/Scene/Components/LightComponent.h"
 #include "Trinity/Scene/Components/TextureComponent.h"
 #include "Trinity/Asset/AssetRegistry.h"
 #include "Trinity/Utilities/Log.h"
@@ -95,49 +94,6 @@ namespace Trinity
             out << YAML::Key << "NearClip" << YAML::Value << a_CameraComponent.NearClip;
             out << YAML::Key << "FarClip" << YAML::Value << a_CameraComponent.FarClip;
             out << YAML::Key << "Primary" << YAML::Value << a_CameraComponent.Primary;
-            out << YAML::EndMap;
-        }
-
-        if (entity.HasComponent<LightComponent>())
-        {
-            const auto& l_Light = entity.GetComponent<LightComponent>();
-
-            out << YAML::Key << "Light" << YAML::Value << YAML::BeginMap;
-            out << YAML::Key << "Type" << YAML::Value << GetLightTypeName(GetLightType(l_Light));
-
-            std::visit([&out](const auto& variant)
-            {
-                using T = std::decay_t<decltype(variant)>;
-
-                out << YAML::Key << "Color" << YAML::Value << variant.Color;
-                out << YAML::Key << "Intensity" << YAML::Value << variant.Intensity;
-
-                if constexpr (std::is_same_v<T, PointLight>)
-                {
-                    out << YAML::Key << "Range" << YAML::Value << variant.Range;
-                }
-                else if constexpr (std::is_same_v<T, SpotLight>)
-                {
-                    out << YAML::Key << "Range" << YAML::Value << variant.Range;
-                    out << YAML::Key << "InnerConeAngle" << YAML::Value << variant.InnerConeAngle;
-                    out << YAML::Key << "OuterConeAngle" << YAML::Value << variant.OuterConeAngle;
-                }
-                else if constexpr (std::is_same_v<T, RectLight>)
-                {
-                    out << YAML::Key << "Width" << YAML::Value << variant.Width;
-                    out << YAML::Key << "Height" << YAML::Value << variant.Height;
-                }
-                else if constexpr (std::is_same_v<T, CapsuleLight>)
-                {
-                    out << YAML::Key << "Length" << YAML::Value << variant.Length;
-                    out << YAML::Key << "Radius" << YAML::Value << variant.Radius;
-                }
-                else if constexpr (std::is_same_v<T, SphereLight>)
-                {
-                    out << YAML::Key << "Radius" << YAML::Value << variant.Radius;
-                }
-            }, l_Light.Data);
-
             out << YAML::EndMap;
         }
 
@@ -241,62 +197,6 @@ namespace Trinity
                 a_CameraComponent.NearClip = a_CameraNode["NearClip"].as<float>(0.1f);
                 a_CameraComponent.FarClip = a_CameraNode["FarClip"].as<float>(1000.0f);
                 a_CameraComponent.Primary = a_CameraNode["Primary"].as<bool>(true);
-            }
-
-            const auto a_LightNode = it_EntityNode["Light"];
-            if (a_LightNode)
-            {
-                auto& a_Light = l_Entity.AddComponent<LightComponent>();
-
-                const std::string l_TypeName = a_LightNode["Type"].as<std::string>("Directional");
-                const glm::vec3 l_Color = a_LightNode["Color"].as<glm::vec3>(glm::vec3(1.0f));
-                const float l_Intensity = a_LightNode["Intensity"].as<float>(1.0f);
-
-                if (l_TypeName == "Point")
-                {
-                    PointLight l_Data{ l_Color, l_Intensity, a_LightNode["Range"].as<float>(10.0f) };
-                    a_Light.Data = l_Data;
-                }
-                else if (l_TypeName == "Spot")
-                {
-                    SpotLight l_Data{};
-                    l_Data.Color = l_Color;
-                    l_Data.Intensity = l_Intensity;
-                    l_Data.Range = a_LightNode["Range"].as<float>(10.0f);
-                    l_Data.InnerConeAngle = a_LightNode["InnerConeAngle"].as<float>(0.6108652f);
-                    l_Data.OuterConeAngle = a_LightNode["OuterConeAngle"].as<float>(0.7853982f);
-                    a_Light.Data = l_Data;
-                }
-                else if (l_TypeName == "Rect")
-                {
-                    RectLight l_Data{};
-                    l_Data.Color = l_Color;
-                    l_Data.Intensity = l_Intensity;
-                    l_Data.Width = a_LightNode["Width"].as<float>(1.0f);
-                    l_Data.Height = a_LightNode["Height"].as<float>(1.0f);
-                    a_Light.Data = l_Data;
-                }
-                else if (l_TypeName == "Capsule")
-                {
-                    CapsuleLight l_Data{};
-                    l_Data.Color = l_Color;
-                    l_Data.Intensity = l_Intensity;
-                    l_Data.Length = a_LightNode["Length"].as<float>(1.0f);
-                    l_Data.Radius = a_LightNode["Radius"].as<float>(0.1f);
-                    a_Light.Data = l_Data;
-                }
-                else if (l_TypeName == "Sphere")
-                {
-                    SphereLight l_Data{};
-                    l_Data.Color = l_Color;
-                    l_Data.Intensity = l_Intensity;
-                    l_Data.Radius = a_LightNode["Radius"].as<float>(0.5f);
-                    a_Light.Data = l_Data;
-                }
-                else
-                {
-                    a_Light.Data = DirectionalLight{ l_Color, l_Intensity };
-                }
             }
 
             const auto a_TextureNode = it_EntityNode["TextureComponent"];

@@ -7,7 +7,6 @@
 #include "Trinity/Scene/Components/MeshComponent.h"
 #include "Trinity/Scene/Components/TextureComponent.h"
 #include "Trinity/Scene/Components/CameraComponent.h"
-#include "Trinity/Scene/Components/LightComponent.h"
 #include "Trinity/Scene/Components/MaterialComponent.h"
 #include "Trinity/Asset/AssetRegistry.h"
 
@@ -169,17 +168,6 @@ namespace Forge
                 if (ImGui::MenuItem("Camera"))
                 {
                     registry.emplace<Trinity::CameraComponent>(entity);
-                    ImGui::CloseCurrentPopup();
-                }
-
-                l_AnyVisible = true;
-            }
-
-            if (!registry.all_of<Trinity::LightComponent>(entity) && Matches("Light"))
-            {
-                if (ImGui::MenuItem("Light"))
-                {
-                    registry.emplace<Trinity::LightComponent>(entity);
                     ImGui::CloseCurrentPopup();
                 }
 
@@ -647,64 +635,6 @@ namespace Forge
             ImGui::DragFloat("FOV", &cameraComponent.FOV, 0.5f, 1.0f, 179.0f, "%.1f deg");
             ImGui::DragFloat("Near Clip", &cameraComponent.NearClip, 0.01f, 0.001f, 10.0f, "%.3f");
             ImGui::DragFloat("Far Clip", &cameraComponent.FarClip, 1.0f, 1.0f, 100000.0f, "%.0f");
-        });
-
-        ImGui::Spacing();
-
-        // Light
-        DrawComponent<Trinity::LightComponent>("Light", l_Registry, l_Entity, [](Trinity::LightComponent& lightComponent)
-        {
-            static const char* const l_TypeNames[] = { "Directional", "Point", "Spot", "Rect", "Capsule", "Sphere" };
-
-            int l_CurrentIndex = static_cast<int>(Trinity::GetLightType(lightComponent));
-            if (ImGui::Combo("Type", &l_CurrentIndex, l_TypeNames, IM_ARRAYSIZE(l_TypeNames)))
-            {
-                Trinity::SetLightType(lightComponent, static_cast<Trinity::LightType>(l_CurrentIndex));
-            }
-
-            std::visit([](auto& light)
-            {
-                using T = std::decay_t<decltype(light)>;
-
-                ImGui::ColorEdit3("Color", glm::value_ptr(light.Color));
-                ImGui::DragFloat("Intensity", &light.Intensity, 0.01f, 0.0f, 100.0f);
-
-                if constexpr (std::is_same_v<T, Trinity::PointLight>)
-                {
-                    ImGui::DragFloat("Range", &light.Range, 0.1f, 0.0f, 1000.0f);
-                }
-                else if constexpr (std::is_same_v<T, Trinity::SpotLight>)
-                {
-                    ImGui::DragFloat("Range", &light.Range, 0.1f, 0.0f, 1000.0f);
-
-                    float l_InnerDegrees = glm::degrees(light.InnerConeAngle);
-                    float l_OuterDegrees = glm::degrees(light.OuterConeAngle);
-
-                    if (ImGui::DragFloat("Inner Cone", &l_InnerDegrees, 0.1f, 0.0f, l_OuterDegrees, "%.1f deg"))
-                    {
-                        light.InnerConeAngle = glm::radians(l_InnerDegrees);
-                    }
-
-                    if (ImGui::DragFloat("Outer Cone", &l_OuterDegrees, 0.1f, l_InnerDegrees, 89.0f, "%.1f deg"))
-                    {
-                        light.OuterConeAngle = glm::radians(l_OuterDegrees);
-                    }
-                }
-                else if constexpr (std::is_same_v<T, Trinity::RectLight>)
-                {
-                    ImGui::DragFloat("Width", &light.Width, 0.01f, 0.0f, 100.0f);
-                    ImGui::DragFloat("Height", &light.Height, 0.01f, 0.0f, 100.0f);
-                }
-                else if constexpr (std::is_same_v<T, Trinity::CapsuleLight>)
-                {
-                    ImGui::DragFloat("Length", &light.Length, 0.01f, 0.0f, 100.0f);
-                    ImGui::DragFloat("Radius", &light.Radius, 0.01f, 0.0f, 100.0f);
-                }
-                else if constexpr (std::is_same_v<T, Trinity::SphereLight>)
-                {
-                    ImGui::DragFloat("Radius", &light.Radius, 0.01f, 0.0f, 100.0f);
-                }
-            }, lightComponent.Data);
         });
 
         ImGui::Spacing();

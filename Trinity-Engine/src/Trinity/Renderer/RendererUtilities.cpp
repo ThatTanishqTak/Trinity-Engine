@@ -1,7 +1,6 @@
 #include "Trinity/Renderer/RendererUtilities.h"
 
 #include "Trinity/Renderer/Renderer.h"
-#include "Trinity/Scene/Components/LightComponent.h"
 #include "Trinity/Scene/Components/TransformComponent.h"
 #include "Trinity/Utilities/Log.h"
 
@@ -153,39 +152,6 @@ namespace Trinity
             TR_CORE_INFO("Created checkerboard texture ({}x{})", width, height);
 
             return l_Texture;
-        }
-
-        DirectionalSunData CollectDirectionalSun(const entt::registry& registry)
-        {
-            DirectionalSunData l_Result{};
-
-            const auto l_View = registry.view<TransformComponent, LightComponent>();
-
-            for (const auto it_Entity : l_View)
-            {
-                const auto& a_Light = l_View.get<LightComponent>(it_Entity);
-
-                if (!std::holds_alternative<DirectionalLight>(a_Light.Data))
-                {
-                    continue;
-                }
-
-                const auto& a_Transform = l_View.get<TransformComponent>(it_Entity);
-                const auto& a_Directional = std::get<DirectionalLight>(a_Light.Data);
-
-                l_Result.Direction = RotateDirection(a_Transform.Rotation, glm::vec3(0.0f, -1.0f, 0.0f));
-                l_Result.Color = a_Directional.Color;
-                l_Result.Intensity = a_Directional.Intensity;
-                l_Result.Valid = true;
-
-                TR_CORE_TRACE("Collected directional sun: direction=({:.2f},{:.2f},{:.2f}) intensity={:.2f}", l_Result.Direction.x, l_Result.Direction.y, l_Result.Direction.z, l_Result.Intensity);
-
-                return l_Result;
-            }
-
-            TR_CORE_TRACE("No directional sun present in registry; using fallback direction");
-
-            return l_Result;
         }
     }
 }

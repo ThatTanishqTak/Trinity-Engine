@@ -5,8 +5,6 @@
 
 #include <glm/glm.hpp>
 
-#include <entt/entt.hpp>
-
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -39,15 +37,5 @@ namespace Trinity
         std::shared_ptr<Texture> CreateBlackTexture();
         std::shared_ptr<Texture> CreateDefaultNormalTexture();
         std::shared_ptr<Texture> CreateCheckerboardTexture(uint32_t width = 64, uint32_t height = 64);
-
-        struct DirectionalSunData
-        {
-            glm::vec3 Direction = glm::vec3(0.0f, -1.0f, 0.0f);
-            glm::vec3 Color = glm::vec3(1.0f);
-            float Intensity = 1.0f;
-            bool Valid = false;
-        };
-
-        DirectionalSunData CollectDirectionalSun(const entt::registry& registry);
     }
 }

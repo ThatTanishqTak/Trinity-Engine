@@ -7,7 +7,6 @@
 #include "Trinity/Scene/Components/TransformComponent.h"
 #include "Trinity/Scene/Components/MeshComponent.h"
 #include "Trinity/Scene/Components/CameraComponent.h"
-#include "Trinity/Scene/Components/LightComponent.h"
 #include "Trinity/Asset/AssetRegistry.h"
 #include "Trinity/Utilities/Log.h"
 
@@ -89,15 +88,6 @@ namespace Trinity
             l_Out << YAML::Key << "Primary" << YAML::Value << a_CameraComponent.Primary;
             l_Out << YAML::EndMap;
         }
-
-        //if (entity.HasComponent<DirectionalLightComponent>())
-        //{
-        //    const auto& a_DirectionalLightComponent = entity.GetComponent<DirectionalLightComponent>();
-        //    l_Out << YAML::Key << "DirectionalLight" << YAML::Value << YAML::BeginMap;
-        //    l_Out << YAML::Key << "Color" << YAML::Value << a_DirectionalLightComponent.Color;
-        //    l_Out << YAML::Key << "Intensity" << YAML::Value << a_DirectionalLightComponent.Intensity;
-        //    l_Out << YAML::EndMap;
-        //}
 
         l_Out << YAML::EndMap;
 

@@ -1,6 +1,5 @@
 #include "Trinity/Renderer/SceneRenderer.h"
 
-#include "Trinity/Renderer/Passes/DeferredLightingPass.h"
 #include "Trinity/Renderer/Passes/GeometryPass.h"
 #include "Trinity/Renderer/Passes/SceneRenderPassContext.h"
 #include "Trinity/Renderer/RenderGraph/RenderGraph.h"
@@ -22,7 +21,6 @@ namespace Trinity
         SceneRenderPassContext PassContext;
 
         GeometryPass Geometry;
-        DeferredLightingPass DeferredLighting;
     };
 
     SceneRenderer::SceneRenderer() = default;
@@ -56,20 +54,15 @@ namespace Trinity
         m_Implementation->PassContext.DrawList = &m_DrawList;
 
         m_Implementation->Geometry.Initialize();
-        m_Implementation->DeferredLighting.Initialize();
-
         m_Implementation->Geometry.DeclareResources(*m_Implementation->Graph, m_Implementation->Resources);
-        m_Implementation->DeferredLighting.DeclareResources(*m_Implementation->Graph, m_Implementation->Resources);
-
         m_Implementation->Geometry.AddToGraph(*m_Implementation->Graph, m_Implementation->Resources, m_Implementation->PassContext);
-        m_Implementation->DeferredLighting.AddToGraph(*m_Implementation->Graph, m_Implementation->Resources, m_Implementation->PassContext);
 
-        m_Implementation->Graph->AddPass("ViewportOutput").SetType(RenderGraphPassType::Graphics).SetCullable(false).SetDebugColor(0.05f, 0.65f, 0.25f, 1.0f).Read(m_Implementation->Resources.LitOutput, RenderGraphAccess::ShaderSampledRead).SetExecuteCallback([](RenderGraphContext& context)
+        m_Implementation->Graph->AddPass("ViewportOutput").SetType(RenderGraphPassType::Graphics).SetCullable(false).SetDebugColor(0.05f, 0.65f, 0.25f, 1.0f).Read(m_Implementation->Resources.Albedo, RenderGraphAccess::ShaderSampledRead).SetExecuteCallback([](RenderGraphContext& context)
         {
             (void)context;
         });
 
-        m_Implementation->Graph->MarkOutput(m_Implementation->Resources.LitOutput);
+        m_Implementation->Graph->MarkOutput(m_Implementation->Resources.Albedo);
 
         TR_CORE_INFO("SCENE RENDERER INITIALIZED");
     }
@@ -80,7 +73,6 @@ namespace Trinity
 
         if (m_Implementation)
         {
-            m_Implementation->DeferredLighting.Shutdown();
             m_Implementation->Geometry.Shutdown();
             m_Implementation.reset();
         }
@@ -133,7 +125,7 @@ namespace Trinity
 
     void SceneRenderer::Render()
     {
-        if (!m_Implementation || !m_Implementation->Graph || !m_Implementation->Geometry.IsReady() || !m_Implementation->DeferredLighting.IsReady())
+        if (!m_Implementation || !m_Implementation->Graph || !m_Implementation->Geometry.IsReady())
         {
             return;
         }
@@ -179,7 +171,7 @@ namespace Trinity
             return nullptr;
         }
 
-        return m_Implementation->Graph->GetTexture(m_Implementation->Resources.LitOutput);
+        return m_Implementation->Graph->GetTexture(m_Implementation->Resources.Albedo);
     }
 
     const SceneRendererStats& SceneRenderer::GetStats() const

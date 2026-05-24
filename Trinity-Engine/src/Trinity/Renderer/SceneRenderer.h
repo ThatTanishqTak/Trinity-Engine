@@ -3,7 +3,6 @@
 #include "Trinity/Renderer/Camera/Camera.h"
 #include "Trinity/Renderer/Resources/Material.h"
 #include "Trinity/Renderer/Resources/Texture.h"
-#include "Trinity/Scene/Components/LightComponent.h"
 
 #include <glm/glm.hpp>
 
@@ -34,9 +33,7 @@ namespace Trinity
 
     struct SceneRenderData
     {
-        bool HasDirectionalLight = false;
-        DirectionalLight SunLight;
-        glm::vec3 SunDirection = glm::normalize(glm::vec3(0.0f, 1.0f, 0.0f));
+
     };
 
     enum class AntiAliasingMode : uint8_t

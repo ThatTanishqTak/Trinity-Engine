@@ -7,7 +7,6 @@
 #include "Trinity/Scene/Components/TransformComponent.h"
 #include "Trinity/Scene/Components/MeshComponent.h"
 #include "Trinity/Scene/Components/CameraComponent.h"
-#include "Trinity/Scene/Components/LightComponent.h"
 #include "Trinity/Scene/Components/TextureComponent.h"
 #include "Trinity/Renderer/Mesh.h"
 #include "Trinity/Geometry/Geometry.h"
@@ -171,11 +170,6 @@ namespace Forge
             if (a_Registry.all_of<Trinity::CameraComponent>(source))
             {
                 a_Registry.emplace_or_replace<Trinity::CameraComponent>(destination, a_Registry.get<Trinity::CameraComponent>(source));
-            }
-
-            if (a_Registry.all_of<Trinity::LightComponent>(source))
-            {
-               a_Registry.emplace_or_replace<Trinity::LightComponent>(destination, a_Registry.get<Trinity::LightComponent>(source));
             }
         };
 
