@@ -96,8 +96,11 @@ namespace Trinity
                 {
                     l_Indices.push_back(l_BaseVertex + l_Face.mIndices[j]);
                 }
+            }
 
-                l_SubMesh.IndexCount = static_cast<uint32_t>(l_Indices.size()) - l_SubMesh.BaseIndex;
+            l_SubMesh.IndexCount = static_cast<uint32_t>(l_Indices.size()) - l_SubMesh.BaseIndex;
+            if (l_SubMesh.IndexCount > 0)
+            {
                 l_SubMeshes.push_back(l_SubMesh);
             }
         }
