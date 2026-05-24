@@ -427,6 +427,7 @@ namespace Trinity
                     PendingAcquireBarrier l_Acquire{};
                     l_Acquire.Image = l_UniqueImages[l_Index];
                     l_Acquire.Aspect = l_UniqueAspects[l_Index];
+
                     m_PendingAcquireBarriers.push_back(l_Acquire);
                 }
             }
@@ -445,9 +446,36 @@ namespace Trinity
 
         const uint64_t l_SignalValue = ++m_TimelineValue;
 
-        if (m_CurrentChunkIndex != UINT32_MAX)
+        std::vector<uint32_t> l_ReferencedChunkIndices;
+        l_ReferencedChunkIndices.reserve(m_PendingBufferUploads.size() + m_PendingTextureUploads.size());
+
+        auto AddReferencedChunkIndex = [&l_ReferencedChunkIndices](uint32_t chunkIndex)
         {
-            m_StagingChunks[m_CurrentChunkIndex].SubmissionValue = l_SignalValue;
+            if (std::find(l_ReferencedChunkIndices.begin(), l_ReferencedChunkIndices.end(), chunkIndex) == l_ReferencedChunkIndices.end())
+            {
+                l_ReferencedChunkIndices.push_back(chunkIndex);
+            }
+        };
+
+        for (const auto& it_Op : m_PendingBufferUploads)
+        {
+            AddReferencedChunkIndex(it_Op.StagingChunkIndex);
+        }
+
+        for (const auto& it_Op : m_PendingTextureUploads)
+        {
+            AddReferencedChunkIndex(it_Op.StagingChunkIndex);
+        }
+
+        for (uint32_t it_ChunkIndex : l_ReferencedChunkIndices)
+        {
+            if (it_ChunkIndex >= m_StagingChunks.size())
+            {
+                TR_CORE_ERROR("Upload queue submission referenced invalid staging chunk index {} (chunk count = {})", it_ChunkIndex, m_StagingChunks.size());
+                continue;
+            }
+
+            m_StagingChunks[it_ChunkIndex].SubmissionValue = l_SignalValue;
         }
 
         const uint32_t l_BufferOps = static_cast<uint32_t>(m_PendingBufferUploads.size());
