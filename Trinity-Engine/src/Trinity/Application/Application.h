@@ -16,8 +16,8 @@ namespace Trinity
     struct ApplicationSpecification
     {
         std::string Title = "Trinity-Application";
-        uint32_t Width = 1280;
-        uint32_t Height = 720;
+        uint32_t Width = 1920;
+        uint32_t Height = 1080;
     };
 
     class Application

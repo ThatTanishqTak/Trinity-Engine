@@ -57,7 +57,7 @@ namespace Trinity
         m_Implementation->Geometry.DeclareResources(*m_Implementation->Graph, m_Implementation->Resources);
         m_Implementation->Geometry.AddToGraph(*m_Implementation->Graph, m_Implementation->Resources, m_Implementation->PassContext);
 
-        m_Implementation->Graph->AddPass("ViewportOutput").SetType(RenderGraphPassType::Graphics).SetCullable(false).SetDebugColor(0.05f, 0.65f, 0.25f, 1.0f).Read(m_Implementation->Resources.Albedo, RenderGraphAccess::ShaderSampledRead).SetExecuteCallback([](RenderGraphContext& context)
+        m_Implementation->Graph->AddPass("ViewportOutput").SetType(RenderGraphPassType::Graphics).SetCullable(false).SetDebugColor(0.05f, 0.05f, 0.05f, 1.0f).Read(m_Implementation->Resources.Albedo, RenderGraphAccess::ShaderSampledRead).SetExecuteCallback([](RenderGraphContext& context)
         {
             (void)context;
         });

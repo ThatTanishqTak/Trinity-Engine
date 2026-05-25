@@ -9,7 +9,6 @@
 
 namespace Trinity
 {
-    static const std::vector<const char*> s_ValidationLayers = { "VK_LAYER_KHRONOS_validation" };
     static const std::vector<const char*> s_DeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
     void VulkanDevice::Initialize(const VulkanInstance& instance, bool enableValidation)
@@ -364,16 +363,8 @@ namespace Trinity
         l_CreateInfo.enabledExtensionCount = static_cast<uint32_t>(l_EnabledExtensions.size());
         l_CreateInfo.ppEnabledExtensionNames = l_EnabledExtensions.data();
         l_CreateInfo.pNext = &l_Features2;
-
-        if (enableValidation)
-        {
-            l_CreateInfo.enabledLayerCount = static_cast<uint32_t>(s_ValidationLayers.size());
-            l_CreateInfo.ppEnabledLayerNames = s_ValidationLayers.data();
-        }
-        else
-        {
-            l_CreateInfo.enabledLayerCount = 0;
-        }
+        l_CreateInfo.enabledLayerCount = 0;
+        l_CreateInfo.ppEnabledLayerNames = nullptr;
 
         VulkanUtilities::VKCheck(vkCreateDevice(m_PhysicalDevice, &l_CreateInfo, nullptr, &m_Device), "Failed vkCreateDevice");
 

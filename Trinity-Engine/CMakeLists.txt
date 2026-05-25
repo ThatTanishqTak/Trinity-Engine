@@ -212,6 +212,7 @@ endif()
 target_link_libraries(${PROJECT_NAME} PRIVATE
     yaml-cpp::yaml-cpp
     imgui
+    imguizmo
     stb::stb
     assimp
 )

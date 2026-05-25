@@ -12,6 +12,7 @@
 #include <cstdlib>
 
 #include <imgui.h>
+#include <ImGuizmo.h>
 
 namespace Trinity
 {
@@ -86,6 +87,7 @@ namespace Trinity
     {
         m_Implementation->NewFrame();
         ImGui::NewFrame();
+        ImGuizmo::BeginFrame();
         PushDockspace();
     }
 
