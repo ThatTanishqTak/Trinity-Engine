@@ -207,8 +207,7 @@ Every abstract resource has a concrete Vulkan implementation:
 `Trinity/Renderer/Passes/GeometryPass.h/.cpp` is the live pass. It owns a pipeline, a descriptor set layout (albedo + normal as combined image samplers), a sampler, default 1×1 white and default-normal textures, and the geometry shader. `DeclareResources(graph, resources)` declares the four GBuffer textures in the graph. `AddToGraph(graph, resources, context)` chains the writes and binds the execute callback. `Execute` walks the draw list, allocates a transient descriptor set per draw (writing albedo / normal samplers), and records `BindPipeline → BindDescriptorSet → BindVertexBuffer → BindIndexBuffer → PushConstants → DrawIndexed`.
 
 **Partial — closed in Phases 9 + 13:**
-- `geometry_pass.frag.glsl` writes 2 attachments (`o_Color`, `o_Normal`); the C++ pass declares 3 color attachments (Albedo, Normal, MetallicRoughnessAO). This MRT mismatch is fixed in Phase 9 as a precondition for any further work.
-- The vertex shader push-constant block declares only `Model + ViewProjection + BaseColor`; the C++ side pushes a larger `PushBlock` with `MaterialData + EmissiveColorStrength + TextureFlags`. The fragment shader needs to declare the matching block. Fixed in Phase 9.
+- As of current codebase checkpoint: `geometry_pass.frag.glsl` writes 3 outputs and `GeometryPass.cpp` binds 3 color attachments (Albedo, Normal, MetallicRoughnessAO); MRT count alignment is in place as the baseline for follow-up phase work.
 - The pass writes only `Albedo + Normal + MetallicRoughnessAO + Depth` (4 attachments). The full 6-attachment GBuffer (Emissive, Velocity) lands in Phase 13.
 - Allocating a transient descriptor set per draw per frame does not scale to 1k+ draws. Replaced by bindless in Phase 30.
 

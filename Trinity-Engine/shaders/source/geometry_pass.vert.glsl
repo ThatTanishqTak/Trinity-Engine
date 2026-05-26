@@ -10,6 +10,9 @@ layout(push_constant) uniform PushBlock
     mat4 Model;
     mat4 ViewProjection;
     vec4 BaseColor;
+    vec4 MaterialData;
+    vec4 EmissiveColorStrength;
+    vec4 TextureFlags;
 } u_Push;
 
 layout(location = 0) out vec3 v_WorldPosition;
