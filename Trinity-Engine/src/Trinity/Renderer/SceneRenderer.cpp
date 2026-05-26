@@ -21,6 +21,8 @@ namespace Trinity
         SceneRenderPassContext PassContext;
 
         GeometryPass Geometry;
+
+        RenderGraphResourceHandle SwapchainHandle;
     };
 
     SceneRenderer::SceneRenderer() = default;
@@ -57,12 +59,23 @@ namespace Trinity
         m_Implementation->Geometry.DeclareResources(*m_Implementation->Graph, m_Implementation->Resources);
         m_Implementation->Geometry.AddToGraph(*m_Implementation->Graph, m_Implementation->Resources, m_Implementation->PassContext);
 
-        m_Implementation->Graph->AddPass("ViewportOutput").SetType(RenderGraphPassType::Graphics).SetCullable(false).SetDebugColor(0.05f, 0.05f, 0.05f, 1.0f).Read(m_Implementation->Resources.Albedo, RenderGraphAccess::ShaderSampledRead).SetExecuteCallback([](RenderGraphContext& context)
-        {
-            (void)context;
-        });
+        m_Implementation->SwapchainHandle = m_Implementation->Graph->ImportTexture("SwapchainTarget", nullptr, RenderGraphAccess::TransferWrite);
 
-        m_Implementation->Graph->MarkOutput(m_Implementation->Resources.Albedo);
+        const auto l_AlbedoHandle = m_Implementation->Resources.Albedo;
+        const auto l_TargetHandle = m_Implementation->SwapchainHandle;
+
+        m_Implementation->Graph->AddPass("ViewportOutput").SetType(RenderGraphPassType::Transfer).SetCullable(false).SetDebugColor(0.05f, 0.65f, 0.25f, 1.0f).Read(l_AlbedoHandle, RenderGraphAccess::TransferRead).Write(l_TargetHandle, RenderGraphAccess::TransferWrite).SetExecuteCallback([l_AlbedoHandle, l_TargetHandle](RenderGraphContext& context)
+        {
+            auto a_Source = context.GetTexture(l_AlbedoHandle);
+            auto a_Destination = context.GetTexture(l_TargetHandle);
+
+            if (!a_Source || !a_Destination)
+            {
+                return;
+            }
+
+            context.GetCommandList().BlitTexture(a_Source, a_Destination);
+        });
 
         TR_CORE_INFO("SCENE RENDERER INITIALIZED");
     }
@@ -172,6 +185,16 @@ namespace Trinity
         }
 
         return m_Implementation->Graph->GetTexture(m_Implementation->Resources.Albedo);
+    }
+
+    void SceneRenderer::SetRenderTarget(const std::shared_ptr<Texture>& target)
+    {
+        if (!m_Implementation || !m_Implementation->Graph)
+        {
+            return;
+        }
+
+        m_Implementation->Graph->SetImportedTexture(m_Implementation->SwapchainHandle, target);
     }
 
     const SceneRendererStats& SceneRenderer::GetStats() const

@@ -15,8 +15,6 @@ target_sources(${PROJECT_NAME} PRIVATE ${TRINITY_FORGE_SOURCES})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     TrinityEngine
-    imgui
-    imguizmo
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

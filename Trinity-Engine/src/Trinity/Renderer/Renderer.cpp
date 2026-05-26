@@ -118,6 +118,16 @@ namespace Trinity
         return s_API->LoadTextureFromFile(path);
     }
 
+    std::shared_ptr<Texture> Renderer::GetSwapchainTexture()
+    {
+        if (!s_API)
+        {
+            return nullptr;
+        }
+
+        return s_API->GetSwapchainTexture();
+    }
+
     CommandList& Renderer::GetCommandList()
     {
         return s_API->GetCommandList();

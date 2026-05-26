@@ -181,7 +181,7 @@ namespace Trinity
 
         m_UploadQueue.RecordAcquireBarriers(l_CommandBuffer);
 
-        EmitSwapchainTransition(l_CommandBuffer, m_Swapchain.GetImages()[m_CurrentImageIndex], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        EmitSwapchainTransition(l_CommandBuffer, m_Swapchain.GetImages()[m_CurrentImageIndex], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
         m_FrameStarted = true;
 
@@ -197,7 +197,7 @@ namespace Trinity
 
         VkCommandBuffer l_CommandBuffer = GetCurrentCommandBuffer();
 
-        EmitSwapchainTransition(l_CommandBuffer, m_Swapchain.GetImages()[m_CurrentImageIndex], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+        EmitSwapchainTransition(l_CommandBuffer, m_Swapchain.GetImages()[m_CurrentImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
         m_CommandPool.EndCommandBuffer(m_CurrentFrameIndex);
 
@@ -366,6 +366,36 @@ namespace Trinity
         stbi_image_free(l_Pixels);
 
         return a_Texture;
+    }
+
+    std::shared_ptr<Texture> VulkanRendererAPI::GetSwapchainTexture()
+    {
+        const VkFormat l_VulkanFormat = m_Swapchain.GetImageFormat();
+        const VkExtent2D l_Extent = m_Swapchain.GetExtent();
+
+        TextureFormat l_Format = TextureFormat::BGRA8;
+        switch (l_VulkanFormat)
+        {
+            case VK_FORMAT_B8G8R8A8_SRGB:   l_Format = TextureFormat::BGRA8_SRGB; break;
+            case VK_FORMAT_B8G8R8A8_UNORM:  l_Format = TextureFormat::BGRA8;      break;
+            case VK_FORMAT_R8G8B8A8_SRGB:   l_Format = TextureFormat::RGBA8_SRGB; break;
+            case VK_FORMAT_R8G8B8A8_UNORM:  l_Format = TextureFormat::RGBA8;      break;
+            default:
+                TR_CORE_WARN("GetSwapchainTexture: unmapped VkFormat {}, defaulting to BGRA8", static_cast<int>(l_VulkanFormat));
+                break;
+        }
+
+        TextureSpecification l_Specification{};
+        l_Specification.Width = l_Extent.width;
+        l_Specification.Height = l_Extent.height;
+        l_Specification.Format = l_Format;
+        l_Specification.Usage = TextureUsage::ColorAttachment;
+        l_Specification.DebugName = "SwapchainImage";
+
+        const VkImage l_Image = m_Swapchain.GetImages()[m_CurrentImageIndex];
+        const VkImageView l_View = m_Swapchain.GetImageView(m_CurrentImageIndex);
+
+        return std::make_shared<VulkanTexture>(m_Device.GetDevice(), l_Image, l_View, l_Specification);
     }
 
     std::shared_ptr<Texture> VulkanRendererAPI::CreateTextureFromMemory(const uint8_t* data, size_t size)

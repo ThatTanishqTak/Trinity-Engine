@@ -103,6 +103,8 @@ namespace Trinity
         void Render();
         void OnResize(uint32_t width, uint32_t height);
 
+        void SetRenderTarget(const std::shared_ptr<Texture>& target);
+
         std::shared_ptr<Texture> GetFinalOutput() const;
 
         const SceneRendererStats& GetStats() const;

@@ -42,6 +42,7 @@ namespace Trinity
         std::shared_ptr<Texture> CreateTexture(const TextureSpecification& specification) override;
         std::shared_ptr<Texture> CreateTextureFromMemory(const uint8_t* data, size_t size) override;
         std::shared_ptr<Texture> LoadTextureFromFile(const std::string& path) override;
+        std::shared_ptr<Texture> GetSwapchainTexture() override;
         std::shared_ptr<Framebuffer> CreateFramebuffer(const FramebufferSpecification& specification) override;
         std::shared_ptr<Shader> CreateShader(const ShaderSpecification& specification) override;
         std::shared_ptr<Pipeline> CreatePipeline(const PipelineSpecification& specification) override;

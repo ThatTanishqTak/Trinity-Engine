@@ -116,7 +116,7 @@ namespace Trinity
     {
         RenderGraphTextureDescription l_AlbedoDescription{};
         l_AlbedoDescription.Format = TextureFormat::RGBA8;
-        l_AlbedoDescription.Usage = TextureUsage::ColorAttachment | TextureUsage::Sampled;
+        l_AlbedoDescription.Usage = TextureUsage::ColorAttachment | TextureUsage::Sampled | TextureUsage::TransferSource;
         l_AlbedoDescription.DebugName = "GeometryBuffer-Albedo";
         resources.Albedo = graph.DeclareTexture(l_AlbedoDescription);
 

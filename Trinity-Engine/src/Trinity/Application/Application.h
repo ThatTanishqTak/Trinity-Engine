@@ -11,7 +11,6 @@ namespace Trinity
 {
     class Window;
     class Event;
-    class ImGuiLayer;
 
     struct ApplicationSpecification
     {
@@ -45,7 +44,6 @@ namespace Trinity
         ApplicationSpecification m_Specification;
 
         std::unique_ptr<Window> m_Window;
-        ImGuiLayer* m_ImGuiLayer = nullptr;
 
         static Application* s_Instance;
     };

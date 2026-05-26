@@ -122,9 +122,7 @@ block()
     add_subdirectory(vendor/assimp)
 endblock()
 
-add_subdirectory(vendor/imgui)
 add_subdirectory(vendor/stb)
-add_subdirectory(vendor/imguizmo)
 
 if(Trinity_Renderer STREQUAL "Vulkan")
     add_subdirectory(vendor/VulkanMemoryAllocator)
@@ -211,8 +209,6 @@ endif()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     yaml-cpp::yaml-cpp
-    imgui
-    imguizmo
     stb::stb
     assimp
 )

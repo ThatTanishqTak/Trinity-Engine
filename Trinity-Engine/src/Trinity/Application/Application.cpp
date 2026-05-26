@@ -1,6 +1,5 @@
 #include "Trinity/Application/Application.h"
 
-#include "Trinity/ImGui/ImGuiLayer.h"
 #include "Trinity/Layer/Layer.h"
 
 #include "Trinity/Utilities/Log.h"
@@ -60,11 +59,6 @@ namespace Trinity
 #endif
 
         Renderer::Initialize(*m_Window, l_RendererSpecification);
-
-        auto a_ImGuiLayer = std::make_unique<ImGuiLayer>();
-        m_ImGuiLayer = a_ImGuiLayer.get();
-
-        PushOverlay(std::move(a_ImGuiLayer));
 
         TR_CORE_INFO("APPLICATION INITIALIZED");
     }
@@ -181,16 +175,6 @@ namespace Trinity
                 {
                     it_Layer->OnRender();
                 }
-
-                assert(m_ImGuiLayer && "ImGuiLayer not initialized");
-                m_ImGuiLayer->Begin();
-
-                for (const std::unique_ptr<Layer>& it_Layer : m_LayerStack)
-                {
-                    it_Layer->OnImGuiRender();
-                }
-
-                m_ImGuiLayer->End();
 
                 Renderer::EndFrame();
                 Renderer::Present();

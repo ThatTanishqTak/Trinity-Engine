@@ -31,6 +31,7 @@ namespace Trinity
         RenderGraphResourceHandle ImportTexture(const std::string& name, const std::shared_ptr<Texture>& texture, RenderGraphAccess initialAccess = RenderGraphAccess::ShaderSampledRead);
         RenderGraphResourceHandle ImportBuffer(const std::string& name, const std::shared_ptr<Buffer>& buffer, RenderGraphAccess initialAccess = RenderGraphAccess::StorageBufferRead);
 
+        void SetImportedTexture(RenderGraphResourceHandle handle, const std::shared_ptr<Texture>& texture);
         void MarkOutput(RenderGraphResourceHandle handle);
 
         RenderGraphPass& AddPass(const std::string& name);

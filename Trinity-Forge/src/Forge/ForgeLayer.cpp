@@ -45,6 +45,8 @@ void ForgeLayer::OnUpdate(float deltaTime)
 void ForgeLayer::OnRender()
 {
     Trinity::SceneRenderData l_SceneData{};
+
+    m_SceneRenderer.SetRenderTarget(Trinity::Renderer::GetSwapchainTexture());
     m_SceneRenderer.BeginScene(m_Camera, l_SceneData);
 
     auto& a_Registry = m_Scene.GetRegistry();
@@ -70,11 +72,6 @@ void ForgeLayer::OnRender()
 
     m_SceneRenderer.EndScene();
     m_SceneRenderer.Render();
-}
-
-void ForgeLayer::OnImGuiRender()
-{
-
 }
 
 void ForgeLayer::OnEvent(Trinity::Event& e)

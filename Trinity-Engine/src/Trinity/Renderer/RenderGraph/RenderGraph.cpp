@@ -138,6 +138,43 @@ namespace Trinity
         return l_Handle;
     }
 
+    void RenderGraph::SetImportedTexture(RenderGraphResourceHandle handle, const std::shared_ptr<Texture>& texture)
+    {
+        if (!handle.IsTexture())
+        {
+            TR_CORE_WARN("SetImportedTexture: handle is not a texture");
+            return;
+        }
+
+        if (handle.Index >= m_TextureDescriptions.size())
+        {
+            TR_CORE_WARN("SetImportedTexture: handle index {} out of range", handle.Index);
+            return;
+        }
+
+        if (!m_TextureDescriptions[handle.Index].Imported)
+        {
+            TR_CORE_WARN("SetImportedTexture: texture '{}' is not flagged as imported", m_TextureDescriptions[handle.Index].DebugName);
+            return;
+        }
+
+        m_Textures[handle.Index] = texture;
+
+        if (texture)
+        {
+            const TextureSpecification& l_Specification = texture->GetSpecification();
+            RenderGraphTextureDescription& l_Description = m_TextureDescriptions[handle.Index];
+
+            l_Description.Width = l_Specification.Width;
+            l_Description.Height = l_Specification.Height;
+            l_Description.Format = l_Specification.Format;
+            l_Description.Usage = l_Specification.Usage;
+            l_Description.MipLevels = l_Specification.MipLevels;
+            l_Description.ArrayLayers = l_Specification.ArrayLayers;
+            l_Description.SampleCount = l_Specification.Samples;
+        }
+    }
+
     void RenderGraph::MarkOutput(RenderGraphResourceHandle handle)
     {
         if (!IsValidHandle(handle))

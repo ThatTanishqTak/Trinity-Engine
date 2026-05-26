@@ -32,6 +32,7 @@ namespace Trinity
 
         static std::shared_ptr<Texture> CreateTextureFromMemory(const uint8_t* data, size_t size);
         static std::shared_ptr<Texture> LoadTextureFromFile(const std::string& path);
+        static std::shared_ptr<Texture> GetSwapchainTexture();
 
         static RendererAPI& GetAPI() { return *s_API; }
         static CommandList& GetCommandList();
