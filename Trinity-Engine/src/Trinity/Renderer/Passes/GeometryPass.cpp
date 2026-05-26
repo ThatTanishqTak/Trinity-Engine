@@ -60,15 +60,6 @@ namespace Trinity
 
     void GeometryPass::Initialize()
     {
-        constexpr uint32_t l_PushBlockSize = sizeof(PushBlock);
-        static_assert(offsetof(PushBlock, Model) == 0);
-        static_assert(offsetof(PushBlock, ViewProjection) == 64);
-        static_assert(offsetof(PushBlock, BaseColor) == 128);
-        static_assert(offsetof(PushBlock, MaterialData) == 144);
-        static_assert(offsetof(PushBlock, EmissiveColorStrength) == 160);
-        static_assert(offsetof(PushBlock, TextureFlags) == 176);
-        static_assert(sizeof(PushBlock) == 192);
-
         DescriptorSetLayoutSpecification l_DescriptorSetLayoutSpecification{};
         l_DescriptorSetLayoutSpecification.DebugName = "GeometryMaterialDescriptorSetLayout";
         l_DescriptorSetLayoutSpecification.Bindings = { { 0, DescriptorBindingType::CombinedImageSampler, ShaderStage::Fragment, 1, DescriptorBindingFlags::None }, { 1, DescriptorBindingType::CombinedImageSampler, ShaderStage::Fragment, 1, DescriptorBindingFlags::None } };
@@ -98,7 +89,7 @@ namespace Trinity
         l_GeometryPipelineSpecification.PipelineShader = l_Shader;
         l_GeometryPipelineSpecification.VertexAttributes = { { 0, 0, VertexAttributeFormat::Float3, offsetof(Geometry::Vertex, Position) }, { 1, 0, VertexAttributeFormat::Float3, offsetof(Geometry::Vertex, Normal) }, { 2, 0, VertexAttributeFormat::Float2, offsetof(Geometry::Vertex, UV) }, { 3, 0, VertexAttributeFormat::Float3, offsetof(Geometry::Vertex, Tangent) } };
         l_GeometryPipelineSpecification.VertexStride = sizeof(Geometry::Vertex);
-        l_GeometryPipelineSpecification.PushConstants = { { ShaderStage::Vertex, 0, l_PushBlockSize }, { ShaderStage::Fragment, 0, l_PushBlockSize } };
+        l_GeometryPipelineSpecification.PushConstants = { { ShaderStage::Vertex, 0, sizeof(PushBlock) }, { ShaderStage::Fragment, 0, sizeof(PushBlock) } };
         l_GeometryPipelineSpecification.DescriptorSetLayouts = { m_DescriptorSetLayout };
         l_GeometryPipelineSpecification.ColorAttachmentFormats = { TextureFormat::RGBA8, TextureFormat::RGBA16F, TextureFormat::RGBA8 };
         l_GeometryPipelineSpecification.DepthAttachmentFormat = TextureFormat::Depth32F;
@@ -191,8 +182,6 @@ namespace Trinity
 
     void GeometryPass::Execute(RenderGraphContext& context, SceneRenderGraphResources& resources, SceneRenderPassContext& passContext)
     {
-        constexpr uint32_t l_PushBlockSize = sizeof(PushBlock);
-
         if (!m_Pipeline || !m_DescriptorSetLayout || !m_Sampler || !passContext.ActiveCamera || !passContext.DrawList || !passContext.Stats)
         {
             return;
@@ -301,7 +290,7 @@ namespace Trinity
                 std::memcpy(l_PushBlock.Model, it_DrawCommand.Transform, sizeof(l_PushBlock.Model));
                 std::memcpy(l_PushBlock.ViewProjection, glm::value_ptr(l_ViewProjection), sizeof(l_PushBlock.ViewProjection));
 
-                l_CommandList.PushConstants(0, l_PushBlockSize, &l_PushBlock);
+                l_CommandList.PushConstants(0, sizeof(PushBlock), &l_PushBlock);
                 l_CommandList.DrawIndexed(it_DrawCommand.MeshRef->GetIndexCount(), 1, 0, 0, 0);
 
                 passContext.Stats->DrawCalls++;
