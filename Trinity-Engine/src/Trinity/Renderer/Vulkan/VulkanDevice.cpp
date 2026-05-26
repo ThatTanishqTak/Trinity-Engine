@@ -228,6 +228,8 @@ namespace Trinity
             { "synchronization2", l_Features13Supported.synchronization2 == VK_TRUE },
             { "dynamicRendering", l_Features13Supported.dynamicRendering == VK_TRUE },
             { "descriptorBindingUpdateUnusedWhilePending", l_Features12Supported.descriptorBindingUpdateUnusedWhilePending == VK_TRUE },
+            { "descriptorBindingStorageBufferUpdateAfterBind", l_Features12Supported.descriptorBindingStorageBufferUpdateAfterBind == VK_TRUE },
+            { "shaderInt16", l_FeaturesSupported.features.shaderInt16 == VK_TRUE },
         };
 
         bool l_AllSupported = true;
@@ -287,6 +289,7 @@ namespace Trinity
         l_Features12.bufferDeviceAddress = VK_TRUE;
         l_Features12.descriptorIndexing = VK_TRUE;
         l_Features12.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
+        l_Features12.descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE;
         l_Features12.descriptorBindingPartiallyBound = VK_TRUE;
         l_Features12.descriptorBindingVariableDescriptorCount = VK_TRUE;
         l_Features12.runtimeDescriptorArray = VK_TRUE;
@@ -353,6 +356,7 @@ namespace Trinity
         l_Features2.features.shaderInt64 = VK_TRUE;
         l_Features2.features.multiDrawIndirect = VK_TRUE;
         l_Features2.features.drawIndirectFirstInstance = VK_TRUE;
+        l_Features2.features.shaderInt16 = VK_TRUE;
         l_Features2.pNext = &l_Features12;
 
         VkDeviceCreateInfo l_CreateInfo{};
@@ -374,31 +378,53 @@ namespace Trinity
         if (m_QueueFamilyIndices.ComputeFamily.has_value())
         {
             vkGetDeviceQueue(m_Device, m_QueueFamilyIndices.ComputeFamily.value(), 0, &m_ComputeQueue);
-            m_HasDedicatedCompute = true;
+            m_Features.DedicatedComputeQueue = true;
         }
         else
         {
             m_ComputeQueue = m_GraphicsQueue;
-            m_HasDedicatedCompute = false;
+            m_Features.DedicatedComputeQueue = false;
         }
 
         if (m_QueueFamilyIndices.TransferFamily.has_value())
         {
             vkGetDeviceQueue(m_Device, m_QueueFamilyIndices.TransferFamily.value(), 0, &m_TransferQueue);
-            m_HasDedicatedTransfer = true;
+            m_Features.DedicatedTransferQueue = true;
         }
         else
         {
             m_TransferQueue = m_GraphicsQueue;
-            m_HasDedicatedTransfer = false;
+            m_Features.DedicatedTransferQueue = false;
         }
 
-        m_HasTimelineSemaphore = true;
-        m_HasRayTracing = l_EnableRayTracing;
-        m_HasMeshShaders = l_EnableMeshShader;
-        m_HasFragmentShadingRate = l_EnableFragmentShadingRate;
+        m_Features.DynamicRendering = true;
+        m_Features.Synchronization2 = true;
+        m_Features.BufferDeviceAddress = true;
+        m_Features.DescriptorIndexing = true;
+        m_Features.DescriptorBindingPartiallyBound = true;
+        m_Features.DescriptorBindingSampledImageUpdateAfterBind = true;
+        m_Features.DescriptorBindingStorageBufferUpdateAfterBind = true;
+        m_Features.DescriptorBindingVariableDescriptorCount = true;
+        m_Features.DescriptorBindingUpdateUnusedWhilePending = true;
+        m_Features.RuntimeDescriptorArray = true;
+        m_Features.ShaderSampledImageArrayNonUniformIndexing = true;
+        m_Features.TimelineSemaphore = true;
+        m_Features.ScalarBlockLayout = true;
+        m_Features.ShaderInt64 = true;
+        m_Features.DrawIndirectCount = true;
+        m_Features.HostQueryReset = true;
+        m_Features.SamplerAnisotropy = true;
+        m_Features.MultiDrawIndirect = true;
+        m_Features.DrawIndirectFirstInstance = true;
+        m_Features.ShaderInt16 = true;
+        m_Features.FillModeNonSolid = true;
+        m_Features.WideLines = true;
+        m_Features.GeometryShader = true;
+        m_Features.RayTracing = l_EnableRayTracing;
+        m_Features.MeshShaders = l_EnableMeshShader;
+        m_Features.FragmentShadingRate = l_EnableFragmentShadingRate;
 
-        TR_CORE_TRACE("Logical Device Created (GraphicsFamily = {}, ComputeFamily = {}, TransferFamily = {}, DedicatedCompute = {}, DedicatedTransfer = {}, TimelineSemaphore = {}, RayTracing = {}, MeshShaders = {}, FragmentShadingRate = {})", m_QueueFamilyIndices.GraphicsFamily.value(), GetComputeQueueFamily(), GetTransferQueueFamily(), m_HasDedicatedCompute, m_HasDedicatedTransfer, m_HasTimelineSemaphore, m_HasRayTracing, m_HasMeshShaders, m_HasFragmentShadingRate);
+        TR_CORE_TRACE("Logical Device Created (GraphicsFamily = {}, ComputeFamily = {}, TransferFamily = {}, DedicatedCompute = {}, DedicatedTransfer = {}, TimelineSemaphore = {}, ShaderInt16 = {}, StorageBufferUpdateAfterBind = {}, RayTracing = {}, MeshShaders = {}, FragmentShadingRate = {})", m_QueueFamilyIndices.GraphicsFamily.value(), GetComputeQueueFamily(), GetTransferQueueFamily(), m_Features.DedicatedComputeQueue, m_Features.DedicatedTransferQueue, m_Features.TimelineSemaphore, m_Features.ShaderInt16, m_Features.DescriptorBindingStorageBufferUpdateAfterBind, m_Features.RayTracing, m_Features.MeshShaders, m_Features.FragmentShadingRate);
     }
 
     QueueFamilyIndices VulkanDevice::FindQueueFamilies(VkPhysicalDevice device) const

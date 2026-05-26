@@ -30,6 +30,42 @@ namespace Trinity
         std::vector<VkPresentModeKHR> PresentModes;
     };
 
+    struct VulkanDeviceFeatures
+    {
+        bool DynamicRendering = false;
+        bool Synchronization2 = false;
+
+        bool BufferDeviceAddress = false;
+        bool DescriptorIndexing = false;
+        bool DescriptorBindingPartiallyBound = false;
+        bool DescriptorBindingSampledImageUpdateAfterBind = false;
+        bool DescriptorBindingStorageBufferUpdateAfterBind = false;
+        bool DescriptorBindingVariableDescriptorCount = false;
+        bool DescriptorBindingUpdateUnusedWhilePending = false;
+        bool RuntimeDescriptorArray = false;
+        bool ShaderSampledImageArrayNonUniformIndexing = false;
+        bool TimelineSemaphore = false;
+        bool ScalarBlockLayout = false;
+        bool ShaderInt64 = false;
+        bool DrawIndirectCount = false;
+        bool HostQueryReset = false;
+
+        bool SamplerAnisotropy = false;
+        bool MultiDrawIndirect = false;
+        bool DrawIndirectFirstInstance = false;
+        bool ShaderInt16 = false;
+        bool FillModeNonSolid = false;
+        bool WideLines = false;
+        bool GeometryShader = false;
+
+        bool DedicatedComputeQueue = false;
+        bool DedicatedTransferQueue = false;
+
+        bool RayTracing = false;
+        bool MeshShaders = false;
+        bool FragmentShadingRate = false;
+    };
+
     class VulkanDevice
     {
     public:
@@ -54,13 +90,15 @@ namespace Trinity
         uint32_t GetComputeQueueFamily() const { return m_QueueFamilyIndices.ComputeFamily.value_or(GetGraphicsQueueFamily()); }
         uint32_t GetTransferQueueFamily() const { return m_QueueFamilyIndices.TransferFamily.value_or(GetGraphicsQueueFamily()); }
 
-        bool HasDedicatedComputeQueue() const { return m_HasDedicatedCompute; }
-        bool HasDedicatedTransferQueue() const { return m_HasDedicatedTransfer; }
-        bool HasTimelineSemaphore() const { return m_HasTimelineSemaphore; }
+        bool HasDedicatedComputeQueue() const { return m_Features.DedicatedComputeQueue; }
+        bool HasDedicatedTransferQueue() const { return m_Features.DedicatedTransferQueue; }
+        bool HasTimelineSemaphore() const { return m_Features.TimelineSemaphore; }
 
-        bool SupportsRayTracing() const { return m_HasRayTracing; }
-        bool SupportsMeshShaders() const { return m_HasMeshShaders; }
-        bool SupportsFragmentShadingRate() const { return m_HasFragmentShadingRate; }
+        bool SupportsRayTracing() const { return m_Features.RayTracing; }
+        bool SupportsMeshShaders() const { return m_Features.MeshShaders; }
+        bool SupportsFragmentShadingRate() const { return m_Features.FragmentShadingRate; }
+
+        const VulkanDeviceFeatures& GetFeatures() const { return m_Features; }
 
         const QueueFamilyIndices& GetQueueFamilyIndices() const { return m_QueueFamilyIndices; }
         const VkPhysicalDeviceProperties& GetProperties() const { return m_Properties; }
@@ -85,13 +123,7 @@ namespace Trinity
         VkQueue m_ComputeQueue = VK_NULL_HANDLE;
         VkQueue m_TransferQueue = VK_NULL_HANDLE;
 
-        bool m_HasDedicatedCompute = false;
-        bool m_HasDedicatedTransfer = false;
-        bool m_HasTimelineSemaphore = false;
-
-        bool m_HasRayTracing = false;
-        bool m_HasMeshShaders = false;
-        bool m_HasFragmentShadingRate = false;
+        VulkanDeviceFeatures m_Features;
 
         QueueFamilyIndices m_QueueFamilyIndices;
         VkPhysicalDeviceProperties m_Properties{};
