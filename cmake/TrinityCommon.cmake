@@ -96,6 +96,10 @@ function(trinity_apply_common_settings TARGET_NAME)
             TRINITY_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
             TRINITY_VERSION_MINOR=${PROJECT_VERSION_MINOR}
             TRINITY_VERSION_PATCH=${PROJECT_VERSION_PATCH}
+            $<$<CONFIG:Debug>:TRINITY_DEBUG>
+            $<$<CONFIG:Release>:TRINITY_RELEASE>
+            $<$<CONFIG:RelWithDebInfo>:TRINITY_RELEASE>
+            $<$<CONFIG:MinSizeRel>:TRINITY_RELEASE>
     )
 
     if(MSVC)

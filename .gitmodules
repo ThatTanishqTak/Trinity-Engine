@@ -1,0 +1,9 @@
+[submodule "Vendor/spdlog"]
+	path = Vendor/spdlog
+	url = https://github.com/ThatTanishqTak/spdlog.git
+[submodule "Vendor/yaml-cpp"]
+	path = Vendor/yaml-cpp
+	url = https://github.com/ThatTanishqTak/yaml-cpp.git
+[submodule "Vendor/SDL"]
+	path = Vendor/SDL
+	url = https://github.com/ThatTanishqTak/SDL.git
