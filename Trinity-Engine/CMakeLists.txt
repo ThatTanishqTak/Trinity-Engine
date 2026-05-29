@@ -37,6 +37,19 @@ if(TRINITY_ENABLE_SDL)
     )
 endif()
 
+if(TRINITY_ENABLE_VULKAN)
+    target_link_libraries(Trinity-Engine
+        PRIVATE
+            Vulkan::Vulkan
+            VulkanMemoryAllocator
+    )
+
+    target_compile_definitions(Trinity-Engine
+        PRIVATE
+            TRINITY_ENABLE_VULKAN
+    )
+endif()
+
 add_library(Trinity::Engine ALIAS Trinity-Engine)
 
 trinity_set_ide_folder(Trinity-Engine "Trinity/Engine")

@@ -6,6 +6,7 @@
 #include <Trinity/Core/Engine.h>
 #include <Trinity/Platform/IPlatform.h>
 #include <Trinity/Platform/Events/ApplicationEvent.h>
+#include <Trinity/Renderer/Backends/Vulkan/VulkanDevice.h>
 
 namespace Trinity
 {
@@ -13,10 +14,14 @@ namespace Trinity
 
     Application::Application(const ApplicationSpecification& specification) : m_Specification(specification)
     {
-        TR_CORE_ASSERT(s_Instance == nullptr, "Application already exists");
+        TR_CORE_ASSERT(s_Instance == nullptr, "[APPLICATION]: Application already exist");
         s_Instance = this;
 
+        TR_CORE_INFO("[APPLICATION]: INITIALIZING APPLICATION");
+
         m_Engine = std::make_unique<Engine>();
+
+        TR_CORE_INFO("[APPLICATION]: APPLICATION INITIALIZED");
     }
 
     Application::~Application()
@@ -26,18 +31,25 @@ namespace Trinity
 
     void Application::Run()
     {
-        TR_CORE_INFO("Starting '{}'", m_Specification.InternalName);
-
         if (!m_Engine->Initialize(m_Specification.InternalName))
         {
-            TR_CORE_CRITICAL("Application: engine failed to initialize, aborting");
+            TR_CORE_CRITICAL("[Application]: Failed to initialize engine");
             return;
         }
 
         if (m_Specification.CreateWindowOnStartup)
         {
             m_Window = &m_Engine->GetPlatform().CreateWindow(m_Specification.Window);
-            m_Window->SetEventCallback([this](Event& event) { OnEvent(event); });
+            m_Window->SetEventCallback([this](Event& event)
+            {
+                OnEvent(event);
+            });
+
+            if (!m_Engine->InitializeRenderer(m_Window->GetNativeHandle(), m_Specification.InternalName))
+            {
+                TR_CORE_CRITICAL("[Application]: Failed to initialized renderer");
+                return;
+            }
         }
 
         OnInitialize();
@@ -57,13 +69,22 @@ namespace Trinity
             {
                 m_Engine->Update(l_Timestep);
                 OnUpdate(l_Timestep);
+
+                if (m_Engine->HasDevice() && m_Engine->GetDevice().HasSwapchain())
+                {
+                    if (m_SwapchainDirty)
+                    {
+                        m_Engine->GetDevice().GetSwapchain().Resize(m_PendingWidth, m_PendingHeight);
+                        m_SwapchainDirty = false;
+                    }
+
+                    m_Engine->GetDevice().GetSwapchain().RenderFrame(0.05f, 0.05f, 0.05f);
+                }
             }
         }
 
         OnShutdown();
         m_Engine->Shutdown();
-
-        TR_CORE_INFO("Stopped '{}'", m_Specification.InternalName);
     }
 
     void Application::Close()
@@ -89,7 +110,18 @@ namespace Trinity
 
     bool Application::OnWindowResize(WindowResizeEvent& event)
     {
-        m_Minimized = (event.GetWidth() == 0 || event.GetHeight() == 0);
+        const uint32_t l_Width = event.GetWidth();
+        const uint32_t l_Height = event.GetHeight();
+
+        m_Minimized = (l_Width == 0 || l_Height == 0);
+
+        if (!m_Minimized)
+        {
+            m_PendingWidth = l_Width;
+            m_PendingHeight = l_Height;
+
+            m_SwapchainDirty = true;
+        }
 
         return false;
     }

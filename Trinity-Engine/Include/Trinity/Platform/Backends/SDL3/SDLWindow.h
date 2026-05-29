@@ -43,10 +43,13 @@ namespace Trinity
         struct WindowData
         {
             std::string Title;
+            
             uint32_t Width = 0;
             uint32_t Height = 0;
+            
             bool VSync = true;
             bool Minimized = false;
+            
             EventCallback Callback;
         };
 

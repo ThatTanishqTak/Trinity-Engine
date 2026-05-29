@@ -52,6 +52,7 @@ set(SPDLOG_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(SPDLOG_INSTALL OFF CACHE BOOL "" FORCE)
 
 add_subdirectory(Vendor/spdlog)
+target_include_directories(spdlog SYSTEM INTERFACE "${CMAKE_SOURCE_DIR}/Vendor/spdlog/include")
 trinity_set_ide_folder(spdlog "Trinity/Vendor")
 
 set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
@@ -61,6 +62,7 @@ set(YAML_CPP_INSTALL OFF CACHE BOOL "" FORCE)
 set(YAML_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
 add_subdirectory(Vendor/yaml-cpp)
+target_include_directories(yaml-cpp SYSTEM INTERFACE "${CMAKE_SOURCE_DIR}/Vendor/yaml-cpp/include")
 trinity_set_ide_folder(yaml-cpp "Trinity/Vendor")
 
 if(TRINITY_ENABLE_SDL)
@@ -73,6 +75,16 @@ if(TRINITY_ENABLE_SDL)
 
     add_subdirectory(Vendor/SDL)
     trinity_set_ide_folder(SDL3-static "Trinity/Vendor")
+endif()
+
+if(TRINITY_ENABLE_VULKAN)
+    find_package(Vulkan REQUIRED)
+
+    add_library(VulkanMemoryAllocator INTERFACE)
+    target_include_directories(VulkanMemoryAllocator SYSTEM INTERFACE "${CMAKE_SOURCE_DIR}/Vendor/VulkanMemoryAllocator/include")
+    target_link_libraries(VulkanMemoryAllocator INTERFACE Vulkan::Vulkan)
+
+    trinity_set_ide_folder(VulkanMemoryAllocator "Trinity/Vendor")
 endif()
 
 if(TRINITY_BUILD_ENGINE)

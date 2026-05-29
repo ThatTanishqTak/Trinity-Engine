@@ -5,7 +5,7 @@ namespace Trinity
     class Timestep
     {
     public:
-        Timestep(float a_Seconds = 0.0f) : m_Seconds(a_Seconds)
+        Timestep(float second = 0.0f) : m_Seconds(second)
         {
 
         }

@@ -24,12 +24,8 @@ namespace Trinity
     {
         switch (base)
         {
-            case BaseDirectory::Executable:
-                return m_BasePath;
-
-            case BaseDirectory::Working:
-                return std::filesystem::current_path();
-
+            case BaseDirectory::Executable: return m_BasePath;
+            case BaseDirectory::Working: return std::filesystem::current_path();
             case BaseDirectory::Temp:
             {
                 std::error_code l_Error;
@@ -52,14 +48,10 @@ namespace Trinity
 
                 switch (base)
                 {
-                    case BaseDirectory::UserData:
-                        return l_Root / "Data";
-                    case BaseDirectory::UserConfig:
-                        return l_Root / "Config";
-                    case BaseDirectory::UserCache:
-                        return l_Root / "Cache";
-                    default:
-                        return l_Root;
+                    case BaseDirectory::UserData: return l_Root / "Data";
+                    case BaseDirectory::UserConfig: return l_Root / "Config";
+                    case BaseDirectory::UserCache: return l_Root / "Cache";
+                    default: return l_Root;
                 }
             }
         }

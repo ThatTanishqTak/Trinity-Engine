@@ -27,7 +27,9 @@ namespace Trinity
     struct ApplicationSpecification
     {
         std::string InternalName = "Trinity Application";
+        
         bool CreateWindowOnStartup = true;
+        
         WindowProperties Window;
         CommandLineArgs Arguments;
     };
@@ -58,14 +60,17 @@ namespace Trinity
         {
 
         }
+
         virtual void OnUpdate(Timestep)
         {
 
         }
+        
         virtual void OnShutdown()
         {
 
         }
+        
         virtual void OnEvent(Event&, bool)
         {
 
@@ -78,8 +83,13 @@ namespace Trinity
         ApplicationSpecification m_Specification;
         std::unique_ptr<Engine> m_Engine;
         Window* m_Window = nullptr;
+
         bool m_Running = true;
         bool m_Minimized = false;
+        bool m_SwapchainDirty = false;
+
+        uint32_t m_PendingWidth = 0;
+        uint32_t m_PendingHeight = 0;
 
         static Application* s_Instance;
     };

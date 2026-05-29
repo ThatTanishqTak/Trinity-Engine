@@ -7,3 +7,6 @@
 [submodule "Vendor/SDL"]
 	path = Vendor/SDL
 	url = https://github.com/ThatTanishqTak/SDL.git
+[submodule "Vendor/VulkanMemoryAllocator"]
+	path = Vendor/VulkanMemoryAllocator
+	url = https://github.com/ThatTanishqTak/VulkanMemoryAllocator.git

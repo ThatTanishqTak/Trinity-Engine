@@ -27,6 +27,7 @@ namespace Trinity
     struct NativeWindowHandle
     {
         NativeHandleType Type = NativeHandleType::None;
+        
         void* Handle = nullptr;
         void* Display = nullptr;
 

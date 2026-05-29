@@ -57,9 +57,9 @@ namespace Trinity
     class KeyTypedEvent : public KeyEvent
     {
     public:
-        KeyTypedEvent(KeyCode keyCode)
-            : KeyEvent(keyCode)
+        KeyTypedEvent(KeyCode keyCode) : KeyEvent(keyCode)
         {
+
         }
 
         std::string ToString() const override { return "KeyTypedEvent: " + std::to_string(m_KeyCode); }

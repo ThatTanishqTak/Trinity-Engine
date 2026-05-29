@@ -29,7 +29,9 @@ namespace Trinity
         struct Slot
         {
             SDL_Gamepad* Handle = nullptr;
+            
             uint32_t InstanceID = 0;
+            
             bool Connected = false;
         };
 
