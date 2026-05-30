@@ -23,6 +23,7 @@ target_link_libraries(Trinity-Engine
     PUBLIC
         spdlog::spdlog
         yaml-cpp::yaml-cpp
+        glm
 )
 
 if(TRINITY_ENABLE_SDL)

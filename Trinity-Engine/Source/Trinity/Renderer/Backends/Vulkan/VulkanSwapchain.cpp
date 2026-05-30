@@ -127,29 +127,29 @@ namespace Trinity
         m_CurrentFrame = (m_CurrentFrame + 1) % MaxFramesInFlight;
     }
 
-    void VulkanSwapchain::TransitionImageLayout(VkCommandBuffer a_Cmd, VkImage a_Image, VkImageLayout a_From, VkImageLayout a_To)
+    void VulkanSwapchain::TransitionImageLayout(VkCommandBuffer command, VkImage image, VkImageLayout from, VkImageLayout to)
     {
         VkImageMemoryBarrier2 l_Barrier{};
         l_Barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-        l_Barrier.oldLayout = a_From;
-        l_Barrier.newLayout = a_To;
+        l_Barrier.oldLayout = from;
+        l_Barrier.newLayout = to;
         l_Barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         l_Barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        l_Barrier.image = a_Image;
+        l_Barrier.image = image;
         l_Barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         l_Barrier.subresourceRange.baseMipLevel = 0;
         l_Barrier.subresourceRange.levelCount = 1;
         l_Barrier.subresourceRange.baseArrayLayer = 0;
         l_Barrier.subresourceRange.layerCount = 1;
 
-        if (a_From == VK_IMAGE_LAYOUT_UNDEFINED && a_To == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+        if (from == VK_IMAGE_LAYOUT_UNDEFINED && to == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
         {
             l_Barrier.srcStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
             l_Barrier.srcAccessMask = 0;
             l_Barrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
             l_Barrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
         }
-        else if (a_From == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL && a_To == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+        else if (from == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL && to == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
         {
             l_Barrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
             l_Barrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
@@ -162,7 +162,7 @@ namespace Trinity
         l_DepInfo.imageMemoryBarrierCount = 1;
         l_DepInfo.pImageMemoryBarriers = &l_Barrier;
 
-        vkCmdPipelineBarrier2(a_Cmd, &l_DepInfo);
+        vkCmdPipelineBarrier2(command, &l_DepInfo);
     }
 
     void VulkanSwapchain::RenderFrame(float red, float green, float blue)

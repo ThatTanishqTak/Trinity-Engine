@@ -2,12 +2,76 @@
 
 #include <set>
 #include <vector>
+#include <cstring>
+#include <array>
 
 #include <Trinity/Renderer/Backends/Vulkan/VulkanSwapchain.h>
+#include <Trinity/Renderer/Backends/Vulkan/VulkanUtilities.h>
+#include <Trinity/Renderer/Backends/Vulkan/VulkanCommandList.h>
 #include <Trinity/Core/Log.h>
 
 namespace Trinity
 {
+    static bool UploadViaStaging(VmaAllocator allocator, VulkanCommands& commands, VkBuffer destination, const void* data, uint64_t size, uint64_t destinationOffset)
+    {
+        VkBufferCreateInfo l_StagingInfo{};
+        l_StagingInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        l_StagingInfo.size = size;
+        l_StagingInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        l_StagingInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        VmaAllocationCreateInfo l_StagingAllocation{};
+        l_StagingAllocation.usage = VMA_MEMORY_USAGE_AUTO;
+        l_StagingAllocation.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
+        VkBuffer l_StagingBuffer = VK_NULL_HANDLE;
+        VmaAllocation l_StagingMemory = VK_NULL_HANDLE;
+        VmaAllocationInfo l_StagingResult{};
+
+        if (vmaCreateBuffer(allocator, &l_StagingInfo, &l_StagingAllocation, &l_StagingBuffer, &l_StagingMemory, &l_StagingResult) != VK_SUCCESS)
+        {
+            return false;
+        }
+
+        std::memcpy(l_StagingResult.pMappedData, data, static_cast<size_t>(size));
+
+        commands.ImmediateSubmit([&](VkCommandBuffer commandBuffer)
+        {
+            VkBufferCopy l_Region{};
+            l_Region.srcOffset = 0;
+            l_Region.dstOffset = destinationOffset;
+            l_Region.size = size;
+            vkCmdCopyBuffer(commandBuffer, l_StagingBuffer, destination, 1, &l_Region);
+        });
+
+        vmaDestroyBuffer(allocator, l_StagingBuffer, l_StagingMemory);
+
+        return true;
+    }
+
+    static VkImageAspectFlags DetermineAspect(Format format)
+    {
+        switch (format)
+        {
+            case Format::D32_SFLOAT: return VK_IMAGE_ASPECT_DEPTH_BIT;
+            case Format::D24_UNORM_S8_UINT:
+            case Format::D32_SFLOAT_S8_UINT: return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+            default: return VK_IMAGE_ASPECT_COLOR_BIT;
+        }
+    }
+
+    static VkImageViewType DetermineViewType(TextureType type)
+    {
+        switch (type)
+        {
+            case TextureType::Texture2DArray: return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+            case TextureType::TextureCube: return VK_IMAGE_VIEW_TYPE_CUBE;
+            case TextureType::Texture3D: return VK_IMAGE_VIEW_TYPE_3D;
+            case TextureType::Texture2D:
+            default: return VK_IMAGE_VIEW_TYPE_2D;
+        }
+    }
+
     VulkanDevice::VulkanDevice(const NativeWindowHandle& window, const std::string& applicationName, bool enableValidation) : m_Window(window), m_ApplicationName(applicationName), m_EnableValidation(enableValidation)
     {
 
@@ -134,16 +198,135 @@ namespace Trinity
         m_Initialized = false;
     }
 
-    BufferHandle VulkanDevice::CreateBuffer(const BufferDescription&)
+    BufferHandle VulkanDevice::CreateBuffer(const BufferDescription& description)
     {
-        TR_CORE_WARN("VulkanDevice: CreateBuffer not yet implemented");
-        return BufferHandle();
+        const bool l_DeviceLocal = description.Memory == MemoryUsage::GpuOnly;
+
+        VkBufferUsageFlags l_Usage = VulkanUtilities::ToVkBufferUsage(description.Usage);
+        if (l_DeviceLocal)
+        {
+            l_Usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        }
+
+        VkBufferCreateInfo l_BufferCreateInfo{};
+        l_BufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        l_BufferCreateInfo.size = description.Size;
+        l_BufferCreateInfo.usage = l_Usage;
+        l_BufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        VulkanUtilities::VmaAllocationParameters l_Parameters = VulkanUtilities::ToVmaAllocation(description.Memory);
+
+        VmaAllocationCreateInfo l_AllocationCreateInfo{};
+        l_AllocationCreateInfo.usage = l_Parameters.Usage;
+        l_AllocationCreateInfo.flags = l_Parameters.Flags;
+
+        VulkanBufferResource l_Resource{};
+        l_Resource.Size = description.Size;
+        l_Resource.Usage = description.Usage;
+        l_Resource.Memory = description.Memory;
+
+        VmaAllocationInfo l_Result{};
+        if (vmaCreateBuffer(m_Allocator.GetHandle(), &l_BufferCreateInfo, &l_AllocationCreateInfo, &l_Resource.Buffer, &l_Resource.Allocation, &l_Result) != VK_SUCCESS)
+        {
+            TR_CORE_ERROR("VulkanDevice: vmaCreateBuffer failed");
+            return BufferHandle();
+        }
+
+        l_Resource.Mapped = l_Result.pMappedData;
+
+        if (description.InitialData != nullptr)
+        {
+            if (l_DeviceLocal)
+            {
+                if (!UploadViaStaging(m_Allocator.GetHandle(), m_Commands, l_Resource.Buffer, description.InitialData, description.Size, 0))
+                {
+                    TR_CORE_ERROR("VulkanDevice: buffer staging upload failed");
+                    vmaDestroyBuffer(m_Allocator.GetHandle(), l_Resource.Buffer, l_Resource.Allocation);
+
+                    return BufferHandle();
+                }
+            }
+            else if (l_Resource.Mapped != nullptr)
+            {
+                std::memcpy(l_Resource.Mapped, description.InitialData, static_cast<size_t>(description.Size));
+            }
+        }
+
+        return m_Buffers.Allocate(l_Resource);
     }
 
-    TextureHandle VulkanDevice::CreateTexture(const TextureDescription&)
+    TextureHandle VulkanDevice::CreateTexture(const TextureDescription& description)
     {
-        TR_CORE_WARN("VulkanDevice: CreateTexture not yet implemented");
-        return TextureHandle();
+        VkFormat l_Format = VulkanUtilities::ToVkFormat(description.Format);
+        if (l_Format == VK_FORMAT_UNDEFINED)
+        {
+            TR_CORE_ERROR("VulkanDevice: unsupported texture format");
+            return TextureHandle();
+        }
+
+        uint32_t l_ArrayLayers = description.ArrayLayers;
+        VkImageCreateFlags l_ImageCreateFlags = 0;
+        if (description.Type == TextureType::TextureCube)
+        {
+            l_ArrayLayers = description.ArrayLayers * 6;
+            l_ImageCreateFlags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+        }
+
+        VkImageCreateInfo l_ImageCreateInfo{};
+        l_ImageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        l_ImageCreateInfo.flags = l_ImageCreateFlags;
+        l_ImageCreateInfo.imageType = description.Type == TextureType::Texture3D ? VK_IMAGE_TYPE_3D : VK_IMAGE_TYPE_2D;
+        l_ImageCreateInfo.format = l_Format;
+        l_ImageCreateInfo.extent = { description.Width, description.Height, description.Depth };
+        l_ImageCreateInfo.mipLevels = description.MipLevels;
+        l_ImageCreateInfo.arrayLayers = l_ArrayLayers;
+        l_ImageCreateInfo.samples = static_cast<VkSampleCountFlagBits>(description.SampleCount);
+        l_ImageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+        l_ImageCreateInfo.usage = VulkanUtilities::ToVkImageUsage(description.Usage);
+        l_ImageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        l_ImageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+        VmaAllocationCreateInfo l_AllocationCreateInfo{};
+        l_AllocationCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
+
+        VulkanTextureResource l_Resource{};
+        l_Resource.Format = l_Format;
+        l_Resource.Extent = l_ImageCreateInfo.extent;
+        l_Resource.Aspect = DetermineAspect(description.Format);
+        l_Resource.OwnsImage = true;
+        l_Resource.OwnsView = true;
+
+        if (vmaCreateImage(m_Allocator.GetHandle(), &l_ImageCreateInfo, &l_AllocationCreateInfo, &l_Resource.Image, &l_Resource.Allocation, nullptr) != VK_SUCCESS)
+        {
+            TR_CORE_ERROR("VulkanDevice: vmaCreateImage failed");
+            return TextureHandle();
+        }
+
+        VkImageViewCreateInfo l_ViewCreateInfo{};
+        l_ViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        l_ViewCreateInfo.image = l_Resource.Image;
+        l_ViewCreateInfo.viewType = DetermineViewType(description.Type);
+        l_ViewCreateInfo.format = l_Format;
+        l_ViewCreateInfo.subresourceRange.aspectMask = l_Resource.Aspect;
+        l_ViewCreateInfo.subresourceRange.baseMipLevel = 0;
+        l_ViewCreateInfo.subresourceRange.levelCount = description.MipLevels;
+        l_ViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+        l_ViewCreateInfo.subresourceRange.layerCount = l_ArrayLayers;
+
+        if (vkCreateImageView(m_Device, &l_ViewCreateInfo, nullptr, &l_Resource.View) != VK_SUCCESS)
+        {
+            TR_CORE_ERROR("VulkanDevice: vkCreateImageView failed");
+            vmaDestroyImage(m_Allocator.GetHandle(), l_Resource.Image, l_Resource.Allocation);
+
+            return TextureHandle();
+        }
+
+        if (description.InitialData != nullptr)
+        {
+            TR_CORE_WARN("VulkanDevice: texture initial-data upload arrives with texturing (Milestone 13)");
+        }
+
+        return m_Textures.Allocate(l_Resource);
     }
 
     SamplerHandle VulkanDevice::CreateSampler(const SamplerDescription&)
@@ -152,16 +335,182 @@ namespace Trinity
         return SamplerHandle();
     }
 
-    ShaderHandle VulkanDevice::CreateShader(const ShaderDescription&)
+    ShaderHandle VulkanDevice::CreateShader(const ShaderDescription& description)
     {
-        TR_CORE_WARN("VulkanDevice: CreateShader not yet implemented");
-        return ShaderHandle();
+        if (description.Bytecode.empty() || (description.Bytecode.size() % 4) != 0)
+        {
+            TR_CORE_ERROR("VulkanDevice: shader bytecode is empty or not 4-byte aligned");
+            return ShaderHandle();
+        }
+
+        VkShaderModuleCreateInfo l_ModuleCreateInfo{};
+        l_ModuleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        l_ModuleCreateInfo.codeSize = description.Bytecode.size();
+        l_ModuleCreateInfo.pCode = reinterpret_cast<const uint32_t*>(description.Bytecode.data());
+
+        VulkanShaderResource l_Resource{};
+        l_Resource.Stage = description.Stage;
+        l_Resource.EntryPoint = description.EntryPoint;
+
+        if (vkCreateShaderModule(m_Device, &l_ModuleCreateInfo, nullptr, &l_Resource.Module) != VK_SUCCESS)
+        {
+            TR_CORE_ERROR("VulkanDevice: vkCreateShaderModule failed");
+            return ShaderHandle();
+        }
+
+        return m_Shaders.Allocate(l_Resource);
     }
 
-    PipelineHandle VulkanDevice::CreatePipeline(const PipelineDescription&)
+    PipelineHandle VulkanDevice::CreatePipeline(const PipelineDescription& description)
     {
-        TR_CORE_WARN("VulkanDevice: CreatePipeline not yet implemented");
-        return PipelineHandle();
+        VulkanShaderResource* l_Vertex = m_Shaders.Get(description.VertexShader);
+        VulkanShaderResource* l_Fragment = m_Shaders.Get(description.FragmentShader);
+        if (l_Vertex == nullptr || l_Fragment == nullptr)
+        {
+            TR_CORE_ERROR("VulkanDevice: pipeline requires valid vertex and fragment shaders");
+            return PipelineHandle();
+        }
+
+        std::array<VkPipelineShaderStageCreateInfo, 2> l_Stages{};
+        l_Stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        l_Stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+        l_Stages[0].module = l_Vertex->Module;
+        l_Stages[0].pName = l_Vertex->EntryPoint.c_str();
+        l_Stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        l_Stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+        l_Stages[1].module = l_Fragment->Module;
+        l_Stages[1].pName = l_Fragment->EntryPoint.c_str();
+
+        VkVertexInputBindingDescription l_Binding{};
+        l_Binding.binding = 0;
+        l_Binding.stride = description.Vertex.Stride;
+        l_Binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+        std::vector<VkVertexInputAttributeDescription> l_VertexInputAttributeDescriptions;
+        l_VertexInputAttributeDescriptions.reserve(description.Vertex.Attributes.size());
+        for (const VertexAttribute& l_Attribute : description.Vertex.Attributes)
+        {
+            VkVertexInputAttributeDescription l_VertexInputAttributeDescription{};
+            l_VertexInputAttributeDescription.location = l_Attribute.Location;
+            l_VertexInputAttributeDescription.binding = 0;
+            l_VertexInputAttributeDescription.format = VulkanUtilities::ToVkFormat(l_Attribute.Format);
+            l_VertexInputAttributeDescription.offset = l_Attribute.Offset;
+            l_VertexInputAttributeDescriptions.push_back(l_VertexInputAttributeDescription);
+        }
+
+        const bool l_HasVertexInput = description.Vertex.Stride > 0 && !l_VertexInputAttributeDescriptions.empty();
+
+        VkPipelineVertexInputStateCreateInfo l_PipelineVertexInputStateCreateInfo{};
+        l_PipelineVertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        l_PipelineVertexInputStateCreateInfo.vertexBindingDescriptionCount = l_HasVertexInput ? 1 : 0;
+        l_PipelineVertexInputStateCreateInfo.pVertexBindingDescriptions = l_HasVertexInput ? &l_Binding : nullptr;
+        l_PipelineVertexInputStateCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(l_VertexInputAttributeDescriptions.size());
+        l_PipelineVertexInputStateCreateInfo.pVertexAttributeDescriptions = l_VertexInputAttributeDescriptions.empty() ? nullptr : l_VertexInputAttributeDescriptions.data();
+
+        VkPipelineInputAssemblyStateCreateInfo l_PipelineInputAssemblyStateCreateInfo{};
+        l_PipelineInputAssemblyStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        l_PipelineInputAssemblyStateCreateInfo.topology = VulkanUtilities::ToVkTopology(description.Topology);
+
+        VkPipelineViewportStateCreateInfo l_PipelineViewportStateCreateInfo{};
+        l_PipelineViewportStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        l_PipelineViewportStateCreateInfo.viewportCount = 1;
+        l_PipelineViewportStateCreateInfo.scissorCount = 1;
+
+        VkPipelineRasterizationStateCreateInfo l_PipelineRasterizationStateCreateInfo{};
+        l_PipelineRasterizationStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        l_PipelineRasterizationStateCreateInfo.polygonMode = description.Rasterizer.Wireframe ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
+        l_PipelineRasterizationStateCreateInfo.cullMode = VulkanUtilities::ToVkCullMode(description.Rasterizer.Cull);
+        l_PipelineRasterizationStateCreateInfo.frontFace = VulkanUtilities::ToVkFrontFace(description.Rasterizer.Front);
+        l_PipelineRasterizationStateCreateInfo.lineWidth = 1.0f;
+
+        VkPipelineMultisampleStateCreateInfo l_PipelineMultisampleStateCreateInfo{};
+        l_PipelineMultisampleStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        l_PipelineMultisampleStateCreateInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+        VkPipelineDepthStencilStateCreateInfo l_PipelineDepthStencilStateCreateInfo{};
+        l_PipelineDepthStencilStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        l_PipelineDepthStencilStateCreateInfo.depthTestEnable = description.DepthStencil.DepthTest ? VK_TRUE : VK_FALSE;
+        l_PipelineDepthStencilStateCreateInfo.depthWriteEnable = description.DepthStencil.DepthWrite ? VK_TRUE : VK_FALSE;
+        l_PipelineDepthStencilStateCreateInfo.depthCompareOp = VulkanUtilities::ToVkCompareOp(description.DepthStencil.DepthCompare);
+
+        VkPipelineColorBlendAttachmentState l_PipelineColorBlendAttachmentState{};
+        l_PipelineColorBlendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        l_PipelineColorBlendAttachmentState.blendEnable = description.Blend.Enabled ? VK_TRUE : VK_FALSE;
+        l_PipelineColorBlendAttachmentState.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        l_PipelineColorBlendAttachmentState.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        l_PipelineColorBlendAttachmentState.colorBlendOp = VK_BLEND_OP_ADD;
+        l_PipelineColorBlendAttachmentState.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        l_PipelineColorBlendAttachmentState.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+        l_PipelineColorBlendAttachmentState.alphaBlendOp = VK_BLEND_OP_ADD;
+
+        std::vector<VkPipelineColorBlendAttachmentState> l_BlendAttachments(description.ColorFormats.size(), l_PipelineColorBlendAttachmentState);
+
+        VkPipelineColorBlendStateCreateInfo l_PipelineColorBlendStateCreateInfo{};
+        l_PipelineColorBlendStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        l_PipelineColorBlendStateCreateInfo.attachmentCount = static_cast<uint32_t>(l_BlendAttachments.size());
+        l_PipelineColorBlendStateCreateInfo.pAttachments = l_BlendAttachments.empty() ? nullptr : l_BlendAttachments.data();
+
+        std::array<VkDynamicState, 2> l_DynamicStates = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+
+        VkPipelineDynamicStateCreateInfo l_PipelineDynamicStateCreateInfo{};
+        l_PipelineDynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        l_PipelineDynamicStateCreateInfo.dynamicStateCount = static_cast<uint32_t>(l_DynamicStates.size());
+        l_PipelineDynamicStateCreateInfo.pDynamicStates = l_DynamicStates.data();
+
+        VkPushConstantRange l_PushConstantRange{};
+        l_PushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        l_PushConstantRange.offset = 0;
+        l_PushConstantRange.size = description.PushConstantSize;
+
+        VkPipelineLayoutCreateInfo l_PipelineLayoutCreateInfo{};
+        l_PipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        l_PipelineLayoutCreateInfo.pushConstantRangeCount = description.PushConstantSize > 0 ? 1 : 0;
+        l_PipelineLayoutCreateInfo.pPushConstantRanges = description.PushConstantSize > 0 ? &l_PushConstantRange : nullptr;
+
+        VulkanPipelineResource l_Resource{};
+        if (vkCreatePipelineLayout(m_Device, &l_PipelineLayoutCreateInfo, nullptr, &l_Resource.Layout) != VK_SUCCESS)
+        {
+            TR_CORE_ERROR("VulkanDevice: vkCreatePipelineLayout failed");
+            return PipelineHandle();
+        }
+
+        std::vector<VkFormat> l_ColorFormats;
+        l_ColorFormats.reserve(description.ColorFormats.size());
+        for (Format l_ColorFormat : description.ColorFormats)
+        {
+            l_ColorFormats.push_back(VulkanUtilities::ToVkFormat(l_ColorFormat));
+        }
+
+        VkPipelineRenderingCreateInfo l_PipelineRenderingCreateInfo{};
+        l_PipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+        l_PipelineRenderingCreateInfo.colorAttachmentCount = static_cast<uint32_t>(l_ColorFormats.size());
+        l_PipelineRenderingCreateInfo.pColorAttachmentFormats = l_ColorFormats.empty() ? nullptr : l_ColorFormats.data();
+        l_PipelineRenderingCreateInfo.depthAttachmentFormat = VulkanUtilities::ToVkFormat(description.DepthFormat);
+
+        VkGraphicsPipelineCreateInfo l_GraphicsPipelineCreateInfo{};
+        l_GraphicsPipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        l_GraphicsPipelineCreateInfo.pNext = &l_PipelineRenderingCreateInfo;
+        l_GraphicsPipelineCreateInfo.stageCount = static_cast<uint32_t>(l_Stages.size());
+        l_GraphicsPipelineCreateInfo.pStages = l_Stages.data();
+        l_GraphicsPipelineCreateInfo.pVertexInputState = &l_PipelineVertexInputStateCreateInfo;
+        l_GraphicsPipelineCreateInfo.pInputAssemblyState = &l_PipelineInputAssemblyStateCreateInfo;
+        l_GraphicsPipelineCreateInfo.pViewportState = &l_PipelineViewportStateCreateInfo;
+        l_GraphicsPipelineCreateInfo.pRasterizationState = &l_PipelineRasterizationStateCreateInfo;
+        l_GraphicsPipelineCreateInfo.pMultisampleState = &l_PipelineMultisampleStateCreateInfo;
+        l_GraphicsPipelineCreateInfo.pDepthStencilState = &l_PipelineDepthStencilStateCreateInfo;
+        l_GraphicsPipelineCreateInfo.pColorBlendState = &l_PipelineColorBlendStateCreateInfo;
+        l_GraphicsPipelineCreateInfo.pDynamicState = &l_PipelineDynamicStateCreateInfo;
+        l_GraphicsPipelineCreateInfo.layout = l_Resource.Layout;
+
+        if (vkCreateGraphicsPipelines(m_Device, VK_NULL_HANDLE, 1, &l_GraphicsPipelineCreateInfo, nullptr, &l_Resource.Pipeline) != VK_SUCCESS)
+        {
+            TR_CORE_ERROR("VulkanDevice: vkCreateGraphicsPipelines failed");
+            vkDestroyPipelineLayout(m_Device, l_Resource.Layout, nullptr);
+
+            return PipelineHandle();
+        }
+
+        return m_Pipelines.Allocate(l_Resource);
     }
 
     void VulkanDevice::DestroyBuffer(BufferHandle handle)
@@ -178,8 +527,15 @@ namespace Trinity
         VulkanTextureResource l_Resource{};
         if (m_Textures.Free(handle, l_Resource))
         {
-            if (l_Resource.OwnsView && l_Resource.View != VK_NULL_HANDLE) vkDestroyImageView(m_Device, l_Resource.View, nullptr);
-            if (l_Resource.OwnsImage && l_Resource.Image != VK_NULL_HANDLE) vmaDestroyImage(m_Allocator.GetHandle(), l_Resource.Image, l_Resource.Allocation);
+            if (l_Resource.OwnsView && l_Resource.View != VK_NULL_HANDLE)
+            {
+                vkDestroyImageView(m_Device, l_Resource.View, nullptr);
+            }
+
+            if (l_Resource.OwnsImage && l_Resource.Image != VK_NULL_HANDLE)
+            {
+                vmaDestroyImage(m_Allocator.GetHandle(), l_Resource.Image, l_Resource.Allocation);
+            }
         }
     }
 
@@ -206,14 +562,34 @@ namespace Trinity
         VulkanPipelineResource l_Resource{};
         if (m_Pipelines.Free(handle, l_Resource))
         {
-            if (l_Resource.Pipeline != VK_NULL_HANDLE) vkDestroyPipeline(m_Device, l_Resource.Pipeline, nullptr);
-            if (l_Resource.Layout != VK_NULL_HANDLE) vkDestroyPipelineLayout(m_Device, l_Resource.Layout, nullptr);
+            if (l_Resource.Pipeline != VK_NULL_HANDLE)
+            {
+                vkDestroyPipeline(m_Device, l_Resource.Pipeline, nullptr);
+            }
+
+            if (l_Resource.Layout != VK_NULL_HANDLE)
+            {
+                vkDestroyPipelineLayout(m_Device, l_Resource.Layout, nullptr);
+            }
         }
     }
 
-    void VulkanDevice::UpdateBuffer(BufferHandle, const void*, uint64_t, uint64_t)
+    void VulkanDevice::UpdateBuffer(BufferHandle handle, const void* data, uint64_t size, uint64_t offset)
     {
-        TR_CORE_WARN("VulkanDevice: UpdateBuffer not yet implemented");
+        VulkanBufferResource* l_Resource = m_Buffers.Get(handle);
+        if (l_Resource == nullptr || data == nullptr || size == 0)
+        {
+            return;
+        }
+
+        if (l_Resource->Mapped != nullptr)
+        {
+            std::memcpy(static_cast<uint8_t*>(l_Resource->Mapped) + offset, data, static_cast<size_t>(size));
+        }
+        else
+        {
+            UploadViaStaging(m_Allocator.GetHandle(), m_Commands, l_Resource->Buffer, data, size, offset);
+        }
     }
 
     std::unique_ptr<Swapchain> VulkanDevice::CreateSwapchain(const SwapchainDescription& description)
@@ -229,8 +605,7 @@ namespace Trinity
 
     std::unique_ptr<CommandList> VulkanDevice::CreateCommandList()
     {
-        TR_CORE_WARN("VulkanDevice: CreateCommandList not yet implemented");
-        return nullptr;
+        return std::make_unique<VulkanCommandList>(*this);
     }
 
     void VulkanDevice::Submit(CommandList&)

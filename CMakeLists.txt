@@ -77,6 +77,11 @@ if(TRINITY_ENABLE_SDL)
     trinity_set_ide_folder(SDL3-static "Trinity/Vendor")
 endif()
 
+add_library(glm INTERFACE)
+target_include_directories(glm SYSTEM INTERFACE "${CMAKE_SOURCE_DIR}/Vendor/glm")
+target_compile_definitions(glm INTERFACE GLM_FORCE_DEPTH_ZERO_TO_ONE GLM_FORCE_RADIANS)
+trinity_set_ide_folder(glm "Trinity/Vendor")
+
 if(TRINITY_ENABLE_VULKAN)
     find_package(Vulkan REQUIRED)
 

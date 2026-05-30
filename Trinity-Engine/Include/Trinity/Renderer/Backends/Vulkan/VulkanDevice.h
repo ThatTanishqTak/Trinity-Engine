@@ -51,6 +51,7 @@ namespace Trinity
     {
         VkShaderModule Module = VK_NULL_HANDLE;
         ShaderStage Stage = ShaderStage::None;
+        std::string EntryPoint = "main";
     };
 
     struct VulkanPipelineResource
@@ -178,11 +179,11 @@ namespace Trinity
         std::unique_ptr<Swapchain> CreateSwapchain(const SwapchainDescription& description) override;
         std::unique_ptr<CommandList> CreateCommandList() override;
 
-        void Submit(CommandList& a_CommandList) override;
+        void Submit(CommandList& commandList) override;
         void WaitIdle() override;
 
         TextureHandle RegisterExternalTexture(VkImage image, VkImageView view, VkFormat format, const VkExtent3D& extent, VkImageAspectFlags aspect);
-        void SetActiveSwapchain(VulkanSwapchain* a_Swapchain) { m_ActiveSwapchain = a_Swapchain; }
+        void SetActiveSwapchain(VulkanSwapchain* swapchain) { m_ActiveSwapchain = swapchain; }
         VulkanSwapchain* GetActiveSwapchain() const { return m_ActiveSwapchain; }
 
         VulkanBufferResource* GetBuffer(BufferHandle handle) { return m_Buffers.Get(handle); }

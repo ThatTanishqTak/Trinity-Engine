@@ -9,15 +9,15 @@ namespace Trinity
         Shutdown();
     }
 
-    bool VulkanCommands::Initialize(VkDevice a_Device, uint32_t a_GraphicsQueueFamily, VkQueue a_GraphicsQueue)
+    bool VulkanCommands::Initialize(VkDevice device, uint32_t graphicsQueueFamily, VkQueue graphicsQueue)
     {
-        m_Device = a_Device;
-        m_GraphicsQueue = a_GraphicsQueue;
+        m_Device = device;
+        m_GraphicsQueue = graphicsQueue;
 
         VkCommandPoolCreateInfo l_PoolInfo{};
         l_PoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         l_PoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-        l_PoolInfo.queueFamilyIndex = a_GraphicsQueueFamily;
+        l_PoolInfo.queueFamilyIndex = graphicsQueueFamily;
 
         VkResult l_Result = vkCreateCommandPool(m_Device, &l_PoolInfo, nullptr, &m_Pool);
         if (l_Result != VK_SUCCESS)
@@ -55,7 +55,7 @@ namespace Trinity
         }
     }
 
-    void VulkanCommands::ImmediateSubmit(const std::function<void(VkCommandBuffer)>& a_Recorder)
+    void VulkanCommands::ImmediateSubmit(const std::function<void(VkCommandBuffer)>& recorder)
     {
         VkCommandBufferAllocateInfo l_AllocInfo{};
         l_AllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -76,7 +76,7 @@ namespace Trinity
 
         vkBeginCommandBuffer(l_CommandBuffer, &l_BeginInfo);
 
-        a_Recorder(l_CommandBuffer);
+        recorder(l_CommandBuffer);
 
         vkEndCommandBuffer(l_CommandBuffer);
 
