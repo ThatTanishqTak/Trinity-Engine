@@ -1,6 +1,7 @@
 #include <Trinity/Renderer/Frontend/Renderer.h>
 
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include <Trinity/Renderer/Frontend/Vertex.h>
 #include <Trinity/Platform/FileSystem.h>
@@ -39,6 +40,14 @@ namespace Trinity
             return false;
         }
 
+        if (!CreateDepthTexture(m_Swapchain.GetWidth(), m_Swapchain.GetHeight()))
+        {
+            return false;
+        }
+
+        m_Camera.LookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        m_Timer.Reset();
+
         TR_CORE_INFO("Renderer: initialized");
         return true;
     }
@@ -70,6 +79,14 @@ namespace Trinity
             m_Device.DestroyBuffer(m_VertexBuffer);
             m_VertexBuffer = BufferHandle{};
         }
+
+        if (m_IndexBuffer.IsValid())
+        {
+            m_Device.DestroyBuffer(m_IndexBuffer);
+            m_IndexBuffer = BufferHandle{};
+        }
+
+        DestroyDepthTexture();
     }
 
     bool Renderer::CreatePipeline()
@@ -118,9 +135,9 @@ namespace Trinity
         l_PipelineDescription.Vertex = Vertex::GetLayout();
         l_PipelineDescription.Topology = PrimitiveTopology::TriangleList;
         l_PipelineDescription.Rasterizer.Cull = CullMode::None;
-        l_PipelineDescription.DepthStencil.DepthTest = false;
-        l_PipelineDescription.DepthStencil.DepthWrite = false;
-        l_PipelineDescription.DepthFormat = Format::Unknown;
+        l_PipelineDescription.DepthStencil.DepthTest = true;
+        l_PipelineDescription.DepthStencil.DepthWrite = true;
+        l_PipelineDescription.DepthFormat = Format::D32_SFLOAT;
         l_PipelineDescription.ColorFormats = { m_Swapchain.GetFormat() };
         l_PipelineDescription.PushConstantSize = static_cast<uint32_t>(sizeof(glm::mat4));
         l_PipelineDescription.DebugName = "Triangle";
@@ -139,28 +156,90 @@ namespace Trinity
     {
         const Vertex l_Vertices[] =
         {
-            { { 0.0f, 0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f } },
-            { { -0.5f, -0.5f, 0.0f }, { 0.0f, 1.0f, 0.0f } },
-            { { 0.5f, -0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f } }
+            { { -0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f, 0.0f } },
+            { {  0.5f, -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f } },
+            { {  0.5f,  0.5f, -0.5f }, { 1.0f, 1.0f, 0.0f } },
+            { { -0.5f,  0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f } },
+            { { -0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f, 1.0f } },
+            { {  0.5f, -0.5f,  0.5f }, { 1.0f, 0.0f, 1.0f } },
+            { {  0.5f,  0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f } },
+            { { -0.5f,  0.5f,  0.5f }, { 0.0f, 1.0f, 1.0f } }
         };
 
-        m_VertexCount = static_cast<uint32_t>(sizeof(l_Vertices) / sizeof(Vertex));
+        const uint32_t l_Indices[] =
+        {
+            0, 1, 2, 2, 3, 0,
+            4, 5, 6, 6, 7, 4,
+            0, 3, 7, 7, 4, 0,
+            1, 5, 6, 6, 2, 1,
+            0, 4, 5, 5, 1, 0,
+            3, 2, 6, 6, 7, 3
+        };
 
-        BufferDescription l_BufferDescription;
-        l_BufferDescription.Size = sizeof(l_Vertices);
-        l_BufferDescription.Usage = BufferUsage::Vertex;
-        l_BufferDescription.Memory = MemoryUsage::GpuOnly;
-        l_BufferDescription.InitialData = l_Vertices;
-        l_BufferDescription.DebugName = "TriangleVertices";
+        m_IndexCount = static_cast<uint32_t>(sizeof(l_Indices) / sizeof(uint32_t));
 
-        m_VertexBuffer = m_Device.CreateBuffer(l_BufferDescription);
+        BufferDescription l_VertexDescription;
+        l_VertexDescription.Size = sizeof(l_Vertices);
+        l_VertexDescription.Usage = BufferUsage::Vertex;
+        l_VertexDescription.Memory = MemoryUsage::GpuOnly;
+        l_VertexDescription.InitialData = l_Vertices;
+        l_VertexDescription.DebugName = "QuadVertices";
+
+        m_VertexBuffer = m_Device.CreateBuffer(l_VertexDescription);
         if (!m_VertexBuffer.IsValid())
         {
             TR_CORE_ERROR("Renderer: vertex buffer creation failed");
             return false;
         }
 
+        BufferDescription l_IndexDescription;
+        l_IndexDescription.Size = sizeof(l_Indices);
+        l_IndexDescription.Usage = BufferUsage::Index;
+        l_IndexDescription.Memory = MemoryUsage::GpuOnly;
+        l_IndexDescription.InitialData = l_Indices;
+        l_IndexDescription.DebugName = "QuadIndices";
+
+        m_IndexBuffer = m_Device.CreateBuffer(l_IndexDescription);
+        if (!m_IndexBuffer.IsValid())
+        {
+            TR_CORE_ERROR("Renderer: index buffer creation failed");
+            return false;
+        }
+
         return true;
+    }
+
+    bool Renderer::CreateDepthTexture(uint32_t width, uint32_t height)
+    {
+        TextureDescription l_Description;
+        l_Description.Type = TextureType::Texture2D;
+        l_Description.Format = Format::D32_SFLOAT;
+        l_Description.Usage = TextureUsage::DepthStencil;
+        l_Description.Width = width;
+        l_Description.Height = height;
+        l_Description.Depth = 1;
+        l_Description.MipLevels = 1;
+        l_Description.ArrayLayers = 1;
+        l_Description.SampleCount = 1;
+        l_Description.DebugName = "SceneDepth";
+
+        m_DepthTexture = m_Device.CreateTexture(l_Description);
+        if (!m_DepthTexture.IsValid())
+        {
+            TR_CORE_ERROR("Renderer: depth texture creation failed");
+            return false;
+        }
+
+        return true;
+    }
+
+    void Renderer::DestroyDepthTexture()
+    {
+        if (m_DepthTexture.IsValid())
+        {
+            m_Device.DestroyTexture(m_DepthTexture);
+            m_DepthTexture = TextureHandle{};
+        }
     }
 
     void Renderer::RenderFrame()
@@ -178,6 +257,7 @@ namespace Trinity
 
         l_CommandList.Begin();
         l_CommandList.TransitionTexture(l_Frame.BackBuffer, ResourceState::Undefined, ResourceState::RenderTarget);
+        l_CommandList.TransitionTexture(m_DepthTexture, ResourceState::Undefined, ResourceState::DepthStencil);
 
         RenderingAttachment l_ColorAttachment;
         l_ColorAttachment.Target = l_Frame.BackBuffer;
@@ -187,10 +267,15 @@ namespace Trinity
         l_ColorAttachment.ClearColor[2] = 0.05f;
         l_ColorAttachment.ClearColor[3] = 1.0f;
 
+        DepthAttachment l_DepthAttachment;
+        l_DepthAttachment.Target = m_DepthTexture;
+        l_DepthAttachment.Clear = true;
+        l_DepthAttachment.ClearDepth = 1.0f;
+
         RenderingInfo l_RenderingInfo;
         l_RenderingInfo.ColorAttachments = &l_ColorAttachment;
         l_RenderingInfo.ColorAttachmentCount = 1;
-        l_RenderingInfo.Depth = nullptr;
+        l_RenderingInfo.Depth = &l_DepthAttachment;
         l_RenderingInfo.Width = l_Width;
         l_RenderingInfo.Height = l_Height;
 
@@ -214,11 +299,17 @@ namespace Trinity
 
         l_CommandList.BindPipeline(m_Pipeline);
         l_CommandList.BindVertexBuffer(m_VertexBuffer, 0);
+        l_CommandList.BindIndexBuffer(m_IndexBuffer, 0);
 
-        glm::mat4 l_MVP(1.0f);
+        float l_Aspect = l_Height > 0 ? static_cast<float>(l_Width) / static_cast<float>(l_Height) : 1.0f;
+        m_Camera.SetPerspective(glm::radians(45.0f), l_Aspect, 0.1f, 10.0f);
+
+        float l_Time = m_Timer.Elapsed();
+        glm::mat4 l_Model = glm::rotate(glm::mat4(1.0f), l_Time * 0.8f, glm::normalize(glm::vec3(0.4f, 1.0f, 0.2f)));
+        glm::mat4 l_MVP = m_Camera.GetViewProjection() * l_Model;
         l_CommandList.PushConstants(ShaderStage::Vertex | ShaderStage::Fragment, 0, static_cast<uint32_t>(sizeof(l_MVP)), &l_MVP);
 
-        l_CommandList.Draw(m_VertexCount, 1, 0, 0);
+        l_CommandList.DrawIndexed(m_IndexCount, 1, 0, 0, 0);
 
         l_CommandList.EndRendering();
         l_CommandList.TransitionTexture(l_Frame.BackBuffer, ResourceState::RenderTarget, ResourceState::Present);
@@ -233,5 +324,8 @@ namespace Trinity
     void Renderer::Resize(uint32_t width, uint32_t height)
     {
         m_Swapchain.Resize(width, height);
+
+        DestroyDepthTexture();
+        CreateDepthTexture(m_Swapchain.GetWidth(), m_Swapchain.GetHeight());
     }
 }
