@@ -54,5 +54,6 @@ namespace Trinity
         virtual uint32_t GetHeight() const = 0;
         virtual Format GetFormat() const = 0;
         virtual uint32_t GetImageCount() const = 0;
+        virtual uint32_t GetFramesInFlight() const = 0;
     };
 }

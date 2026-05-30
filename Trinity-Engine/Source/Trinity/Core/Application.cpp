@@ -6,8 +6,6 @@
 #include <Trinity/Core/Engine.h>
 #include <Trinity/Platform/IPlatform.h>
 #include <Trinity/Platform/Events/ApplicationEvent.h>
-#include <Trinity/Renderer/Backends/Vulkan/VulkanDevice.h>
-#include <Trinity/Renderer/Backends/Vulkan/VulkanSwapchain.h>
 
 namespace Trinity
 {
@@ -71,15 +69,15 @@ namespace Trinity
                 m_Engine->Update(l_Timestep);
                 OnUpdate(l_Timestep);
 
-                if (m_Engine->HasSwapchain())
+                if (m_Engine->HasRenderer())
                 {
                     if (m_SwapchainDirty)
                     {
-                        m_Engine->GetSwapchain().Resize(m_PendingWidth, m_PendingHeight);
+                        m_Engine->Resize(m_PendingWidth, m_PendingHeight);
                         m_SwapchainDirty = false;
                     }
 
-                    static_cast<VulkanSwapchain&>(m_Engine->GetSwapchain()).RenderFrame(0.05f, 0.05f, 0.05f);
+                    m_Engine->RenderFrame();
                 }
             }
         }

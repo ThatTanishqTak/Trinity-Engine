@@ -8,6 +8,7 @@
 #include <Trinity/Platform/PlatformFactory.h>
 #include <Trinity/Renderer/RHI/GraphicsBackendFactory.h>
 #include <Trinity/Renderer/RHI/Swapchain.h>
+#include <Trinity/Renderer/Frontend/Renderer.h>
 
 namespace Trinity
 {
@@ -94,6 +95,17 @@ namespace Trinity
             return false;
         }
 
+        m_Renderer = std::make_unique<Renderer>(*m_Device, *m_Swapchain, m_Platform->GetFileSystem());
+        if (!m_Renderer->Initialize())
+        {
+            TR_CORE_CRITICAL("Engine: renderer initialization failed");
+            m_Renderer.reset();
+            m_Swapchain.reset();
+            m_Device.reset();
+
+            return false;
+        }
+
         return true;
     }
 
@@ -102,6 +114,22 @@ namespace Trinity
         if (!m_Initialized)
         {
             return;
+        }
+    }
+
+    void Engine::RenderFrame()
+    {
+        if (m_Renderer != nullptr)
+        {
+            m_Renderer->RenderFrame();
+        }
+    }
+
+    void Engine::Resize(uint32_t width, uint32_t height)
+    {
+        if (m_Renderer != nullptr)
+        {
+            m_Renderer->Resize(width, height);
         }
     }
 
@@ -117,6 +145,21 @@ namespace Trinity
         if (m_Device != nullptr)
         {
             m_Device->WaitIdle();
+        }
+
+        if (m_Device != nullptr)
+        {
+            m_Device->WaitIdle();
+        }
+
+        if (m_Renderer != nullptr)
+        {
+            m_Renderer.reset();
+        }
+
+        if (m_Swapchain != nullptr)
+        {
+            m_Swapchain.reset();
         }
 
         if (m_Swapchain != nullptr)

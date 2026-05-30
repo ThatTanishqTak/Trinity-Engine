@@ -166,4 +166,17 @@ function(trinity_add_application TARGET_NAME SOURCE_DIR)
 
     add_executable(${TARGET_NAME} ${_sources})
     trinity_apply_common_settings(${TARGET_NAME})
+
+    if(TARGET Trinity-Shaders)
+        add_dependencies(${TARGET_NAME} Trinity-Shaders)
+
+        add_custom_command(
+            TARGET ${TARGET_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${CMAKE_BINARY_DIR}/Shaders"
+                "$<TARGET_FILE_DIR:${TARGET_NAME}>/Shaders"
+            COMMENT "Deploying shaders to ${TARGET_NAME}"
+            VERBATIM
+        )
+    endif()
 endfunction()

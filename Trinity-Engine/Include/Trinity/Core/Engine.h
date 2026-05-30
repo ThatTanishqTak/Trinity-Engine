@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <string>
 
@@ -10,6 +11,9 @@ namespace Trinity
     class IPlatform;
     class GraphicsDevice;
     class Swapchain;
+    class Renderer;
+
+    struct NativeWindowHandle;
 
     struct NativeWindowHandle;
 
@@ -27,6 +31,9 @@ namespace Trinity
         void Update(Timestep timestep);
         void Shutdown();
 
+        void RenderFrame();
+        void Resize(uint32_t width, uint32_t height);
+
         IPlatform& GetPlatform() { return *m_Platform; }
         bool HasPlatform() const { return m_Platform != nullptr; }
 
@@ -36,11 +43,14 @@ namespace Trinity
         Swapchain& GetSwapchain() { return *m_Swapchain; }
         bool HasSwapchain() const { return m_Swapchain != nullptr; }
 
+        bool HasRenderer() const { return m_Renderer != nullptr; }
+
     private:
         bool m_Initialized = false;
 
         std::unique_ptr<IPlatform> m_Platform;
         std::unique_ptr<GraphicsDevice> m_Device;
         std::unique_ptr<Swapchain> m_Swapchain;
+        std::unique_ptr<Renderer> m_Renderer;
     };
 }

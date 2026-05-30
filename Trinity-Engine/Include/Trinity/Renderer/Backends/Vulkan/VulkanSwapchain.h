@@ -20,9 +20,15 @@ namespace Trinity
 
     struct VulkanFrameData
     {
-        VkCommandBuffer CommandBuffer = VK_NULL_HANDLE;
         VkSemaphore ImageAvailable = VK_NULL_HANDLE;
         VkFence InFlight = VK_NULL_HANDLE;
+    };
+
+    struct VulkanFrameSync
+    {
+        VkSemaphore Wait = VK_NULL_HANDLE;
+        VkSemaphore Signal = VK_NULL_HANDLE;
+        VkFence Fence = VK_NULL_HANDLE;
     };
 
     class VulkanSwapchain : public Swapchain
@@ -42,12 +48,13 @@ namespace Trinity
         bool AcquireNextImage(FrameInfo& outFrame) override;
         void Present() override;
         void Resize(uint32_t width, uint32_t height) override;
-        void RenderFrame(float red, float green, float blue);
+        VulkanFrameSync GetCurrentSync() const;
 
         uint32_t GetWidth() const override { return m_Extent.width; }
         uint32_t GetHeight() const override { return m_Extent.height; }
         Format GetFormat() const override { return m_FrontendFormat; }
         uint32_t GetImageCount() const override { return static_cast<uint32_t>(m_Images.size()); }
+        uint32_t GetFramesInFlight() const override { return MaxFramesInFlight; }
 
         VkSwapchainKHR GetHandle() const { return m_Swapchain; }
         VkFormat GetVulkanFormat() const { return m_SurfaceFormat.format; }
@@ -58,9 +65,11 @@ namespace Trinity
         bool CreateSwapchain();
         bool CreateImageViews();
         bool CreateFrameData();
+
+        void RegisterBackbuffers();
+        void UnregisterBackbuffers();
         void DestroySwapchainObjects();
         void DestroyFrameData();
-        void TransitionImageLayout(VkCommandBuffer command, VkImage image, VkImageLayout from, VkImageLayout to);
 
         VulkanSwapchainSupport QuerySupport() const;
         VkSurfaceFormatKHR ChooseFormat(const std::vector<VkSurfaceFormatKHR>& available) const;
@@ -79,6 +88,7 @@ namespace Trinity
 
         std::vector<VkImage> m_Images;
         std::vector<VkImageView> m_ImageViews;
+        std::vector<TextureHandle> m_BackbufferHandles;
 
         std::vector<VulkanFrameData> m_Frames;
         std::vector<VkSemaphore> m_RenderFinishedSemaphores;

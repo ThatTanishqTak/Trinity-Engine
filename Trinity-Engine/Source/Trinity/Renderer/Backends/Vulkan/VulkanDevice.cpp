@@ -608,9 +608,43 @@ namespace Trinity
         return std::make_unique<VulkanCommandList>(*this);
     }
 
-    void VulkanDevice::Submit(CommandList&)
+    void VulkanDevice::Submit(CommandList& commandList)
     {
-        TR_CORE_WARN("VulkanDevice: Submit not yet implemented");
+        VulkanCommandList& l_CommandList = static_cast<VulkanCommandList&>(commandList);
+
+        VkCommandBufferSubmitInfo l_CommandBufferSubmitInfo{};
+        l_CommandBufferSubmitInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+        l_CommandBufferSubmitInfo.commandBuffer = l_CommandList.GetHandle();
+
+        VkSemaphoreSubmitInfo l_WaitInfo{};
+        VkSemaphoreSubmitInfo l_SignalInfo{};
+        VkFence l_Fence = VK_NULL_HANDLE;
+
+        VkSubmitInfo2 l_SubmitInfo{};
+        l_SubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+        l_SubmitInfo.commandBufferInfoCount = 1;
+        l_SubmitInfo.pCommandBufferInfos = &l_CommandBufferSubmitInfo;
+
+        if (m_ActiveSwapchain != nullptr)
+        {
+            VulkanFrameSync l_Sync = m_ActiveSwapchain->GetCurrentSync();
+            l_Fence = l_Sync.Fence;
+
+            l_WaitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+            l_WaitInfo.semaphore = l_Sync.Wait;
+            l_WaitInfo.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+            l_SignalInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+            l_SignalInfo.semaphore = l_Sync.Signal;
+            l_SignalInfo.stageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT;
+
+            l_SubmitInfo.waitSemaphoreInfoCount = 1;
+            l_SubmitInfo.pWaitSemaphoreInfos = &l_WaitInfo;
+            l_SubmitInfo.signalSemaphoreInfoCount = 1;
+            l_SubmitInfo.pSignalSemaphoreInfos = &l_SignalInfo;
+        }
+
+        vkQueueSubmit2(m_GraphicsQueue, 1, &l_SubmitInfo, l_Fence);
     }
 
     void VulkanDevice::WaitIdle()
