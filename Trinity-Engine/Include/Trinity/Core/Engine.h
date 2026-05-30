@@ -8,7 +8,8 @@
 namespace Trinity
 {
     class IPlatform;
-    class VulkanDevice;
+    class GraphicsDevice;
+    class Swapchain;
 
     struct NativeWindowHandle;
 
@@ -29,13 +30,17 @@ namespace Trinity
         IPlatform& GetPlatform() { return *m_Platform; }
         bool HasPlatform() const { return m_Platform != nullptr; }
 
-        VulkanDevice& GetDevice() { return *m_Device; }
+        GraphicsDevice& GetDevice() { return *m_Device; }
         bool HasDevice() const { return m_Device != nullptr; }
+
+        Swapchain& GetSwapchain() { return *m_Swapchain; }
+        bool HasSwapchain() const { return m_Swapchain != nullptr; }
 
     private:
         bool m_Initialized = false;
 
         std::unique_ptr<IPlatform> m_Platform;
-        std::unique_ptr<VulkanDevice> m_Device;
+        std::unique_ptr<GraphicsDevice> m_Device;
+        std::unique_ptr<Swapchain> m_Swapchain;
     };
 }

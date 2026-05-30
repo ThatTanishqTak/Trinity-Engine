@@ -6,7 +6,7 @@
 #include <Trinity/Platform/IPlatform.h>
 #include <Trinity/Platform/FileSystem.h>
 #include <Trinity/Platform/PlatformFactory.h>
-#include <Trinity/Renderer/Backends/Vulkan/VulkanDevice.h>
+#include <Trinity/Renderer/RHI/GraphicsBackendFactory.h>
 #include <Trinity/Renderer/RHI/Swapchain.h>
 
 namespace Trinity
@@ -62,28 +62,31 @@ namespace Trinity
         TR_CORE_ASSERT(m_Initialized, "Engine must be initialized before renderer");
         TR_CORE_ASSERT(m_Device == nullptr, "Renderer already initialized");
 
+        GraphicsDeviceDescription l_DeviceDescription;
+        l_DeviceDescription.Window = window;
+        l_DeviceDescription.ApplicationName = applicationName;
+
 #if defined(TRINITY_DEBUG)
-        const bool l_EnableValidation = true;
+        l_DeviceDescription.EnableValidation = true;
 #else
-        const bool l_EnableValidation = false;
+        l_DeviceDescription.EnableValidation = false;
 #endif
 
-        m_Device = std::make_unique<VulkanDevice>();
-        if (!m_Device->Initialize(window, applicationName, l_EnableValidation))
+        m_Device = GraphicsBackendFactory::Create(l_DeviceDescription);
+        if (m_Device == nullptr)
         {
             TR_CORE_CRITICAL("Engine: renderer initialization failed");
-            m_Device.reset();
-
             return false;
         }
 
-        SwapchainDescription l_SwapchainDesc;
-        l_SwapchainDesc.Window = window;
-        l_SwapchainDesc.Width = 1920;
-        l_SwapchainDesc.Height = 1080;
-        l_SwapchainDesc.VSync = true;
+        SwapchainDescription l_SwapchainDescription;
+        l_SwapchainDescription.Window = window;
+        l_SwapchainDescription.Width = 1920;
+        l_SwapchainDescription.Height = 1080;
+        l_SwapchainDescription.VSync = true;
 
-        if (!m_Device->CreateSwapchain(l_SwapchainDesc))
+        m_Swapchain = m_Device->CreateSwapchain(l_SwapchainDescription);
+        if (m_Swapchain == nullptr)
         {
             TR_CORE_CRITICAL("Engine: swapchain creation failed");
             m_Device.reset();
@@ -113,14 +116,18 @@ namespace Trinity
 
         if (m_Device != nullptr)
         {
-            m_Device->Shutdown();
-            m_Device.reset();
+            m_Device->WaitIdle();
         }
 
-        if (m_Platform != nullptr)
+        if (m_Swapchain != nullptr)
         {
-            m_Platform->Shutdown();
-            m_Platform.reset();
+            m_Swapchain.reset();
+        }
+
+        if (m_Device != nullptr)
+        {
+            m_Device->Shutdown();
+            m_Device.reset();
         }
 
         m_Initialized = false;

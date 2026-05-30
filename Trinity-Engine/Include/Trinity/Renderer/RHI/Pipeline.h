@@ -56,6 +56,8 @@ namespace Trinity
         BlendState Blend;
         Format DepthFormat = Format::Unknown;
 
+        uint32_t PushConstantSize = 0;
+
         std::vector<Format> ColorFormats;
 
         std::string DebugName;

@@ -13,7 +13,7 @@ namespace Trinity
     void Log::Initialize()
     {
         auto l_ConsoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-        l_ConsoleSink->set_pattern("%^[%T] [%n] [%l] %v%$");
+        l_ConsoleSink->set_pattern("%^[%T] [%n] %v%$");
 
         s_CoreLogger = std::make_shared<spdlog::logger>("TRINITY", l_ConsoleSink);
         s_CoreLogger->set_level(spdlog::level::trace);
