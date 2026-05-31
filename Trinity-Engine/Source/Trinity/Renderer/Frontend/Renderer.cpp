@@ -5,11 +5,24 @@
 
 #include <Trinity/Renderer/Frontend/Vertex.h>
 #include <Trinity/Platform/FileSystem.h>
-#include <Trinity/Core/FileManagement.h>
 #include <Trinity/Core/Log.h>
 
 namespace Trinity
 {
+    static void LogShaderDiagnostics(const char* stage, const ShaderCompileResult& result)
+    {
+        for (const ShaderDiagnostic& l_Message : result.Messages)
+        {
+            const char* l_Severity = l_Message.Severity == ShaderDiagnosticSeverity::Error ? "error" : (l_Message.Severity == ShaderDiagnosticSeverity::Warning ? "warning" : "info");
+            TR_CORE_ERROR("Renderer: [{}] {}({},{}) {} {}: {}", stage, l_Message.File, l_Message.Line, l_Message.Column, l_Severity, l_Message.Code, l_Message.Message);
+        }
+
+        if (result.Messages.empty() && !result.Diagnostics.empty())
+        {
+            TR_CORE_ERROR("Renderer: [{}] {}", stage, result.Diagnostics);
+        }
+    }
+
     Renderer::Renderer(GraphicsDevice& device, Swapchain& swapchain, FileSystem& fileSystem) : m_Device(device), m_Swapchain(swapchain), m_FileSystem(fileSystem)
     {
 
@@ -22,6 +35,13 @@ namespace Trinity
 
     bool Renderer::Initialize()
     {
+        if (!m_ShaderCompiler.Initialize())
+        {
+            return false;
+        }
+
+        m_ShaderCompiler.SetCacheDirectory(m_FileSystem.Resolve(BaseDirectory::UserCache, "Shaders"));
+
         uint32_t l_FramesInFlight = m_Swapchain.GetFramesInFlight();
 
         m_CommandLists.reserve(l_FramesInFlight);
@@ -47,6 +67,10 @@ namespace Trinity
 
         m_Camera.LookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         m_Timer.Reset();
+
+        m_ShaderSourcePath = m_FileSystem.Resolve(BaseDirectory::Executable, "Shaders/Triangle.slang");
+        std::error_code l_TimeError;
+        m_ShaderWriteTime = std::filesystem::last_write_time(m_ShaderSourcePath, l_TimeError);
 
         TR_CORE_INFO("Renderer: initialized");
         return true;
@@ -87,51 +111,74 @@ namespace Trinity
         }
 
         DestroyDepthTexture();
+
+        m_ShaderCompiler.Shutdown();
     }
 
     bool Renderer::CreatePipeline()
     {
-        auto a_LoadShader = [&](const char* name) -> std::vector<uint8_t>
-        {
-            std::filesystem::path l_Path = m_FileSystem.Resolve(BaseDirectory::Executable, std::filesystem::path("Shaders") / name);
-            std::optional<std::vector<uint8_t>> l_Bytes = FileManagement::ReadBinary(l_Path);
-            if (!l_Bytes)
-            {
-                TR_CORE_ERROR("Renderer: failed to load shader {}", name);
-                return {};
-            }
+        return BuildPipeline(m_VertexShader, m_FragmentShader, m_Pipeline);
+    }
 
-            return *l_Bytes;
-        };
+    bool Renderer::BuildPipeline(ShaderHandle& vertexShader, ShaderHandle& fragmentShader, PipelineHandle& pipeline)
+    {
+        vertexShader = ShaderHandle{};
+        fragmentShader = ShaderHandle{};
+        pipeline = PipelineHandle{};
 
-        std::vector<uint8_t> l_VertexBytes = a_LoadShader("Triangle.vert.spv");
-        std::vector<uint8_t> l_FragmentBytes = a_LoadShader("Triangle.frag.spv");
-        if (l_VertexBytes.empty() || l_FragmentBytes.empty())
+        std::filesystem::path l_ShaderDirectory = m_FileSystem.Resolve(BaseDirectory::Executable, "Shaders");
+
+        ShaderCompileResult l_VertexResult = m_ShaderCompiler.Compile(l_ShaderDirectory, "Triangle", "vertexMain");
+        if (!l_VertexResult.Success)
         {
+            LogShaderDiagnostics("vertexMain", l_VertexResult);
             return false;
         }
 
-        ShaderDescription l_VertexShaderDescription;
-        l_VertexShaderDescription.Stage = ShaderStage::Vertex;
-        l_VertexShaderDescription.Bytecode = l_VertexBytes;
-        l_VertexShaderDescription.DebugName = "Triangle.vert";
-        m_VertexShader = m_Device.CreateShader(l_VertexShaderDescription);
+        ShaderCompileResult l_FragmentResult = m_ShaderCompiler.Compile(l_ShaderDirectory, "Triangle", "fragmentMain");
+        if (!l_FragmentResult.Success)
+        {
+            LogShaderDiagnostics("fragmentMain", l_FragmentResult);
+            return false;
+        }
 
-        ShaderDescription l_FragmentShaderDescription;
-        l_FragmentShaderDescription.Stage = ShaderStage::Fragment;
-        l_FragmentShaderDescription.Bytecode = l_FragmentBytes;
-        l_FragmentShaderDescription.DebugName = "Triangle.frag";
-        m_FragmentShader = m_Device.CreateShader(l_FragmentShaderDescription);
+        TR_CORE_INFO("Renderer: reflection - push constant {} bytes, {} vertex inputs", l_VertexResult.Reflection.PushConstantSize, l_VertexResult.Reflection.VertexInputs.size());
+        for (const ShaderVertexInput& a_Input : l_VertexResult.Reflection.VertexInputs)
+        {
+            TR_CORE_INFO("Renderer:   input '{}' @ location {}", a_Input.Name, a_Input.Location);
+        }
 
-        if (!m_VertexShader.IsValid() || !m_FragmentShader.IsValid())
+        ShaderDescription l_VertexDescription;
+        l_VertexDescription.Stage = ShaderStage::Vertex;
+        l_VertexDescription.Bytecode = l_VertexResult.SPIRV;
+        l_VertexDescription.EntryPoint = "vertexMain";
+        l_VertexDescription.DebugName = "Triangle.vertexMain";
+        vertexShader = m_Device.CreateShader(l_VertexDescription);
+
+        ShaderDescription l_FragmentDescription;
+        l_FragmentDescription.Stage = ShaderStage::Fragment;
+        l_FragmentDescription.Bytecode = l_FragmentResult.SPIRV;
+        l_FragmentDescription.EntryPoint = "fragmentMain";
+        l_FragmentDescription.DebugName = "Triangle.fragmentMain";
+        fragmentShader = m_Device.CreateShader(l_FragmentDescription);
+
+        if (!vertexShader.IsValid() || !fragmentShader.IsValid())
         {
             TR_CORE_ERROR("Renderer: shader module creation failed");
+            if (vertexShader.IsValid())
+            {
+                m_Device.DestroyShader(vertexShader); vertexShader = ShaderHandle{};
+            }
+            if (fragmentShader.IsValid())
+            {
+                m_Device.DestroyShader(fragmentShader); fragmentShader = ShaderHandle{};
+            }
             return false;
         }
 
         PipelineDescription l_PipelineDescription;
-        l_PipelineDescription.VertexShader = m_VertexShader;
-        l_PipelineDescription.FragmentShader = m_FragmentShader;
+        l_PipelineDescription.VertexShader = vertexShader;
+        l_PipelineDescription.FragmentShader = fragmentShader;
         l_PipelineDescription.Vertex = Vertex::GetLayout();
         l_PipelineDescription.Topology = PrimitiveTopology::TriangleList;
         l_PipelineDescription.Rasterizer.Cull = CullMode::None;
@@ -142,14 +189,75 @@ namespace Trinity
         l_PipelineDescription.PushConstantSize = static_cast<uint32_t>(sizeof(glm::mat4));
         l_PipelineDescription.DebugName = "Triangle";
 
-        m_Pipeline = m_Device.CreatePipeline(l_PipelineDescription);
-        if (!m_Pipeline.IsValid())
+        pipeline = m_Device.CreatePipeline(l_PipelineDescription);
+        if (!pipeline.IsValid())
         {
             TR_CORE_ERROR("Renderer: pipeline creation failed");
+            m_Device.DestroyShader(vertexShader); vertexShader = ShaderHandle{};
+            m_Device.DestroyShader(fragmentShader); fragmentShader = ShaderHandle{};
             return false;
         }
 
         return true;
+    }
+
+    void Renderer::ReloadShaders()
+    {
+        TR_CORE_INFO("Renderer: shader change detected, recompiling");
+
+        ShaderHandle l_NewVertex;
+        ShaderHandle l_NewFragment;
+        PipelineHandle l_NewPipeline;
+
+        if (!BuildPipeline(l_NewVertex, l_NewFragment, l_NewPipeline))
+        {
+            TR_CORE_WARN("Renderer: shader reload failed, keeping previous pipeline");
+            return;
+        }
+
+        m_Device.WaitIdle();
+
+        if (m_Pipeline.IsValid())
+        {
+            m_Device.DestroyPipeline(m_Pipeline);
+        }
+
+        if (m_VertexShader.IsValid())
+        {
+            m_Device.DestroyShader(m_VertexShader);
+        }
+
+        if (m_FragmentShader.IsValid())
+        {
+            m_Device.DestroyShader(m_FragmentShader);
+        }
+
+        m_VertexShader = l_NewVertex;
+        m_FragmentShader = l_NewFragment;
+        m_Pipeline = l_NewPipeline;
+
+        TR_CORE_INFO("Renderer: shader reload complete");
+    }
+
+    void Renderer::CheckHotReload()
+    {
+        if (m_ShaderSourcePath.empty())
+        {
+            return;
+        }
+
+        std::error_code l_Error;
+        std::filesystem::file_time_type l_Current = std::filesystem::last_write_time(m_ShaderSourcePath, l_Error);
+        if (l_Error)
+        {
+            return;
+        }
+
+        if (l_Current != m_ShaderWriteTime)
+        {
+            m_ShaderWriteTime = l_Current;
+            ReloadShaders();
+        }
     }
 
     bool Renderer::CreateGeometry()
@@ -244,6 +352,13 @@ namespace Trinity
 
     void Renderer::RenderFrame()
     {
+        float l_Elapsed = m_Timer.Elapsed();
+        if (l_Elapsed - m_LastReloadCheck >= 0.5f)
+        {
+            m_LastReloadCheck = l_Elapsed;
+            CheckHotReload();
+        }
+
         FrameInfo l_Frame;
         if (!m_Swapchain.AcquireNextImage(l_Frame))
         {

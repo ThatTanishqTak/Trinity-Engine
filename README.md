@@ -38,7 +38,7 @@ cmake --build out/build --config Debug
 Build output is written to:
 
 ```
-bin/<Config>-<System>-<Arch>/<Target>/
+bin/<Config>-<System>-<Arch>/<Project>/<Target>/
 ```
 
 ## Repository Layout

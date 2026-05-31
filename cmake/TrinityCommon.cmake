@@ -179,4 +179,16 @@ function(trinity_add_application TARGET_NAME SOURCE_DIR)
             VERBATIM
         )
     endif()
+
+    if(TRINITY_SLANG_RUNTIME_DLLS)
+        foreach(_dll ${TRINITY_SLANG_RUNTIME_DLLS})
+            add_custom_command(
+                TARGET ${TARGET_NAME} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${_dll}"
+                    "$<TARGET_FILE_DIR:${TARGET_NAME}>"
+                VERBATIM
+            )
+        endforeach()
+    endif()
 endfunction()

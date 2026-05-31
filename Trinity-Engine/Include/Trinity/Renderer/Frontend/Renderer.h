@@ -3,12 +3,14 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
+#include <filesystem>
 
 #include <Trinity/Renderer/RHI/GraphicsDevice.h>
 #include <Trinity/Renderer/RHI/Swapchain.h>
 #include <Trinity/Renderer/RHI/CommandList.h>
 #include <Trinity/Core/Timer.h>
 #include <Trinity/Renderer/Frontend/Camera.h>
+#include <Trinity/Renderer/Shaders/ShaderCompiler.h>
 
 namespace Trinity
 {
@@ -31,6 +33,9 @@ namespace Trinity
 
     private:
         bool CreatePipeline();
+        bool BuildPipeline(ShaderHandle& vertexShader, ShaderHandle& fragmentShader, PipelineHandle& pipeline);
+        void ReloadShaders();
+        void CheckHotReload();
         bool CreateGeometry();
         bool CreateDepthTexture(uint32_t width, uint32_t height);
         void DestroyDepthTexture();
@@ -39,6 +44,7 @@ namespace Trinity
         GraphicsDevice& m_Device;
         Swapchain& m_Swapchain;
         FileSystem& m_FileSystem;
+        ShaderCompiler m_ShaderCompiler;
 
         ShaderHandle m_VertexShader;
         ShaderHandle m_FragmentShader;
@@ -54,5 +60,9 @@ namespace Trinity
 
         Camera m_Camera;
         Timer m_Timer;
+
+        std::filesystem::path m_ShaderSourcePath;
+        std::filesystem::file_time_type m_ShaderWriteTime;
+        float m_LastReloadCheck = 0.0f;
     };
 }

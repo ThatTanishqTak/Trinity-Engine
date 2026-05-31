@@ -24,6 +24,8 @@ target_link_libraries(Trinity-Engine
         spdlog::spdlog
         yaml-cpp::yaml-cpp
         glm
+    PRIVATE
+        Slang
 )
 
 if(TRINITY_ENABLE_SDL)
@@ -54,39 +56,34 @@ endif()
 add_library(Trinity::Engine ALIAS Trinity-Engine)
 
 if(TRINITY_ENABLE_VULKAN)
-    if(NOT Vulkan_GLSLANG_VALIDATOR_EXECUTABLE)
-        message(FATAL_ERROR "glslangValidator not found in the Vulkan SDK; cannot compile shaders.")
-    endif()
-
     set(TRINITY_ENGINE_SHADER_DIR "${TRINITY_ENGINE_ROOT}/Shaders")
     set(TRINITY_SHADER_OUTPUT_DIR "${CMAKE_BINARY_DIR}/Shaders")
 
-    set(TRINITY_ENGINE_SHADERS
-        "${TRINITY_ENGINE_SHADER_DIR}/Triangle.vert"
-        "${TRINITY_ENGINE_SHADER_DIR}/Triangle.frag"
+    set(TRINITY_ENGINE_SLANG_SHADERS
+        "${TRINITY_ENGINE_SHADER_DIR}/Triangle.slang"
     )
 
     file(MAKE_DIRECTORY "${TRINITY_SHADER_OUTPUT_DIR}")
 
     set(TRINITY_COMPILED_SHADERS "")
-    foreach(_shader ${TRINITY_ENGINE_SHADERS})
-        get_filename_component(_name "${_shader}" NAME)
-        set(_output "${TRINITY_SHADER_OUTPUT_DIR}/${_name}.spv")
+    foreach(_slang ${TRINITY_ENGINE_SLANG_SHADERS})
+        get_filename_component(_slangname "${_slang}" NAME)
+        set(_staged "${TRINITY_SHADER_OUTPUT_DIR}/${_slangname}")
 
         add_custom_command(
-            OUTPUT "${_output}"
-            COMMAND "${Vulkan_GLSLANG_VALIDATOR_EXECUTABLE}" -V "${_shader}" -o "${_output}"
-            DEPENDS "${_shader}"
-            COMMENT "Compiling shader ${_name}"
+            OUTPUT "${_staged}"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_slang}" "${_staged}"
+            DEPENDS "${_slang}"
+            COMMENT "Staging Slang shader ${_slangname}"
             VERBATIM
         )
 
-        list(APPEND TRINITY_COMPILED_SHADERS "${_output}")
+        list(APPEND TRINITY_COMPILED_SHADERS "${_staged}")
     endforeach()
 
     add_custom_target(Trinity-Shaders
         DEPENDS ${TRINITY_COMPILED_SHADERS}
-        SOURCES ${TRINITY_ENGINE_SHADERS}
+        SOURCES ${TRINITY_ENGINE_SLANG_SHADERS}
     )
 
     trinity_set_ide_folder(Trinity-Shaders "Trinity/Engine")

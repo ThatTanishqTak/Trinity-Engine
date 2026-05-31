@@ -90,6 +90,28 @@ if(TRINITY_ENABLE_VULKAN)
     target_link_libraries(VulkanMemoryAllocator INTERFACE Vulkan::Vulkan)
 
     trinity_set_ide_folder(VulkanMemoryAllocator "Trinity/Vendor")
+
+    find_path(TRINITY_SLANG_INCLUDE_DIR
+        NAMES slang.h
+        PATHS "$ENV{VULKAN_SDK}/Include" "$ENV{VULKAN_SDK}/Include/slang"
+        NO_DEFAULT_PATH
+    )
+
+    find_library(TRINITY_SLANG_LIBRARY
+        NAMES slang
+        PATHS "$ENV{VULKAN_SDK}/Lib"
+        NO_DEFAULT_PATH
+    )
+
+    if(NOT TRINITY_SLANG_INCLUDE_DIR OR NOT TRINITY_SLANG_LIBRARY)
+        message(FATAL_ERROR "Slang not found in the Vulkan SDK ($ENV{VULKAN_SDK}); requires SDK >= 1.3.296.")
+    endif()
+
+    add_library(Slang INTERFACE)
+    target_include_directories(Slang SYSTEM INTERFACE "${TRINITY_SLANG_INCLUDE_DIR}")
+    target_link_libraries(Slang INTERFACE "${TRINITY_SLANG_LIBRARY}")
+
+    file(GLOB TRINITY_SLANG_RUNTIME_DLLS "$ENV{VULKAN_SDK}/Bin/slang*.dll")
 endif()
 
 if(TRINITY_BUILD_ENGINE)
