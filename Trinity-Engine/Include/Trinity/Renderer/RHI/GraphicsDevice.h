@@ -58,5 +58,7 @@ namespace Trinity
 
         virtual void Submit(CommandList& commandList) = 0;
         virtual void WaitIdle() = 0;
+
+        virtual void CollectGarbage() = 0;
     };
 }

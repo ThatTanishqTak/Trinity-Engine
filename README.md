@@ -31,6 +31,8 @@ milestones as they are needed.
 ## Building
 
 ```
+git clone --recurvice https://github.com/ThatTanishqTak/Trinity-Engine.git
+
 cmake -S . -B out/build
 cmake --build out/build --config Debug
 ```

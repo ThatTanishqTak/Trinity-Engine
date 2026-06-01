@@ -28,6 +28,7 @@ namespace Trinity
         BufferUsage Usage = BufferUsage::None;
         MemoryUsage Memory = MemoryUsage::GpuOnly;
         void* Mapped = nullptr;
+        std::string DebugName;
     };
 
     struct VulkanTextureResource
@@ -40,11 +41,14 @@ namespace Trinity
         VkImageAspectFlags Aspect = VK_IMAGE_ASPECT_COLOR_BIT;
         bool OwnsImage = true;
         bool OwnsView = true;
+        ResourceState CurrentState = ResourceState::Undefined;
+        std::string DebugName;
     };
 
     struct VulkanSamplerResource
     {
         VkSampler Sampler = VK_NULL_HANDLE;
+        std::string DebugName;
     };
 
     struct VulkanShaderResource
@@ -52,12 +56,41 @@ namespace Trinity
         VkShaderModule Module = VK_NULL_HANDLE;
         ShaderStage Stage = ShaderStage::None;
         std::string EntryPoint = "main";
+        std::string DebugName;
     };
 
     struct VulkanPipelineResource
     {
         VkPipeline Pipeline = VK_NULL_HANDLE;
         VkPipelineLayout Layout = VK_NULL_HANDLE;
+        std::string DebugName;
+    };
+
+    struct DeferredRelease
+    {
+        enum class Kind
+        {
+            Buffer,
+            Texture,
+            Sampler,
+            Shader,
+            Pipeline
+        };
+
+        uint64_t Frame = 0;
+        Kind Type = Kind::Buffer;
+
+        VkBuffer Buffer = VK_NULL_HANDLE;
+        VkImage Image = VK_NULL_HANDLE;
+        VkImageView View = VK_NULL_HANDLE;
+        VmaAllocation Allocation = VK_NULL_HANDLE;
+        VkSampler Sampler = VK_NULL_HANDLE;
+        VkShaderModule Module = VK_NULL_HANDLE;
+        VkPipeline Pipeline = VK_NULL_HANDLE;
+        VkPipelineLayout Layout = VK_NULL_HANDLE;
+
+        bool OwnsImage = true;
+        bool OwnsView = true;
     };
 
     template<typename Payload, typename Tag>
@@ -182,6 +215,8 @@ namespace Trinity
         void Submit(CommandList& commandList) override;
         void WaitIdle() override;
 
+        void CollectGarbage() override;
+
         TextureHandle RegisterExternalTexture(VkImage image, VkImageView view, VkFormat format, const VkExtent3D& extent, VkImageAspectFlags aspect);
         void SetActiveSwapchain(VulkanSwapchain* swapchain) { m_ActiveSwapchain = swapchain; }
         VulkanSwapchain* GetActiveSwapchain() const { return m_ActiveSwapchain; }
@@ -189,6 +224,13 @@ namespace Trinity
         VulkanBufferResource* GetBuffer(BufferHandle handle) { return m_Buffers.Get(handle); }
         VulkanTextureResource* GetTexture(TextureHandle handle) { return m_Textures.Get(handle); }
         VulkanPipelineResource* GetPipeline(PipelineHandle handle) { return m_Pipelines.Get(handle); }
+
+        ResourceState GetTextureState(TextureHandle handle)
+        {
+            VulkanTextureResource* l_Texture = m_Textures.Get(handle);
+
+            return l_Texture != nullptr ? l_Texture->CurrentState : ResourceState::Undefined;
+        }
 
         VkDevice GetHandle() const { return m_Device; }
         VkPhysicalDevice GetPhysicalDevice() const { return m_PhysicalDevice.GetHandle(); }
@@ -205,6 +247,9 @@ namespace Trinity
     private:
         bool CreateLogicalDevice();
         void QueryCapabilities();
+        void ReleaseNow(const DeferredRelease& release);
+        void ReportLeaks();
+        void SetObjectName(uint64_t handle, VkObjectType type, const std::string& name);
 
     private:
         NativeWindowHandle m_Window;
@@ -232,6 +277,12 @@ namespace Trinity
         VulkanResourcePool<VulkanSamplerResource, SamplerTag> m_Samplers;
         VulkanResourcePool<VulkanShaderResource, ShaderTag> m_Shaders;
         VulkanResourcePool<VulkanPipelineResource, PipelineTag> m_Pipelines;
+
+        std::vector<DeferredRelease> m_DeferredReleases;
+        uint64_t m_FrameCounter = 0;
+        uint64_t m_DeferredFrameDelay = 3;
+
+        PFN_vkSetDebugUtilsObjectNameEXT m_SetObjectName = nullptr;
 
         VulkanSwapchain* m_ActiveSwapchain = nullptr;
     };

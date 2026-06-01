@@ -64,5 +64,6 @@ namespace Trinity
         std::filesystem::path m_ShaderSourcePath;
         std::filesystem::file_time_type m_ShaderWriteTime;
         float m_LastReloadCheck = 0.0f;
+        bool m_Minimized = false;
     };
 }

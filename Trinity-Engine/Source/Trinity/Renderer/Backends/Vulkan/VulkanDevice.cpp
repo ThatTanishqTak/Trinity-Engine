@@ -120,6 +120,11 @@ namespace Trinity
             return false;
         }
 
+        if (m_EnableValidation)
+        {
+            m_SetObjectName = reinterpret_cast<PFN_vkSetDebugUtilsObjectNameEXT>(vkGetDeviceProcAddr(m_Device, "vkSetDebugUtilsObjectNameEXT"));
+        }
+
         QueryCapabilities();
 
         m_Initialized = true;
@@ -128,11 +133,83 @@ namespace Trinity
         return true;
     }
 
+    void VulkanDevice::ReportLeaks()
+    {
+        uint32_t l_Pipelines = 0;
+        m_Pipelines.ForEachAlive([&](VulkanPipelineResource& resource)
+        {
+            ++l_Pipelines;
+            TR_CORE_WARN("VulkanDevice: leaked pipeline '{}'", resource.DebugName);
+        });
+
+        uint32_t l_Shaders = 0;
+        m_Shaders.ForEachAlive([&](VulkanShaderResource& resource)
+        {
+            ++l_Shaders;
+            TR_CORE_WARN("VulkanDevice: leaked shader '{}'", resource.DebugName);
+        });
+
+        uint32_t l_Samplers = 0;
+        m_Samplers.ForEachAlive([&](VulkanSamplerResource& resource)
+        {
+            ++l_Samplers;
+            TR_CORE_WARN("VulkanDevice: leaked sampler '{}'", resource.DebugName);
+        });
+
+        uint32_t l_Textures = 0;
+        m_Textures.ForEachAlive([&](VulkanTextureResource& resource)
+        {
+            ++l_Textures;
+            TR_CORE_WARN("VulkanDevice: leaked texture '{}'", resource.DebugName);
+        });
+
+        uint32_t l_Buffers = 0;
+        m_Buffers.ForEachAlive([&](VulkanBufferResource& resource)
+        {
+            ++l_Buffers;
+            TR_CORE_WARN("VulkanDevice: leaked buffer '{}'", resource.DebugName);
+        });
+
+        const uint32_t l_Total = l_Pipelines + l_Shaders + l_Samplers + l_Textures + l_Buffers;
+        if (l_Total == 0)
+        {
+            TR_CORE_INFO("VulkanDevice: no resource leaks");
+        }
+        else
+        {
+            TR_CORE_WARN("VulkanDevice: {} resource leak(s) - buffers {}, textures {}, samplers {}, shaders {}, pipelines {}", l_Total, l_Buffers, l_Textures, l_Samplers, l_Shaders, l_Pipelines);
+        }
+    }
+
+    void VulkanDevice::SetObjectName(uint64_t handle, VkObjectType type, const std::string& name)
+    {
+        if (m_SetObjectName == nullptr || handle == 0 || name.empty())
+        {
+            return;
+        }
+
+        VkDebugUtilsObjectNameInfoEXT l_NameInfo{};
+        l_NameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+        l_NameInfo.objectType = type;
+        l_NameInfo.objectHandle = handle;
+        l_NameInfo.pObjectName = name.c_str();
+
+        m_SetObjectName(m_Device, &l_NameInfo);
+    }
+
     void VulkanDevice::Shutdown()
     {
         if (m_Device != VK_NULL_HANDLE)
         {
             vkDeviceWaitIdle(m_Device);
+
+            for (const DeferredRelease& it_Release : m_DeferredReleases)
+            {
+                ReleaseNow(it_Release);
+            }
+            m_DeferredReleases.clear();
+
+            ReportLeaks();
 
             VmaAllocator l_Allocator = m_Allocator.GetHandle();
 
@@ -224,6 +301,7 @@ namespace Trinity
         l_Resource.Size = description.Size;
         l_Resource.Usage = description.Usage;
         l_Resource.Memory = description.Memory;
+        l_Resource.DebugName = description.DebugName;
 
         VmaAllocationInfo l_Result{};
         if (vmaCreateBuffer(m_Allocator.GetHandle(), &l_BufferCreateInfo, &l_AllocationCreateInfo, &l_Resource.Buffer, &l_Resource.Allocation, &l_Result) != VK_SUCCESS)
@@ -251,6 +329,8 @@ namespace Trinity
                 std::memcpy(l_Resource.Mapped, description.InitialData, static_cast<size_t>(description.Size));
             }
         }
+
+        SetObjectName(reinterpret_cast<uint64_t>(l_Resource.Buffer), VK_OBJECT_TYPE_BUFFER, l_Resource.DebugName);
 
         return m_Buffers.Allocate(l_Resource);
     }
@@ -326,6 +406,11 @@ namespace Trinity
             TR_CORE_WARN("VulkanDevice: texture initial-data upload arrives with texturing (Milestone 13)");
         }
 
+        l_Resource.DebugName = description.DebugName;
+
+        SetObjectName(reinterpret_cast<uint64_t>(l_Resource.Image), VK_OBJECT_TYPE_IMAGE, l_Resource.DebugName);
+        SetObjectName(reinterpret_cast<uint64_t>(l_Resource.View), VK_OBJECT_TYPE_IMAGE_VIEW, l_Resource.DebugName);
+
         return m_Textures.Allocate(l_Resource);
     }
 
@@ -351,12 +436,15 @@ namespace Trinity
         VulkanShaderResource l_Resource{};
         l_Resource.Stage = description.Stage;
         l_Resource.EntryPoint = description.EntryPoint;
+        l_Resource.DebugName = description.DebugName;
 
         if (vkCreateShaderModule(m_Device, &l_ModuleCreateInfo, nullptr, &l_Resource.Module) != VK_SUCCESS)
         {
             TR_CORE_ERROR("VulkanDevice: vkCreateShaderModule failed");
             return ShaderHandle();
         }
+
+        SetObjectName(reinterpret_cast<uint64_t>(l_Resource.Module), VK_OBJECT_TYPE_SHADER_MODULE, l_Resource.DebugName);
 
         return m_Shaders.Allocate(l_Resource);
     }
@@ -510,6 +598,11 @@ namespace Trinity
             return PipelineHandle();
         }
 
+        l_Resource.DebugName = description.DebugName;
+
+        SetObjectName(reinterpret_cast<uint64_t>(l_Resource.Pipeline), VK_OBJECT_TYPE_PIPELINE, l_Resource.DebugName);
+        SetObjectName(reinterpret_cast<uint64_t>(l_Resource.Layout), VK_OBJECT_TYPE_PIPELINE_LAYOUT, l_Resource.DebugName);
+
         return m_Pipelines.Allocate(l_Resource);
     }
 
@@ -518,25 +611,40 @@ namespace Trinity
         VulkanBufferResource l_Resource{};
         if (m_Buffers.Free(handle, l_Resource) && l_Resource.Buffer != VK_NULL_HANDLE)
         {
-            vmaDestroyBuffer(m_Allocator.GetHandle(), l_Resource.Buffer, l_Resource.Allocation);
+            DeferredRelease l_Release{};
+            l_Release.Frame = m_FrameCounter;
+            l_Release.Type = DeferredRelease::Kind::Buffer;
+            l_Release.Buffer = l_Resource.Buffer;
+            l_Release.Allocation = l_Resource.Allocation;
+
+            m_DeferredReleases.push_back(l_Release);
         }
     }
 
     void VulkanDevice::DestroyTexture(TextureHandle handle)
     {
         VulkanTextureResource l_Resource{};
-        if (m_Textures.Free(handle, l_Resource))
+        if (!m_Textures.Free(handle, l_Resource))
         {
-            if (l_Resource.OwnsView && l_Resource.View != VK_NULL_HANDLE)
-            {
-                vkDestroyImageView(m_Device, l_Resource.View, nullptr);
-            }
-
-            if (l_Resource.OwnsImage && l_Resource.Image != VK_NULL_HANDLE)
-            {
-                vmaDestroyImage(m_Allocator.GetHandle(), l_Resource.Image, l_Resource.Allocation);
-            }
+            return;
         }
+
+        const bool l_HasNative = (l_Resource.OwnsView && l_Resource.View != VK_NULL_HANDLE) || (l_Resource.OwnsImage && l_Resource.Image != VK_NULL_HANDLE);
+        if (!l_HasNative)
+        {
+            return;
+        }
+
+        DeferredRelease l_Release{};
+        l_Release.Frame = m_FrameCounter;
+        l_Release.Type = DeferredRelease::Kind::Texture;
+        l_Release.Image = l_Resource.Image;
+        l_Release.View = l_Resource.View;
+        l_Release.Allocation = l_Resource.Allocation;
+        l_Release.OwnsImage = l_Resource.OwnsImage;
+        l_Release.OwnsView = l_Resource.OwnsView;
+
+        m_DeferredReleases.push_back(l_Release);
     }
 
     void VulkanDevice::DestroySampler(SamplerHandle handle)
@@ -544,7 +652,12 @@ namespace Trinity
         VulkanSamplerResource l_Resource{};
         if (m_Samplers.Free(handle, l_Resource) && l_Resource.Sampler != VK_NULL_HANDLE)
         {
-            vkDestroySampler(m_Device, l_Resource.Sampler, nullptr);
+            DeferredRelease l_Release{};
+            l_Release.Frame = m_FrameCounter;
+            l_Release.Type = DeferredRelease::Kind::Sampler;
+            l_Release.Sampler = l_Resource.Sampler;
+
+            m_DeferredReleases.push_back(l_Release);
         }
     }
 
@@ -553,7 +666,12 @@ namespace Trinity
         VulkanShaderResource l_Resource{};
         if (m_Shaders.Free(handle, l_Resource) && l_Resource.Module != VK_NULL_HANDLE)
         {
-            vkDestroyShaderModule(m_Device, l_Resource.Module, nullptr);
+            DeferredRelease l_Release{};
+            l_Release.Frame = m_FrameCounter;
+            l_Release.Type = DeferredRelease::Kind::Shader;
+            l_Release.Module = l_Resource.Module;
+
+            m_DeferredReleases.push_back(l_Release);
         }
     }
 
@@ -562,16 +680,89 @@ namespace Trinity
         VulkanPipelineResource l_Resource{};
         if (m_Pipelines.Free(handle, l_Resource))
         {
-            if (l_Resource.Pipeline != VK_NULL_HANDLE)
-            {
-                vkDestroyPipeline(m_Device, l_Resource.Pipeline, nullptr);
-            }
+            DeferredRelease l_Release{};
+            l_Release.Frame = m_FrameCounter;
+            l_Release.Type = DeferredRelease::Kind::Pipeline;
+            l_Release.Pipeline = l_Resource.Pipeline;
+            l_Release.Layout = l_Resource.Layout;
 
-            if (l_Resource.Layout != VK_NULL_HANDLE)
+            m_DeferredReleases.push_back(l_Release);
+        }
+    }
+
+    void VulkanDevice::ReleaseNow(const DeferredRelease& release)
+    {
+        switch (release.Type)
+        {
+            case DeferredRelease::Kind::Buffer:
+                if (release.Buffer != VK_NULL_HANDLE)
+                {
+                    vmaDestroyBuffer(m_Allocator.GetHandle(), release.Buffer, release.Allocation);
+                }
+                break;
+
+            case DeferredRelease::Kind::Texture:
+                if (release.OwnsView && release.View != VK_NULL_HANDLE)
+                {
+                    vkDestroyImageView(m_Device, release.View, nullptr);
+                }
+
+                if (release.OwnsImage && release.Image != VK_NULL_HANDLE)
+                {
+                    vmaDestroyImage(m_Allocator.GetHandle(), release.Image, release.Allocation);
+                }
+                break;
+
+            case DeferredRelease::Kind::Sampler:
+                if (release.Sampler != VK_NULL_HANDLE)
+                {
+                    vkDestroySampler(m_Device, release.Sampler, nullptr);
+                }
+                break;
+
+            case DeferredRelease::Kind::Shader:
+                if (release.Module != VK_NULL_HANDLE)
+                {
+                    vkDestroyShaderModule(m_Device, release.Module, nullptr);
+                }
+                break;
+
+            case DeferredRelease::Kind::Pipeline:
+                if (release.Pipeline != VK_NULL_HANDLE)
+                {
+                    vkDestroyPipeline(m_Device, release.Pipeline, nullptr);
+                }
+
+                if (release.Layout != VK_NULL_HANDLE)
+                {
+                    vkDestroyPipelineLayout(m_Device, release.Layout, nullptr);
+                }
+                break;
+        }
+    }
+
+    void VulkanDevice::CollectGarbage()
+    {
+        ++m_FrameCounter;
+
+        size_t l_Write = 0;
+        for (size_t l_Read = 0; l_Read < m_DeferredReleases.size(); ++l_Read)
+        {
+            if (m_DeferredReleases[l_Read].Frame + m_DeferredFrameDelay <= m_FrameCounter)
             {
-                vkDestroyPipelineLayout(m_Device, l_Resource.Layout, nullptr);
+                ReleaseNow(m_DeferredReleases[l_Read]);
+            }
+            else
+            {
+                if (l_Write != l_Read)
+                {
+                    m_DeferredReleases[l_Write] = m_DeferredReleases[l_Read];
+                }
+                ++l_Write;
             }
         }
+
+        m_DeferredReleases.resize(l_Write);
     }
 
     void VulkanDevice::UpdateBuffer(BufferHandle handle, const void* data, uint64_t size, uint64_t offset)

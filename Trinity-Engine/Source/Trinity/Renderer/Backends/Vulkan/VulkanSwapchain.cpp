@@ -76,6 +76,15 @@ namespace Trinity
 
     bool VulkanSwapchain::AcquireNextImage(FrameInfo& outFrame)
     {
+        if (m_Swapchain == VK_NULL_HANDLE)
+        {
+            Resize(m_Description.Width, m_Description.Height);
+            if (m_Swapchain == VK_NULL_HANDLE)
+            {
+                return false;
+            }
+        }
+
         VkDevice l_Device = m_Device.GetHandle();
         VulkanFrameData& l_Frame = m_Frames[m_CurrentFrame];
 
@@ -168,11 +177,6 @@ namespace Trinity
 
     void VulkanSwapchain::Resize(uint32_t width, uint32_t height)
     {
-        if (width == 0 || height == 0)
-        {
-            return;
-        }
-
         vkDeviceWaitIdle(m_Device.GetHandle());
 
         m_Description.Width = width;
@@ -181,7 +185,12 @@ namespace Trinity
         UnregisterBackbuffers();
         DestroyFrameData();
         DestroySwapchainObjects();
-        CreateSwapchain();
+
+        if (!CreateSwapchain())
+        {
+            return;
+        }
+
         CreateImageViews();
         CreateFrameData();
         RegisterBackbuffers();
@@ -196,6 +205,11 @@ namespace Trinity
         m_SurfaceFormat = ChooseFormat(l_Support.Formats);
         m_PresentMode = ChoosePresentMode(l_Support.PresentModes);
         m_Extent = ChooseExtent(l_Support.Capabilities);
+        if (m_Extent.width == 0 || m_Extent.height == 0)
+        {
+            return false;
+        }
+
         m_FrontendFormat = VulkanFormatToFrontend(m_SurfaceFormat.format);
 
         uint32_t l_ImageCount = std::max(m_Description.ImageCount, l_Support.Capabilities.minImageCount);

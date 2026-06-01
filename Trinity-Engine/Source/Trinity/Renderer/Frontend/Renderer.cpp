@@ -352,6 +352,13 @@ namespace Trinity
 
     void Renderer::RenderFrame()
     {
+        m_Device.CollectGarbage();
+
+        if (m_Minimized)
+        {
+            return;
+        }
+
         float l_Elapsed = m_Timer.Elapsed();
         if (l_Elapsed - m_LastReloadCheck >= 0.5f)
         {
@@ -438,6 +445,15 @@ namespace Trinity
 
     void Renderer::Resize(uint32_t width, uint32_t height)
     {
+        if (width == 0 || height == 0)
+        {
+            m_Minimized = true;
+
+            return;
+        }
+
+        m_Minimized = false;
+
         m_Swapchain.Resize(width, height);
 
         DestroyDepthTexture();

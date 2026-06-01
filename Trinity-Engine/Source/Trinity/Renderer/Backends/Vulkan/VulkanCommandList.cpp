@@ -215,6 +215,13 @@ namespace Trinity
             return;
         }
 
+        if (from != ResourceState::Undefined && l_Texture->CurrentState != from)
+        {
+            TR_CORE_WARN("VulkanCommandList: transition '{}' declared from {} but tracked state is {}", l_Texture->DebugName, static_cast<int>(from), static_cast<int>(l_Texture->CurrentState));
+        }
+
+        l_Texture->CurrentState = to;
+
         StateInfo l_From = ResolveState(from);
         StateInfo l_To = ResolveState(to);
 
