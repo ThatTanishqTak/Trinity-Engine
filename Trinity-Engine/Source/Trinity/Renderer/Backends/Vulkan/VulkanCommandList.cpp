@@ -43,10 +43,32 @@ namespace Trinity
         {
             TR_CORE_ERROR("VulkanCommandList: vkAllocateCommandBuffers failed");
         }
+
+        VkDescriptorPoolSize l_PoolSizes[2]{};
+        l_PoolSizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        l_PoolSizes[0].descriptorCount = 1024;
+        l_PoolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        l_PoolSizes[1].descriptorCount = 1024;
+
+        VkDescriptorPoolCreateInfo l_PoolInfo{};
+        l_PoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        l_PoolInfo.maxSets = 1024;
+        l_PoolInfo.poolSizeCount = 2;
+        l_PoolInfo.pPoolSizes = l_PoolSizes;
+
+        if (vkCreateDescriptorPool(m_Device.GetHandle(), &l_PoolInfo, nullptr, &m_DescriptorPool) != VK_SUCCESS)
+        {
+            TR_CORE_ERROR("VulkanCommandList: vkCreateDescriptorPool failed");
+        }
     }
 
     VulkanCommandList::~VulkanCommandList()
     {
+        if (m_DescriptorPool != VK_NULL_HANDLE)
+        {
+            vkDestroyDescriptorPool(m_Device.GetHandle(), m_DescriptorPool, nullptr);
+        }
+
         if (m_CommandBuffer != VK_NULL_HANDLE)
         {
             vkFreeCommandBuffers(m_Device.GetHandle(), m_Device.GetCommands().GetPool(), 1, &m_CommandBuffer);
@@ -63,7 +85,13 @@ namespace Trinity
 
         vkBeginCommandBuffer(m_CommandBuffer, &l_CommandBufferBeginInfo);
 
+        if (m_DescriptorPool != VK_NULL_HANDLE)
+        {
+            vkResetDescriptorPool(m_Device.GetHandle(), m_DescriptorPool, 0);
+        }
+
         m_CurrentLayout = VK_NULL_HANDLE;
+        m_CurrentSetLayouts.clear();
     }
 
     void VulkanCommandList::End()
@@ -161,6 +189,7 @@ namespace Trinity
 
         vkCmdBindPipeline(m_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, l_Pipeline->Pipeline);
         m_CurrentLayout = l_Pipeline->Layout;
+        m_CurrentSetLayouts = l_Pipeline->SetLayouts;
     }
 
     void VulkanCommandList::BindVertexBuffer(BufferHandle buffer, uint64_t offset)
@@ -195,6 +224,52 @@ namespace Trinity
         }
 
         vkCmdPushConstants(m_CommandBuffer, m_CurrentLayout, VulkanUtilities::ToVkShaderStages(stages), offset, size, data);
+    }
+
+    void VulkanCommandList::BindTexture(uint32_t set, uint32_t binding, TextureHandle texture, SamplerHandle sampler)
+    {
+        if (m_CurrentLayout == VK_NULL_HANDLE || set >= m_CurrentSetLayouts.size())
+        {
+            return;
+        }
+
+        VulkanTextureResource* l_Texture = m_Device.GetTexture(texture);
+        VulkanSamplerResource* l_Sampler = m_Device.GetSampler(sampler);
+        if (l_Texture == nullptr || l_Sampler == nullptr)
+        {
+            return;
+        }
+
+        VkDescriptorSetAllocateInfo l_AllocateInfo{};
+        l_AllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        l_AllocateInfo.descriptorPool = m_DescriptorPool;
+        l_AllocateInfo.descriptorSetCount = 1;
+        l_AllocateInfo.pSetLayouts = &m_CurrentSetLayouts[set];
+
+        VkDescriptorSet l_DescriptorSet = VK_NULL_HANDLE;
+        if (vkAllocateDescriptorSets(m_Device.GetHandle(), &l_AllocateInfo, &l_DescriptorSet) != VK_SUCCESS)
+        {
+            TR_CORE_ERROR("VulkanCommandList: vkAllocateDescriptorSets failed");
+            return;
+        }
+
+        VkDescriptorImageInfo l_ImageInfo{};
+        l_ImageInfo.sampler = l_Sampler->Sampler;
+        l_ImageInfo.imageView = l_Texture->View;
+        l_ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+        VkWriteDescriptorSet l_Write{};
+        l_Write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        l_Write.dstSet = l_DescriptorSet;
+        l_Write.dstBinding = binding;
+        l_Write.dstArrayElement = 0;
+        l_Write.descriptorCount = 1;
+        l_Write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        l_Write.pImageInfo = &l_ImageInfo;
+
+        vkUpdateDescriptorSets(m_Device.GetHandle(), 1, &l_Write, 0, nullptr);
+
+        vkCmdBindDescriptorSets(m_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_CurrentLayout, set, 1, &l_DescriptorSet, 0, nullptr);
     }
 
     void VulkanCommandList::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)

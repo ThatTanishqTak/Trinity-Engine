@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include <vulkan/vulkan.h>
 
 #include <Trinity/Renderer/RHI/CommandList.h>
@@ -32,6 +34,8 @@ namespace Trinity
 
         void PushConstants(ShaderStage stages, uint32_t offset, uint32_t size, const void* data) override;
 
+        void BindTexture(uint32_t set, uint32_t binding, TextureHandle texture, SamplerHandle sampler) override;
+
         void Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance) override;
         void DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance) override;
 
@@ -43,5 +47,7 @@ namespace Trinity
         VulkanDevice& m_Device;
         VkCommandBuffer m_CommandBuffer = VK_NULL_HANDLE;
         VkPipelineLayout m_CurrentLayout = VK_NULL_HANDLE;
+        VkDescriptorPool m_DescriptorPool = VK_NULL_HANDLE;
+        std::vector<VkDescriptorSetLayout> m_CurrentSetLayouts;
     };
 }

@@ -114,6 +114,9 @@ if(TRINITY_ENABLE_VULKAN)
     file(GLOB TRINITY_SLANG_RUNTIME_DLLS "$ENV{VULKAN_SDK}/Bin/slang*.dll")
 endif()
 
+add_library(stb INTERFACE)
+target_include_directories(stb SYSTEM INTERFACE "${CMAKE_SOURCE_DIR}/Vendor/stb")
+
 if(TRINITY_BUILD_ENGINE)
     add_subdirectory(Trinity-Engine)
 endif()

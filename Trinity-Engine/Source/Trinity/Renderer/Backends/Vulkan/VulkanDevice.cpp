@@ -49,6 +49,128 @@ namespace Trinity
         return true;
     }
 
+    static bool UploadTextureViaStaging(VmaAllocator allocator, VulkanCommands& commands, VkImage image, VkImageAspectFlags aspect, uint32_t width, uint32_t height, uint32_t depth, uint32_t mipLevels, uint32_t layerCount, const void* data, uint64_t size)
+    {
+        VkBufferCreateInfo l_StagingInfo{};
+        l_StagingInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        l_StagingInfo.size = size;
+        l_StagingInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        l_StagingInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        VmaAllocationCreateInfo l_StagingAllocation{};
+        l_StagingAllocation.usage = VMA_MEMORY_USAGE_AUTO;
+        l_StagingAllocation.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+
+        VkBuffer l_StagingBuffer = VK_NULL_HANDLE;
+        VmaAllocation l_StagingMemory = VK_NULL_HANDLE;
+        VmaAllocationInfo l_StagingResult{};
+
+        if (vmaCreateBuffer(allocator, &l_StagingInfo, &l_StagingAllocation, &l_StagingBuffer, &l_StagingMemory, &l_StagingResult) != VK_SUCCESS)
+        {
+            return false;
+        }
+
+        std::memcpy(l_StagingResult.pMappedData, data, static_cast<size_t>(size));
+
+        commands.ImmediateSubmit([&](VkCommandBuffer commandBuffer)
+        {
+            auto l_Barrier = [&](uint32_t baseLevel, uint32_t levelCount, VkImageLayout oldLayout, VkImageLayout newLayout, VkPipelineStageFlags2 srcStage, VkAccessFlags2 srcAccess, VkPipelineStageFlags2 dstStage, VkAccessFlags2 dstAccess)
+            {
+                VkImageMemoryBarrier2 l_ImageBarrier{};
+                l_ImageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+                l_ImageBarrier.srcStageMask = srcStage;
+                l_ImageBarrier.srcAccessMask = srcAccess;
+                l_ImageBarrier.dstStageMask = dstStage;
+                l_ImageBarrier.dstAccessMask = dstAccess;
+                l_ImageBarrier.oldLayout = oldLayout;
+                l_ImageBarrier.newLayout = newLayout;
+                l_ImageBarrier.image = image;
+                l_ImageBarrier.subresourceRange.aspectMask = aspect;
+                l_ImageBarrier.subresourceRange.baseMipLevel = baseLevel;
+                l_ImageBarrier.subresourceRange.levelCount = levelCount;
+                l_ImageBarrier.subresourceRange.baseArrayLayer = 0;
+                l_ImageBarrier.subresourceRange.layerCount = layerCount;
+
+                VkDependencyInfo l_Dependency{};
+                l_Dependency.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+                l_Dependency.imageMemoryBarrierCount = 1;
+                l_Dependency.pImageMemoryBarriers = &l_ImageBarrier;
+                vkCmdPipelineBarrier2(commandBuffer, &l_Dependency);
+            };
+
+            l_Barrier(0, mipLevels, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, 0, VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
+
+            VkBufferImageCopy l_Region{};
+            l_Region.bufferOffset = 0;
+            l_Region.bufferRowLength = 0;
+            l_Region.bufferImageHeight = 0;
+            l_Region.imageSubresource.aspectMask = aspect;
+            l_Region.imageSubresource.mipLevel = 0;
+            l_Region.imageSubresource.baseArrayLayer = 0;
+            l_Region.imageSubresource.layerCount = layerCount;
+            l_Region.imageOffset = { 0, 0, 0 };
+            l_Region.imageExtent = { width, height, depth };
+            vkCmdCopyBufferToImage(commandBuffer, l_StagingBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &l_Region);
+
+            if (mipLevels > 1)
+            {
+                int32_t l_MipWidth = static_cast<int32_t>(width);
+                int32_t l_MipHeight = static_cast<int32_t>(height);
+
+                for (uint32_t l_Level = 1; l_Level < mipLevels; ++l_Level)
+                {
+                    l_Barrier(l_Level - 1, 1, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_2_BLIT_BIT, VK_ACCESS_2_TRANSFER_READ_BIT);
+
+                    const int32_t l_NextWidth = l_MipWidth > 1 ? l_MipWidth / 2 : 1;
+                    const int32_t l_NextHeight = l_MipHeight > 1 ? l_MipHeight / 2 : 1;
+
+                    VkImageBlit l_Blit{};
+                    l_Blit.srcOffsets[0] = { 0, 0, 0 };
+                    l_Blit.srcOffsets[1] = { l_MipWidth, l_MipHeight, 1 };
+                    l_Blit.srcSubresource.aspectMask = aspect;
+                    l_Blit.srcSubresource.mipLevel = l_Level - 1;
+                    l_Blit.srcSubresource.baseArrayLayer = 0;
+                    l_Blit.srcSubresource.layerCount = layerCount;
+                    l_Blit.dstOffsets[0] = { 0, 0, 0 };
+                    l_Blit.dstOffsets[1] = { l_NextWidth, l_NextHeight, 1 };
+                    l_Blit.dstSubresource.aspectMask = aspect;
+                    l_Blit.dstSubresource.mipLevel = l_Level;
+                    l_Blit.dstSubresource.baseArrayLayer = 0;
+                    l_Blit.dstSubresource.layerCount = layerCount;
+
+                    vkCmdBlitImage(commandBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &l_Blit, VK_FILTER_LINEAR);
+
+                    l_Barrier(l_Level - 1, 1, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_2_BLIT_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
+
+                    l_MipWidth = l_NextWidth;
+                    l_MipHeight = l_NextHeight;
+                }
+
+                l_Barrier(mipLevels - 1, 1, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
+            }
+            else
+            {
+                l_Barrier(0, 1, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
+            }
+        });
+
+        vmaDestroyBuffer(allocator, l_StagingBuffer, l_StagingMemory);
+
+        return true;
+    }
+
+    static VkDescriptorType ToVkDescriptorType(ResourceBindingType type)
+    {
+        switch (type)
+        {
+            case ResourceBindingType::UniformBuffer: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            case ResourceBindingType::StorageBuffer: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            case ResourceBindingType::StorageImage: return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+            case ResourceBindingType::CombinedImageSampler:
+            default: return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        }
+    }
+
     static VkImageAspectFlags DetermineAspect(Format format)
     {
         switch (format)
@@ -70,6 +192,29 @@ namespace Trinity
             case TextureType::Texture2D:
             default: return VK_IMAGE_VIEW_TYPE_2D;
         }
+    }
+
+    static uint32_t ComputeMipLevels(uint32_t width, uint32_t height)
+    {
+        uint32_t l_Max = width > height ? width : height;
+        uint32_t l_Levels = 1;
+        while (l_Max > 1)
+        {
+            l_Max >>= 1;
+            ++l_Levels;
+        }
+
+        return l_Levels;
+    }
+
+    static bool SupportsLinearBlit(VkPhysicalDevice physicalDevice, VkFormat format)
+    {
+        VkFormatProperties l_Properties{};
+        vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &l_Properties);
+
+        const VkFormatFeatureFlags l_Required = VK_FORMAT_FEATURE_BLIT_SRC_BIT | VK_FORMAT_FEATURE_BLIT_DST_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
+
+        return (l_Properties.optimalTilingFeatures & l_Required) == l_Required;
     }
 
     VulkanDevice::VulkanDevice(const NativeWindowHandle& window, const std::string& applicationName, bool enableValidation) : m_Window(window), m_ApplicationName(applicationName), m_EnableValidation(enableValidation)
@@ -233,6 +378,7 @@ namespace Trinity
                     vkDestroyShaderModule(m_Device, resource.Module, nullptr);
                 }
             });
+
             m_Samplers.ForEachAlive([&](VulkanSamplerResource& resource)
             {
                 if (resource.Sampler != VK_NULL_HANDLE)
@@ -279,16 +425,16 @@ namespace Trinity
     {
         const bool l_DeviceLocal = description.Memory == MemoryUsage::GpuOnly;
 
-        VkBufferUsageFlags l_Usage = VulkanUtilities::ToVkBufferUsage(description.Usage);
+        VkBufferUsageFlags l_BufferUsageFlags = VulkanUtilities::ToVkBufferUsage(description.Usage);
         if (l_DeviceLocal)
         {
-            l_Usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+            l_BufferUsageFlags |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
         }
 
         VkBufferCreateInfo l_BufferCreateInfo{};
         l_BufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         l_BufferCreateInfo.size = description.Size;
-        l_BufferCreateInfo.usage = l_Usage;
+        l_BufferCreateInfo.usage = l_BufferUsageFlags;
         l_BufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
         VulkanUtilities::VmaAllocationParameters l_Parameters = VulkanUtilities::ToVmaAllocation(description.Memory);
@@ -352,17 +498,43 @@ namespace Trinity
             l_ImageCreateFlags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
         }
 
+        uint32_t l_MipLevels = description.MipLevels > 0 ? description.MipLevels : 1;
+        if (description.GenerateMips && description.InitialData != nullptr)
+        {
+            if (SupportsLinearBlit(m_PhysicalDevice.GetHandle(), l_Format))
+            {
+                l_MipLevels = ComputeMipLevels(description.Width, description.Height);
+            }
+            else
+            {
+                TR_CORE_WARN("VulkanDevice: linear blit unsupported for this format; skipping mip generation");
+                l_MipLevels = 1;
+            }
+        }
+
         VkImageCreateInfo l_ImageCreateInfo{};
         l_ImageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         l_ImageCreateInfo.flags = l_ImageCreateFlags;
         l_ImageCreateInfo.imageType = description.Type == TextureType::Texture3D ? VK_IMAGE_TYPE_3D : VK_IMAGE_TYPE_2D;
         l_ImageCreateInfo.format = l_Format;
         l_ImageCreateInfo.extent = { description.Width, description.Height, description.Depth };
-        l_ImageCreateInfo.mipLevels = description.MipLevels;
+        l_ImageCreateInfo.mipLevels = l_MipLevels;
         l_ImageCreateInfo.arrayLayers = l_ArrayLayers;
         l_ImageCreateInfo.samples = static_cast<VkSampleCountFlagBits>(description.SampleCount);
         l_ImageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-        l_ImageCreateInfo.usage = VulkanUtilities::ToVkImageUsage(description.Usage);
+
+        VkImageUsageFlags l_Usage = VulkanUtilities::ToVkImageUsage(description.Usage);
+        if (description.InitialData != nullptr)
+        {
+            l_Usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        }
+
+        if (l_MipLevels > 1)
+        {
+            l_Usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        }
+
+        l_ImageCreateInfo.usage = l_Usage;
         l_ImageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         l_ImageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
@@ -382,18 +554,18 @@ namespace Trinity
             return TextureHandle();
         }
 
-        VkImageViewCreateInfo l_ViewCreateInfo{};
-        l_ViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        l_ViewCreateInfo.image = l_Resource.Image;
-        l_ViewCreateInfo.viewType = DetermineViewType(description.Type);
-        l_ViewCreateInfo.format = l_Format;
-        l_ViewCreateInfo.subresourceRange.aspectMask = l_Resource.Aspect;
-        l_ViewCreateInfo.subresourceRange.baseMipLevel = 0;
-        l_ViewCreateInfo.subresourceRange.levelCount = description.MipLevels;
-        l_ViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-        l_ViewCreateInfo.subresourceRange.layerCount = l_ArrayLayers;
+        VkImageViewCreateInfo l_ImageViewCreateInfo{};
+        l_ImageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        l_ImageViewCreateInfo.image = l_Resource.Image;
+        l_ImageViewCreateInfo.viewType = DetermineViewType(description.Type);
+        l_ImageViewCreateInfo.format = l_Format;
+        l_ImageViewCreateInfo.subresourceRange.aspectMask = l_Resource.Aspect;
+        l_ImageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+        l_ImageViewCreateInfo.subresourceRange.levelCount = description.MipLevels;
+        l_ImageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+        l_ImageViewCreateInfo.subresourceRange.layerCount = l_ArrayLayers;
 
-        if (vkCreateImageView(m_Device, &l_ViewCreateInfo, nullptr, &l_Resource.View) != VK_SUCCESS)
+        if (vkCreateImageView(m_Device, &l_ImageViewCreateInfo, nullptr, &l_Resource.View) != VK_SUCCESS)
         {
             TR_CORE_ERROR("VulkanDevice: vkCreateImageView failed");
             vmaDestroyImage(m_Allocator.GetHandle(), l_Resource.Image, l_Resource.Allocation);
@@ -403,7 +575,16 @@ namespace Trinity
 
         if (description.InitialData != nullptr)
         {
-            TR_CORE_WARN("VulkanDevice: texture initial-data upload arrives with texturing (Milestone 13)");
+            if (!UploadTextureViaStaging(m_Allocator.GetHandle(), m_Commands, l_Resource.Image, l_Resource.Aspect, description.Width, description.Height, description.Depth, description.MipLevels, l_ArrayLayers, description.InitialData, description.InitialDataSize))
+            {
+                TR_CORE_ERROR("VulkanDevice: texture staging upload failed");
+                vkDestroyImageView(m_Device, l_Resource.View, nullptr);
+                vmaDestroyImage(m_Allocator.GetHandle(), l_Resource.Image, l_Resource.Allocation);
+
+                return TextureHandle();
+            }
+
+            l_Resource.CurrentState = ResourceState::ShaderResource;
         }
 
         l_Resource.DebugName = description.DebugName;
@@ -414,10 +595,47 @@ namespace Trinity
         return m_Textures.Allocate(l_Resource);
     }
 
-    SamplerHandle VulkanDevice::CreateSampler(const SamplerDescription&)
+    SamplerHandle VulkanDevice::CreateSampler(const SamplerDescription& description)
     {
-        TR_CORE_WARN("VulkanDevice: CreateSampler not yet implemented");
-        return SamplerHandle();
+        VkSamplerCreateInfo l_SamplerCreateInfo{};
+        l_SamplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        l_SamplerCreateInfo.magFilter = description.LinearFilter ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
+        l_SamplerCreateInfo.minFilter = description.LinearFilter ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
+        l_SamplerCreateInfo.mipmapMode = description.LinearMipmap ? VK_SAMPLER_MIPMAP_MODE_LINEAR : VK_SAMPLER_MIPMAP_MODE_NEAREST;
+        l_SamplerCreateInfo.addressModeU = description.RepeatU ? VK_SAMPLER_ADDRESS_MODE_REPEAT : VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        l_SamplerCreateInfo.addressModeV = description.RepeatV ? VK_SAMPLER_ADDRESS_MODE_REPEAT : VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        l_SamplerCreateInfo.addressModeW = description.RepeatW ? VK_SAMPLER_ADDRESS_MODE_REPEAT : VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        l_SamplerCreateInfo.mipLodBias = 0.0f;
+        l_SamplerCreateInfo.minLod = 0.0f;
+        l_SamplerCreateInfo.maxLod = VK_LOD_CLAMP_NONE;
+        l_SamplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+        l_SamplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
+        l_SamplerCreateInfo.compareEnable = VK_FALSE;
+        l_SamplerCreateInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+
+        if (description.MaxAnisotropy > 1.0f && m_Capabilities.SupportsAnisotropy)
+        {
+            l_SamplerCreateInfo.anisotropyEnable = VK_TRUE;
+            l_SamplerCreateInfo.maxAnisotropy = description.MaxAnisotropy < 16.0f ? description.MaxAnisotropy : 16.0f;
+        }
+        else
+        {
+            l_SamplerCreateInfo.anisotropyEnable = VK_FALSE;
+            l_SamplerCreateInfo.maxAnisotropy = 1.0f;
+        }
+
+        VulkanSamplerResource l_Resource{};
+        l_Resource.DebugName = description.DebugName;
+
+        if (vkCreateSampler(m_Device, &l_SamplerCreateInfo, nullptr, &l_Resource.Sampler) != VK_SUCCESS)
+        {
+            TR_CORE_ERROR("VulkanDevice: vkCreateSampler failed");
+            return SamplerHandle();
+        }
+
+        SetObjectName(reinterpret_cast<uint64_t>(l_Resource.Sampler), VK_OBJECT_TYPE_SAMPLER, l_Resource.DebugName);
+
+        return m_Samplers.Allocate(l_Resource);
     }
 
     ShaderHandle VulkanDevice::CreateShader(const ShaderDescription& description)
@@ -545,6 +763,59 @@ namespace Trinity
         l_PipelineDynamicStateCreateInfo.dynamicStateCount = static_cast<uint32_t>(l_DynamicStates.size());
         l_PipelineDynamicStateCreateInfo.pDynamicStates = l_DynamicStates.data();
 
+        VulkanPipelineResource l_Resource{};
+
+        uint32_t l_MaxSet = 0;
+        for (const ResourceBinding& it_Binding : description.Bindings)
+        {
+            l_MaxSet = it_Binding.Set > l_MaxSet ? it_Binding.Set : l_MaxSet;
+        }
+
+        std::vector<VkDescriptorSetLayout> l_SetLayouts;
+        if (!description.Bindings.empty())
+        {
+            const uint32_t l_SetCount = l_MaxSet + 1;
+            for (uint32_t l_Set = 0; l_Set < l_SetCount; ++l_Set)
+            {
+                std::vector<VkDescriptorSetLayoutBinding> l_LayoutBindings;
+                for (const ResourceBinding& it_Binding : description.Bindings)
+                {
+                    if (it_Binding.Set != l_Set)
+                    {
+                        continue;
+                    }
+
+                    VkDescriptorSetLayoutBinding l_LayoutBinding{};
+                    l_LayoutBinding.binding = it_Binding.Binding;
+                    l_LayoutBinding.descriptorType = ToVkDescriptorType(it_Binding.Type);
+                    l_LayoutBinding.descriptorCount = 1;
+                    l_LayoutBinding.stageFlags = VulkanUtilities::ToVkShaderStages(it_Binding.Stages);
+                    l_LayoutBindings.push_back(l_LayoutBinding);
+                }
+
+                VkDescriptorSetLayoutCreateInfo l_LayoutInfo{};
+                l_LayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+                l_LayoutInfo.bindingCount = static_cast<uint32_t>(l_LayoutBindings.size());
+                l_LayoutInfo.pBindings = l_LayoutBindings.empty() ? nullptr : l_LayoutBindings.data();
+
+                VkDescriptorSetLayout l_SetLayout = VK_NULL_HANDLE;
+                if (vkCreateDescriptorSetLayout(m_Device, &l_LayoutInfo, nullptr, &l_SetLayout) != VK_SUCCESS)
+                {
+                    TR_CORE_ERROR("VulkanDevice: vkCreateDescriptorSetLayout failed");
+                    for (VkDescriptorSetLayout it_Layout : l_SetLayouts)
+                    {
+                        vkDestroyDescriptorSetLayout(m_Device, it_Layout, nullptr);
+                    }
+
+                    return PipelineHandle();
+                }
+
+                l_SetLayouts.push_back(l_SetLayout);
+            }
+        }
+
+        l_Resource.SetLayouts = l_SetLayouts;
+
         VkPushConstantRange l_PushConstantRange{};
         l_PushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         l_PushConstantRange.offset = 0;
@@ -552,13 +823,19 @@ namespace Trinity
 
         VkPipelineLayoutCreateInfo l_PipelineLayoutCreateInfo{};
         l_PipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        l_PipelineLayoutCreateInfo.setLayoutCount = static_cast<uint32_t>(l_Resource.SetLayouts.size());
+        l_PipelineLayoutCreateInfo.pSetLayouts = l_Resource.SetLayouts.empty() ? nullptr : l_Resource.SetLayouts.data();
         l_PipelineLayoutCreateInfo.pushConstantRangeCount = description.PushConstantSize > 0 ? 1 : 0;
         l_PipelineLayoutCreateInfo.pPushConstantRanges = description.PushConstantSize > 0 ? &l_PushConstantRange : nullptr;
 
-        VulkanPipelineResource l_Resource{};
         if (vkCreatePipelineLayout(m_Device, &l_PipelineLayoutCreateInfo, nullptr, &l_Resource.Layout) != VK_SUCCESS)
         {
             TR_CORE_ERROR("VulkanDevice: vkCreatePipelineLayout failed");
+            for (VkDescriptorSetLayout it_Layout : l_Resource.SetLayouts)
+            {
+                vkDestroyDescriptorSetLayout(m_Device, it_Layout, nullptr);
+            }
+
             return PipelineHandle();
         }
 
@@ -594,6 +871,10 @@ namespace Trinity
         {
             TR_CORE_ERROR("VulkanDevice: vkCreateGraphicsPipelines failed");
             vkDestroyPipelineLayout(m_Device, l_Resource.Layout, nullptr);
+            for (VkDescriptorSetLayout it_Layout : l_Resource.SetLayouts)
+            {
+                vkDestroyDescriptorSetLayout(m_Device, it_Layout, nullptr);
+            }
 
             return PipelineHandle();
         }
@@ -685,6 +966,7 @@ namespace Trinity
             l_Release.Type = DeferredRelease::Kind::Pipeline;
             l_Release.Pipeline = l_Resource.Pipeline;
             l_Release.Layout = l_Resource.Layout;
+            l_Release.SetLayouts = l_Resource.SetLayouts;
 
             m_DeferredReleases.push_back(l_Release);
         }
@@ -736,6 +1018,11 @@ namespace Trinity
                 if (release.Layout != VK_NULL_HANDLE)
                 {
                     vkDestroyPipelineLayout(m_Device, release.Layout, nullptr);
+                }
+
+                for (VkDescriptorSetLayout it_Layout : release.SetLayouts)
+                {
+                    vkDestroyDescriptorSetLayout(m_Device, it_Layout, nullptr);
                 }
                 break;
         }

@@ -26,6 +26,7 @@ target_link_libraries(Trinity-Engine
         glm
     PRIVATE
         Slang
+        stb
 )
 
 if(TRINITY_ENABLE_SDL)

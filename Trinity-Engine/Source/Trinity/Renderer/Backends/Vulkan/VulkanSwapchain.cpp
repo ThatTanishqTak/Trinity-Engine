@@ -96,6 +96,7 @@ namespace Trinity
         if (l_Result == VK_ERROR_OUT_OF_DATE_KHR)
         {
             Resize(m_Extent.width, m_Extent.height);
+
             return false;
         }
 

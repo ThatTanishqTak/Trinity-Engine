@@ -10,12 +10,13 @@ namespace Trinity
     {
         glm::vec3 Position;
         glm::vec3 Color;
+        glm::vec2 UV;
 
         static VertexLayout GetLayout()
         {
             VertexLayout l_Layout;
             l_Layout.Stride = sizeof(Vertex);
-            l_Layout.Attributes = { { 0, offsetof(Vertex, Position), Format::RGB32_SFLOAT }, { 1, offsetof(Vertex, Color), Format::RGB32_SFLOAT } };
+            l_Layout.Attributes = { { 0, offsetof(Vertex, Position), Format::RGB32_SFLOAT }, { 1, offsetof(Vertex, Color), Format::RGB32_SFLOAT }, { 2, offsetof(Vertex, UV), Format::RG32_SFLOAT } };
 
             return l_Layout;
         }

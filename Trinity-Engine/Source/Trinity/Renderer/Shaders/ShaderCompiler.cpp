@@ -357,7 +357,7 @@ namespace Trinity
             l_Reflection.Bindings.push_back(l_Binding);
         }
 
-        unsigned l_EntryPointCount = layout->getEntryPointCount();
+        unsigned l_EntryPointCount = static_cast<unsigned>(layout->getEntryPointCount());
         for (unsigned l_Index = 0; l_Index < l_EntryPointCount; ++l_Index)
         {
             slang::EntryPointReflection* l_EntryPoint = layout->getEntryPointByIndex(l_Index);

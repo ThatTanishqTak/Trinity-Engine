@@ -29,6 +29,7 @@ namespace Trinity
         uint32_t ArrayLayers = 1;
         uint32_t SampleCount = 1;
         uint64_t InitialDataSize = 0;
+        bool GenerateMips = false;
 
         const void* InitialData = nullptr;
         

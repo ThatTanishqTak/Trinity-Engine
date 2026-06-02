@@ -45,6 +45,22 @@ namespace Trinity
         bool Enabled = false;
     };
 
+    enum class ResourceBindingType
+    {
+        CombinedImageSampler,
+        UniformBuffer,
+        StorageBuffer,
+        StorageImage
+    };
+
+    struct ResourceBinding
+    {
+        uint32_t Set = 0;
+        uint32_t Binding = 0;
+        ResourceBindingType Type = ResourceBindingType::CombinedImageSampler;
+        ShaderStage Stages = ShaderStage::Fragment;
+    };
+
     struct PipelineDescription
     {
         ShaderHandle VertexShader;
@@ -58,6 +74,7 @@ namespace Trinity
 
         uint32_t PushConstantSize = 0;
 
+        std::vector<ResourceBinding> Bindings;
         std::vector<Format> ColorFormats;
 
         std::string DebugName;

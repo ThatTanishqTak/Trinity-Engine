@@ -191,4 +191,16 @@ function(trinity_add_application TARGET_NAME SOURCE_DIR)
             )
         endforeach()
     endif()
+
+    set(_assetsDir "${CMAKE_SOURCE_DIR}/Trinity-Engine/Assets")
+    if(EXISTS "${_assetsDir}")
+        add_custom_command(
+            TARGET ${TARGET_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${_assetsDir}"
+                "$<TARGET_FILE_DIR:${TARGET_NAME}>/Assets"
+            COMMENT "Deploying assets to ${TARGET_NAME}"
+            VERBATIM
+        )
+    endif()
 endfunction()

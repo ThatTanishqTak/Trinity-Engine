@@ -11,6 +11,7 @@
 #include <Trinity/Core/Timer.h>
 #include <Trinity/Renderer/Frontend/Camera.h>
 #include <Trinity/Renderer/Shaders/ShaderCompiler.h>
+#include <Trinity/Renderer/Textures/TextureManager.h>
 
 namespace Trinity
 {
@@ -37,7 +38,8 @@ namespace Trinity
         void ReloadShaders();
         void CheckHotReload();
         bool CreateGeometry();
-        bool CreateDepthTexture(uint32_t width, uint32_t height);
+        bool CreateTextureResources();
+        bool CreateDepthTexture(uint32_t a_Width, uint32_t a_Height);
         void DestroyDepthTexture();
 
     private:
@@ -45,6 +47,7 @@ namespace Trinity
         Swapchain& m_Swapchain;
         FileSystem& m_FileSystem;
         ShaderCompiler m_ShaderCompiler;
+        TextureManager m_TextureManager;
 
         ShaderHandle m_VertexShader;
         ShaderHandle m_FragmentShader;
@@ -54,6 +57,8 @@ namespace Trinity
         uint32_t m_IndexCount = 0;
 
         TextureHandle m_DepthTexture;
+        TextureHandle m_Texture;
+        SamplerHandle m_Sampler;
 
         std::vector<std::unique_ptr<CommandList>> m_CommandLists;
         uint32_t m_FrameIndex = 0;

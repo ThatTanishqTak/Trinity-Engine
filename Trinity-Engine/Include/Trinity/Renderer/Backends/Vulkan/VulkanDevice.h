@@ -63,6 +63,7 @@ namespace Trinity
     {
         VkPipeline Pipeline = VK_NULL_HANDLE;
         VkPipelineLayout Layout = VK_NULL_HANDLE;
+        std::vector<VkDescriptorSetLayout> SetLayouts;
         std::string DebugName;
     };
 
@@ -88,6 +89,7 @@ namespace Trinity
         VkShaderModule Module = VK_NULL_HANDLE;
         VkPipeline Pipeline = VK_NULL_HANDLE;
         VkPipelineLayout Layout = VK_NULL_HANDLE;
+        std::vector<VkDescriptorSetLayout> SetLayouts;
 
         bool OwnsImage = true;
         bool OwnsView = true;
@@ -223,6 +225,7 @@ namespace Trinity
 
         VulkanBufferResource* GetBuffer(BufferHandle handle) { return m_Buffers.Get(handle); }
         VulkanTextureResource* GetTexture(TextureHandle handle) { return m_Textures.Get(handle); }
+        VulkanSamplerResource* GetSampler(SamplerHandle handle) { return m_Samplers.Get(handle); }
         VulkanPipelineResource* GetPipeline(PipelineHandle handle) { return m_Pipelines.Get(handle); }
 
         ResourceState GetTextureState(TextureHandle handle)

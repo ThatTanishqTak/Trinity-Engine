@@ -23,7 +23,7 @@ namespace Trinity
         }
     }
 
-    Renderer::Renderer(GraphicsDevice& device, Swapchain& swapchain, FileSystem& fileSystem) : m_Device(device), m_Swapchain(swapchain), m_FileSystem(fileSystem)
+    Renderer::Renderer(GraphicsDevice& device, Swapchain& swapchain, FileSystem& fileSystem) : m_Device(device), m_Swapchain(swapchain), m_FileSystem(fileSystem), m_TextureManager(device, fileSystem)
     {
 
     }
@@ -56,6 +56,11 @@ namespace Trinity
         }
 
         if (!CreateGeometry())
+        {
+            return false;
+        }
+
+        if (!CreateTextureResources())
         {
             return false;
         }
@@ -111,6 +116,8 @@ namespace Trinity
         }
 
         DestroyDepthTexture();
+
+        m_TextureManager.Shutdown();
 
         m_ShaderCompiler.Shutdown();
     }
@@ -187,6 +194,13 @@ namespace Trinity
         l_PipelineDescription.DepthFormat = Format::D32_SFLOAT;
         l_PipelineDescription.ColorFormats = { m_Swapchain.GetFormat() };
         l_PipelineDescription.PushConstantSize = static_cast<uint32_t>(sizeof(glm::mat4));
+
+        ResourceBinding l_TextureBinding;
+        l_TextureBinding.Set = 0;
+        l_TextureBinding.Binding = 0;
+        l_TextureBinding.Type = ResourceBindingType::CombinedImageSampler;
+        l_TextureBinding.Stages = ShaderStage::Fragment;
+        l_PipelineDescription.Bindings = { l_TextureBinding };
         l_PipelineDescription.DebugName = "Triangle";
 
         pipeline = m_Device.CreatePipeline(l_PipelineDescription);
@@ -264,24 +278,45 @@ namespace Trinity
     {
         const Vertex l_Vertices[] =
         {
-            { { -0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f, 0.0f } },
-            { {  0.5f, -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f } },
-            { {  0.5f,  0.5f, -0.5f }, { 1.0f, 1.0f, 0.0f } },
-            { { -0.5f,  0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f } },
-            { { -0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f, 1.0f } },
-            { {  0.5f, -0.5f,  0.5f }, { 1.0f, 0.0f, 1.0f } },
-            { {  0.5f,  0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f } },
-            { { -0.5f,  0.5f,  0.5f }, { 0.0f, 1.0f, 1.0f } }
+            { { -0.5f, -0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f } },
+            { {  0.5f, -0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f } },
+            { {  0.5f,  0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f } },
+            { { -0.5f,  0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f } },
+
+            { {  0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f } },
+            { { -0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f } },
+            { { -0.5f,  0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f } },
+            { {  0.5f,  0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f } },
+
+            { { -0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f } },
+            { { -0.5f, -0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f } },
+            { { -0.5f,  0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f } },
+            { { -0.5f,  0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f } },
+
+            { {  0.5f, -0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f } },
+            { {  0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f } },
+            { {  0.5f,  0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f } },
+            { {  0.5f,  0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f } },
+
+            { { -0.5f,  0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f } },
+            { {  0.5f,  0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f } },
+            { {  0.5f,  0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f } },
+            { { -0.5f,  0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f } },
+
+            { { -0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f } },
+            { {  0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f } },
+            { {  0.5f, -0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f } },
+            { { -0.5f, -0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f } }
         };
 
         const uint32_t l_Indices[] =
         {
             0, 1, 2, 2, 3, 0,
             4, 5, 6, 6, 7, 4,
-            0, 3, 7, 7, 4, 0,
-            1, 5, 6, 6, 2, 1,
-            0, 4, 5, 5, 1, 0,
-            3, 2, 6, 6, 7, 3
+            8, 9, 10, 10, 11, 8,
+            12, 13, 14, 14, 15, 12,
+            16, 17, 18, 18, 19, 16,
+            20, 21, 22, 22, 23, 20
         };
 
         m_IndexCount = static_cast<uint32_t>(sizeof(l_Indices) / sizeof(uint32_t));
@@ -313,6 +348,18 @@ namespace Trinity
             TR_CORE_ERROR("Renderer: index buffer creation failed");
             return false;
         }
+
+        return true;
+    }
+
+    bool Renderer::CreateTextureResources()
+    {
+        if (!m_TextureManager.Initialize())
+        {
+            return false;
+        }
+
+        m_Texture = m_TextureManager.Load("Assets/Test.png", true);
 
         return true;
     }
@@ -420,6 +467,7 @@ namespace Trinity
         l_CommandList.SetScissor(l_Scissor);
 
         l_CommandList.BindPipeline(m_Pipeline);
+        l_CommandList.BindTexture(0, 0, m_Texture, m_TextureManager.DefaultSampler());
         l_CommandList.BindVertexBuffer(m_VertexBuffer, 0);
         l_CommandList.BindIndexBuffer(m_IndexBuffer, 0);
 
