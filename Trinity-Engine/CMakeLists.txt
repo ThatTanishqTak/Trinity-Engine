@@ -27,6 +27,7 @@ target_link_libraries(Trinity-Engine
     PRIVATE
         Slang
         stb
+        assimp
 )
 
 if(TRINITY_ENABLE_SDL)
@@ -62,6 +63,7 @@ if(TRINITY_ENABLE_VULKAN)
 
     set(TRINITY_ENGINE_SLANG_SHADERS
         "${TRINITY_ENGINE_SHADER_DIR}/Triangle.slang"
+        "${TRINITY_ENGINE_SHADER_DIR}/Mesh.slang"
     )
 
     file(MAKE_DIRECTORY "${TRINITY_SHADER_OUTPUT_DIR}")

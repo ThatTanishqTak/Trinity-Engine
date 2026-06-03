@@ -20,9 +20,9 @@ set(TRINITY_OUTPUT_BASE
 option(TRINITY_BUILD_ENGINE "Build Trinity-Engine" ON)
 option(TRINITY_BUILD_FORGE "Build Trinity-Forge editor" ON)
 option(TRINITY_BUILD_RUNTIME "Build Trinity-Runtime player" ON)
-option(TRINITY_BUILD_SERVER "Build Trinity-Server headless runtime" ON)
-option(TRINITY_BUILD_HUB "Build Trinity-Hub launcher" ON)
-option(TRINITY_BUILD_TOOLS "Build Trinity command-line tools" ON)
+option(TRINITY_BUILD_SERVER "Build Trinity-Server headless runtime" OFF)
+option(TRINITY_BUILD_HUB "Build Trinity-Hub launcher" OFF)
+option(TRINITY_BUILD_TOOLS "Build Trinity command-line tools" OFF)
 
 option(TRINITY_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
 
@@ -116,6 +116,34 @@ endif()
 
 add_library(stb INTERFACE)
 target_include_directories(stb SYSTEM INTERFACE "${CMAKE_SOURCE_DIR}/Vendor/stb")
+
+set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
+set(ASSIMP_INSTALL_PDB OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ASSIMP_VIEW OFF CACHE BOOL "" FORCE)
+set(ASSIMP_WARNINGS_AS_ERRORS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ZLIB ON CACHE BOOL "" FORCE)
+set(ASSIMP_NO_EXPORT ON CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ALL_EXPORTERS_BY_DEFAULT OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_OBJ_IMPORTER ON CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_FBX_IMPORTER ON CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_GLTF_IMPORTER ON CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_COLLADA_IMPORTER ON CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_3DS_IMPORTER ON CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+
+add_subdirectory(Vendor/assimp)
+target_include_directories(assimp SYSTEM INTERFACE
+    "${CMAKE_SOURCE_DIR}/Vendor/assimp/include"
+    "${CMAKE_BINARY_DIR}/Vendor/assimp/include"
+)
+trinity_set_ide_folder(assimp "Trinity/Vendor")
+if(TARGET zlibstatic)
+    trinity_set_ide_folder(zlibstatic "Trinity/Vendor")
+endif()
 
 if(TRINITY_BUILD_ENGINE)
     add_subdirectory(Trinity-Engine)

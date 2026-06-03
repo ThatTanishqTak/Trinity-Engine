@@ -12,6 +12,8 @@
 #include <Trinity/Renderer/Frontend/Camera.h>
 #include <Trinity/Renderer/Shaders/ShaderCompiler.h>
 #include <Trinity/Renderer/Textures/TextureManager.h>
+#include <Trinity/Renderer/Meshes/Mesh.h>
+#include <Trinity/Renderer/Meshes/MeshImporter.h>
 
 namespace Trinity
 {
@@ -37,9 +39,9 @@ namespace Trinity
         bool BuildPipeline(ShaderHandle& vertexShader, ShaderHandle& fragmentShader, PipelineHandle& pipeline);
         void ReloadShaders();
         void CheckHotReload();
-        bool CreateGeometry();
+        bool CreateMesh();
         bool CreateTextureResources();
-        bool CreateDepthTexture(uint32_t a_Width, uint32_t a_Height);
+        bool CreateDepthTexture(uint32_t width, uint32_t height);
         void DestroyDepthTexture();
 
     private:
@@ -52,9 +54,8 @@ namespace Trinity
         ShaderHandle m_VertexShader;
         ShaderHandle m_FragmentShader;
         PipelineHandle m_Pipeline;
-        BufferHandle m_VertexBuffer;
-        BufferHandle m_IndexBuffer;
-        uint32_t m_IndexCount = 0;
+        Mesh m_Mesh;
+        MeshImporter m_MeshImporter;
 
         TextureHandle m_DepthTexture;
         TextureHandle m_Texture;

@@ -3,7 +3,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include <Trinity/Renderer/Frontend/Vertex.h>
+#include <Trinity/Renderer/Frontend/MeshVertex.h>
 #include <Trinity/Platform/FileSystem.h>
 #include <Trinity/Core/Log.h>
 
@@ -23,7 +23,60 @@ namespace Trinity
         }
     }
 
-    Renderer::Renderer(GraphicsDevice& device, Swapchain& swapchain, FileSystem& fileSystem) : m_Device(device), m_Swapchain(swapchain), m_FileSystem(fileSystem), m_TextureManager(device, fileSystem)
+    static MeshData BuildCubeMeshData()
+    {
+        MeshData l_Data;
+
+        const glm::vec3 l_Normals[6] = { { 0.0f, 0.0f, 1.0f }, { 0.0f, 0.0f, -1.0f }, { 1.0f, 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } };
+        const glm::vec3 l_Tangents[6] = { { 1.0f, 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f } };
+        const glm::vec3 l_FaceVertices[6][4] =
+        {
+            { { -0.5f, -0.5f,  0.5f }, {  0.5f, -0.5f,  0.5f }, {  0.5f,  0.5f,  0.5f }, { -0.5f,  0.5f,  0.5f } },
+            { {  0.5f, -0.5f, -0.5f }, { -0.5f, -0.5f, -0.5f }, { -0.5f,  0.5f, -0.5f }, {  0.5f,  0.5f, -0.5f } },
+            { {  0.5f, -0.5f,  0.5f }, {  0.5f, -0.5f, -0.5f }, {  0.5f,  0.5f, -0.5f }, {  0.5f,  0.5f,  0.5f } },
+            { { -0.5f, -0.5f, -0.5f }, { -0.5f, -0.5f,  0.5f }, { -0.5f,  0.5f,  0.5f }, { -0.5f,  0.5f, -0.5f } },
+            { { -0.5f,  0.5f,  0.5f }, {  0.5f,  0.5f,  0.5f }, {  0.5f,  0.5f, -0.5f }, { -0.5f,  0.5f, -0.5f } },
+            { { -0.5f, -0.5f, -0.5f }, {  0.5f, -0.5f, -0.5f }, {  0.5f, -0.5f,  0.5f }, { -0.5f, -0.5f,  0.5f } }
+        };
+        const glm::vec2 l_UVs[4] = { { 0.0f, 0.0f }, { 1.0f, 0.0f }, { 1.0f, 1.0f }, { 0.0f, 1.0f } };
+
+        for (int l_Face = 0; l_Face < 6; ++l_Face)
+        {
+            for (int l_Corner = 0; l_Corner < 4; ++l_Corner)
+            {
+                MeshVertex l_Vertex{};
+                l_Vertex.Position = l_FaceVertices[l_Face][l_Corner];
+                l_Vertex.Normal = l_Normals[l_Face];
+                l_Vertex.Tangent = l_Tangents[l_Face];
+                l_Vertex.UV = l_UVs[l_Corner];
+                l_Data.Vertices.push_back(l_Vertex);
+            }
+
+            uint32_t l_Base = static_cast<uint32_t>(l_Face * 4);
+            l_Data.Indices.push_back(l_Base + 0);
+            l_Data.Indices.push_back(l_Base + 1);
+            l_Data.Indices.push_back(l_Base + 2);
+            l_Data.Indices.push_back(l_Base + 2);
+            l_Data.Indices.push_back(l_Base + 3);
+            l_Data.Indices.push_back(l_Base + 0);
+        }
+
+        Submesh l_Submesh;
+        l_Submesh.IndexCount = static_cast<uint32_t>(l_Data.Indices.size());
+        l_Submesh.Name = "Cube";
+        l_Data.Submeshes.push_back(l_Submesh);
+
+        MaterialSlot l_Slot;
+        l_Slot.Name = "Default";
+        l_Data.MaterialSlots.push_back(l_Slot);
+
+        l_Data.Diagnostics.SourcePath = "<procedural cube>";
+        l_Data.Diagnostics.SourceFormat = "procedural";
+
+        return l_Data;
+    }
+
+    Renderer::Renderer(GraphicsDevice& device, Swapchain& swapchain, FileSystem& fileSystem) : m_Device(device), m_Swapchain(swapchain), m_FileSystem(fileSystem), m_TextureManager(device, fileSystem), m_Mesh(device)
     {
 
     }
@@ -55,7 +108,7 @@ namespace Trinity
             return false;
         }
 
-        if (!CreateGeometry())
+        if (!CreateMesh())
         {
             return false;
         }
@@ -73,7 +126,7 @@ namespace Trinity
         m_Camera.LookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         m_Timer.Reset();
 
-        m_ShaderSourcePath = m_FileSystem.Resolve(BaseDirectory::Executable, "Shaders/Triangle.slang");
+        m_ShaderSourcePath = m_FileSystem.Resolve(BaseDirectory::Executable, "Shaders/Mesh.slang");
         std::error_code l_TimeError;
         m_ShaderWriteTime = std::filesystem::last_write_time(m_ShaderSourcePath, l_TimeError);
 
@@ -103,17 +156,7 @@ namespace Trinity
             m_FragmentShader = ShaderHandle{};
         }
 
-        if (m_VertexBuffer.IsValid())
-        {
-            m_Device.DestroyBuffer(m_VertexBuffer);
-            m_VertexBuffer = BufferHandle{};
-        }
-
-        if (m_IndexBuffer.IsValid())
-        {
-            m_Device.DestroyBuffer(m_IndexBuffer);
-            m_IndexBuffer = BufferHandle{};
-        }
+        m_Mesh.Shutdown();
 
         DestroyDepthTexture();
 
@@ -135,14 +178,14 @@ namespace Trinity
 
         std::filesystem::path l_ShaderDirectory = m_FileSystem.Resolve(BaseDirectory::Executable, "Shaders");
 
-        ShaderCompileResult l_VertexResult = m_ShaderCompiler.Compile(l_ShaderDirectory, "Triangle", "vertexMain");
+        ShaderCompileResult l_VertexResult = m_ShaderCompiler.Compile(l_ShaderDirectory, "Mesh", "vertexMain");
         if (!l_VertexResult.Success)
         {
             LogShaderDiagnostics("vertexMain", l_VertexResult);
             return false;
         }
 
-        ShaderCompileResult l_FragmentResult = m_ShaderCompiler.Compile(l_ShaderDirectory, "Triangle", "fragmentMain");
+        ShaderCompileResult l_FragmentResult = m_ShaderCompiler.Compile(l_ShaderDirectory, "Mesh", "fragmentMain");
         if (!l_FragmentResult.Success)
         {
             LogShaderDiagnostics("fragmentMain", l_FragmentResult);
@@ -159,14 +202,14 @@ namespace Trinity
         l_VertexDescription.Stage = ShaderStage::Vertex;
         l_VertexDescription.Bytecode = l_VertexResult.SPIRV;
         l_VertexDescription.EntryPoint = "vertexMain";
-        l_VertexDescription.DebugName = "Triangle.vertexMain";
+        l_VertexDescription.DebugName = "Mesh.vertexMain";
         vertexShader = m_Device.CreateShader(l_VertexDescription);
 
         ShaderDescription l_FragmentDescription;
         l_FragmentDescription.Stage = ShaderStage::Fragment;
         l_FragmentDescription.Bytecode = l_FragmentResult.SPIRV;
         l_FragmentDescription.EntryPoint = "fragmentMain";
-        l_FragmentDescription.DebugName = "Triangle.fragmentMain";
+        l_FragmentDescription.DebugName = "Mesh.fragmentMain";
         fragmentShader = m_Device.CreateShader(l_FragmentDescription);
 
         if (!vertexShader.IsValid() || !fragmentShader.IsValid())
@@ -186,7 +229,7 @@ namespace Trinity
         PipelineDescription l_PipelineDescription;
         l_PipelineDescription.VertexShader = vertexShader;
         l_PipelineDescription.FragmentShader = fragmentShader;
-        l_PipelineDescription.Vertex = Vertex::GetLayout();
+        l_PipelineDescription.Vertex = MeshVertex::GetLayout();
         l_PipelineDescription.Topology = PrimitiveTopology::TriangleList;
         l_PipelineDescription.Rasterizer.Cull = CullMode::None;
         l_PipelineDescription.DepthStencil.DepthTest = true;
@@ -201,7 +244,7 @@ namespace Trinity
         l_TextureBinding.Type = ResourceBindingType::CombinedImageSampler;
         l_TextureBinding.Stages = ShaderStage::Fragment;
         l_PipelineDescription.Bindings = { l_TextureBinding };
-        l_PipelineDescription.DebugName = "Triangle";
+        l_PipelineDescription.DebugName = "Mesh";
 
         pipeline = m_Device.CreatePipeline(l_PipelineDescription);
         if (!pipeline.IsValid())
@@ -274,78 +317,39 @@ namespace Trinity
         }
     }
 
-    bool Renderer::CreateGeometry()
+    bool Renderer::CreateMesh()
     {
-        const Vertex l_Vertices[] =
+        const char* l_Candidates[] = { "Assets/Test.obj", "Assets/Test.fbx", "Assets/Test.gltf", "Assets/Test.glb", "Assets/Test.dae", "Assets/Test.3ds" };
+
+        MeshData l_MeshData;
+        bool l_Imported = false;
+        for (const char* l_Candidate : l_Candidates)
         {
-            { { -0.5f, -0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f } },
-            { {  0.5f, -0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f } },
-            { {  0.5f,  0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f } },
-            { { -0.5f,  0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f } },
+            std::filesystem::path l_Path = m_FileSystem.Resolve(BaseDirectory::Executable, l_Candidate);
+            if (!std::filesystem::exists(l_Path))
+            {
+                continue;
+            }
 
-            { {  0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f } },
-            { { -0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f } },
-            { { -0.5f,  0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f } },
-            { {  0.5f,  0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f } },
+            std::optional<MeshData> l_Result = m_MeshImporter.Import(l_Path);
+            if (l_Result.has_value())
+            {
+                l_MeshData = std::move(l_Result.value());
+                l_Imported = true;
 
-            { { -0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f } },
-            { { -0.5f, -0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f } },
-            { { -0.5f,  0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f } },
-            { { -0.5f,  0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f } },
-
-            { {  0.5f, -0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f } },
-            { {  0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f } },
-            { {  0.5f,  0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f } },
-            { {  0.5f,  0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f } },
-
-            { { -0.5f,  0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f } },
-            { {  0.5f,  0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f } },
-            { {  0.5f,  0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f } },
-            { { -0.5f,  0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f } },
-
-            { { -0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f } },
-            { {  0.5f, -0.5f, -0.5f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f } },
-            { {  0.5f, -0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f } },
-            { { -0.5f, -0.5f,  0.5f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f } }
-        };
-
-        const uint32_t l_Indices[] =
-        {
-            0, 1, 2, 2, 3, 0,
-            4, 5, 6, 6, 7, 4,
-            8, 9, 10, 10, 11, 8,
-            12, 13, 14, 14, 15, 12,
-            16, 17, 18, 18, 19, 16,
-            20, 21, 22, 22, 23, 20
-        };
-
-        m_IndexCount = static_cast<uint32_t>(sizeof(l_Indices) / sizeof(uint32_t));
-
-        BufferDescription l_VertexDescription;
-        l_VertexDescription.Size = sizeof(l_Vertices);
-        l_VertexDescription.Usage = BufferUsage::Vertex;
-        l_VertexDescription.Memory = MemoryUsage::GpuOnly;
-        l_VertexDescription.InitialData = l_Vertices;
-        l_VertexDescription.DebugName = "QuadVertices";
-
-        m_VertexBuffer = m_Device.CreateBuffer(l_VertexDescription);
-        if (!m_VertexBuffer.IsValid())
-        {
-            TR_CORE_ERROR("Renderer: vertex buffer creation failed");
-            return false;
+                break;
+            }
         }
 
-        BufferDescription l_IndexDescription;
-        l_IndexDescription.Size = sizeof(l_Indices);
-        l_IndexDescription.Usage = BufferUsage::Index;
-        l_IndexDescription.Memory = MemoryUsage::GpuOnly;
-        l_IndexDescription.InitialData = l_Indices;
-        l_IndexDescription.DebugName = "QuadIndices";
-
-        m_IndexBuffer = m_Device.CreateBuffer(l_IndexDescription);
-        if (!m_IndexBuffer.IsValid())
+        if (!l_Imported)
         {
-            TR_CORE_ERROR("Renderer: index buffer creation failed");
+            TR_CORE_WARN("Renderer: no importable mesh in Assets, using procedural cube");
+            l_MeshData = BuildCubeMeshData();
+        }
+
+        if (!m_Mesh.Upload(l_MeshData))
+        {
+            TR_CORE_ERROR("Renderer: mesh upload failed");
             return false;
         }
 
@@ -468,18 +472,21 @@ namespace Trinity
 
         l_CommandList.BindPipeline(m_Pipeline);
         l_CommandList.BindTexture(0, 0, m_Texture, m_TextureManager.DefaultSampler());
-        l_CommandList.BindVertexBuffer(m_VertexBuffer, 0);
-        l_CommandList.BindIndexBuffer(m_IndexBuffer, 0);
+        l_CommandList.BindVertexBuffer(m_Mesh.GetVertexBuffer(), 0);
+        l_CommandList.BindIndexBuffer(m_Mesh.GetIndexBuffer(), 0);
 
         float l_Aspect = l_Height > 0 ? static_cast<float>(l_Width) / static_cast<float>(l_Height) : 1.0f;
-        m_Camera.SetPerspective(glm::radians(45.0f), l_Aspect, 0.1f, 10.0f);
+        m_Camera.SetPerspective(glm::radians(45.0f), l_Aspect, 0.1f, 100.0f);
 
         float l_Time = m_Timer.Elapsed();
         glm::mat4 l_Model = glm::rotate(glm::mat4(1.0f), l_Time * 0.8f, glm::normalize(glm::vec3(0.4f, 1.0f, 0.2f)));
         glm::mat4 l_MVP = m_Camera.GetViewProjection() * l_Model;
         l_CommandList.PushConstants(ShaderStage::Vertex | ShaderStage::Fragment, 0, static_cast<uint32_t>(sizeof(l_MVP)), &l_MVP);
 
-        l_CommandList.DrawIndexed(m_IndexCount, 1, 0, 0, 0);
+        for (const Submesh& l_Submesh : m_Mesh.GetSubmeshes())
+        {
+            l_CommandList.DrawIndexed(l_Submesh.IndexCount, 1, l_Submesh.FirstIndex, static_cast<int32_t>(l_Submesh.BaseVertex), 0);
+        }
 
         l_CommandList.EndRendering();
         l_CommandList.TransitionTexture(l_Frame.BackBuffer, ResourceState::RenderTarget, ResourceState::Present);
