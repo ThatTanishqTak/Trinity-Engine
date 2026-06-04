@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <string>
 
 namespace Trinity
 {
@@ -9,5 +10,6 @@ namespace Trinity
     struct MeshRendererComponent
     {
         std::shared_ptr<Mesh> MeshReference;
+        std::string MeshPath;
     };
 }

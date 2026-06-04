@@ -15,6 +15,7 @@
 #include <Trinity/Scene/Components/TransformComponent.h>
 #include <Trinity/Scene/Components/MeshRendererComponent.h>
 #include <Trinity/Scene/Components/CameraComponent.h>
+#include <Trinity/Serialization/SceneSerializer.h>
 
 namespace Trinity
 {
@@ -115,23 +116,30 @@ namespace Trinity
         m_EditorCamera = std::make_unique<EditorCamera>(60.0f, static_cast<float>(m_Swapchain->GetWidth()) / static_cast<float>(m_Swapchain->GetHeight()), 0.1f, 100.0f);
 
         MeshLibrary& l_MeshLibrary = m_Renderer->GetMeshLibrary();
-        std::shared_ptr<Mesh> l_ImportedMesh = l_MeshLibrary.Load("Assets/Test.obj");
-        std::shared_ptr<Mesh> l_CubeMesh = l_MeshLibrary.GetCube();
 
-        m_Scene = std::make_unique<Scene>();
+        Scene l_AuthoredScene;
 
-        Entity l_Parent = m_Scene->CreateEntity("ImportedMesh");
-        l_Parent.AddComponent<MeshRendererComponent>(MeshRendererComponent{ l_ImportedMesh });
+        Entity l_Parent = l_AuthoredScene.CreateEntity("ImportedMesh");
+        l_Parent.AddComponent<MeshRendererComponent>(MeshRendererComponent{ nullptr, "Assets/Test.obj" });
         l_Parent.GetComponent<TransformComponent>().Translation = glm::vec3(-1.5f, 0.0f, 0.0f);
 
-        Entity l_Child = m_Scene->CreateEntity("ChildCube");
-        l_Child.AddComponent<MeshRendererComponent>(MeshRendererComponent{ l_CubeMesh });
+        Entity l_Child = l_AuthoredScene.CreateEntity("ChildCube");
+        l_Child.AddComponent<MeshRendererComponent>(MeshRendererComponent{ nullptr, "" });
         l_Child.GetComponent<TransformComponent>().Translation = glm::vec3(3.0f, 0.0f, 0.0f);
         l_Child.GetComponent<TransformComponent>().Scale = glm::vec3(0.5f, 0.5f, 0.5f);
-        m_Scene->SetParent(l_Child, l_Parent);
+        l_AuthoredScene.SetParent(l_Child, l_Parent);
 
-        Entity l_CameraEntity = m_Scene->CreateEntity("PrimaryCamera");
+        Entity l_CameraEntity = l_AuthoredScene.CreateEntity("PrimaryCamera");
         l_CameraEntity.AddComponent<CameraComponent>();
+
+        std::filesystem::path l_ScenePath = m_Platform->GetFileSystem().Resolve(BaseDirectory::UserData, "Scenes/Demo.tscene");
+        SceneSerializer::Serialize(l_AuthoredScene, l_ScenePath, "Demo");
+
+        m_Scene = std::make_unique<Scene>();
+        if (!SceneSerializer::Deserialize(*m_Scene, l_MeshLibrary, l_ScenePath))
+        {
+            TR_CORE_ERROR("Engine: failed to deserialize demo scene");
+        }
 
         return true;
     }
