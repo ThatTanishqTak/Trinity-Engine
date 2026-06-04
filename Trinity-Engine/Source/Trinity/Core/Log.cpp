@@ -12,15 +12,15 @@ namespace Trinity
 
     void Log::Initialize()
     {
-        auto l_ConsoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-        l_ConsoleSink->set_pattern("%^[%T] [%n] %v%$");
+        auto a_ConsoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+        a_ConsoleSink->set_pattern("%^[%T] [%n] %v%$");
 
-        s_CoreLogger = std::make_shared<spdlog::logger>("TRINITY", l_ConsoleSink);
+        s_CoreLogger = std::make_shared<spdlog::logger>("TRINITY", a_ConsoleSink);
         s_CoreLogger->set_level(spdlog::level::trace);
         s_CoreLogger->flush_on(spdlog::level::trace);
         spdlog::register_logger(s_CoreLogger);
 
-        s_ClientLogger = std::make_shared<spdlog::logger>("APP", l_ConsoleSink);
+        s_ClientLogger = std::make_shared<spdlog::logger>("APP", a_ConsoleSink);
         s_ClientLogger->set_level(spdlog::level::trace);
         s_ClientLogger->flush_on(spdlog::level::trace);
         spdlog::register_logger(s_ClientLogger);

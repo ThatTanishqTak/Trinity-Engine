@@ -12,8 +12,8 @@ namespace Trinity
     class GraphicsDevice;
     class Swapchain;
     class Renderer;
-
-    struct NativeWindowHandle;
+    class Scene;
+    class EditorCamera;
 
     struct NativeWindowHandle;
 
@@ -52,5 +52,7 @@ namespace Trinity
         std::unique_ptr<GraphicsDevice> m_Device;
         std::unique_ptr<Swapchain> m_Swapchain;
         std::unique_ptr<Renderer> m_Renderer;
+        std::unique_ptr<Scene> m_Scene;
+        std::unique_ptr<EditorCamera> m_EditorCamera;
     };
 }

@@ -20,9 +20,9 @@ set(TRINITY_OUTPUT_BASE
 option(TRINITY_BUILD_ENGINE "Build Trinity-Engine" ON)
 option(TRINITY_BUILD_FORGE "Build Trinity-Forge editor" ON)
 option(TRINITY_BUILD_RUNTIME "Build Trinity-Runtime player" ON)
-option(TRINITY_BUILD_SERVER "Build Trinity-Server headless runtime" OFF)
-option(TRINITY_BUILD_HUB "Build Trinity-Hub launcher" OFF)
-option(TRINITY_BUILD_TOOLS "Build Trinity command-line tools" OFF)
+option(TRINITY_BUILD_SERVER "Build Trinity-Server headless runtime" ON)
+option(TRINITY_BUILD_HUB "Build Trinity-Hub launcher" ON)
+option(TRINITY_BUILD_TOOLS "Build Trinity command-line tools" ON)
 
 option(TRINITY_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
 
@@ -144,6 +144,9 @@ trinity_set_ide_folder(assimp "Trinity/Vendor")
 if(TARGET zlibstatic)
     trinity_set_ide_folder(zlibstatic "Trinity/Vendor")
 endif()
+
+add_library(EnTT INTERFACE)
+target_include_directories(EnTT SYSTEM INTERFACE "${CMAKE_SOURCE_DIR}/Vendor/entt/single_include")
 
 if(TRINITY_BUILD_ENGINE)
     add_subdirectory(Trinity-Engine)

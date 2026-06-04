@@ -13,6 +13,14 @@ namespace Trinity
             m_Projection = glm::perspective(fovRadians, aspect, near, far);
         }
 
+        void SetOrthographic(float size, float aspect, float near, float far)
+        {
+            float l_HalfHeight = size * 0.5f;
+            float l_HalfWidth = l_HalfHeight * aspect;
+
+            m_Projection = glm::ortho(-l_HalfWidth, l_HalfWidth, -l_HalfHeight, l_HalfHeight, near, far);
+        }
+
         void LookAt(const glm::vec3& eye, const glm::vec3& target, const glm::vec3& up)
         {
             m_Position = eye;

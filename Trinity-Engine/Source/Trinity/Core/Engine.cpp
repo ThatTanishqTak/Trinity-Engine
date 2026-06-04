@@ -9,6 +9,12 @@
 #include <Trinity/Renderer/RHI/GraphicsBackendFactory.h>
 #include <Trinity/Renderer/RHI/Swapchain.h>
 #include <Trinity/Renderer/Frontend/Renderer.h>
+#include <Trinity/Renderer/Frontend/EditorCamera.h>
+#include <Trinity/Scene/Scene.h>
+#include <Trinity/Scene/Entity.h>
+#include <Trinity/Scene/Components/TransformComponent.h>
+#include <Trinity/Scene/Components/MeshRendererComponent.h>
+#include <Trinity/Scene/Components/CameraComponent.h>
 
 namespace Trinity
 {
@@ -106,22 +112,48 @@ namespace Trinity
             return false;
         }
 
+        m_EditorCamera = std::make_unique<EditorCamera>(60.0f, static_cast<float>(m_Swapchain->GetWidth()) / static_cast<float>(m_Swapchain->GetHeight()), 0.1f, 100.0f);
+
+        MeshLibrary& l_MeshLibrary = m_Renderer->GetMeshLibrary();
+        std::shared_ptr<Mesh> l_ImportedMesh = l_MeshLibrary.Load("Assets/Test.obj");
+        std::shared_ptr<Mesh> l_CubeMesh = l_MeshLibrary.GetCube();
+
+        m_Scene = std::make_unique<Scene>();
+
+        Entity l_Parent = m_Scene->CreateEntity("ImportedMesh");
+        l_Parent.AddComponent<MeshRendererComponent>(MeshRendererComponent{ l_ImportedMesh });
+        l_Parent.GetComponent<TransformComponent>().Translation = glm::vec3(-1.5f, 0.0f, 0.0f);
+
+        Entity l_Child = m_Scene->CreateEntity("ChildCube");
+        l_Child.AddComponent<MeshRendererComponent>(MeshRendererComponent{ l_CubeMesh });
+        l_Child.GetComponent<TransformComponent>().Translation = glm::vec3(3.0f, 0.0f, 0.0f);
+        l_Child.GetComponent<TransformComponent>().Scale = glm::vec3(0.5f, 0.5f, 0.5f);
+        m_Scene->SetParent(l_Child, l_Parent);
+
+        Entity l_CameraEntity = m_Scene->CreateEntity("PrimaryCamera");
+        l_CameraEntity.AddComponent<CameraComponent>();
+
         return true;
     }
 
-    void Engine::Update(Timestep)
+    void Engine::Update(Timestep timestep)
     {
         if (!m_Initialized)
         {
             return;
         }
+
+        if (m_EditorCamera != nullptr && m_Platform != nullptr)
+        {
+            m_EditorCamera->OnUpdate(m_Platform->GetInput(), timestep);
+        }
     }
 
     void Engine::RenderFrame()
     {
-        if (m_Renderer != nullptr)
+        if (m_Renderer != nullptr && m_Scene != nullptr && m_EditorCamera != nullptr)
         {
-            m_Renderer->RenderFrame();
+            m_Renderer->RenderFrame(*m_Scene, m_EditorCamera->GetCamera());
         }
     }
 
@@ -130,6 +162,11 @@ namespace Trinity
         if (m_Renderer != nullptr)
         {
             m_Renderer->Resize(width, height);
+        }
+
+        if (m_EditorCamera != nullptr && width > 0 && height > 0)
+        {
+            m_EditorCamera->SetViewportSize(static_cast<float>(width), static_cast<float>(height));
         }
     }
 
@@ -151,6 +188,9 @@ namespace Trinity
         {
             m_Device->WaitIdle();
         }
+
+        m_Scene.reset();
+        m_EditorCamera.reset();
 
         if (m_Renderer != nullptr)
         {

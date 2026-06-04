@@ -24,6 +24,7 @@ target_link_libraries(Trinity-Engine
         spdlog::spdlog
         yaml-cpp::yaml-cpp
         glm
+        EnTT
     PRIVATE
         Slang
         stb

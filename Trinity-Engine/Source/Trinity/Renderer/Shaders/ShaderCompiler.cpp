@@ -439,9 +439,9 @@ namespace Trinity
         m_Implementation->GlobalSession = nullptr;
     }
 
-    void ShaderCompiler::SetCacheDirectory(const std::filesystem::path& a_Directory)
+    void ShaderCompiler::SetCacheDirectory(const std::filesystem::path& directory)
     {
-        m_CacheDirectory = a_Directory;
+        m_CacheDirectory = directory;
         if (!m_CacheDirectory.empty())
         {
             FileManagement::EnsureDirectory(m_CacheDirectory);
@@ -505,7 +505,7 @@ namespace Trinity
             }
         };
 
-        auto l_Fail = [&]() -> ShaderCompileResult
+        auto a_Fail = [&]() -> ShaderCompileResult
         {
             l_Result.Messages = ParseDiagnostics(l_Result.Diagnostics);
             return l_Result;

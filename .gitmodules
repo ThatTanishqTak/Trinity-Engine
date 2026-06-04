@@ -19,3 +19,6 @@
 [submodule "Vendor/assimp"]
 	path = Vendor/assimp
 	url = https://github.com/ThatTanishqTak/assimp.git
+[submodule "Vendor/entt"]
+	path = Vendor/entt
+	url = https://github.com/ThatTanishqTak/entt.git

@@ -12,12 +12,12 @@
 #include <Trinity/Renderer/Frontend/Camera.h>
 #include <Trinity/Renderer/Shaders/ShaderCompiler.h>
 #include <Trinity/Renderer/Textures/TextureManager.h>
-#include <Trinity/Renderer/Meshes/Mesh.h>
-#include <Trinity/Renderer/Meshes/MeshImporter.h>
+#include <Trinity/Renderer/Meshes/MeshLibrary.h>
 
 namespace Trinity
 {
     class FileSystem;
+    class Scene;
 
     class Renderer
     {
@@ -31,15 +31,16 @@ namespace Trinity
         bool Initialize();
         void Shutdown();
 
-        void RenderFrame();
+        void RenderFrame(Scene& scene, const Camera& camera);
         void Resize(uint32_t width, uint32_t height);
+
+        MeshLibrary& GetMeshLibrary() { return m_MeshLibrary; }
 
     private:
         bool CreatePipeline();
         bool BuildPipeline(ShaderHandle& vertexShader, ShaderHandle& fragmentShader, PipelineHandle& pipeline);
         void ReloadShaders();
         void CheckHotReload();
-        bool CreateMesh();
         bool CreateTextureResources();
         bool CreateDepthTexture(uint32_t width, uint32_t height);
         void DestroyDepthTexture();
@@ -54,8 +55,7 @@ namespace Trinity
         ShaderHandle m_VertexShader;
         ShaderHandle m_FragmentShader;
         PipelineHandle m_Pipeline;
-        Mesh m_Mesh;
-        MeshImporter m_MeshImporter;
+        MeshLibrary m_MeshLibrary;
 
         TextureHandle m_DepthTexture;
         TextureHandle m_Texture;
@@ -64,7 +64,6 @@ namespace Trinity
         std::vector<std::unique_ptr<CommandList>> m_CommandLists;
         uint32_t m_FrameIndex = 0;
 
-        Camera m_Camera;
         Timer m_Timer;
 
         std::filesystem::path m_ShaderSourcePath;

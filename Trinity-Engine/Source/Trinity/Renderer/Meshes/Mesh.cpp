@@ -5,7 +5,7 @@
 
 namespace Trinity
 {
-    Mesh::Mesh(GraphicsDevice& a_Device) : m_Device(a_Device)
+    Mesh::Mesh(GraphicsDevice& device) : m_Device(device)
     {
 
     }
