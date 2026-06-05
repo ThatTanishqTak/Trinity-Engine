@@ -13,6 +13,7 @@
 #include <Trinity/Renderer/Shaders/ShaderCompiler.h>
 #include <Trinity/Renderer/Textures/TextureManager.h>
 #include <Trinity/Renderer/Meshes/MeshLibrary.h>
+#include <Trinity/Renderer/PostProcess/PostProcessStage.h>
 
 namespace Trinity
 {
@@ -47,10 +48,10 @@ namespace Trinity
         void ReloadShaders();
         void CheckHotReload();
         bool CreateTextureResources();
-        bool CreateDepthTexture(uint32_t width, uint32_t height);
-        void DestroyDepthTexture();
-        bool CreateViewportTarget(uint32_t width, uint32_t height);
-        void DestroyViewportTarget();
+        bool CreateSceneTargets(uint32_t width, uint32_t height);
+        void DestroySceneTargets();
+        bool CreateViewportOutput(uint32_t width, uint32_t height);
+        void DestroyViewportOutput();
         void DrawScene(CommandList& commandList, Scene& scene, const Camera& camera);
 
     private:
@@ -65,18 +66,23 @@ namespace Trinity
         PipelineHandle m_Pipeline;
         MeshLibrary m_MeshLibrary;
 
-        TextureHandle m_DepthTexture;
+        PostProcessStage m_PostProcess;
+
+        TextureHandle m_SceneColor;
+        TextureHandle m_SceneDepth;
         TextureHandle m_Texture;
-        SamplerHandle m_Sampler;
+
+        uint32_t m_RenderWidth = 0;
+        uint32_t m_RenderHeight = 0;
 
         TextureHandle m_ViewportColor;
-        TextureHandle m_ViewportDepth;
-        uint32_t m_ViewportWidth = 0;
-        uint32_t m_ViewportHeight = 0;
-        uint32_t m_PendingViewportWidth = 0;
-        uint32_t m_PendingViewportHeight = 0;
+        bool m_ViewportActive = false;
+        uint32_t m_PendingWidth = 0;
+        uint32_t m_PendingHeight = 0;
         bool m_ViewportDirty = false;
         uint64_t m_ViewportTextureID = 0;
+
+        float m_Exposure = 1.0f;
 
         std::vector<std::unique_ptr<CommandList>> m_CommandLists;
         uint32_t m_FrameIndex = 0;

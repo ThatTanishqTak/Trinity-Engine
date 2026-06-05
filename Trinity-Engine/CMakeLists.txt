@@ -68,6 +68,7 @@ if(TRINITY_ENABLE_VULKAN)
     set(TRINITY_ENGINE_SLANG_SHADERS
         "${TRINITY_ENGINE_SHADER_DIR}/Triangle.slang"
         "${TRINITY_ENGINE_SHADER_DIR}/Mesh.slang"
+        "${TRINITY_ENGINE_SHADER_DIR}/Tonemap.slang"
     )
 
     file(MAKE_DIRECTORY "${TRINITY_SHADER_OUTPUT_DIR}")

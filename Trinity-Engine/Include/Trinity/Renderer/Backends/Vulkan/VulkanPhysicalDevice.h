@@ -25,6 +25,7 @@ namespace Trinity
         bool DynamicRendering = true;
         bool Synchronization2 = true;
         bool TimelineSemaphores = true;
+        bool ShaderDrawParameters = true;
     };
 
     class VulkanPhysicalDevice

@@ -91,6 +91,7 @@ namespace Trinity
         l_SwapchainDescription.Window = window;
         l_SwapchainDescription.Width = 1920;
         l_SwapchainDescription.Height = 1080;
+        l_SwapchainDescription.PreferredFormat = Format::BGRA8_UNORM;
         l_SwapchainDescription.VSync = true;
 
         m_Swapchain = m_Device->CreateSwapchain(l_SwapchainDescription);

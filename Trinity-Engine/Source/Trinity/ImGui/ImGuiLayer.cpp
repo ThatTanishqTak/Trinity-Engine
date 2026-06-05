@@ -2,8 +2,6 @@
 
 #include <imgui.h>
 
-#include <cmath>
-
 #include <Trinity/Core/Log.h>
 
 namespace Trinity
@@ -31,18 +29,6 @@ namespace Trinity
         l_IO.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
         ImGui::StyleColorsDark();
-
-        if (colorFormat == Format::BGRA8_SRGB)
-        {
-            ImGuiStyle& l_Style = ImGui::GetStyle();
-            for (int l_Index = 0; l_Index < ImGuiCol_COUNT; ++l_Index)
-            {
-                ImVec4& l_Color = l_Style.Colors[l_Index];
-                l_Color.x = std::pow(l_Color.x, 2.2f);
-                l_Color.y = std::pow(l_Color.y, 2.2f);
-                l_Color.z = std::pow(l_Color.z, 2.2f);
-            }
-        }
 
         if (!m_Platform->Initialize())
         {

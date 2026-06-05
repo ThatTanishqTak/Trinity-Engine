@@ -165,9 +165,13 @@ namespace Trinity
         VkPhysicalDeviceVulkan13Features l_Vk13Features{};
         l_Vk13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
 
+        VkPhysicalDeviceVulkan11Features l_Vk11Features{};
+        l_Vk11Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+        l_Vk11Features.pNext = &l_Vk13Features;
+
         VkPhysicalDeviceVulkan12Features l_Vk12Features{};
         l_Vk12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-        l_Vk12Features.pNext = &l_Vk13Features;
+        l_Vk12Features.pNext = &l_Vk11Features;
 
         VkPhysicalDeviceFeatures2 l_Features{};
         l_Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
@@ -186,6 +190,11 @@ namespace Trinity
         }
 
         if (required.TimelineSemaphores && !l_Vk12Features.timelineSemaphore)
+        {
+            return false;
+        }
+
+        if (required.ShaderDrawParameters && !l_Vk11Features.shaderDrawParameters)
         {
             return false;
         }

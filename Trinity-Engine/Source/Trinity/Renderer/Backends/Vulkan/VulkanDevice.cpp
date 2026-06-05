@@ -1211,10 +1211,15 @@ namespace Trinity
         l_Vulkan13Features.dynamicRendering = VK_TRUE;
         l_Vulkan13Features.synchronization2 = VK_TRUE;
 
+        VkPhysicalDeviceVulkan11Features l_Vulkan11Features{};
+        l_Vulkan11Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+        l_Vulkan11Features.shaderDrawParameters = VK_TRUE;
+        l_Vulkan11Features.pNext = &l_Vulkan13Features;
+
         VkPhysicalDeviceVulkan12Features l_Vulkan12Features{};
         l_Vulkan12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
         l_Vulkan12Features.timelineSemaphore = VK_TRUE;
-        l_Vulkan12Features.pNext = &l_Vulkan13Features;
+        l_Vulkan12Features.pNext = &l_Vulkan11Features;
 
         VkPhysicalDeviceFeatures2 l_Features{};
         l_Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
