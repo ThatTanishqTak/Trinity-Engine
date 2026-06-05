@@ -42,6 +42,8 @@ namespace Trinity
 
         virtual void SetEventCallback(const EventCallback& callback) = 0;
 
+        virtual void SetRelativeMouseMode(bool enabled) = 0;
+
         virtual NativeWindowHandle GetNativeHandle() const = 0;
     };
 }

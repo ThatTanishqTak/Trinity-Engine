@@ -30,6 +30,8 @@ namespace Trinity
 
         void SetEventCallback(const EventCallback& callback) override { m_Data.Callback = callback; }
 
+        void SetRelativeMouseMode(bool enabled) override;
+
         NativeWindowHandle GetNativeHandle() const override;
 
         SDL_Window* GetSDLWindow() const { return m_Window; }

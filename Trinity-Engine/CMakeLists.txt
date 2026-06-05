@@ -25,11 +25,14 @@ target_link_libraries(Trinity-Engine
         yaml-cpp::yaml-cpp
         glm
         EnTT
+        imgui
     PRIVATE
         Slang
         stb
         assimp
 )
+
+target_include_directories(Trinity-Engine PRIVATE "${CMAKE_SOURCE_DIR}/Vendor/imgui/backends")
 
 if(TRINITY_ENABLE_SDL)
     target_link_libraries(Trinity-Engine

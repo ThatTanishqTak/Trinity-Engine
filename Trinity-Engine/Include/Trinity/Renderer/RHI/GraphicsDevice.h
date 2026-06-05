@@ -15,6 +15,8 @@
 
 namespace Trinity
 {
+    class IImGuiRenderBackend;
+
     struct DeviceCapabilities
     {
         std::string DeviceName;
@@ -60,5 +62,7 @@ namespace Trinity
         virtual void WaitIdle() = 0;
 
         virtual void CollectGarbage() = 0;
+
+        virtual IImGuiRenderBackend& GetImGuiBackend() = 0;
     };
 }

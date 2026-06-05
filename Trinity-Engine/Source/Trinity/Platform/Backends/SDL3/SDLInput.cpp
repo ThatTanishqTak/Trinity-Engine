@@ -157,6 +157,15 @@ namespace Trinity
         return { l_X, l_Y };
     }
 
+    std::pair<float, float> SDLInput::GetMouseDelta() const
+    {
+        float l_X = 0.0f;
+        float l_Y = 0.0f;
+        SDL_GetRelativeMouseState(&l_X, &l_Y);
+
+        return { l_X, l_Y };
+    }
+
     float SDLInput::GetMouseX() const
     {
         return GetMousePosition().first;

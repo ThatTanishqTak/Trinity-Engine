@@ -20,8 +20,8 @@ namespace Trinity
             Button7 = 7,
 
             ButtonLeft = Button0,
-            ButtonRight = Button1,
-            ButtonMiddle = Button2
+            ButtonMiddle = Button1,
+            ButtonRight = Button2
         };
     }
 }

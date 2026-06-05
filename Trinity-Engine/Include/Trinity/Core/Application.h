@@ -65,7 +65,12 @@ namespace Trinity
         {
 
         }
-        
+
+        virtual void OnImGuiRender()
+        {
+
+        }
+
         virtual void OnShutdown()
         {
 

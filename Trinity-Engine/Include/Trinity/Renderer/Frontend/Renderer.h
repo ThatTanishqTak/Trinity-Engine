@@ -18,6 +18,7 @@ namespace Trinity
 {
     class FileSystem;
     class Scene;
+    class ImGuiLayer;
 
     class Renderer
     {
@@ -31,10 +32,14 @@ namespace Trinity
         bool Initialize();
         void Shutdown();
 
-        void RenderFrame(Scene& scene, const Camera& camera);
+        void RenderFrame(Scene& scene, const Camera& camera, ImGuiLayer* imgui = nullptr);
         void Resize(uint32_t width, uint32_t height);
 
         MeshLibrary& GetMeshLibrary() { return m_MeshLibrary; }
+
+        void SetViewportSize(uint32_t width, uint32_t height);
+        uint64_t GetViewportTextureID() const { return m_ViewportTextureID; }
+        void ApplyViewportResize();
 
     private:
         bool CreatePipeline();
@@ -44,6 +49,9 @@ namespace Trinity
         bool CreateTextureResources();
         bool CreateDepthTexture(uint32_t width, uint32_t height);
         void DestroyDepthTexture();
+        bool CreateViewportTarget(uint32_t width, uint32_t height);
+        void DestroyViewportTarget();
+        void DrawScene(CommandList& commandList, Scene& scene, const Camera& camera);
 
     private:
         GraphicsDevice& m_Device;
@@ -60,6 +68,15 @@ namespace Trinity
         TextureHandle m_DepthTexture;
         TextureHandle m_Texture;
         SamplerHandle m_Sampler;
+
+        TextureHandle m_ViewportColor;
+        TextureHandle m_ViewportDepth;
+        uint32_t m_ViewportWidth = 0;
+        uint32_t m_ViewportHeight = 0;
+        uint32_t m_PendingViewportWidth = 0;
+        uint32_t m_PendingViewportHeight = 0;
+        bool m_ViewportDirty = false;
+        uint64_t m_ViewportTextureID = 0;
 
         std::vector<std::unique_ptr<CommandList>> m_CommandLists;
         uint32_t m_FrameIndex = 0;

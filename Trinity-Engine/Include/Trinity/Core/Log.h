@@ -2,17 +2,37 @@
 
 #include <memory>
 #include <filesystem>
+#include <functional>
+#include <string>
 
 #include <spdlog/spdlog.h>
 
 namespace Trinity
 {
+    enum class LogLevel
+    {
+        Trace,
+        Info,
+        Warn,
+        Error,
+        Critical
+    };
+
+    struct LogMessage
+    {
+        LogLevel Level = LogLevel::Info;
+        std::string Text;
+    };
+
     class Log
     {
     public:
         static void Initialize();
         static void InitializeFileSink(const std::filesystem::path& path);
         static void Shutdown();
+
+        static void VisitMessages(const std::function<void(const LogMessage&)>& visitor);
+        static void ClearMessages();
 
         static std::shared_ptr<spdlog::logger>& GetCoreLogger() { return s_CoreLogger; }
         static std::shared_ptr<spdlog::logger>& GetClientLogger() { return s_ClientLogger; }

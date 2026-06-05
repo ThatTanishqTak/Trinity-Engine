@@ -6,6 +6,8 @@
 
 namespace Trinity
 {
+    class SDLImGuiBackend;
+
     class SDLPlatform : public IPlatform
     {
     public:
@@ -24,6 +26,7 @@ namespace Trinity
         Input& GetInput() override;
         Gamepad& GetGamepad() override;
         FileSystem& GetFileSystem() override;
+        IImGuiPlatformBackend& GetImGuiBackend() override;
 
         PlatformType GetType() const override { return m_Type; }
 
@@ -35,5 +38,6 @@ namespace Trinity
         std::unique_ptr<Input> m_Input;
         std::unique_ptr<Gamepad> m_Gamepad;
         std::unique_ptr<FileSystem> m_FileSystem;
+        std::unique_ptr<SDLImGuiBackend> m_ImGuiBackend;
     };
 }

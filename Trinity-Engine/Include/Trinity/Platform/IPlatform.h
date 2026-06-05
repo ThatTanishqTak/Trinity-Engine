@@ -8,6 +8,8 @@
 
 namespace Trinity
 {
+    class IImGuiPlatformBackend;
+
     class IPlatform
     {
     public:
@@ -25,6 +27,7 @@ namespace Trinity
         virtual Input& GetInput() = 0;
         virtual Gamepad& GetGamepad() = 0;
         virtual FileSystem& GetFileSystem() = 0;
+        virtual IImGuiPlatformBackend& GetImGuiBackend() = 0;
 
         virtual PlatformType GetType() const = 0;
     };

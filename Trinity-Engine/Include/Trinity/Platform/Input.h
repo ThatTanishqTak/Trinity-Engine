@@ -16,6 +16,7 @@ namespace Trinity
 
         virtual bool IsMouseButtonPressed(MouseCode button) const = 0;
         virtual std::pair<float, float> GetMousePosition() const = 0;
+        virtual std::pair<float, float> GetMouseDelta() const = 0;
         virtual float GetMouseX() const = 0;
         virtual float GetMouseY() const = 0;
     };

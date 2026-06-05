@@ -77,6 +77,10 @@ namespace Trinity
                         m_SwapchainDirty = false;
                     }
 
+                    m_Engine->BeginImGuiFrame();
+
+                    OnImGuiRender();
+                    
                     m_Engine->RenderFrame();
                 }
             }

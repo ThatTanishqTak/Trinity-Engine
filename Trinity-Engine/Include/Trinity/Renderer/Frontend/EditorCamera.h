@@ -15,7 +15,7 @@ namespace Trinity
         EditorCamera(float fovDegrees, float aspect, float nearClip, float farClip);
 
         void SetViewportSize(float width, float height);
-        void OnUpdate(const Input& input, float deltaTime);
+        void OnUpdate(const Input& input, float deltaTime, bool allowLook);
 
         const Camera& GetCamera() const { return m_Camera; }
         const glm::vec3& GetPosition() const { return m_Position; }
@@ -39,5 +39,6 @@ namespace Trinity
 
         float m_MoveSpeed = 5.0f;
         float m_LookSpeed = 90.0f;
+        float m_MouseSensitivity = 0.1f;
     };
 }

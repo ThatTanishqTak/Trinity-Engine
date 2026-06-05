@@ -22,3 +22,9 @@
 [submodule "Vendor/entt"]
 	path = Vendor/entt
 	url = https://github.com/ThatTanishqTak/entt.git
+[submodule "Vendor/imgui"]
+	path = Vendor/imgui
+	url = https://github.com/ThatTanishqTak/imgui.git
+[submodule "Vendor/ImGuizmo"]
+	path = Vendor/ImGuizmo
+	url = https://github.com/ThatTanishqTak/ImGuizmo.git

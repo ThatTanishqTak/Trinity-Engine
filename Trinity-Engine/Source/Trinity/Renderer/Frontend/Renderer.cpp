@@ -1,4 +1,6 @@
 #include <Trinity/Renderer/Frontend/Renderer.h>
+#include <Trinity/ImGui/ImGuiLayer.h>
+#include <Trinity/ImGui/IImGuiRenderBackend.h>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -109,6 +111,7 @@ namespace Trinity
         m_MeshLibrary.Shutdown();
 
         DestroyDepthTexture();
+        DestroyViewportTarget();
 
         m_TextureManager.Shutdown();
 
@@ -132,6 +135,7 @@ namespace Trinity
         if (!l_VertexResult.Success)
         {
             LogShaderDiagnostics("vertexMain", l_VertexResult);
+
             return false;
         }
 
@@ -139,6 +143,7 @@ namespace Trinity
         if (!l_FragmentResult.Success)
         {
             LogShaderDiagnostics("fragmentMain", l_FragmentResult);
+
             return false;
         }
 
@@ -169,10 +174,12 @@ namespace Trinity
             {
                 m_Device.DestroyShader(vertexShader); vertexShader = ShaderHandle{};
             }
+
             if (fragmentShader.IsValid())
             {
                 m_Device.DestroyShader(fragmentShader); fragmentShader = ShaderHandle{};
             }
+
             return false;
         }
 
@@ -202,6 +209,7 @@ namespace Trinity
             TR_CORE_ERROR("Renderer: pipeline creation failed");
             m_Device.DestroyShader(vertexShader); vertexShader = ShaderHandle{};
             m_Device.DestroyShader(fragmentShader); fragmentShader = ShaderHandle{};
+
             return false;
         }
 
@@ -312,7 +320,137 @@ namespace Trinity
         }
     }
 
-    void Renderer::RenderFrame(Scene& scene, const Camera& camera)
+    void Renderer::SetViewportSize(uint32_t width, uint32_t height)
+    {
+        if (width == 0 || height == 0)
+        {
+            return;
+        }
+
+        if (width != m_ViewportWidth || height != m_ViewportHeight)
+        {
+            m_PendingViewportWidth = width;
+            m_PendingViewportHeight = height;
+            m_ViewportDirty = true;
+        }
+    }
+
+    void Renderer::ApplyViewportResize()
+    {
+        if (!m_ViewportDirty)
+        {
+            return;
+        }
+
+        m_Device.WaitIdle();
+        DestroyViewportTarget();
+        CreateViewportTarget(m_PendingViewportWidth, m_PendingViewportHeight);
+        m_ViewportDirty = false;
+    }
+
+    bool Renderer::CreateViewportTarget(uint32_t width, uint32_t height)
+    {
+        TextureDescription l_ColorDescription;
+        l_ColorDescription.Type = TextureType::Texture2D;
+        l_ColorDescription.Format = m_Swapchain.GetFormat();
+        l_ColorDescription.Usage = TextureUsage::Sampled | TextureUsage::RenderTarget;
+        l_ColorDescription.Width = width;
+        l_ColorDescription.Height = height;
+        l_ColorDescription.Depth = 1;
+        l_ColorDescription.MipLevels = 1;
+        l_ColorDescription.ArrayLayers = 1;
+        l_ColorDescription.SampleCount = 1;
+        l_ColorDescription.DebugName = "ViewportColor";
+
+        m_ViewportColor = m_Device.CreateTexture(l_ColorDescription);
+        if (!m_ViewportColor.IsValid())
+        {
+            TR_CORE_ERROR("Renderer: viewport color target creation failed");
+            return false;
+        }
+
+        TextureDescription l_DepthDescription;
+        l_DepthDescription.Type = TextureType::Texture2D;
+        l_DepthDescription.Format = Format::D32_SFLOAT;
+        l_DepthDescription.Usage = TextureUsage::DepthStencil;
+        l_DepthDescription.Width = width;
+        l_DepthDescription.Height = height;
+        l_DepthDescription.Depth = 1;
+        l_DepthDescription.MipLevels = 1;
+        l_DepthDescription.ArrayLayers = 1;
+        l_DepthDescription.SampleCount = 1;
+        l_DepthDescription.DebugName = "ViewportDepth";
+
+        m_ViewportDepth = m_Device.CreateTexture(l_DepthDescription);
+        if (!m_ViewportDepth.IsValid())
+        {
+            TR_CORE_ERROR("Renderer: viewport depth target creation failed");
+            return false;
+        }
+
+        m_ViewportTextureID = m_Device.GetImGuiBackend().RegisterTexture(m_ViewportColor);
+        m_ViewportWidth = width;
+        m_ViewportHeight = height;
+
+        return true;
+    }
+
+    void Renderer::DestroyViewportTarget()
+    {
+        if (m_ViewportTextureID != 0)
+        {
+            m_Device.GetImGuiBackend().UnregisterTexture(m_ViewportTextureID);
+            m_ViewportTextureID = 0;
+        }
+
+        if (m_ViewportColor.IsValid())
+        {
+            m_Device.DestroyTexture(m_ViewportColor);
+            m_ViewportColor = TextureHandle{};
+        }
+
+        if (m_ViewportDepth.IsValid())
+        {
+            m_Device.DestroyTexture(m_ViewportDepth);
+            m_ViewportDepth = TextureHandle{};
+        }
+
+        m_ViewportWidth = 0;
+        m_ViewportHeight = 0;
+    }
+
+    void Renderer::DrawScene(CommandList& commandList, Scene& scene, const Camera& camera)
+    {
+        commandList.BindPipeline(m_Pipeline);
+        commandList.BindTexture(0, 0, m_Texture, m_TextureManager.DefaultSampler());
+
+        glm::mat4 l_ViewProjection = camera.GetViewProjection();
+
+        auto l_View = scene.GetRegistry().view<TransformComponent, MeshRendererComponent>();
+        for (entt::entity l_Entity : l_View)
+        {
+            const MeshRendererComponent& l_MeshRenderer = l_View.get<MeshRendererComponent>(l_Entity);
+            if (!l_MeshRenderer.MeshReference || !l_MeshRenderer.MeshReference->IsValid())
+            {
+                continue;
+            }
+
+            Mesh& l_Mesh = *l_MeshRenderer.MeshReference;
+
+            glm::mat4 l_MVP = l_ViewProjection * scene.GetWorldMatrix(l_Entity);
+            commandList.PushConstants(ShaderStage::Vertex | ShaderStage::Fragment, 0, static_cast<uint32_t>(sizeof(l_MVP)), &l_MVP);
+
+            commandList.BindVertexBuffer(l_Mesh.GetVertexBuffer(), 0);
+            commandList.BindIndexBuffer(l_Mesh.GetIndexBuffer(), 0);
+
+            for (const Submesh& l_Submesh : l_Mesh.GetSubmeshes())
+            {
+                commandList.DrawIndexed(l_Submesh.IndexCount, 1, l_Submesh.FirstIndex, static_cast<int32_t>(l_Submesh.BaseVertex), 0);
+            }
+        }
+    }
+
+    void Renderer::RenderFrame(Scene& scene, const Camera& camera, ImGuiLayer* imgui)
     {
         m_Device.CollectGarbage();
 
@@ -328,6 +466,8 @@ namespace Trinity
             CheckHotReload();
         }
 
+        bool l_UseViewport = m_ViewportColor.IsValid() && m_ViewportWidth > 0 && m_ViewportHeight > 0;
+
         FrameInfo l_Frame;
         if (!m_Swapchain.AcquireNextImage(l_Frame))
         {
@@ -336,80 +476,157 @@ namespace Trinity
 
         CommandList& l_CommandList = *m_CommandLists[m_FrameIndex];
 
-        uint32_t l_Width = m_Swapchain.GetWidth();
-        uint32_t l_Height = m_Swapchain.GetHeight();
+        uint32_t l_SwapWidth = m_Swapchain.GetWidth();
+        uint32_t l_SwapHeight = m_Swapchain.GetHeight();
 
         l_CommandList.Begin();
-        l_CommandList.TransitionTexture(l_Frame.BackBuffer, ResourceState::Undefined, ResourceState::RenderTarget);
-        l_CommandList.TransitionTexture(m_DepthTexture, ResourceState::Undefined, ResourceState::DepthStencil);
 
-        RenderingAttachment l_ColorAttachment;
-        l_ColorAttachment.Target = l_Frame.BackBuffer;
-        l_ColorAttachment.Clear = true;
-        l_ColorAttachment.ClearColor[0] = 0.05f;
-        l_ColorAttachment.ClearColor[1] = 0.05f;
-        l_ColorAttachment.ClearColor[2] = 0.05f;
-        l_ColorAttachment.ClearColor[3] = 1.0f;
-
-        DepthAttachment l_DepthAttachment;
-        l_DepthAttachment.Target = m_DepthTexture;
-        l_DepthAttachment.Clear = true;
-        l_DepthAttachment.ClearDepth = 1.0f;
-
-        RenderingInfo l_RenderingInfo;
-        l_RenderingInfo.ColorAttachments = &l_ColorAttachment;
-        l_RenderingInfo.ColorAttachmentCount = 1;
-        l_RenderingInfo.Depth = &l_DepthAttachment;
-        l_RenderingInfo.Width = l_Width;
-        l_RenderingInfo.Height = l_Height;
-
-        l_CommandList.BeginRendering(l_RenderingInfo);
-
-        Viewport l_Viewport;
-        l_Viewport.X = 0.0f;
-        l_Viewport.Y = 0.0f;
-        l_Viewport.Width = static_cast<float>(l_Width);
-        l_Viewport.Height = static_cast<float>(l_Height);
-        l_Viewport.MinDepth = 0.0f;
-        l_Viewport.MaxDepth = 1.0f;
-        l_CommandList.SetViewport(l_Viewport);
-
-        Scissor l_Scissor;
-        l_Scissor.X = 0;
-        l_Scissor.Y = 0;
-        l_Scissor.Width = l_Width;
-        l_Scissor.Height = l_Height;
-        l_CommandList.SetScissor(l_Scissor);
-
-        l_CommandList.BindPipeline(m_Pipeline);
-        l_CommandList.BindTexture(0, 0, m_Texture, m_TextureManager.DefaultSampler());
-        glm::mat4 l_ViewProjection = camera.GetViewProjection();
-
-        auto l_View = scene.GetRegistry().view<TransformComponent, MeshRendererComponent>();
-        for (entt::entity l_Entity : l_View)
+        if (l_UseViewport)
         {
-            const MeshRendererComponent& l_MeshRenderer = l_View.get<MeshRendererComponent>(l_Entity);
-            if (!l_MeshRenderer.MeshReference || !l_MeshRenderer.MeshReference->IsValid())
+            l_CommandList.TransitionTexture(m_ViewportColor, ResourceState::Undefined, ResourceState::RenderTarget);
+            l_CommandList.TransitionTexture(m_ViewportDepth, ResourceState::Undefined, ResourceState::DepthStencil);
+
+            RenderingAttachment l_SceneColor;
+            l_SceneColor.Target = m_ViewportColor;
+            l_SceneColor.Clear = true;
+            l_SceneColor.ClearColor[0] = 0.05f;
+            l_SceneColor.ClearColor[1] = 0.05f;
+            l_SceneColor.ClearColor[2] = 0.05f;
+            l_SceneColor.ClearColor[3] = 1.0f;
+
+            DepthAttachment l_SceneDepth;
+            l_SceneDepth.Target = m_ViewportDepth;
+            l_SceneDepth.Clear = true;
+            l_SceneDepth.ClearDepth = 1.0f;
+
+            RenderingInfo l_SceneInfo;
+            l_SceneInfo.ColorAttachments = &l_SceneColor;
+            l_SceneInfo.ColorAttachmentCount = 1;
+            l_SceneInfo.Depth = &l_SceneDepth;
+            l_SceneInfo.Width = m_ViewportWidth;
+            l_SceneInfo.Height = m_ViewportHeight;
+
+            l_CommandList.BeginRendering(l_SceneInfo);
+
+            Viewport l_Viewport;
+            l_Viewport.X = 0.0f;
+            l_Viewport.Y = 0.0f;
+            l_Viewport.Width = static_cast<float>(m_ViewportWidth);
+            l_Viewport.Height = static_cast<float>(m_ViewportHeight);
+            l_Viewport.MinDepth = 0.0f;
+            l_Viewport.MaxDepth = 1.0f;
+            l_CommandList.SetViewport(l_Viewport);
+
+            Scissor l_Scissor;
+            l_Scissor.X = 0;
+            l_Scissor.Y = 0;
+            l_Scissor.Width = m_ViewportWidth;
+            l_Scissor.Height = m_ViewportHeight;
+            l_CommandList.SetScissor(l_Scissor);
+
+            DrawScene(l_CommandList, scene, camera);
+
+            l_CommandList.EndRendering();
+
+            l_CommandList.TransitionTexture(m_ViewportColor, ResourceState::RenderTarget, ResourceState::ShaderResource);
+            l_CommandList.TransitionTexture(l_Frame.BackBuffer, ResourceState::Undefined, ResourceState::RenderTarget);
+
+            RenderingAttachment l_BackColor;
+            l_BackColor.Target = l_Frame.BackBuffer;
+            l_BackColor.Clear = true;
+            l_BackColor.ClearColor[0] = 0.02f;
+            l_BackColor.ClearColor[1] = 0.02f;
+            l_BackColor.ClearColor[2] = 0.02f;
+            l_BackColor.ClearColor[3] = 1.0f;
+
+            RenderingInfo l_BackInfo;
+            l_BackInfo.ColorAttachments = &l_BackColor;
+            l_BackInfo.ColorAttachmentCount = 1;
+            l_BackInfo.Depth = nullptr;
+            l_BackInfo.Width = l_SwapWidth;
+            l_BackInfo.Height = l_SwapHeight;
+
+            l_CommandList.BeginRendering(l_BackInfo);
+
+            if (imgui != nullptr && imgui->IsInitialized())
             {
-                continue;
+                imgui->EndFrame(l_CommandList);
             }
 
-            Mesh& l_Mesh = *l_MeshRenderer.MeshReference;
+            l_CommandList.EndRendering();
 
-            glm::mat4 l_MVP = l_ViewProjection * scene.GetWorldMatrix(l_Entity);
-            l_CommandList.PushConstants(ShaderStage::Vertex | ShaderStage::Fragment, 0, static_cast<uint32_t>(sizeof(l_MVP)), &l_MVP);
+            l_CommandList.TransitionTexture(l_Frame.BackBuffer, ResourceState::RenderTarget, ResourceState::Present);
+        }
+        else
+        {
+            l_CommandList.TransitionTexture(l_Frame.BackBuffer, ResourceState::Undefined, ResourceState::RenderTarget);
+            l_CommandList.TransitionTexture(m_DepthTexture, ResourceState::Undefined, ResourceState::DepthStencil);
 
-            l_CommandList.BindVertexBuffer(l_Mesh.GetVertexBuffer(), 0);
-            l_CommandList.BindIndexBuffer(l_Mesh.GetIndexBuffer(), 0);
+            RenderingAttachment l_ColorAttachment;
+            l_ColorAttachment.Target = l_Frame.BackBuffer;
+            l_ColorAttachment.Clear = true;
+            l_ColorAttachment.ClearColor[0] = 0.05f;
+            l_ColorAttachment.ClearColor[1] = 0.05f;
+            l_ColorAttachment.ClearColor[2] = 0.05f;
+            l_ColorAttachment.ClearColor[3] = 1.0f;
 
-            for (const Submesh& l_Submesh : l_Mesh.GetSubmeshes())
+            DepthAttachment l_DepthAttachment;
+            l_DepthAttachment.Target = m_DepthTexture;
+            l_DepthAttachment.Clear = true;
+            l_DepthAttachment.ClearDepth = 1.0f;
+
+            RenderingInfo l_RenderingInfo;
+            l_RenderingInfo.ColorAttachments = &l_ColorAttachment;
+            l_RenderingInfo.ColorAttachmentCount = 1;
+            l_RenderingInfo.Depth = &l_DepthAttachment;
+            l_RenderingInfo.Width = l_SwapWidth;
+            l_RenderingInfo.Height = l_SwapHeight;
+
+            l_CommandList.BeginRendering(l_RenderingInfo);
+
+            Viewport l_Viewport;
+            l_Viewport.X = 0.0f;
+            l_Viewport.Y = 0.0f;
+            l_Viewport.Width = static_cast<float>(l_SwapWidth);
+            l_Viewport.Height = static_cast<float>(l_SwapHeight);
+            l_Viewport.MinDepth = 0.0f;
+            l_Viewport.MaxDepth = 1.0f;
+            l_CommandList.SetViewport(l_Viewport);
+
+            Scissor l_Scissor;
+            l_Scissor.X = 0;
+            l_Scissor.Y = 0;
+            l_Scissor.Width = l_SwapWidth;
+            l_Scissor.Height = l_SwapHeight;
+            l_CommandList.SetScissor(l_Scissor);
+
+            DrawScene(l_CommandList, scene, camera);
+
+            l_CommandList.EndRendering();
+
+            if (imgui != nullptr && imgui->IsInitialized())
             {
-                l_CommandList.DrawIndexed(l_Submesh.IndexCount, 1, l_Submesh.FirstIndex, static_cast<int32_t>(l_Submesh.BaseVertex), 0);
+                l_CommandList.TransitionTexture(l_Frame.BackBuffer, ResourceState::RenderTarget, ResourceState::RenderTarget);
+
+                RenderingAttachment l_ImGuiColor;
+                l_ImGuiColor.Target = l_Frame.BackBuffer;
+                l_ImGuiColor.Clear = false;
+
+                RenderingInfo l_ImGuiInfo;
+                l_ImGuiInfo.ColorAttachments = &l_ImGuiColor;
+                l_ImGuiInfo.ColorAttachmentCount = 1;
+                l_ImGuiInfo.Depth = nullptr;
+                l_ImGuiInfo.Width = l_SwapWidth;
+                l_ImGuiInfo.Height = l_SwapHeight;
+
+                l_CommandList.BeginRendering(l_ImGuiInfo);
+                imgui->EndFrame(l_CommandList);
+                l_CommandList.EndRendering();
             }
+
+            l_CommandList.TransitionTexture(l_Frame.BackBuffer, ResourceState::RenderTarget, ResourceState::Present);
         }
 
-        l_CommandList.EndRendering();
-        l_CommandList.TransitionTexture(l_Frame.BackBuffer, ResourceState::RenderTarget, ResourceState::Present);
         l_CommandList.End();
 
         m_Device.Submit(l_CommandList);

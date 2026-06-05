@@ -20,8 +20,18 @@ namespace Trinity
         RecalculateView();
     }
 
-    void EditorCamera::OnUpdate(const Input& input, float deltaTime)
+    void EditorCamera::OnUpdate(const Input& input, float deltaTime, bool allowLook)
     {
+        std::pair<float, float> l_MouseDelta = input.GetMouseDelta();
+
+        if (!allowLook)
+        {
+            return;
+        }
+
+        m_Yaw += l_MouseDelta.first * m_MouseSensitivity;
+        m_Pitch -= l_MouseDelta.second * m_MouseSensitivity;
+
         float l_LookStep = m_LookSpeed * deltaTime;
         if (input.IsKeyPressed(Key::Left))
         {

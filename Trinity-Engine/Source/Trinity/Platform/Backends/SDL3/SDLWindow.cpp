@@ -2,6 +2,7 @@
 
 #include <SDL3/SDL_video.h>
 #include <SDL3/SDL_properties.h>
+#include <SDL3/SDL_mouse.h>
 
 #include <Trinity/Core/Log.h>
 
@@ -55,6 +56,14 @@ namespace Trinity
     void SDLWindow::SetVSync(bool enabled)
     {
         m_Data.VSync = enabled;
+    }
+
+    void SDLWindow::SetRelativeMouseMode(bool enabled)
+    {
+        if (m_Window != nullptr)
+        {
+            SDL_SetWindowRelativeMouseMode(m_Window, enabled);
+        }
     }
 
     uint32_t SDLWindow::GetWindowID() const

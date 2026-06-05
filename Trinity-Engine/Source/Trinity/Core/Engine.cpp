@@ -153,15 +153,57 @@ namespace Trinity
 
         if (m_EditorCamera != nullptr && m_Platform != nullptr)
         {
-            m_EditorCamera->OnUpdate(m_Platform->GetInput(), timestep);
+            Input& l_Input = m_Platform->GetInput();
+            bool l_RightDown = l_Input.IsMouseButtonPressed(Mouse::ButtonRight);
+
+            if (!m_FlyMode && l_RightDown && m_ViewportInteractive)
+            {
+                m_FlyMode = true;
+                if (m_Platform->HasWindow())
+                {
+                    m_Platform->GetWindow().SetRelativeMouseMode(true);
+                }
+            }
+            else if (m_FlyMode && !l_RightDown)
+            {
+                m_FlyMode = false;
+                if (m_Platform->HasWindow())
+                {
+                    m_Platform->GetWindow().SetRelativeMouseMode(false);
+                }
+            }
+
+            m_EditorCamera->OnUpdate(l_Input, timestep, m_FlyMode);
         }
+
+        if (m_Renderer != nullptr)
+        {
+            m_Renderer->ApplyViewportResize();
+        }
+    }
+
+    void Engine::InitializeImGui()
+    {
+        if (m_Platform == nullptr || m_Device == nullptr || m_Swapchain == nullptr)
+        {
+            TR_CORE_ERROR("Engine: InitializeImGui called before renderer is ready");
+
+            return;
+        }
+
+        m_ImGuiLayer.Initialize(m_Platform->GetImGuiBackend(), m_Device->GetImGuiBackend(), m_Swapchain->GetFramesInFlight(), m_Swapchain->GetFormat());
+    }
+
+    void Engine::BeginImGuiFrame()
+    {
+        m_ImGuiLayer.BeginFrame();
     }
 
     void Engine::RenderFrame()
     {
         if (m_Renderer != nullptr && m_Scene != nullptr && m_EditorCamera != nullptr)
         {
-            m_Renderer->RenderFrame(*m_Scene, m_EditorCamera->GetCamera());
+            m_Renderer->RenderFrame(*m_Scene, m_EditorCamera->GetCamera(), &m_ImGuiLayer);
         }
     }
 
@@ -178,6 +220,34 @@ namespace Trinity
         }
     }
 
+    void Engine::SetViewportSize(uint32_t width, uint32_t height)
+    {
+        if (m_Renderer != nullptr)
+        {
+            m_Renderer->SetViewportSize(width, height);
+        }
+
+        if (m_EditorCamera != nullptr && width > 0 && height > 0)
+        {
+            m_EditorCamera->SetViewportSize(static_cast<float>(width), static_cast<float>(height));
+        }
+    }
+
+    uint64_t Engine::GetViewportTextureID() const
+    {
+        return m_Renderer != nullptr ? m_Renderer->GetViewportTextureID() : 0;
+    }
+
+    const Camera& Engine::GetEditorCamera() const
+    {
+        return m_EditorCamera->GetCamera();
+    }
+
+    void Engine::SetViewportInteractive(bool interactive)
+    {
+        m_ViewportInteractive = interactive;
+    }
+
     void Engine::Shutdown()
     {
         if (!m_Initialized)
@@ -192,10 +262,7 @@ namespace Trinity
             m_Device->WaitIdle();
         }
 
-        if (m_Device != nullptr)
-        {
-            m_Device->WaitIdle();
-        }
+        m_ImGuiLayer.Shutdown();
 
         m_Scene.reset();
         m_EditorCamera.reset();

@@ -1,4 +1,5 @@
 #include <Trinity/Renderer/Backends/Vulkan/VulkanDevice.h>
+#include <Trinity/Renderer/Backends/Vulkan/VulkanImGuiBackend.h>
 
 #include <set>
 #include <vector>
@@ -272,10 +273,17 @@ namespace Trinity
 
         QueryCapabilities();
 
+        m_ImGuiBackend = std::make_unique<VulkanImGuiBackend>(*this);
+
         m_Initialized = true;
         TR_CORE_INFO("VulkanDevice: initialized");
 
         return true;
+    }
+
+    IImGuiRenderBackend& VulkanDevice::GetImGuiBackend()
+    {
+        return *m_ImGuiBackend;
     }
 
     void VulkanDevice::ReportLeaks()

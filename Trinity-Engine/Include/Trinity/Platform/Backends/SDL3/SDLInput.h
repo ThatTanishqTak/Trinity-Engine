@@ -11,6 +11,7 @@ namespace Trinity
 
         bool IsMouseButtonPressed(MouseCode button) const override;
         std::pair<float, float> GetMousePosition() const override;
+        std::pair<float, float> GetMouseDelta() const override;
         float GetMouseX() const override;
         float GetMouseY() const override;
     };

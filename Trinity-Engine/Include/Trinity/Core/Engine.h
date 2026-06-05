@@ -5,6 +5,7 @@
 #include <string>
 
 #include <Trinity/Core/Timestep.h>
+#include <Trinity/ImGui/ImGuiLayer.h>
 
 namespace Trinity
 {
@@ -14,6 +15,7 @@ namespace Trinity
     class Renderer;
     class Scene;
     class EditorCamera;
+    class Camera;
 
     struct NativeWindowHandle;
 
@@ -34,6 +36,13 @@ namespace Trinity
         void RenderFrame();
         void Resize(uint32_t width, uint32_t height);
 
+        void SetViewportSize(uint32_t width, uint32_t height);
+        uint64_t GetViewportTextureID() const;
+        void SetViewportInteractive(bool interactive);
+
+        void InitializeImGui();
+        void BeginImGuiFrame();
+
         IPlatform& GetPlatform() { return *m_Platform; }
         bool HasPlatform() const { return m_Platform != nullptr; }
 
@@ -45,8 +54,15 @@ namespace Trinity
 
         bool HasRenderer() const { return m_Renderer != nullptr; }
 
+        Scene& GetScene() { return *m_Scene; }
+        bool HasScene() const { return m_Scene != nullptr; }
+
+        const Camera& GetEditorCamera() const;
+
     private:
         bool m_Initialized = false;
+        bool m_FlyMode = false;
+        bool m_ViewportInteractive = false;
 
         std::unique_ptr<IPlatform> m_Platform;
         std::unique_ptr<GraphicsDevice> m_Device;
@@ -54,5 +70,7 @@ namespace Trinity
         std::unique_ptr<Renderer> m_Renderer;
         std::unique_ptr<Scene> m_Scene;
         std::unique_ptr<EditorCamera> m_EditorCamera;
+
+        ImGuiLayer m_ImGuiLayer;
     };
 }

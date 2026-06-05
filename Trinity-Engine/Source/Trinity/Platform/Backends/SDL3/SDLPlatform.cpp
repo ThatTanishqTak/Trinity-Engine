@@ -8,6 +8,7 @@
 #include <Trinity/Platform/Backends/SDL3/SDLInput.h>
 #include <Trinity/Platform/Backends/SDL3/SDLGamepad.h>
 #include <Trinity/Platform/Backends/SDL3/SDLFileSystem.h>
+#include <Trinity/Platform/Backends/SDL3/SDLImGuiBackend.h>
 #include <Trinity/Platform/Events/ApplicationEvent.h>
 #include <Trinity/Platform/Events/KeyEvent.h>
 #include <Trinity/Platform/Events/MouseEvent.h>
@@ -59,6 +60,7 @@ namespace Trinity
             return;
         }
 
+        m_ImGuiBackend.reset();
         m_Window.reset();
         m_Gamepad.reset();
         m_Input.reset();
@@ -77,6 +79,10 @@ namespace Trinity
         TR_CORE_ASSERT(m_Window == nullptr, "SDLPlatform window already created");
 
         m_Window = std::make_unique<SDLWindow>(properties);
+
+        SDLWindow* l_SDLWindow = static_cast<SDLWindow*>(m_Window.get());
+        m_ImGuiBackend = std::make_unique<SDLImGuiBackend>(l_SDLWindow->GetSDLWindow());
+
         return *m_Window;
     }
 
@@ -106,6 +112,11 @@ namespace Trinity
         return *m_FileSystem;
     }
 
+    IImGuiPlatformBackend& SDLPlatform::GetImGuiBackend()
+    {
+        return *m_ImGuiBackend;
+    }
+
     void SDLPlatform::PollEvents()
     {
         SDLWindow* l_Window = static_cast<SDLWindow*>(m_Window.get());
@@ -114,6 +125,11 @@ namespace Trinity
         SDL_Event l_Event;
         while (SDL_PollEvent(&l_Event))
         {
+            if (m_ImGuiBackend != nullptr)
+            {
+                m_ImGuiBackend->ProcessEvent(l_Event);
+            }
+
             switch (l_Event.type)
             {
                 case SDL_EVENT_QUIT:

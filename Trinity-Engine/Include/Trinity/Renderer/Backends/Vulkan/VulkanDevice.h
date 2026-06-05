@@ -182,6 +182,8 @@ namespace Trinity
         std::vector<uint32_t> m_FreeList;
     };
 
+    class VulkanImGuiBackend;
+
     class VulkanDevice : public GraphicsDevice
     {
     public:
@@ -218,6 +220,8 @@ namespace Trinity
         void WaitIdle() override;
 
         void CollectGarbage() override;
+
+        IImGuiRenderBackend& GetImGuiBackend() override;
 
         TextureHandle RegisterExternalTexture(VkImage image, VkImageView view, VkFormat format, const VkExtent3D& extent, VkImageAspectFlags aspect);
         void SetActiveSwapchain(VulkanSwapchain* swapchain) { m_ActiveSwapchain = swapchain; }
@@ -288,5 +292,7 @@ namespace Trinity
         PFN_vkSetDebugUtilsObjectNameEXT m_SetObjectName = nullptr;
 
         VulkanSwapchain* m_ActiveSwapchain = nullptr;
+
+        std::unique_ptr<VulkanImGuiBackend> m_ImGuiBackend;
     };
 }
