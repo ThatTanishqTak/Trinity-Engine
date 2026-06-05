@@ -13,6 +13,7 @@ namespace Trinity
     class GraphicsDevice;
     class Swapchain;
     class Renderer;
+    class MeshLibrary;
     class Scene;
     class EditorCamera;
     class Camera;
@@ -58,6 +59,8 @@ namespace Trinity
         bool HasScene() const { return m_Scene != nullptr; }
 
         const Camera& GetEditorCamera() const;
+
+        MeshLibrary& GetMeshLibrary();
 
     private:
         bool m_Initialized = false;

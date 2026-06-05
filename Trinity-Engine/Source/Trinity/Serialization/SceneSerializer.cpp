@@ -23,7 +23,7 @@ namespace Trinity
 {
     static constexpr uint32_t k_SceneVersion = 1;
 
-    static void SerializeEntity(YAML::Emitter& out, Scene& scene, entt::entity handle)
+    static void EmitEntityNode(YAML::Emitter& out, Scene& scene, entt::entity handle)
     {
         entt::registry& l_Registry = scene.GetRegistry();
 
@@ -63,6 +63,48 @@ namespace Trinity
         out << YAML::EndMap;
     }
 
+    static void ReadEntityComponents(Entity entity, MeshLibrary& meshLibrary, const YAML::Node& node)
+    {
+        if (YAML::Node l_TransformNode = node["Transform"])
+        {
+            TransformComponent& l_Transform = entity.GetComponent<TransformComponent>();
+            l_Transform.Translation = l_TransformNode["Translation"].as<glm::vec3>();
+            l_Transform.Rotation = l_TransformNode["Rotation"].as<glm::vec3>();
+            l_Transform.Scale = l_TransformNode["Scale"].as<glm::vec3>();
+        }
+
+        if (YAML::Node l_MeshNode = node["MeshRenderer"])
+        {
+            std::string l_MeshPath = l_MeshNode["MeshPath"] ? l_MeshNode["MeshPath"].as<std::string>() : "";
+
+            MeshRendererComponent l_Component;
+            l_Component.MeshPath = l_MeshPath;
+            l_Component.MeshReference = l_MeshPath.empty() ? meshLibrary.GetCube() : meshLibrary.Load(l_MeshPath);
+            entity.AddComponent<MeshRendererComponent>(l_Component);
+        }
+
+        if (YAML::Node l_CameraNode = node["Camera"])
+        {
+            CameraComponent l_Component;
+            l_Component.Primary = l_CameraNode["Primary"] ? l_CameraNode["Primary"].as<bool>() : true;
+            entity.AddComponent<CameraComponent>(l_Component);
+        }
+    }
+
+    static void CollectSubtree(Scene& scene, entt::entity root, std::vector<entt::entity>& out)
+    {
+        out.push_back(root);
+
+        entt::registry& l_Registry = scene.GetRegistry();
+        if (const HierarchyComponent* l_Hierarchy = l_Registry.try_get<HierarchyComponent>(root))
+        {
+            for (entt::entity l_Child : l_Hierarchy->Children)
+            {
+                CollectSubtree(scene, l_Child, out);
+            }
+        }
+    }
+
     bool SceneSerializer::Serialize(Scene& scene, const std::filesystem::path& path, const std::string& sceneName)
     {
         YAML::Emitter l_Out;
@@ -74,7 +116,7 @@ namespace Trinity
         auto l_View = scene.GetRegistry().view<IDComponent>();
         for (entt::entity l_Handle : l_View)
         {
-            SerializeEntity(l_Out, scene, l_Handle);
+            EmitEntityNode(l_Out, scene, l_Handle);
         }
 
         l_Out << YAML::EndSeq;
@@ -142,30 +184,7 @@ namespace Trinity
                 Entity l_Entity = scene.CreateEntityWithUUID(UUID(l_UUID), l_Name);
                 l_EntityMap[l_UUID] = l_Entity;
 
-                if (YAML::Node l_TransformNode = l_EntityNode["Transform"])
-                {
-                    TransformComponent& l_Transform = l_Entity.GetComponent<TransformComponent>();
-                    l_Transform.Translation = l_TransformNode["Translation"].as<glm::vec3>();
-                    l_Transform.Rotation = l_TransformNode["Rotation"].as<glm::vec3>();
-                    l_Transform.Scale = l_TransformNode["Scale"].as<glm::vec3>();
-                }
-
-                if (YAML::Node l_MeshNode = l_EntityNode["MeshRenderer"])
-                {
-                    std::string l_MeshPath = l_MeshNode["MeshPath"] ? l_MeshNode["MeshPath"].as<std::string>() : "";
-
-                    MeshRendererComponent l_Component;
-                    l_Component.MeshPath = l_MeshPath;
-                    l_Component.MeshReference = l_MeshPath.empty() ? meshLibrary.GetCube() : meshLibrary.Load(l_MeshPath);
-                    l_Entity.AddComponent<MeshRendererComponent>(l_Component);
-                }
-
-                if (YAML::Node l_CameraNode = l_EntityNode["Camera"])
-                {
-                    CameraComponent l_Component;
-                    l_Component.Primary = l_CameraNode["Primary"] ? l_CameraNode["Primary"].as<bool>() : true;
-                    l_Entity.AddComponent<CameraComponent>(l_Component);
-                }
+                ReadEntityComponents(l_Entity, meshLibrary, l_EntityNode);
 
                 if (l_EntityNode["Parent"])
                 {
@@ -196,6 +215,110 @@ namespace Trinity
             TR_CORE_ERROR("SceneSerializer: failed to load '{}' ({})", path.string(), a_Exception.what());
 
             return false;
+        }
+    }
+
+    std::string SceneSerializer::SerializeEntity(Scene& scene, Entity entity)
+    {
+        std::vector<entt::entity> l_Handles;
+        CollectSubtree(scene, entity.GetHandle(), l_Handles);
+
+        YAML::Emitter l_Out;
+        l_Out << YAML::BeginMap;
+        l_Out << YAML::Key << "Version" << YAML::Value << k_SceneVersion;
+        l_Out << YAML::Key << "Entities" << YAML::Value << YAML::BeginSeq;
+
+        for (entt::entity l_Handle : l_Handles)
+        {
+            EmitEntityNode(l_Out, scene, l_Handle);
+        }
+
+        l_Out << YAML::EndSeq;
+        l_Out << YAML::EndMap;
+
+        return std::string(l_Out.c_str());
+    }
+
+    Entity SceneSerializer::DeserializeEntity(Scene& scene, MeshLibrary& meshLibrary, const std::string& data, bool preserveUUIDs)
+    {
+        try
+        {
+            YAML::Node l_Root = YAML::Load(data);
+            YAML::Node l_Entities = l_Root["Entities"];
+            if (!l_Entities)
+            {
+                return Entity();
+            }
+
+            entt::registry& l_Registry = scene.GetRegistry();
+
+            std::unordered_map<uint64_t, Entity> l_EntityMap;
+            auto l_ExistingView = l_Registry.view<IDComponent>();
+            for (entt::entity l_Existing : l_ExistingView)
+            {
+                l_EntityMap[static_cast<uint64_t>(l_Registry.get<IDComponent>(l_Existing).ID)] = Entity(l_Existing, &scene);
+            }
+
+            std::unordered_map<uint64_t, uint64_t> l_Remap;
+            std::vector<std::pair<uint64_t, uint64_t>> l_PendingParents;
+
+            Entity l_RootEntity;
+            bool l_First = true;
+
+            for (const YAML::Node& l_EntityNode : l_Entities)
+            {
+                if (!l_EntityNode["UUID"])
+                {
+                    continue;
+                }
+
+                uint64_t l_OldUUID = l_EntityNode["UUID"].as<uint64_t>();
+                std::string l_Name = l_EntityNode["Name"] ? l_EntityNode["Name"].as<std::string>() : "Entity";
+
+                UUID l_NewID = preserveUUIDs ? UUID(l_OldUUID) : UUID();
+                l_Remap[l_OldUUID] = static_cast<uint64_t>(l_NewID);
+
+                Entity l_Entity = scene.CreateEntityWithUUID(l_NewID, l_Name);
+                l_EntityMap[static_cast<uint64_t>(l_NewID)] = l_Entity;
+
+                ReadEntityComponents(l_Entity, meshLibrary, l_EntityNode);
+
+                if (l_EntityNode["Parent"])
+                {
+                    l_PendingParents.emplace_back(static_cast<uint64_t>(l_NewID), l_EntityNode["Parent"].as<uint64_t>());
+                }
+
+                if (l_First)
+                {
+                    l_RootEntity = l_Entity;
+                    l_First = false;
+                }
+            }
+
+            for (const std::pair<uint64_t, uint64_t>& l_Link : l_PendingParents)
+            {
+                uint64_t l_ParentResolved = l_Link.second;
+                auto it_Remap = l_Remap.find(l_Link.second);
+                if (it_Remap != l_Remap.end())
+                {
+                    l_ParentResolved = it_Remap->second;
+                }
+
+                auto it_Child = l_EntityMap.find(l_Link.first);
+                auto it_Parent = l_EntityMap.find(l_ParentResolved);
+                if (it_Child != l_EntityMap.end() && it_Parent != l_EntityMap.end())
+                {
+                    scene.SetParent(it_Child->second, it_Parent->second);
+                }
+            }
+
+            return l_RootEntity;
+        }
+        catch (const std::exception& a_Exception)
+        {
+            TR_CORE_ERROR("SceneSerializer: DeserializeEntity failed ({})", a_Exception.what());
+
+            return Entity();
         }
     }
 }

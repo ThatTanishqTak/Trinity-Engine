@@ -244,6 +244,11 @@ namespace Trinity
         return m_EditorCamera->GetCamera();
     }
 
+    MeshLibrary& Engine::GetMeshLibrary()
+    {
+        return m_Renderer->GetMeshLibrary();
+    }
+
     void Engine::SetViewportInteractive(bool interactive)
     {
         m_ViewportInteractive = interactive;
