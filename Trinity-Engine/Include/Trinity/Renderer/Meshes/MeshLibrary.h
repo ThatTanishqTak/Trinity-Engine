@@ -27,9 +27,12 @@ namespace Trinity
         std::shared_ptr<Mesh> Load(const std::string& relativePath);
         std::shared_ptr<Mesh> GetCube();
 
+        void Invalidate(const std::string& relativePath);
+
     private:
         std::shared_ptr<Mesh> CreateFromData(const MeshData& data, const std::string& debugName);
 
+    private:
         GraphicsDevice& m_Device;
         FileSystem& m_FileSystem;
         MeshImporter m_Importer;

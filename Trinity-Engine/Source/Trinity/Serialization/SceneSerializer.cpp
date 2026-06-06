@@ -16,7 +16,7 @@
 #include <Trinity/Scene/Components/HierarchyComponent.h>
 #include <Trinity/Scene/Components/MeshRendererComponent.h>
 #include <Trinity/Scene/Components/CameraComponent.h>
-#include <Trinity/Renderer/Meshes/MeshLibrary.h>
+#include <Trinity/Assets/AssetDatabase.h>
 #include <Trinity/Core/Log.h>
 
 namespace Trinity
@@ -49,7 +49,7 @@ namespace Trinity
         if (const MeshRendererComponent* l_MeshRenderer = l_Registry.try_get<MeshRendererComponent>(handle))
         {
             out << YAML::Key << "MeshRenderer" << YAML::Value << YAML::BeginMap;
-            out << YAML::Key << "MeshPath" << YAML::Value << l_MeshRenderer->MeshPath;
+            out << YAML::Key << "MeshAsset" << YAML::Value << static_cast<uint64_t>(l_MeshRenderer->MeshAsset);
             out << YAML::EndMap;
         }
 
@@ -63,7 +63,7 @@ namespace Trinity
         out << YAML::EndMap;
     }
 
-    static void ReadEntityComponents(Entity entity, MeshLibrary& meshLibrary, const YAML::Node& node)
+    static void ReadEntityComponents(Entity entity, AssetDatabase& assetDatabase, const YAML::Node& node)
     {
         if (YAML::Node l_TransformNode = node["Transform"])
         {
@@ -75,11 +75,13 @@ namespace Trinity
 
         if (YAML::Node l_MeshNode = node["MeshRenderer"])
         {
-            std::string l_MeshPath = l_MeshNode["MeshPath"] ? l_MeshNode["MeshPath"].as<std::string>() : "";
-
             MeshRendererComponent l_Component;
-            l_Component.MeshPath = l_MeshPath;
-            l_Component.MeshReference = l_MeshPath.empty() ? meshLibrary.GetCube() : meshLibrary.Load(l_MeshPath);
+            if (l_MeshNode["MeshAsset"])
+            {
+                l_Component.MeshAsset = UUID(l_MeshNode["MeshAsset"].as<uint64_t>());
+            }
+
+            l_Component.MeshReference = assetDatabase.ResolveMesh(l_Component.MeshAsset);
             entity.AddComponent<MeshRendererComponent>(l_Component);
         }
 
@@ -139,7 +141,7 @@ namespace Trinity
         return true;
     }
 
-    bool SceneSerializer::Deserialize(Scene& scene, MeshLibrary& meshLibrary, const std::filesystem::path& path)
+    bool SceneSerializer::Deserialize(Scene& scene, AssetDatabase& assetDatabase, const std::filesystem::path& path)
     {
         try
         {
@@ -184,7 +186,7 @@ namespace Trinity
                 Entity l_Entity = scene.CreateEntityWithUUID(UUID(l_UUID), l_Name);
                 l_EntityMap[l_UUID] = l_Entity;
 
-                ReadEntityComponents(l_Entity, meshLibrary, l_EntityNode);
+                ReadEntityComponents(l_Entity, assetDatabase, l_EntityNode);
 
                 if (l_EntityNode["Parent"])
                 {
@@ -239,7 +241,7 @@ namespace Trinity
         return std::string(l_Out.c_str());
     }
 
-    Entity SceneSerializer::DeserializeEntity(Scene& scene, MeshLibrary& meshLibrary, const std::string& data, bool preserveUUIDs)
+    Entity SceneSerializer::DeserializeEntity(Scene& scene, AssetDatabase& assetDatabase, const std::string& data, bool preserveUUIDs)
     {
         try
         {
@@ -281,7 +283,7 @@ namespace Trinity
                 Entity l_Entity = scene.CreateEntityWithUUID(l_NewID, l_Name);
                 l_EntityMap[static_cast<uint64_t>(l_NewID)] = l_Entity;
 
-                ReadEntityComponents(l_Entity, meshLibrary, l_EntityNode);
+                ReadEntityComponents(l_Entity, assetDatabase, l_EntityNode);
 
                 if (l_EntityNode["Parent"])
                 {

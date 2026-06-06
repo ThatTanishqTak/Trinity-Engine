@@ -16,6 +16,7 @@
 #include <Trinity/Scene/Components/MeshRendererComponent.h>
 #include <Trinity/Scene/Components/CameraComponent.h>
 #include <Trinity/Serialization/SceneSerializer.h>
+#include <Trinity/Assets/AssetDatabase.h>
 
 namespace Trinity
 {
@@ -114,18 +115,21 @@ namespace Trinity
             return false;
         }
 
-        m_EditorCamera = std::make_unique<EditorCamera>(60.0f, static_cast<float>(m_Swapchain->GetWidth()) / static_cast<float>(m_Swapchain->GetHeight()), 0.1f, 100.0f);
+        m_AssetDatabase = std::make_unique<AssetDatabase>(m_Platform->GetFileSystem(), m_Renderer->GetMeshLibrary());
+        m_AssetDatabase->Initialize();
 
-        MeshLibrary& l_MeshLibrary = m_Renderer->GetMeshLibrary();
+        m_EditorCamera = std::make_unique<EditorCamera>(60.0f, static_cast<float>(m_Swapchain->GetWidth()) / static_cast<float>(m_Swapchain->GetHeight()), 0.1f, 100.0f);
 
         Scene l_AuthoredScene;
 
+        UUID l_TestMeshAsset = m_AssetDatabase->GetAssetByPath("Assets/Test.obj");
+
         Entity l_Parent = l_AuthoredScene.CreateEntity("ImportedMesh");
-        l_Parent.AddComponent<MeshRendererComponent>(MeshRendererComponent{ nullptr, "Assets/Test.obj" });
+        l_Parent.AddComponent<MeshRendererComponent>(MeshRendererComponent{ nullptr, l_TestMeshAsset });
         l_Parent.GetComponent<TransformComponent>().Translation = glm::vec3(-1.5f, 0.0f, 0.0f);
 
         Entity l_Child = l_AuthoredScene.CreateEntity("ChildCube");
-        l_Child.AddComponent<MeshRendererComponent>(MeshRendererComponent{ nullptr, "" });
+        l_Child.AddComponent<MeshRendererComponent>(MeshRendererComponent{ nullptr, UUID(AssetDatabase::BuiltinCube) });
         l_Child.GetComponent<TransformComponent>().Translation = glm::vec3(3.0f, 0.0f, 0.0f);
         l_Child.GetComponent<TransformComponent>().Scale = glm::vec3(0.5f, 0.5f, 0.5f);
         l_AuthoredScene.SetParent(l_Child, l_Parent);
@@ -137,7 +141,7 @@ namespace Trinity
         SceneSerializer::Serialize(l_AuthoredScene, l_ScenePath, "Demo");
 
         m_Scene = std::make_unique<Scene>();
-        if (!SceneSerializer::Deserialize(*m_Scene, l_MeshLibrary, l_ScenePath))
+        if (!SceneSerializer::Deserialize(*m_Scene, *m_AssetDatabase, l_ScenePath))
         {
             TR_CORE_ERROR("Engine: failed to deserialize demo scene");
         }
@@ -272,6 +276,7 @@ namespace Trinity
 
         m_Scene.reset();
         m_EditorCamera.reset();
+        m_AssetDatabase.reset();
 
         if (m_Renderer != nullptr)
         {

@@ -5,12 +5,12 @@
 
 #include <entt/entt.hpp>
 
-#include <Editor/ICommand.h>
+#include <Forge/Editor/ICommand.h>
 
 namespace Trinity
 {
     class Scene;
-    class MeshLibrary;
+    class AssetDatabase;
     class Entity;
 
     Entity FindEntityByUUID(Scene& scene, uint64_t uuid);
@@ -36,7 +36,7 @@ namespace Trinity
     class DeleteEntityCommand : public ICommand
     {
     public:
-        DeleteEntityCommand(Scene& scene, MeshLibrary& meshLibrary, entt::entity handle);
+        DeleteEntityCommand(Scene& scene, AssetDatabase& assetDatabase, entt::entity handle);
 
         void Execute() override;
         void Undo() override;
@@ -44,7 +44,7 @@ namespace Trinity
 
     private:
         Scene& m_Scene;
-        MeshLibrary& m_MeshLibrary;
+        AssetDatabase& m_AssetDatabase;
         uint64_t m_UUID = 0;
         std::string m_Data;
     };
@@ -52,7 +52,7 @@ namespace Trinity
     class DuplicateEntityCommand : public ICommand
     {
     public:
-        DuplicateEntityCommand(Scene& scene, MeshLibrary& meshLibrary, entt::entity handle);
+        DuplicateEntityCommand(Scene& scene, AssetDatabase& assetDatabase, entt::entity handle);
 
         void Execute() override;
         void Undo() override;
@@ -62,7 +62,7 @@ namespace Trinity
 
     private:
         Scene& m_Scene;
-        MeshLibrary& m_MeshLibrary;
+        AssetDatabase& m_AssetDatabase;
         uint64_t m_SourceUUID = 0;
         uint64_t m_DuplicateUUID = 0;
         std::string m_Data;

@@ -1,7 +1,8 @@
 #pragma once
 
 #include <memory>
-#include <string>
+
+#include <Trinity/Core/UUID.h>
 
 namespace Trinity
 {
@@ -10,6 +11,6 @@ namespace Trinity
     struct MeshRendererComponent
     {
         std::shared_ptr<Mesh> MeshReference;
-        std::string MeshPath;
+        UUID MeshAsset = UUID(0);
     };
 }

@@ -1,4 +1,4 @@
-#include <Editor/Commands/EntityCommands.h>
+#include <Forge/Editor/Commands/EntityCommands.h>
 
 #include <Trinity/Serialization/SceneSerializer.h>
 #include <Trinity/Scene/Scene.h>
@@ -51,7 +51,7 @@ namespace Trinity
         }
     }
 
-    DeleteEntityCommand::DeleteEntityCommand(Scene& scene, MeshLibrary& meshLibrary, entt::entity handle) : m_Scene(scene), m_MeshLibrary(meshLibrary)
+    DeleteEntityCommand::DeleteEntityCommand(Scene& scene, AssetDatabase& assetDatabase, entt::entity handle) : m_Scene(scene), m_AssetDatabase(assetDatabase)
     {
         m_UUID = static_cast<uint64_t>(Entity(handle, &scene).GetUUID());
     }
@@ -74,10 +74,10 @@ namespace Trinity
 
     void DeleteEntityCommand::Undo()
     {
-        SceneSerializer::DeserializeEntity(m_Scene, m_MeshLibrary, m_Data, true);
+        SceneSerializer::DeserializeEntity(m_Scene, m_AssetDatabase, m_Data, true);
     }
 
-    DuplicateEntityCommand::DuplicateEntityCommand(Scene& scene, MeshLibrary& meshLibrary, entt::entity handle) : m_Scene(scene), m_MeshLibrary(meshLibrary)
+    DuplicateEntityCommand::DuplicateEntityCommand(Scene& scene, AssetDatabase& assetDatabase, entt::entity handle) : m_Scene(scene), m_AssetDatabase(assetDatabase)
     {
         m_SourceUUID = static_cast<uint64_t>(Entity(handle, &scene).GetUUID());
     }
@@ -93,7 +93,7 @@ namespace Trinity
             }
 
             std::string l_SourceData = SceneSerializer::SerializeEntity(m_Scene, l_Source);
-            Entity l_Duplicate = SceneSerializer::DeserializeEntity(m_Scene, m_MeshLibrary, l_SourceData, false);
+            Entity l_Duplicate = SceneSerializer::DeserializeEntity(m_Scene, m_AssetDatabase, l_SourceData, false);
             if (!l_Duplicate.IsValid())
             {
                 return;
@@ -104,7 +104,7 @@ namespace Trinity
         }
         else
         {
-            SceneSerializer::DeserializeEntity(m_Scene, m_MeshLibrary, m_Data, true);
+            SceneSerializer::DeserializeEntity(m_Scene, m_AssetDatabase, m_Data, true);
         }
     }
 

@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include <Editor/ICommand.h>
+#include <Forge/Editor/ICommand.h>
 
 namespace Trinity
 {

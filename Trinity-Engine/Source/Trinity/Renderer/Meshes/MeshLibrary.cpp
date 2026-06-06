@@ -139,6 +139,11 @@ namespace Trinity
         return m_Cube;
     }
 
+    void MeshLibrary::Invalidate(const std::string& relativePath)
+    {
+        m_Cache.erase(relativePath);
+    }
+
     std::shared_ptr<Mesh> MeshLibrary::CreateFromData(const MeshData& data, const std::string& debugName)
     {
         std::shared_ptr<Mesh> l_Mesh = std::make_shared<Mesh>(m_Device);

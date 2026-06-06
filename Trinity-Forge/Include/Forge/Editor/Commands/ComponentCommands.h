@@ -3,8 +3,8 @@
 #include <cstdint>
 #include <string>
 
-#include <Editor/ICommand.h>
-#include <Editor/Commands/EntityCommands.h>
+#include <Forge/Editor/ICommand.h>
+#include <Forge/Editor/Commands/EntityCommands.h>
 
 #include <Trinity/Scene/Scene.h>
 #include <Trinity/Scene/Entity.h>
