@@ -15,6 +15,7 @@ namespace Trinity
     class Renderer;
     class MeshLibrary;
     class AssetDatabase;
+    class AudioEngine;
     class Scene;
     class EditorCamera;
     class Camera;
@@ -66,6 +67,9 @@ namespace Trinity
         AssetDatabase& GetAssetDatabase() { return *m_AssetDatabase; }
         bool HasAssetDatabase() const { return m_AssetDatabase != nullptr; }
 
+        AudioEngine& GetAudioEngine() { return *m_AudioEngine; }
+        bool HasAudioEngine() const { return m_AudioEngine != nullptr; }
+
     private:
         bool m_Initialized = false;
         bool m_FlyMode = false;
@@ -75,6 +79,7 @@ namespace Trinity
         std::unique_ptr<GraphicsDevice> m_Device;
         std::unique_ptr<Swapchain> m_Swapchain;
         std::unique_ptr<Renderer> m_Renderer;
+        std::unique_ptr<AudioEngine> m_AudioEngine;
         std::unique_ptr<AssetDatabase> m_AssetDatabase;
         std::unique_ptr<Scene> m_Scene;
         std::unique_ptr<EditorCamera> m_EditorCamera;

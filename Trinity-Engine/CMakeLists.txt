@@ -30,6 +30,7 @@ target_link_libraries(Trinity-Engine
         Slang
         stb
         assimp
+        miniaudio
 )
 
 target_include_directories(Trinity-Engine PRIVATE "${CMAKE_SOURCE_DIR}/Vendor/imgui/backends")

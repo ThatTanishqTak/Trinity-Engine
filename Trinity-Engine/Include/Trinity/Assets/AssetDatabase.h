@@ -8,6 +8,7 @@
 
 #include <Trinity/Core/UUID.h>
 #include <Trinity/Assets/AssetMetadata.h>
+#include <Trinity/Audio/AudioTypes.h>
 #include <Trinity/Renderer/RHI/GraphicsDevice.h>
 
 namespace Trinity
@@ -18,13 +19,14 @@ namespace Trinity
     class Material;
     class MaterialInstance;
     class TextureManager;
+    class AudioEngine;
 
     class AssetDatabase
     {
     public:
         static constexpr uint64_t BuiltinCube = 1;
 
-        AssetDatabase(FileSystem& fileSystem, MeshLibrary& meshLibrary, TextureManager& textureManager);
+        AssetDatabase(FileSystem& fileSystem, MeshLibrary& meshLibrary, TextureManager& textureManager, AudioEngine& audioEngine);
 
         AssetDatabase(const AssetDatabase&) = delete;
         AssetDatabase& operator=(const AssetDatabase&) = delete;
@@ -40,15 +42,10 @@ namespace Trinity
         std::shared_ptr<Material> ResolveMaterial(UUID ID);
         std::shared_ptr<MaterialInstance> ResolveMaterialInstance(UUID ID);
         TextureHandle ResolveTexture(UUID ID);
+        AudioClipHandle ResolveAudioClip(UUID ID);
 
-        const std::unordered_map<UUID, AssetMetadata>& GetAssets() const
-        {
-            return m_Assets;
-        }
-        const std::vector<UUID>& GetModified() const
-        {
-            return m_Modified;
-        }
+        const std::unordered_map<UUID, AssetMetadata>& GetAssets() const { return m_Assets; }
+        const std::vector<UUID>& GetModified() const { return m_Modified; }
 
     private:
         void ScanDirectory();
@@ -59,12 +56,14 @@ namespace Trinity
         FileSystem& m_FileSystem;
         MeshLibrary& m_MeshLibrary;
         TextureManager& m_TextureManager;
+        AudioEngine& m_AudioEngine;
         std::filesystem::path m_AssetsRoot;
         std::unordered_map<UUID, AssetMetadata> m_Assets;
         std::unordered_map<std::string, UUID> m_PathToID;
         std::vector<UUID> m_Modified;
         std::unordered_map<UUID, std::shared_ptr<Material>> m_MaterialCache;
         std::unordered_map<UUID, std::shared_ptr<MaterialInstance>> m_MaterialInstanceCache;
+        std::unordered_map<UUID, AudioClipHandle> m_AudioClipCache;
         std::shared_ptr<Material> m_DefaultMaterial;
     };
 }

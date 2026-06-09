@@ -16,6 +16,8 @@
 #include <Trinity/Scene/Components/HierarchyComponent.h>
 #include <Trinity/Scene/Components/MeshRendererComponent.h>
 #include <Trinity/Scene/Components/CameraComponent.h>
+#include <Trinity/Scene/Components/AudioSourceComponent.h>
+#include <Trinity/Scene/Components/AudioListenerComponent.h>
 #include <Trinity/Assets/AssetDatabase.h>
 #include <Trinity/Core/Log.h>
 
@@ -71,6 +73,25 @@ namespace Trinity
             out << YAML::EndMap;
         }
 
+        if (const AudioSourceComponent* l_AudioSource = l_Registry.try_get<AudioSourceComponent>(handle))
+        {
+            out << YAML::Key << "AudioSource" << YAML::Value << YAML::BeginMap;
+            out << YAML::Key << "Clip" << YAML::Value << static_cast<uint64_t>(l_AudioSource->Clip);
+            out << YAML::Key << "Volume" << YAML::Value << l_AudioSource->Volume;
+            out << YAML::Key << "Pitch" << YAML::Value << l_AudioSource->Pitch;
+            out << YAML::Key << "Loop" << YAML::Value << l_AudioSource->Loop;
+            out << YAML::Key << "PlayOnStart" << YAML::Value << l_AudioSource->PlayOnStart;
+            out << YAML::Key << "Spatial" << YAML::Value << l_AudioSource->Spatial;
+            out << YAML::EndMap;
+        }
+
+        if (const AudioListenerComponent* l_AudioListener = l_Registry.try_get<AudioListenerComponent>(handle))
+        {
+            out << YAML::Key << "AudioListener" << YAML::Value << YAML::BeginMap;
+            out << YAML::Key << "Active" << YAML::Value << l_AudioListener->Active;
+            out << YAML::EndMap;
+        }
+
         out << YAML::EndMap;
     }
 
@@ -109,6 +130,53 @@ namespace Trinity
             CameraComponent l_Component;
             l_Component.Primary = l_CameraNode["Primary"] ? l_CameraNode["Primary"].as<bool>() : true;
             entity.AddComponent<CameraComponent>(l_Component);
+        }
+
+        if (YAML::Node l_AudioSourceNode = node["AudioSource"])
+        {
+            AudioSourceComponent l_Component;
+            if (l_AudioSourceNode["Clip"])
+            {
+                l_Component.Clip = UUID(l_AudioSourceNode["Clip"].as<uint64_t>());
+            }
+
+            if (l_AudioSourceNode["Volume"])
+            {
+                l_Component.Volume = l_AudioSourceNode["Volume"].as<float>();
+            }
+
+            if (l_AudioSourceNode["Pitch"])
+            {
+                l_Component.Pitch = l_AudioSourceNode["Pitch"].as<float>();
+            }
+
+            if (l_AudioSourceNode["Loop"])
+            {
+                l_Component.Loop = l_AudioSourceNode["Loop"].as<bool>();
+            }
+
+            if (l_AudioSourceNode["PlayOnStart"])
+            {
+                l_Component.PlayOnStart = l_AudioSourceNode["PlayOnStart"].as<bool>();
+            }
+
+            if (l_AudioSourceNode["Spatial"])
+            {
+                l_Component.Spatial = l_AudioSourceNode["Spatial"].as<bool>();
+            }
+
+            entity.AddComponent<AudioSourceComponent>(l_Component);
+        }
+
+        if (YAML::Node l_AudioListenerNode = node["AudioListener"])
+        {
+            AudioListenerComponent l_Component;
+            if (l_AudioListenerNode["Active"])
+            {
+                l_Component.Active = l_AudioListenerNode["Active"].as<bool>();
+            }
+
+            entity.AddComponent<AudioListenerComponent>(l_Component);
         }
     }
 

@@ -17,6 +17,8 @@ namespace Trinity
                 return "Material";
             case AssetType::MaterialInstance:
                 return "MaterialInstance";
+            case AssetType::Audio:
+                return "Audio";
             default:
                 return "None";
         }
@@ -42,6 +44,11 @@ namespace Trinity
         if (text == "MaterialInstance")
         {
             return AssetType::MaterialInstance;
+        }
+
+        if (text == "Audio")
+        {
+            return AssetType::Audio;
         }
 
         return AssetType::None;
@@ -73,6 +80,11 @@ namespace Trinity
         if (l_Lower == ".matinst")
         {
             return AssetType::MaterialInstance;
+        }
+
+        if (l_Lower == ".wav" || l_Lower == ".mp3" || l_Lower == ".ogg" || l_Lower == ".flac")
+        {
+            return AssetType::Audio;
         }
 
         return AssetType::None;

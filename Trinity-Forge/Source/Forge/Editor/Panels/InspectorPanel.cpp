@@ -7,6 +7,7 @@
 #include <filesystem>
 
 #include <imgui.h>
+#include <glm/glm.hpp>
 
 #include <Forge/Editor/EditorContext.h>
 #include <Forge/Editor/Commands/EntityCommands.h>
@@ -23,9 +24,12 @@
 #include <Trinity/Scene/Components/NameComponent.h>
 #include <Trinity/Scene/Components/MeshRendererComponent.h>
 #include <Trinity/Scene/Components/CameraComponent.h>
+#include <Trinity/Scene/Components/AudioSourceComponent.h>
+#include <Trinity/Scene/Components/AudioListenerComponent.h>
 #include <Trinity/Renderer/Meshes/Mesh.h>
 #include <Trinity/Renderer/Materials/Material.h>
 #include <Trinity/Renderer/Materials/MaterialParameter.h>
+#include <Trinity/Audio/Frontend/AudioEngine.h>
 #include <Trinity/Serialization/MaterialSerializer.h>
 #include <Trinity/Assets/AssetDatabase.h>
 
@@ -321,6 +325,95 @@ namespace Trinity
                     }
                 }
 
+                if (l_Entity.HasComponent<AudioSourceComponent>())
+                {
+                    ImGui::SeparatorText("Audio Source");
+                    AudioSourceComponent& l_Source = l_Entity.GetComponent<AudioSourceComponent>();
+                    AssetDatabase& l_Assets = m_Engine.GetAssetDatabase();
+
+                    uint64_t l_CurrentClip = static_cast<uint64_t>(l_Source.Clip);
+                    std::string l_ClipLabel;
+                    if (l_CurrentClip == 0)
+                    {
+                        l_ClipLabel = "(none)";
+                    }
+                    else
+                    {
+                        const AssetMetadata* l_Meta = l_Assets.GetMetadata(l_Source.Clip);
+                        l_ClipLabel = l_Meta != nullptr ? l_Meta->SourcePath : "(missing)";
+                    }
+
+                    if (ImGui::BeginCombo("Clip", l_ClipLabel.c_str()))
+                    {
+                        if (ImGui::Selectable("(none)", l_CurrentClip == 0) && l_CurrentClip != 0)
+                        {
+                            l_Source.Clip = UUID(0);
+                        }
+
+                        for (UUID it_Clip : l_Assets.GetAssetsOfType(AssetType::Audio))
+                        {
+                            const AssetMetadata* l_Meta = l_Assets.GetMetadata(it_Clip);
+                            if (l_Meta == nullptr)
+                            {
+                                continue;
+                            }
+
+                            bool l_Selected = static_cast<uint64_t>(it_Clip) == l_CurrentClip;
+                            if (ImGui::Selectable(l_Meta->SourcePath.c_str(), l_Selected) && !l_Selected)
+                            {
+                                l_Source.Clip = it_Clip;
+                            }
+                        }
+
+                        ImGui::EndCombo();
+                    }
+
+                    ImGui::DragFloat("Volume", &l_Source.Volume, 0.01f, 0.0f, 2.0f);
+                    ImGui::DragFloat("Pitch", &l_Source.Pitch, 0.01f, 0.1f, 4.0f);
+                    ImGui::Checkbox("Loop", &l_Source.Loop);
+                    ImGui::Checkbox("Play On Start", &l_Source.PlayOnStart);
+                    ImGui::Checkbox("Spatial", &l_Source.Spatial);
+
+                    if (ImGui::SmallButton("Play##AudioSource"))
+                    {
+                        glm::vec3 l_WorldPosition = glm::vec3(l_Scene.GetWorldMatrix(l_Entity)[3]);
+                        m_Engine.GetAudioEngine().PlaySource(l_Source, l_Assets, l_WorldPosition);
+                    }
+
+                    ImGui::SameLine();
+                    if (ImGui::SmallButton("Stop##AudioSource"))
+                    {
+                        m_Engine.GetAudioEngine().StopSource(l_Source);
+                    }
+
+                    if (ImGui::SmallButton("Remove##AudioSource"))
+                    {
+                        uint64_t l_TargetUUID = static_cast<uint64_t>(l_Entity.GetUUID());
+                        m_Context.ComponentOp = [this, l_TargetUUID]()
+                        {
+                            Scene& l_OpScene = m_Engine.GetScene();
+                            m_Context.History.Execute(std::make_unique<RemoveComponentCommand<AudioSourceComponent>>(l_OpScene, l_TargetUUID, "Audio Source"));
+                        };
+                    }
+                }
+
+                if (l_Entity.HasComponent<AudioListenerComponent>())
+                {
+                    ImGui::SeparatorText("Audio Listener");
+                    AudioListenerComponent& l_Listener = l_Entity.GetComponent<AudioListenerComponent>();
+                    ImGui::Checkbox("Active", &l_Listener.Active);
+
+                    if (ImGui::SmallButton("Remove##AudioListener"))
+                    {
+                        uint64_t l_TargetUUID = static_cast<uint64_t>(l_Entity.GetUUID());
+                        m_Context.ComponentOp = [this, l_TargetUUID]()
+                        {
+                            Scene& l_OpScene = m_Engine.GetScene();
+                            m_Context.History.Execute(std::make_unique<RemoveComponentCommand<AudioListenerComponent>>(l_OpScene, l_TargetUUID, "Audio Listener"));
+                        };
+                    }
+                }
+
                 ImGui::Separator();
                 if (ImGui::Button("Add Component"))
                 {
@@ -346,6 +439,24 @@ namespace Trinity
                         {
                             Scene& l_OpScene = m_Engine.GetScene();
                             m_Context.History.Execute(std::make_unique<AddComponentCommand<CameraComponent>>(l_OpScene, l_TargetUUID, "Camera"));
+                        };
+                    }
+
+                    if (!l_Entity.HasComponent<AudioSourceComponent>() && ImGui::MenuItem("Audio Source"))
+                    {
+                        m_Context.ComponentOp = [this, l_TargetUUID]()
+                        {
+                            Scene& l_OpScene = m_Engine.GetScene();
+                            m_Context.History.Execute(std::make_unique<AddComponentCommand<AudioSourceComponent>>(l_OpScene, l_TargetUUID, "Audio Source"));
+                        };
+                    }
+
+                    if (!l_Entity.HasComponent<AudioListenerComponent>() && ImGui::MenuItem("Audio Listener"))
+                    {
+                        m_Context.ComponentOp = [this, l_TargetUUID]()
+                        {
+                            Scene& l_OpScene = m_Engine.GetScene();
+                            m_Context.History.Execute(std::make_unique<AddComponentCommand<AudioListenerComponent>>(l_OpScene, l_TargetUUID, "Audio Listener"));
                         };
                     }
 

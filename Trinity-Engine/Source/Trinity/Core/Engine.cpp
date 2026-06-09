@@ -10,6 +10,7 @@
 #include <Trinity/Renderer/RHI/Swapchain.h>
 #include <Trinity/Renderer/Frontend/Renderer.h>
 #include <Trinity/Renderer/Frontend/EditorCamera.h>
+#include <Trinity/Audio/Frontend/AudioEngine.h>
 #include <Trinity/Scene/Scene.h>
 #include <Trinity/Scene/Entity.h>
 #include <Trinity/Scene/Components/TransformComponent.h>
@@ -59,6 +60,12 @@ namespace Trinity
 
         std::filesystem::path l_LogPath = l_FileSystem.Resolve(BaseDirectory::UserData, applicationName + ".log");
         Log::InitializeFileSink(l_LogPath);
+
+        m_AudioEngine = std::make_unique<AudioEngine>();
+        if (!m_AudioEngine->Initialize())
+        {
+            TR_CORE_WARN("Engine: audio engine initialization failed; continuing without audio");
+        }
 
         m_Initialized = true;
 
@@ -115,7 +122,7 @@ namespace Trinity
             return false;
         }
 
-        m_AssetDatabase = std::make_unique<AssetDatabase>(m_Platform->GetFileSystem(), m_Renderer->GetMeshLibrary(), m_Renderer->GetTextureManager());
+        m_AssetDatabase = std::make_unique<AssetDatabase>(m_Platform->GetFileSystem(), m_Renderer->GetMeshLibrary(), m_Renderer->GetTextureManager(), *m_AudioEngine);
         m_AssetDatabase->Initialize();
 
         m_EditorCamera = std::make_unique<EditorCamera>(60.0f, static_cast<float>(m_Swapchain->GetWidth()) / static_cast<float>(m_Swapchain->GetHeight()), 0.1f, 100.0f);
@@ -184,6 +191,11 @@ namespace Trinity
         if (m_Renderer != nullptr)
         {
             m_Renderer->ApplyViewportResize();
+        }
+
+        if (m_AudioEngine != nullptr && m_Scene != nullptr && m_AssetDatabase != nullptr)
+        {
+            m_AudioEngine->Update(*m_Scene, *m_AssetDatabase);
         }
     }
 
@@ -277,15 +289,11 @@ namespace Trinity
         m_Scene.reset();
         m_EditorCamera.reset();
         m_AssetDatabase.reset();
+        m_AudioEngine.reset();
 
         if (m_Renderer != nullptr)
         {
             m_Renderer.reset();
-        }
-
-        if (m_Swapchain != nullptr)
-        {
-            m_Swapchain.reset();
         }
 
         if (m_Swapchain != nullptr)

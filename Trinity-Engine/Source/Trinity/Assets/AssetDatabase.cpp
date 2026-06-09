@@ -11,6 +11,7 @@
 #include <Trinity/Renderer/Materials/MaterialInstance.h>
 #include <Trinity/Renderer/Textures/TextureManager.h>
 #include <Trinity/Serialization/MaterialSerializer.h>
+#include <Trinity/Audio/Frontend/AudioEngine.h>
 #include <Trinity/Core/Log.h>
 
 namespace Trinity
@@ -27,7 +28,7 @@ namespace Trinity
         return static_cast<uint64_t>(l_Time.time_since_epoch().count());
     }
 
-    AssetDatabase::AssetDatabase(FileSystem& fileSystem, MeshLibrary& meshLibrary, TextureManager& textureManager) : m_FileSystem(fileSystem), m_MeshLibrary(meshLibrary), m_TextureManager(textureManager)
+    AssetDatabase::AssetDatabase(FileSystem& fileSystem, MeshLibrary& meshLibrary, TextureManager& textureManager, AudioEngine& audioEngine) : m_FileSystem(fileSystem), m_MeshLibrary(meshLibrary), m_TextureManager(textureManager), m_AudioEngine(audioEngine)
     {
 
     }
@@ -43,6 +44,7 @@ namespace Trinity
         m_Modified.clear();
         m_MaterialCache.clear();
         m_MaterialInstanceCache.clear();
+        m_AudioClipCache.clear();
 
         std::error_code l_Error;
         if (!std::filesystem::exists(m_AssetsRoot, l_Error))
@@ -303,5 +305,34 @@ namespace Trinity
         }
 
         return m_TextureManager.Load(l_Metadata->SourcePath, l_Metadata->Import.SRGB, true);
+    }
+
+    AudioClipHandle AssetDatabase::ResolveAudioClip(UUID id)
+    {
+        uint64_t l_Raw = static_cast<uint64_t>(id);
+        if (l_Raw == 0)
+        {
+            return AudioClipHandle::Invalid;
+        }
+
+        auto it_Cached = m_AudioClipCache.find(id);
+        if (it_Cached != m_AudioClipCache.end())
+        {
+            return it_Cached->second;
+        }
+
+        const AssetMetadata* l_Metadata = GetMetadata(id);
+        if (l_Metadata == nullptr || l_Metadata->Type != AssetType::Audio)
+        {
+            TR_CORE_WARN("AssetDatabase: audio clip {} unresolved", l_Raw);
+
+            return AudioClipHandle::Invalid;
+        }
+
+        std::filesystem::path l_Path = m_FileSystem.Resolve(BaseDirectory::Executable, l_Metadata->SourcePath);
+        AudioClipHandle l_Clip = m_AudioEngine.LoadClip(l_Path);
+        m_AudioClipCache[id] = l_Clip;
+
+        return l_Clip;
     }
 }

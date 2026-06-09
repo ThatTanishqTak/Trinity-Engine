@@ -28,3 +28,6 @@
 [submodule "Vendor/ImGuizmo"]
 	path = Vendor/ImGuizmo
 	url = https://github.com/ThatTanishqTak/ImGuizmo.git
+[submodule "Vendor/miniaudio"]
+	path = Vendor/miniaudio
+	url = https://github.com/ThatTanishqTak/miniaudio.git

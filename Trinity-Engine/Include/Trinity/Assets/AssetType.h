@@ -11,7 +11,8 @@ namespace Trinity
         Mesh,
         Texture,
         Material,
-        MaterialInstance
+        MaterialInstance,
+        Audio
     };
 
     const char* AssetTypeToString(AssetType type);
