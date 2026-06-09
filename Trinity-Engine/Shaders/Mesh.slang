@@ -17,6 +17,7 @@ struct VertexOutput
 struct PushConstants
 {
     float4x4 MVP;
+    float4 BaseColorFactor;
 };
 
 [[vk::push_constant]] PushConstants pushConstants;
@@ -37,7 +38,7 @@ VertexOutput vertexMain(VertexInput input)
 [shader("fragment")]
 float4 fragmentMain(VertexOutput input) : SV_Target
 {
-    float3 baseColor = u_BaseColor.Sample(input.UV).rgb;
+    float4 baseColor = u_BaseColor.Sample(input.UV) * pushConstants.BaseColorFactor;
 
-    return float4(baseColor, 1.0);
+    return float4(baseColor.rgb, baseColor.a);
 }

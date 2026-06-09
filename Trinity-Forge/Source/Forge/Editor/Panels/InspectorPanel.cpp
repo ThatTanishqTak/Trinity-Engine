@@ -3,6 +3,8 @@
 #include <cstring>
 #include <memory>
 #include <string>
+#include <vector>
+#include <filesystem>
 
 #include <imgui.h>
 
@@ -11,17 +13,86 @@
 #include <Forge/Editor/Commands/ComponentCommands.h>
 #include <Forge/Editor/Commands/PropertyCommands.h>
 #include <Forge/Editor/Commands/MeshCommands.h>
+#include <Forge/Editor/Commands/MaterialCommands.h>
 
 #include <Trinity/Core/Engine.h>
+#include <Trinity/Platform/IPlatform.h>
+#include <Trinity/Platform/FileSystem.h>
 #include <Trinity/Scene/Scene.h>
 #include <Trinity/Scene/Entity.h>
 #include <Trinity/Scene/Components/NameComponent.h>
 #include <Trinity/Scene/Components/MeshRendererComponent.h>
 #include <Trinity/Scene/Components/CameraComponent.h>
+#include <Trinity/Renderer/Meshes/Mesh.h>
+#include <Trinity/Renderer/Materials/Material.h>
+#include <Trinity/Renderer/Materials/MaterialParameter.h>
+#include <Trinity/Serialization/MaterialSerializer.h>
 #include <Trinity/Assets/AssetDatabase.h>
 
 namespace Trinity
 {
+    static void DrawMaterialEditor(Engine& engine, AssetDatabase& assetDatabase, UUID material)
+    {
+        const AssetMetadata* l_Metadata = assetDatabase.GetMetadata(material);
+        if (l_Metadata == nullptr || l_Metadata->Type != AssetType::Material)
+        {
+            return;
+        }
+
+        std::shared_ptr<Material> l_Material = assetDatabase.ResolveMaterial(material);
+
+        glm::vec4 l_Factor = glm::vec4(1.0f);
+        if (const MaterialParameter* l_FactorParameter = l_Material->FindParameter(Material::BaseColorFactor))
+        {
+            l_Factor = l_FactorParameter->AsVec4();
+        }
+
+        if (ImGui::ColorEdit4("Base Color", &l_Factor.x))
+        {
+            l_Material->SetParameter(Material::BaseColorFactor, MaterialParameter::MakeVec4(l_Factor));
+        }
+
+        UUID l_Texture = UUID(0);
+        if (const MaterialParameter* l_TextureParameter = l_Material->FindParameter(Material::BaseColorTexture))
+        {
+            l_Texture = l_TextureParameter->AsTexture();
+        }
+
+        const AssetMetadata* l_TextureMeta = static_cast<uint64_t>(l_Texture) != 0 ? assetDatabase.GetMetadata(l_Texture) : nullptr;
+        std::string l_TextureLabel = l_TextureMeta != nullptr ? l_TextureMeta->SourcePath : "(none)";
+
+        if (ImGui::BeginCombo("Base Color Texture", l_TextureLabel.c_str()))
+        {
+            if (ImGui::Selectable("(none)", static_cast<uint64_t>(l_Texture) == 0))
+            {
+                l_Material->SetParameter(Material::BaseColorTexture, MaterialParameter::MakeTexture(UUID(0)));
+            }
+
+            for (UUID it_Texture : assetDatabase.GetAssetsOfType(AssetType::Texture))
+            {
+                const AssetMetadata* l_Meta = assetDatabase.GetMetadata(it_Texture);
+                if (l_Meta == nullptr)
+                {
+                    continue;
+                }
+
+                bool l_Selected = static_cast<uint64_t>(it_Texture) == static_cast<uint64_t>(l_Texture);
+                if (ImGui::Selectable(l_Meta->SourcePath.c_str(), l_Selected) && !l_Selected)
+                {
+                    l_Material->SetParameter(Material::BaseColorTexture, MaterialParameter::MakeTexture(it_Texture));
+                }
+            }
+
+            ImGui::EndCombo();
+        }
+
+        if (ImGui::SmallButton("Save##Material"))
+        {
+            std::filesystem::path l_Path = engine.GetPlatform().GetFileSystem().Resolve(BaseDirectory::Executable, l_Metadata->SourcePath);
+            MaterialSerializer::SerializeMaterial(*l_Material, l_Path);
+        }
+    }
+
     void InspectorPanel::OnImGuiRender()
     {
         ImGui::Begin("Inspector");
@@ -133,6 +204,91 @@ namespace Trinity
                         }
 
                         ImGui::EndDragDropTarget();
+                    }
+
+                    if (l_MeshRenderer.MeshReference && l_MeshRenderer.MeshReference->IsValid())
+                    {
+                        ImGui::SeparatorText("Materials");
+
+                        const std::vector<MaterialSlot>& l_MeshSlots = l_MeshRenderer.MeshReference->GetMaterialSlots();
+                        size_t l_SlotCount = l_MeshSlots.empty() ? 1 : l_MeshSlots.size();
+
+                        for (size_t l_SlotIndex = 0; l_SlotIndex < l_SlotCount; ++l_SlotIndex)
+                        {
+                            ImGui::PushID(static_cast<int>(l_SlotIndex));
+
+                            std::string l_SlotName = l_SlotIndex < l_MeshSlots.size() && !l_MeshSlots[l_SlotIndex].Name.empty() ? l_MeshSlots[l_SlotIndex].Name : ("Slot " + std::to_string(l_SlotIndex));
+
+                            uint64_t l_CurrentMaterial = l_SlotIndex < l_MeshRenderer.Materials.size() ? static_cast<uint64_t>(l_MeshRenderer.Materials[l_SlotIndex]) : 0;
+                            std::string l_MaterialLabel;
+                            if (l_CurrentMaterial == 0)
+                            {
+                                l_MaterialLabel = "(default)";
+                            }
+                            else
+                            {
+                                const AssetMetadata* l_Meta = l_Assets.GetMetadata(UUID(l_CurrentMaterial));
+                                l_MaterialLabel = l_Meta != nullptr ? l_Meta->SourcePath : "(missing)";
+                            }
+
+                            if (ImGui::BeginCombo(l_SlotName.c_str(), l_MaterialLabel.c_str()))
+                            {
+                                if (ImGui::Selectable("(default)", l_CurrentMaterial == 0) && l_CurrentMaterial != 0)
+                                {
+                                    m_Context.History.Execute(std::make_unique<SetMaterialCommand>(l_Scene, l_MeshUUID, static_cast<uint32_t>(l_SlotIndex), UUID(0)));
+                                }
+
+                                for (UUID it_Material : l_Assets.GetAssetsOfType(AssetType::Material))
+                                {
+                                    const AssetMetadata* l_Meta = l_Assets.GetMetadata(it_Material);
+                                    if (l_Meta == nullptr)
+                                    {
+                                        continue;
+                                    }
+
+                                    bool l_Selected = static_cast<uint64_t>(it_Material) == l_CurrentMaterial;
+                                    if (ImGui::Selectable(l_Meta->SourcePath.c_str(), l_Selected) && !l_Selected)
+                                    {
+                                        m_Context.History.Execute(std::make_unique<SetMaterialCommand>(l_Scene, l_MeshUUID, static_cast<uint32_t>(l_SlotIndex), it_Material));
+                                    }
+                                }
+
+                                for (UUID it_Material : l_Assets.GetAssetsOfType(AssetType::MaterialInstance))
+                                {
+                                    const AssetMetadata* l_Meta = l_Assets.GetMetadata(it_Material);
+                                    if (l_Meta == nullptr)
+                                    {
+                                        continue;
+                                    }
+
+                                    bool l_Selected = static_cast<uint64_t>(it_Material) == l_CurrentMaterial;
+                                    if (ImGui::Selectable(l_Meta->SourcePath.c_str(), l_Selected) && !l_Selected)
+                                    {
+                                        m_Context.History.Execute(std::make_unique<SetMaterialCommand>(l_Scene, l_MeshUUID, static_cast<uint32_t>(l_SlotIndex), it_Material));
+                                    }
+                                }
+
+                                ImGui::EndCombo();
+                            }
+
+                            if (ImGui::BeginDragDropTarget())
+                            {
+                                if (const ImGuiPayload* l_Accepted = ImGui::AcceptDragDropPayload("TRINITY_ASSET_MATERIAL"))
+                                {
+                                    uint64_t l_Dropped = *static_cast<const uint64_t*>(l_Accepted->Data);
+                                    m_Context.History.Execute(std::make_unique<SetMaterialCommand>(l_Scene, l_MeshUUID, static_cast<uint32_t>(l_SlotIndex), UUID(l_Dropped)));
+                                }
+
+                                ImGui::EndDragDropTarget();
+                            }
+
+                            if (l_CurrentMaterial != 0)
+                            {
+                                DrawMaterialEditor(m_Engine, l_Assets, UUID(l_CurrentMaterial));
+                            }
+
+                            ImGui::PopID();
+                        }
                     }
 
                     if (ImGui::SmallButton("Remove##MeshRenderer"))

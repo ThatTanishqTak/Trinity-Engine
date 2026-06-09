@@ -206,9 +206,9 @@ namespace Trinity
 
     void Engine::RenderFrame()
     {
-        if (m_Renderer != nullptr && m_Scene != nullptr && m_EditorCamera != nullptr)
+        if (m_Renderer != nullptr && m_Scene != nullptr && m_EditorCamera != nullptr && m_AssetDatabase != nullptr)
         {
-            m_Renderer->RenderFrame(*m_Scene, m_EditorCamera->GetCamera(), &m_ImGuiLayer);
+            m_Renderer->RenderFrame(*m_Scene, *m_AssetDatabase, m_EditorCamera->GetCamera(), &m_ImGuiLayer);
         }
     }
 

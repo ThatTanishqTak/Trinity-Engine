@@ -50,6 +50,17 @@ namespace Trinity
         {
             out << YAML::Key << "MeshRenderer" << YAML::Value << YAML::BeginMap;
             out << YAML::Key << "MeshAsset" << YAML::Value << static_cast<uint64_t>(l_MeshRenderer->MeshAsset);
+
+            if (!l_MeshRenderer->Materials.empty())
+            {
+                out << YAML::Key << "Materials" << YAML::Value << YAML::Flow << YAML::BeginSeq;
+                for (const UUID& it_Material : l_MeshRenderer->Materials)
+                {
+                    out << static_cast<uint64_t>(it_Material);
+                }
+                out << YAML::EndSeq;
+            }
+
             out << YAML::EndMap;
         }
 
@@ -79,6 +90,14 @@ namespace Trinity
             if (l_MeshNode["MeshAsset"])
             {
                 l_Component.MeshAsset = UUID(l_MeshNode["MeshAsset"].as<uint64_t>());
+            }
+
+            if (YAML::Node l_Materials = l_MeshNode["Materials"])
+            {
+                for (const YAML::Node& it_Material : l_Materials)
+                {
+                    l_Component.Materials.emplace_back(it_Material.as<uint64_t>());
+                }
             }
 
             l_Component.MeshReference = assetDatabase.ResolveMesh(l_Component.MeshAsset);

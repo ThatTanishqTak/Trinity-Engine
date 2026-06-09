@@ -9,12 +9,21 @@
 #include <Trinity/Core/Log.h>
 
 #include <Trinity/Renderer/Meshes/Mesh.h>
+#include <Trinity/Renderer/Materials/Material.h>
+#include <Trinity/Renderer/Materials/MaterialParameter.h>
 #include <Trinity/Scene/Scene.h>
 #include <Trinity/Scene/Components/TransformComponent.h>
 #include <Trinity/Scene/Components/MeshRendererComponent.h>
+#include <Trinity/Assets/AssetDatabase.h>
 
 namespace Trinity
 {
+    struct MeshPushConstants
+    {
+        glm::mat4 MVP;
+        glm::vec4 BaseColorFactor;
+    };
+
     static void LogShaderDiagnostics(const char* stage, const ShaderCompileResult& result)
     {
         for (const ShaderDiagnostic& l_Message : result.Messages)
@@ -201,7 +210,7 @@ namespace Trinity
         l_PipelineDescription.DepthStencil.DepthWrite = true;
         l_PipelineDescription.DepthFormat = Format::D32_SFLOAT;
         l_PipelineDescription.ColorFormats = { Format::RGBA16_SFLOAT };
-        l_PipelineDescription.PushConstantSize = static_cast<uint32_t>(sizeof(glm::mat4));
+        l_PipelineDescription.PushConstantSize = static_cast<uint32_t>(sizeof(MeshPushConstants));
 
         ResourceBinding l_TextureBinding;
         l_TextureBinding.Set = 0;
@@ -285,14 +294,7 @@ namespace Trinity
 
     bool Renderer::CreateTextureResources()
     {
-        if (!m_TextureManager.Initialize())
-        {
-            return false;
-        }
-
-        m_Texture = m_TextureManager.Load("Assets/Test.png", true, true);
-
-        return true;
+        return m_TextureManager.Initialize();
     }
 
     bool Renderer::CreateSceneTargets(uint32_t width, uint32_t height)
@@ -435,10 +437,9 @@ namespace Trinity
         }
     }
 
-    void Renderer::DrawScene(CommandList& commandList, Scene& scene, const Camera& camera)
+    void Renderer::DrawScene(CommandList& commandList, Scene& scene, AssetDatabase& assetDatabase, const Camera& camera)
     {
         commandList.BindPipeline(m_Pipeline);
-        commandList.BindTexture(0, 0, m_Texture, m_TextureManager.DefaultSampler());
 
         glm::mat4 l_ViewProjection = camera.GetViewProjection();
 
@@ -452,21 +453,49 @@ namespace Trinity
             }
 
             Mesh& l_Mesh = *l_MeshRenderer.MeshReference;
+            const std::vector<MaterialSlot>& l_Slots = l_Mesh.GetMaterialSlots();
 
-            glm::mat4 l_MVP = l_ViewProjection * scene.GetWorldMatrix(l_Entity);
-            commandList.PushConstants(ShaderStage::Vertex | ShaderStage::Fragment, 0, static_cast<uint32_t>(sizeof(l_MVP)), &l_MVP);
+            glm::mat4 l_ModelViewProjection = l_ViewProjection * scene.GetWorldMatrix(l_Entity);
 
             commandList.BindVertexBuffer(l_Mesh.GetVertexBuffer(), 0);
             commandList.BindIndexBuffer(l_Mesh.GetIndexBuffer(), 0);
 
             for (const Submesh& l_Submesh : l_Mesh.GetSubmeshes())
             {
+                MeshPushConstants l_PushConstants;
+                l_PushConstants.MVP = l_ModelViewProjection;
+                l_PushConstants.BaseColorFactor = glm::vec4(1.0f);
+
+                TextureHandle l_BaseColor = m_TextureManager.White();
+
+                UUID l_MaterialAsset = l_Submesh.MaterialIndex < l_MeshRenderer.Materials.size() ? l_MeshRenderer.Materials[l_Submesh.MaterialIndex] : UUID(0);
+                if (static_cast<uint64_t>(l_MaterialAsset) != 0)
+                {
+                    std::shared_ptr<Material> l_Material = assetDatabase.ResolveMaterial(l_MaterialAsset);
+                    if (const MaterialParameter* l_Factor = l_Material->FindParameter(Material::BaseColorFactor))
+                    {
+                        l_PushConstants.BaseColorFactor = l_Factor->AsVec4();
+                    }
+
+                    if (const MaterialParameter* l_Texture = l_Material->FindParameter(Material::BaseColorTexture))
+                    {
+                        l_BaseColor = assetDatabase.ResolveTexture(l_Texture->AsTexture());
+                    }
+                }
+                else if (l_Submesh.MaterialIndex < l_Slots.size())
+                {
+                    l_PushConstants.BaseColorFactor = l_Slots[l_Submesh.MaterialIndex].BaseColorFactor;
+                }
+
+                commandList.BindTexture(0, 0, l_BaseColor, m_TextureManager.DefaultSampler());
+                commandList.PushConstants(ShaderStage::Vertex | ShaderStage::Fragment, 0, static_cast<uint32_t>(sizeof(l_PushConstants)), &l_PushConstants);
+
                 commandList.DrawIndexed(l_Submesh.IndexCount, 1, l_Submesh.FirstIndex, static_cast<int32_t>(l_Submesh.BaseVertex), 0);
             }
         }
     }
 
-    void Renderer::RenderFrame(Scene& scene, const Camera& camera, ImGuiLayer* imgui)
+    void Renderer::RenderFrame(Scene& scene, AssetDatabase& assetDatabase, const Camera& camera, ImGuiLayer* imgui)
     {
         m_Device.CollectGarbage();
 
@@ -543,7 +572,7 @@ namespace Trinity
         l_SceneScissor.Height = m_RenderHeight;
         l_CommandList.SetScissor(l_SceneScissor);
 
-        DrawScene(l_CommandList, scene, camera);
+        DrawScene(l_CommandList, scene, assetDatabase, camera);
 
         l_CommandList.EndRendering();
 

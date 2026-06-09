@@ -20,6 +20,7 @@ namespace Trinity
     class FileSystem;
     class Scene;
     class ImGuiLayer;
+    class AssetDatabase;
 
     class Renderer
     {
@@ -33,7 +34,7 @@ namespace Trinity
         bool Initialize();
         void Shutdown();
 
-        void RenderFrame(Scene& scene, const Camera& camera, ImGuiLayer* imgui = nullptr);
+        void RenderFrame(Scene& scene, AssetDatabase& assetDatabase, const Camera& camera, ImGuiLayer* imgui = nullptr);
         void Resize(uint32_t width, uint32_t height);
 
         MeshLibrary& GetMeshLibrary() { return m_MeshLibrary; }
@@ -53,7 +54,7 @@ namespace Trinity
         void DestroySceneTargets();
         bool CreateViewportOutput(uint32_t width, uint32_t height);
         void DestroyViewportOutput();
-        void DrawScene(CommandList& commandList, Scene& scene, const Camera& camera);
+        void DrawScene(CommandList& commandList, Scene& scene, AssetDatabase& assetDatabase, const Camera& camera);
 
     private:
         GraphicsDevice& m_Device;
@@ -71,7 +72,6 @@ namespace Trinity
 
         TextureHandle m_SceneColor;
         TextureHandle m_SceneDepth;
-        TextureHandle m_Texture;
 
         uint32_t m_RenderWidth = 0;
         uint32_t m_RenderHeight = 0;

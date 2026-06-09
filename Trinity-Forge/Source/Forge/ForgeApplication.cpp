@@ -87,6 +87,8 @@ namespace Trinity
 
     void ForgeApplication::OnShutdown()
     {
+        m_Context.History.Clear();
+
         TR_INFO("Forge shutting down");
     }
 
