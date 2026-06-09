@@ -7,6 +7,10 @@
 #include <Trinity/Assets/AssetMetaFile.h>
 #include <Trinity/Platform/FileSystem.h>
 #include <Trinity/Renderer/Meshes/MeshLibrary.h>
+#include <Trinity/Renderer/Materials/Material.h>
+#include <Trinity/Renderer/Materials/MaterialInstance.h>
+#include <Trinity/Renderer/Textures/TextureManager.h>
+#include <Trinity/Serialization/MaterialSerializer.h>
 #include <Trinity/Core/Log.h>
 
 namespace Trinity
@@ -23,7 +27,7 @@ namespace Trinity
         return static_cast<uint64_t>(l_Time.time_since_epoch().count());
     }
 
-    AssetDatabase::AssetDatabase(FileSystem& fileSystem, MeshLibrary& meshLibrary) : m_FileSystem(fileSystem), m_MeshLibrary(meshLibrary)
+    AssetDatabase::AssetDatabase(FileSystem& fileSystem, MeshLibrary& meshLibrary, TextureManager& textureManager) : m_FileSystem(fileSystem), m_MeshLibrary(meshLibrary), m_TextureManager(textureManager)
     {
 
     }
@@ -37,6 +41,8 @@ namespace Trinity
     void AssetDatabase::Refresh()
     {
         m_Modified.clear();
+        m_MaterialCache.clear();
+        m_MaterialInstanceCache.clear();
 
         std::error_code l_Error;
         if (!std::filesystem::exists(m_AssetsRoot, l_Error))
@@ -175,5 +181,127 @@ namespace Trinity
         }
 
         return m_MeshLibrary.Load(l_Metadata->SourcePath);
+    }
+
+    std::shared_ptr<Material> AssetDatabase::GetDefaultMaterial()
+    {
+        if (m_DefaultMaterial == nullptr)
+        {
+            m_DefaultMaterial = std::make_shared<Material>();
+        }
+
+        return m_DefaultMaterial;
+    }
+
+    std::shared_ptr<Material> AssetDatabase::ResolveMaterial(UUID id)
+    {
+        uint64_t l_Raw = static_cast<uint64_t>(id);
+        if (l_Raw == 0)
+        {
+            return GetDefaultMaterial();
+        }
+
+        auto it_Cached = m_MaterialCache.find(id);
+        if (it_Cached != m_MaterialCache.end())
+        {
+            return it_Cached->second;
+        }
+
+        const AssetMetadata* l_Metadata = GetMetadata(id);
+        if (l_Metadata == nullptr)
+        {
+            TR_CORE_WARN("AssetDatabase: material {} unresolved, using default", l_Raw);
+
+            return GetDefaultMaterial();
+        }
+
+        if (l_Metadata->Type == AssetType::Material)
+        {
+            std::filesystem::path l_Path = m_FileSystem.Resolve(BaseDirectory::Executable, l_Metadata->SourcePath);
+            std::optional<Material> l_Loaded = MaterialSerializer::DeserializeMaterial(l_Path);
+            if (!l_Loaded.has_value())
+            {
+                return GetDefaultMaterial();
+            }
+
+            std::shared_ptr<Material> l_Material = std::make_shared<Material>(std::move(l_Loaded.value()));
+            m_MaterialCache[id] = l_Material;
+
+            return l_Material;
+        }
+
+        if (l_Metadata->Type == AssetType::MaterialInstance)
+        {
+            std::shared_ptr<MaterialInstance> l_Instance = ResolveMaterialInstance(id);
+            if (l_Instance == nullptr)
+            {
+                return GetDefaultMaterial();
+            }
+
+            std::shared_ptr<Material> l_Base = ResolveMaterial(l_Instance->GetParent());
+            std::shared_ptr<Material> l_Flattened = std::make_shared<Material>(*l_Base);
+            l_Instance->ApplyOverrides(*l_Flattened);
+            m_MaterialCache[id] = l_Flattened;
+
+            return l_Flattened;
+        }
+
+        TR_CORE_WARN("AssetDatabase: asset {} is not a material, using default", l_Raw);
+
+        return GetDefaultMaterial();
+    }
+
+    std::shared_ptr<MaterialInstance> AssetDatabase::ResolveMaterialInstance(UUID id)
+    {
+        uint64_t l_Raw = static_cast<uint64_t>(id);
+        if (l_Raw == 0)
+        {
+            return nullptr;
+        }
+
+        auto it_Cached = m_MaterialInstanceCache.find(id);
+        if (it_Cached != m_MaterialInstanceCache.end())
+        {
+            return it_Cached->second;
+        }
+
+        const AssetMetadata* l_Metadata = GetMetadata(id);
+        if (l_Metadata == nullptr || l_Metadata->Type != AssetType::MaterialInstance)
+        {
+            TR_CORE_WARN("AssetDatabase: material instance {} unresolved", l_Raw);
+
+            return nullptr;
+        }
+
+        std::filesystem::path l_Path = m_FileSystem.Resolve(BaseDirectory::Executable, l_Metadata->SourcePath);
+        std::optional<MaterialInstance> l_Loaded = MaterialSerializer::DeserializeMaterialInstance(l_Path);
+        if (!l_Loaded.has_value())
+        {
+            return nullptr;
+        }
+
+        std::shared_ptr<MaterialInstance> l_Instance = std::make_shared<MaterialInstance>(std::move(l_Loaded.value()));
+        m_MaterialInstanceCache[id] = l_Instance;
+
+        return l_Instance;
+    }
+
+    TextureHandle AssetDatabase::ResolveTexture(UUID id)
+    {
+        uint64_t l_Raw = static_cast<uint64_t>(id);
+        if (l_Raw == 0)
+        {
+            return m_TextureManager.White();
+        }
+
+        const AssetMetadata* l_Metadata = GetMetadata(id);
+        if (l_Metadata == nullptr || l_Metadata->Type != AssetType::Texture)
+        {
+            TR_CORE_WARN("AssetDatabase: texture {} unresolved, using error texture", l_Raw);
+
+            return m_TextureManager.Error();
+        }
+
+        return m_TextureManager.Load(l_Metadata->SourcePath, l_Metadata->Import.SRGB, true);
     }
 }

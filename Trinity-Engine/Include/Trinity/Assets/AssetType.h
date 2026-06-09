@@ -9,7 +9,9 @@ namespace Trinity
     {
         None = 0,
         Mesh,
-        Texture
+        Texture,
+        Material,
+        MaterialInstance
     };
 
     const char* AssetTypeToString(AssetType type);

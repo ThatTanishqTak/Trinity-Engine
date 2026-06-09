@@ -9,9 +9,16 @@ namespace Trinity
     {
         switch (type)
         {
-            case AssetType::Mesh: return "Mesh";
-            case AssetType::Texture: return "Texture";
-            default: return "None";
+            case AssetType::Mesh:
+                return "Mesh";
+            case AssetType::Texture:
+                return "Texture";
+            case AssetType::Material:
+                return "Material";
+            case AssetType::MaterialInstance:
+                return "MaterialInstance";
+            default:
+                return "None";
         }
     }
 
@@ -25,6 +32,16 @@ namespace Trinity
         if (text == "Texture")
         {
             return AssetType::Texture;
+        }
+
+        if (text == "Material")
+        {
+            return AssetType::Material;
+        }
+
+        if (text == "MaterialInstance")
+        {
+            return AssetType::MaterialInstance;
         }
 
         return AssetType::None;
@@ -46,6 +63,16 @@ namespace Trinity
         if (l_Lower == ".png" || l_Lower == ".jpg" || l_Lower == ".jpeg" || l_Lower == ".tga" || l_Lower == ".bmp" || l_Lower == ".hdr")
         {
             return AssetType::Texture;
+        }
+
+        if (l_Lower == ".material")
+        {
+            return AssetType::Material;
+        }
+
+        if (l_Lower == ".matinst")
+        {
+            return AssetType::MaterialInstance;
         }
 
         return AssetType::None;

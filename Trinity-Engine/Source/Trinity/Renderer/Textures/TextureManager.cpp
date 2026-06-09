@@ -137,7 +137,7 @@ namespace Trinity
         }
     }
 
-    TextureHandle TextureManager::Load(const std::filesystem::path& relativePath, bool srgb)
+    TextureHandle TextureManager::Load(const std::filesystem::path& relativePath, bool srgb, bool generateMips)
     {
         const std::string l_Key = relativePath.generic_string();
 
@@ -156,7 +156,7 @@ namespace Trinity
             return m_Error;
         }
 
-        TextureHandle l_Handle = CreateFromPixels(l_Image->Pixels.data(), l_Image->Pixels.size(), l_Image->Width, l_Image->Height, l_Image->SuggestedFormat, true, l_Key);
+        TextureHandle l_Handle = CreateFromPixels(l_Image->Pixels.data(), l_Image->Pixels.size(), l_Image->Width, l_Image->Height, l_Image->SuggestedFormat, generateMips, l_Key);
         if (!l_Handle.IsValid())
         {
             TR_CORE_WARN("TextureManager: '{}' upload failed, using error texture", l_Key);

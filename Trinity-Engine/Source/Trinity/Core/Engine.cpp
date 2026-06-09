@@ -115,7 +115,7 @@ namespace Trinity
             return false;
         }
 
-        m_AssetDatabase = std::make_unique<AssetDatabase>(m_Platform->GetFileSystem(), m_Renderer->GetMeshLibrary());
+        m_AssetDatabase = std::make_unique<AssetDatabase>(m_Platform->GetFileSystem(), m_Renderer->GetMeshLibrary(), m_Renderer->GetTextureManager());
         m_AssetDatabase->Initialize();
 
         m_EditorCamera = std::make_unique<EditorCamera>(60.0f, static_cast<float>(m_Swapchain->GetWidth()) / static_cast<float>(m_Swapchain->GetHeight()), 0.1f, 100.0f);

@@ -19,15 +19,23 @@ namespace Trinity
     {
         switch (state)
         {
-            case ResourceState::RenderTarget: return { VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT };
-            case ResourceState::DepthStencil: return { VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT };
-            case ResourceState::ShaderResource: return { VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT };
-            case ResourceState::CopySource: return { VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_READ_BIT };
-            case ResourceState::CopyDestination: return { VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT };
-            case ResourceState::Present: return { VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, 0 };
-            case ResourceState::General: return { VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT };
+            case ResourceState::RenderTarget:
+                return { VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT };
+            case ResourceState::DepthStencil:
+                return { VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL, VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT, VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT };
+            case ResourceState::ShaderResource:
+                return { VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT };
+            case ResourceState::CopySource:
+                return { VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_READ_BIT };
+            case ResourceState::CopyDestination:
+                return { VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT };
+            case ResourceState::Present:
+                return { VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, 0 };
+            case ResourceState::General:
+                return { VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT };
             case ResourceState::Undefined:
-            default: return { VK_IMAGE_LAYOUT_UNDEFINED, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, 0 };
+            default:
+                return { VK_IMAGE_LAYOUT_UNDEFINED, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, 0 };
         }
     }
 
@@ -266,6 +274,51 @@ namespace Trinity
         l_Write.descriptorCount = 1;
         l_Write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         l_Write.pImageInfo = &l_ImageInfo;
+
+        vkUpdateDescriptorSets(m_Device.GetHandle(), 1, &l_Write, 0, nullptr);
+
+        vkCmdBindDescriptorSets(m_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_CurrentLayout, set, 1, &l_DescriptorSet, 0, nullptr);
+    }
+
+    void VulkanCommandList::BindUniformBuffer(uint32_t set, uint32_t binding, BufferHandle buffer, uint64_t offset, uint64_t size)
+    {
+        if (m_CurrentLayout == VK_NULL_HANDLE || set >= m_CurrentSetLayouts.size())
+        {
+            return;
+        }
+
+        VulkanBufferResource* l_Buffer = m_Device.GetBuffer(buffer);
+        if (l_Buffer == nullptr)
+        {
+            return;
+        }
+
+        VkDescriptorSetAllocateInfo l_AllocateInfo{};
+        l_AllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        l_AllocateInfo.descriptorPool = m_DescriptorPool;
+        l_AllocateInfo.descriptorSetCount = 1;
+        l_AllocateInfo.pSetLayouts = &m_CurrentSetLayouts[set];
+
+        VkDescriptorSet l_DescriptorSet = VK_NULL_HANDLE;
+        if (vkAllocateDescriptorSets(m_Device.GetHandle(), &l_AllocateInfo, &l_DescriptorSet) != VK_SUCCESS)
+        {
+            TR_CORE_ERROR("VulkanCommandList: vkAllocateDescriptorSets failed");
+            return;
+        }
+
+        VkDescriptorBufferInfo l_BufferInfo{};
+        l_BufferInfo.buffer = l_Buffer->Buffer;
+        l_BufferInfo.offset = offset;
+        l_BufferInfo.range = size;
+
+        VkWriteDescriptorSet l_Write{};
+        l_Write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        l_Write.dstSet = l_DescriptorSet;
+        l_Write.dstBinding = binding;
+        l_Write.dstArrayElement = 0;
+        l_Write.descriptorCount = 1;
+        l_Write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        l_Write.pBufferInfo = &l_BufferInfo;
 
         vkUpdateDescriptorSets(m_Device.GetHandle(), 1, &l_Write, 0, nullptr);
 

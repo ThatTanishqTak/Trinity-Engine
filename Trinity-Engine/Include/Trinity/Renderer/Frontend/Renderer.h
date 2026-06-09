@@ -37,6 +37,7 @@ namespace Trinity
         void Resize(uint32_t width, uint32_t height);
 
         MeshLibrary& GetMeshLibrary() { return m_MeshLibrary; }
+        TextureManager& GetTextureManager() { return m_TextureManager; }
 
         void SetViewportSize(uint32_t width, uint32_t height);
         uint64_t GetViewportTextureID() const { return m_ViewportTextureID; }

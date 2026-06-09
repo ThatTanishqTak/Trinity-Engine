@@ -75,6 +75,7 @@ namespace Trinity
         virtual void PushConstants(ShaderStage stages, uint32_t offset, uint32_t size, const void* data) = 0;
 
         virtual void BindTexture(uint32_t set, uint32_t binding, TextureHandle texture, SamplerHandle sampler) = 0;
+        virtual void BindUniformBuffer(uint32_t set, uint32_t binding, BufferHandle buffer, uint64_t offset, uint64_t size) = 0;
 
         virtual void Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstCount, uint32_t firstInstance) = 0;
         virtual void DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance) = 0;

@@ -290,7 +290,7 @@ namespace Trinity
             return false;
         }
 
-        m_Texture = m_TextureManager.Load("Assets/Test.png", true);
+        m_Texture = m_TextureManager.Load("Assets/Test.png", true, true);
 
         return true;
     }

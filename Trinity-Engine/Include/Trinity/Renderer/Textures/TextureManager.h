@@ -23,7 +23,7 @@ namespace Trinity
         bool Initialize();
         void Shutdown();
 
-        TextureHandle Load(const std::filesystem::path& relativePath, bool srgb);
+        TextureHandle Load(const std::filesystem::path& relativePath, bool srgb, bool generateMips);
 
         TextureHandle White() const { return m_White; }
         TextureHandle Black() const { return m_Black; }
