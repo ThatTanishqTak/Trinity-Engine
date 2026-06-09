@@ -12,12 +12,13 @@ namespace Trinity
     struct WindowProperties
     {
         std::string Title = "Trinity";
-        
+
         uint32_t Width = 1280;
         uint32_t Height = 720;
-        
+
         bool Resizable = true;
         bool VSync = true;
+        bool CustomTitleBar = false;
     };
 
     class Window
@@ -45,5 +46,39 @@ namespace Trinity
         virtual void SetRelativeMouseMode(bool enabled) = 0;
 
         virtual NativeWindowHandle GetNativeHandle() const = 0;
+
+        virtual void Minimize()
+        {
+
+        }
+
+        virtual void Maximize()
+        {
+
+        }
+
+        virtual void Restore()
+        {
+
+        }
+
+        virtual void RequestClose()
+        {
+
+        }
+
+        virtual bool IsMaximized() const { return false; }
+        
+        virtual bool HasCustomTitleBar() const { return false; }
+
+        virtual void SetTitleBarHitRegion(int x, int y, int width, int height)
+        {
+            (void)x;
+            (void)y;
+            (void)width;
+            (void)height;
+        }
+
+        virtual float GetContentScale() const { return 1.0f; }
     };
 }

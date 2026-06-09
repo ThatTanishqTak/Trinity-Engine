@@ -22,10 +22,15 @@ namespace Trinity
     {
         ImGui::Begin("Content Browser");
 
+        RenderContents();
+        
+        ImGui::End();
+    }
+
+    void ContentBrowserPanel::RenderContents()
+    {
         if (!m_Engine.HasAssetDatabase())
         {
-            ImGui::End();
-
             return;
         }
 
@@ -135,8 +140,6 @@ namespace Trinity
                 ImGui::BulletText("%s", l_Meta->SourcePath.c_str());
             }
         }
-
-        ImGui::End();
     }
 
     void ContentBrowserPanel::ReResolveModifiedMeshes()

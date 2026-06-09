@@ -13,9 +13,13 @@
 #include <Trinity/Serialization/SceneSerializer.h>
 
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <ImGuizmo.h>
 
+#include <Forge/Editor/EditorTheme.h>
 #include <Forge/Editor/Panels/MenuBarPanel.h>
+#include <Forge/Editor/Panels/MainToolBarPanel.h>
+#include <Forge/Editor/Panels/StatusBarPanel.h>
 #include <Forge/Editor/Panels/ViewportPanel.h>
 #include <Forge/Editor/Panels/HierarchyPanel.h>
 #include <Forge/Editor/Panels/InspectorPanel.h>
@@ -37,9 +41,13 @@ namespace Trinity
     void ForgeApplication::OnInitialize()
     {
         GetEngine().InitializeImGui();
+        EditorTheme::Apply(GetEngine().GetPlatform().GetFileSystem());
+
         m_Context.ScenePath = GetEngine().GetPlatform().GetFileSystem().Resolve(BaseDirectory::UserData, "Scenes/Demo.tscene");
 
         m_MenuBarPanel = std::make_unique<MenuBarPanel>(m_Context, GetEngine());
+        m_MainToolBarPanel = std::make_unique<MainToolBarPanel>(m_Context, GetEngine());
+        m_StatusBarPanel = std::make_unique<StatusBarPanel>(m_Context, GetEngine());
         m_ViewportPanel = std::make_unique<ViewportPanel>(m_Context, GetEngine());
         m_HierarchyPanel = std::make_unique<HierarchyPanel>(m_Context, GetEngine());
         m_InspectorPanel = std::make_unique<InspectorPanel>(m_Context, GetEngine());
@@ -58,14 +66,19 @@ namespace Trinity
     {
         ImGuizmo::BeginFrame();
 
+        m_Context.ChromeTop = 0.0f;
+        m_Context.ChromeBottom = 0.0f;
+
         m_MenuBarPanel->OnImGuiRender();
+        m_MainToolBarPanel->OnImGuiRender();
+        m_StatusBarPanel->OnImGuiRender();
         RenderDockspace();
         m_ViewportPanel->OnImGuiRender();
         m_HierarchyPanel->OnImGuiRender();
         ProcessPendingAction();
         m_ConsolePanel->OnImGuiRender();
-        m_ContentBrowserPanel->OnImGuiRender();
         m_InspectorPanel->OnImGuiRender();
+        RenderContentDrawer();
         ProcessDeferredComponentOp();
         ProcessPendingFileOp();
     }
@@ -95,8 +108,12 @@ namespace Trinity
     void ForgeApplication::RenderDockspace()
     {
         ImGuiViewport* l_Viewport = ImGui::GetMainViewport();
-        ImGui::SetNextWindowPos(l_Viewport->WorkPos);
-        ImGui::SetNextWindowSize(l_Viewport->WorkSize);
+
+        ImVec2 l_Pos = ImVec2(l_Viewport->Pos.x, l_Viewport->Pos.y + m_Context.ChromeTop);
+        ImVec2 l_Size = ImVec2(l_Viewport->Size.x, l_Viewport->Size.y - m_Context.ChromeTop - m_Context.ChromeBottom);
+
+        ImGui::SetNextWindowPos(l_Pos);
+        ImGui::SetNextWindowSize(l_Size);
         ImGui::SetNextWindowViewport(l_Viewport->ID);
 
         ImGuiWindowFlags l_HostFlags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoBackground;
@@ -110,7 +127,85 @@ namespace Trinity
         ImGuiID l_DockspaceID = ImGui::GetID("TrinityDockspace");
         ImGui::DockSpace(l_DockspaceID, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
 
+        if (m_Context.ResetLayout || ImGui::DockBuilderGetNode(l_DockspaceID) == nullptr)
+        {
+            BuildDefaultLayout(l_DockspaceID);
+            m_Context.ResetLayout = false;
+        }
+
         ImGui::End();
+    }
+
+    void ForgeApplication::BuildDefaultLayout(unsigned int dockspaceID)
+    {
+        ImGuiViewport* l_Viewport = ImGui::GetMainViewport();
+        ImVec2 l_Size = ImVec2(l_Viewport->Size.x, l_Viewport->Size.y - m_Context.ChromeTop - m_Context.ChromeBottom);
+
+        ImGui::DockBuilderRemoveNode(dockspaceID);
+        ImGui::DockBuilderAddNode(dockspaceID, ImGuiDockNodeFlags_PassthruCentralNode | ImGuiDockNodeFlags_DockSpace);
+        ImGui::DockBuilderSetNodeSize(dockspaceID, l_Size);
+
+        ImGuiID l_Main = dockspaceID;
+        ImGuiID l_Right = ImGui::DockBuilderSplitNode(l_Main, ImGuiDir_Right, 0.22f, nullptr, &l_Main);
+        ImGuiID l_RightBottom = ImGui::DockBuilderSplitNode(l_Right, ImGuiDir_Down, 0.55f, nullptr, &l_Right);
+        ImGuiID l_Bottom = ImGui::DockBuilderSplitNode(l_Main, ImGuiDir_Down, 0.26f, nullptr, &l_Main);
+
+        ImGui::DockBuilderDockWindow("Viewport", l_Main);
+        ImGui::DockBuilderDockWindow("Hierarchy", l_Right);
+        ImGui::DockBuilderDockWindow("Inspector", l_RightBottom);
+        ImGui::DockBuilderDockWindow("Console", l_Bottom);
+
+        ImGui::DockBuilderFinish(dockspaceID);
+    }
+
+    void ForgeApplication::RenderContentDrawer()
+    {
+        if (!m_Context.ShowContentDrawer)
+        {
+            m_ContentDrawerOpenPrev = false;
+
+            return;
+        }
+
+        ImGuiViewport* l_Viewport = ImGui::GetMainViewport();
+        float l_DrawerHeight = l_Viewport->Size.y * 0.40f;
+        float l_DrawerY = l_Viewport->Pos.y + l_Viewport->Size.y - m_Context.ChromeBottom - l_DrawerHeight;
+
+        ImGui::SetNextWindowPos(ImVec2(l_Viewport->Pos.x, l_DrawerY));
+        ImGui::SetNextWindowSize(ImVec2(l_Viewport->Size.x, l_DrawerHeight));
+        ImGui::SetNextWindowViewport(l_Viewport->ID);
+
+        if (!m_ContentDrawerOpenPrev)
+        {
+            ImGui::SetNextWindowFocus();
+        }
+
+        ImGuiWindowFlags l_Flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoSavedSettings;
+
+        ImGui::Begin("##ForgeContentDrawer", nullptr, l_Flags);
+
+        bool l_Focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+
+        ImGui::TextUnformatted("Content Drawer");
+        ImGui::Separator();
+
+        if (m_ContentBrowserPanel)
+        {
+            m_ContentBrowserPanel->RenderContents();
+        }
+
+        ImGui::End();
+
+        if (ImGui::IsKeyPressed(ImGuiKey_Escape, false))
+        {
+            m_Context.ShowContentDrawer = false;
+        }
+        else if (m_ContentDrawerOpenPrev && !l_Focused && !ImGui::IsDragDropActive())
+        {
+            m_Context.ShowContentDrawer = false;
+        }
+
+        m_ContentDrawerOpenPrev = m_Context.ShowContentDrawer;
     }
 
     bool ForgeApplication::IsAncestorOf(Scene& scene, entt::entity ancestor, entt::entity node)
@@ -247,6 +342,7 @@ namespace Trinity
         l_Specification.Window.Title = "Forge";
         l_Specification.Window.Width = 1920;
         l_Specification.Window.Height = 1080;
+        l_Specification.Window.CustomTitleBar = true;
         l_Specification.Arguments = args;
 
         return new ForgeApplication(l_Specification);

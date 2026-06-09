@@ -31,6 +31,8 @@ namespace Trinity
         static void InitializeFileSink(const std::filesystem::path& path);
         static void Shutdown();
 
+        static void WriteConsole(LogLevel level, const std::string& text);
+
         static void VisitMessages(const std::function<void(const LogMessage&)>& visitor);
         static void ClearMessages();
 

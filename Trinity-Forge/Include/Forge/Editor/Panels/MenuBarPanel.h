@@ -1,9 +1,13 @@
 #pragma once
 
+#include <cstdint>
+
 #include <Forge/Editor/EditorPanel.h>
 
 namespace Trinity
 {
+    class Window;
+
     class MenuBarPanel : public EditorPanel
     {
     public:
@@ -16,6 +20,12 @@ namespace Trinity
 
     private:
         void HandleShortcuts();
+        void RenderMenus();
         void RenderMenuBar();
+        void RenderTitleBar(Window& window);
+        void EnsureLogo();
+
+        uint64_t m_LogoTexture = 0;
+        bool m_LogoTried = false;
     };
 }

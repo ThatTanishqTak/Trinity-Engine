@@ -20,4 +20,16 @@ target_compile_definitions(Trinity-Forge
         TRINITY_FORGE_APPLICATION
 )
 
+set(_forgeAssets "${TRINITY_FORGE_ROOT}/Assets")
+if(EXISTS "${_forgeAssets}")
+    add_custom_command(
+        TARGET Trinity-Forge POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${_forgeAssets}"
+            "$<TARGET_FILE_DIR:Trinity-Forge>/Assets"
+        COMMENT "Deploying Forge assets to Trinity-Forge"
+        VERBATIM
+    )
+endif()
+
 trinity_set_ide_folder(Trinity-Forge "Trinity/Products")

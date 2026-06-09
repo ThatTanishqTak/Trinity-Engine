@@ -20,5 +20,8 @@ namespace Trinity
 
     private:
         void RenderEntityNode(Scene& scene, entt::entity entity);
+        void RenderFlatRow(Scene& scene, entt::entity entity);
+
+        char m_SearchBuffer[128] = "";
     };
 }

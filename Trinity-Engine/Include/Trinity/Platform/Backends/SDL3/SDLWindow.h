@@ -34,6 +34,17 @@ namespace Trinity
 
         NativeWindowHandle GetNativeHandle() const override;
 
+        void Minimize() override;
+        void Maximize() override;
+        void Restore() override;
+        void RequestClose() override;
+        bool IsMaximized() const override;
+        bool HasCustomTitleBar() const override { return m_Data.CustomTitleBar; }
+        void SetTitleBarHitRegion(int x, int y, int width, int height) override;
+        float GetContentScale() const override;
+
+        void TitleBarHitRegion(int& x, int& y, int& width, int& height) const;
+
         SDL_Window* GetSDLWindow() const { return m_Window; }
         uint32_t GetWindowID() const;
 
@@ -45,13 +56,19 @@ namespace Trinity
         struct WindowData
         {
             std::string Title;
-            
+
             uint32_t Width = 0;
             uint32_t Height = 0;
-            
+
             bool VSync = true;
             bool Minimized = false;
-            
+            bool CustomTitleBar = false;
+
+            int TitleBarX = 0;
+            int TitleBarY = 0;
+            int TitleBarWidth = 0;
+            int TitleBarHeight = 0;
+
             EventCallback Callback;
         };
 

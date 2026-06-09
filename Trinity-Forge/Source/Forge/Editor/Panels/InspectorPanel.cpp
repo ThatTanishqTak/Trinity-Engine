@@ -10,6 +10,7 @@
 #include <glm/glm.hpp>
 
 #include <Forge/Editor/EditorContext.h>
+#include <Forge/Editor/EditorIcons.h>
 #include <Forge/Editor/Commands/EntityCommands.h>
 #include <Forge/Editor/Commands/ComponentCommands.h>
 #include <Forge/Editor/Commands/PropertyCommands.h>
@@ -138,7 +139,7 @@ namespace Trinity
 
                 if (l_Entity.HasComponent<TransformComponent>())
                 {
-                    ImGui::SeparatorText("Transform");
+                    ImGui::SeparatorText(ICON_FA_UP_DOWN_LEFT_RIGHT "  Transform");
                     TransformComponent& l_Transform = l_Entity.GetComponent<TransformComponent>();
                     uint64_t l_TransformUUID = static_cast<uint64_t>(l_Entity.GetUUID());
                     DragTransformField(l_Scene, l_TransformUUID, "Translation", l_Transform, l_Transform.Translation, 0.1f);
@@ -148,7 +149,7 @@ namespace Trinity
 
                 if (l_Entity.HasComponent<MeshRendererComponent>())
                 {
-                    ImGui::SeparatorText("Mesh Renderer");
+                    ImGui::SeparatorText(ICON_FA_CUBE "  Mesh Renderer");
                     MeshRendererComponent& l_MeshRenderer = l_Entity.GetComponent<MeshRendererComponent>();
                     uint64_t l_MeshUUID = static_cast<uint64_t>(l_Entity.GetUUID());
                     AssetDatabase& l_Assets = m_Engine.GetAssetDatabase();
@@ -212,7 +213,7 @@ namespace Trinity
 
                     if (l_MeshRenderer.MeshReference && l_MeshRenderer.MeshReference->IsValid())
                     {
-                        ImGui::SeparatorText("Materials");
+                        ImGui::SeparatorText(ICON_FA_PAINTBRUSH "  Materials");
 
                         const std::vector<MaterialSlot>& l_MeshSlots = l_MeshRenderer.MeshReference->GetMaterialSlots();
                         size_t l_SlotCount = l_MeshSlots.empty() ? 1 : l_MeshSlots.size();
@@ -307,7 +308,7 @@ namespace Trinity
 
                 if (l_Entity.HasComponent<CameraComponent>())
                 {
-                    ImGui::SeparatorText("Camera");
+                    ImGui::SeparatorText(ICON_FA_CAMERA "  Camera");
                     CameraComponent& l_Camera = l_Entity.GetComponent<CameraComponent>();
                     if (ImGui::Checkbox("Primary", &l_Camera.Primary))
                     {
@@ -327,7 +328,7 @@ namespace Trinity
 
                 if (l_Entity.HasComponent<AudioSourceComponent>())
                 {
-                    ImGui::SeparatorText("Audio Source");
+                    ImGui::SeparatorText(ICON_FA_VOLUME_HIGH "  Audio Source");
                     AudioSourceComponent& l_Source = l_Entity.GetComponent<AudioSourceComponent>();
                     AssetDatabase& l_Assets = m_Engine.GetAssetDatabase();
 
@@ -374,14 +375,14 @@ namespace Trinity
                     ImGui::Checkbox("Play On Start", &l_Source.PlayOnStart);
                     ImGui::Checkbox("Spatial", &l_Source.Spatial);
 
-                    if (ImGui::SmallButton("Play##AudioSource"))
+                    if (ImGui::SmallButton(ICON_FA_PLAY " Play##AudioSource"))
                     {
                         glm::vec3 l_WorldPosition = glm::vec3(l_Scene.GetWorldMatrix(l_Entity)[3]);
                         m_Engine.GetAudioEngine().PlaySource(l_Source, l_Assets, l_WorldPosition);
                     }
 
                     ImGui::SameLine();
-                    if (ImGui::SmallButton("Stop##AudioSource"))
+                    if (ImGui::SmallButton(ICON_FA_STOP " Stop##AudioSource"))
                     {
                         m_Engine.GetAudioEngine().StopSource(l_Source);
                     }
@@ -399,7 +400,7 @@ namespace Trinity
 
                 if (l_Entity.HasComponent<AudioListenerComponent>())
                 {
-                    ImGui::SeparatorText("Audio Listener");
+                    ImGui::SeparatorText(ICON_FA_VOLUME_HIGH "  Audio Listener");
                     AudioListenerComponent& l_Listener = l_Entity.GetComponent<AudioListenerComponent>();
                     ImGui::Checkbox("Active", &l_Listener.Active);
 
@@ -415,7 +416,7 @@ namespace Trinity
                 }
 
                 ImGui::Separator();
-                if (ImGui::Button("Add Component"))
+                if (ImGui::Button(ICON_FA_PLUS "  Add Component"))
                 {
                     ImGui::OpenPopup("AddComponentPopup");
                 }
@@ -424,7 +425,7 @@ namespace Trinity
                 {
                     uint64_t l_TargetUUID = static_cast<uint64_t>(l_Entity.GetUUID());
 
-                    if (!l_Entity.HasComponent<MeshRendererComponent>() && ImGui::MenuItem("Mesh Renderer"))
+                    if (!l_Entity.HasComponent<MeshRendererComponent>() && ImGui::MenuItem(ICON_FA_CUBE "  Mesh Renderer"))
                     {
                         m_Context.ComponentOp = [this, l_TargetUUID]()
                         {
@@ -433,7 +434,7 @@ namespace Trinity
                         };
                     }
 
-                    if (!l_Entity.HasComponent<CameraComponent>() && ImGui::MenuItem("Camera"))
+                    if (!l_Entity.HasComponent<CameraComponent>() && ImGui::MenuItem(ICON_FA_CAMERA "  Camera"))
                     {
                         m_Context.ComponentOp = [this, l_TargetUUID]()
                         {
@@ -442,7 +443,7 @@ namespace Trinity
                         };
                     }
 
-                    if (!l_Entity.HasComponent<AudioSourceComponent>() && ImGui::MenuItem("Audio Source"))
+                    if (!l_Entity.HasComponent<AudioSourceComponent>() && ImGui::MenuItem(ICON_FA_VOLUME_HIGH "  Audio Source"))
                     {
                         m_Context.ComponentOp = [this, l_TargetUUID]()
                         {
@@ -451,7 +452,7 @@ namespace Trinity
                         };
                     }
 
-                    if (!l_Entity.HasComponent<AudioListenerComponent>() && ImGui::MenuItem("Audio Listener"))
+                    if (!l_Entity.HasComponent<AudioListenerComponent>() && ImGui::MenuItem(ICON_FA_VOLUME_HIGH "  Audio Listener"))
                     {
                         m_Context.ComponentOp = [this, l_TargetUUID]()
                         {

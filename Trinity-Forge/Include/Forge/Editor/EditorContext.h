@@ -41,5 +41,12 @@ namespace Trinity
 
         std::filesystem::path ScenePath;
         std::string SceneName = "Demo";
+
+        bool ResetLayout = false;
+        bool ShowContentDrawer = false;
+        bool PlayMode = false;
+
+        float ChromeTop = 0.0f;
+        float ChromeBottom = 0.0f;
     };
 }
