@@ -32,7 +32,26 @@ namespace Trinity
 
         if (ImGui::SmallButton(ICON_FA_FOLDER_OPEN " Content Drawer"))
         {
-            m_Context.ShowContentDrawer = !m_Context.ShowContentDrawer;
+            bool l_Show = !m_Context.ShowContentDrawer;
+            m_Context.ShowContentDrawer = l_Show;
+            if (l_Show)
+            {
+                m_Context.ShowConsoleDrawer = false;
+            }
+            m_Context.DrawerToggled = true;
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::SmallButton(ICON_FA_TERMINAL " Console"))
+        {
+            bool l_Show = !m_Context.ShowConsoleDrawer;
+            m_Context.ShowConsoleDrawer = l_Show;
+            if (l_Show)
+            {
+                m_Context.ShowContentDrawer = false;
+            }
+            m_Context.DrawerToggled = true;
         }
 
         int l_EntityCount = 0;

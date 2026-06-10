@@ -32,30 +32,37 @@ namespace Trinity
             {
                 return SDL_HITTEST_RESIZE_TOPLEFT;
             }
+
             if (l_Top && l_Right)
             {
                 return SDL_HITTEST_RESIZE_TOPRIGHT;
             }
+
             if (l_Bottom && l_Left)
             {
                 return SDL_HITTEST_RESIZE_BOTTOMLEFT;
             }
+
             if (l_Bottom && l_Right)
             {
                 return SDL_HITTEST_RESIZE_BOTTOMRIGHT;
             }
+
             if (l_Left)
             {
                 return SDL_HITTEST_RESIZE_LEFT;
             }
+
             if (l_Right)
             {
                 return SDL_HITTEST_RESIZE_RIGHT;
             }
+
             if (l_Top)
             {
                 return SDL_HITTEST_RESIZE_TOP;
             }
+
             if (l_Bottom)
             {
                 return SDL_HITTEST_RESIZE_BOTTOM;

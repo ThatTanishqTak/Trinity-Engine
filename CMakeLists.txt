@@ -171,6 +171,7 @@ target_include_directories(imgui SYSTEM PUBLIC "${CMAKE_SOURCE_DIR}/Vendor/imgui
 target_include_directories(imgui SYSTEM PRIVATE "${CMAKE_SOURCE_DIR}/Vendor/imgui/backends")
 target_link_libraries(imgui PRIVATE SDL3-static Vulkan::Vulkan)
 trinity_set_ide_folder(imgui "Trinity/Vendor")
+target_compile_definitions(imgui PUBLIC IMGUI_USE_WCHAR32)
 
 if(TRINITY_BUILD_ENGINE)
     add_subdirectory(Trinity-Engine)

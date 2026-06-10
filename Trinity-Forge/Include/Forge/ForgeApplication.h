@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <memory>
 
 #include <entt/entt.hpp>
@@ -37,7 +38,7 @@ namespace Trinity
     private:
         void RenderDockspace();
         void BuildDefaultLayout(unsigned int dockspaceID);
-        void RenderContentDrawer();
+        void RenderDrawer(const char* id, const char* title, bool& show, bool& openPrev, const std::function<void()>& body);
         void ProcessPendingAction();
         void ProcessDeferredComponentOp();
         void ProcessPendingFileOp();
@@ -54,5 +55,7 @@ namespace Trinity
         std::unique_ptr<ContentBrowserPanel> m_ContentBrowserPanel;
 
         bool m_ContentDrawerOpenPrev = false;
+        bool m_ConsoleDrawerOpenPrev = false;
+        float m_DrawerHeight = 0.0f;
     };
 }

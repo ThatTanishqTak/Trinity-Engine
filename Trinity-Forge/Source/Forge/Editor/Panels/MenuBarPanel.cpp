@@ -102,18 +102,39 @@ namespace Trinity
 
     void MenuBarPanel::RenderMenus()
     {
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(14.0f, ImGui::GetStyle().WindowPadding.y));
+
+        bool l_HasSelection = m_Context.SelectedEntity != entt::null;
+
         if (ImGui::BeginMenu("File"))
         {
-            if (ImGui::MenuItem(ICON_FA_FLOPPY_DISK "  Save", "Ctrl+S"))
-            {
-                m_Context.FileOp = PendingFileOp::Save;
-            }
-
-            if (ImGui::MenuItem(ICON_FA_FOLDER_OPEN "  Open"))
+            ImGui::MenuItem(ICON_FA_FILE "  New Scene", "Ctrl+N", false, false);
+            if (ImGui::MenuItem(ICON_FA_FOLDER_OPEN "  Open Scene", "Ctrl+O"))
             {
                 m_Context.FileOp = PendingFileOp::Load;
             }
-
+            
+            if (ImGui::MenuItem(ICON_FA_FLOPPY_DISK "  Save Scene", "Ctrl+S"))
+            {
+                m_Context.FileOp = PendingFileOp::Save;
+            }
+            
+            ImGui::MenuItem("Save Scene As...", "Ctrl+Shift+S", false, false);
+            ImGui::MenuItem("Save All", nullptr, false, false);
+            ImGui::Separator();
+            ImGui::MenuItem("New Project...", nullptr, false, false);
+            ImGui::MenuItem("Open Project...", nullptr, false, false);
+            if (ImGui::BeginMenu("Recent Projects"))
+            {
+                ImGui::MenuItem("(none)", nullptr, false, false);
+                ImGui::EndMenu();
+            }
+            
+            ImGui::Separator();
+            if (ImGui::MenuItem(ICON_FA_XMARK "  Exit", "Alt+F4"))
+            {
+                Application::Get().GetWindow().RequestClose();
+            }
             ImGui::EndMenu();
         }
 
@@ -124,24 +145,119 @@ namespace Trinity
             {
                 m_Context.History.Undo();
             }
-
+            
             std::string l_RedoLabel = m_Context.History.CanRedo() ? ("Redo " + m_Context.History.RedoName()) : "Redo";
             if (ImGui::MenuItem(l_RedoLabel.c_str(), "Ctrl+Y", false, m_Context.History.CanRedo()))
             {
                 m_Context.History.Redo();
             }
 
+            ImGui::Separator();
+            ImGui::MenuItem("Cut", "Ctrl+X", false, false);
+            ImGui::MenuItem("Copy", "Ctrl+C", false, false);
+            ImGui::MenuItem("Paste", "Ctrl+V", false, false);
+            if (ImGui::MenuItem(ICON_FA_COPY "  Duplicate", "Ctrl+D", false, l_HasSelection))
+            {
+                m_Context.Action = PendingAction::Duplicate;
+                m_Context.ActionTarget = m_Context.SelectedEntity;
+            }
+            
+            if (ImGui::MenuItem(ICON_FA_TRASH "  Delete", "Del", false, l_HasSelection))
+            {
+                m_Context.Action = PendingAction::Delete;
+                m_Context.ActionTarget = m_Context.SelectedEntity;
+            }
+            ImGui::Separator();
+            ImGui::MenuItem(ICON_FA_GEAR "  Editor Preferences...", nullptr, false, false);
+            ImGui::MenuItem("Project Settings...", nullptr, false, false);
+            ImGui::MenuItem("Plugins", nullptr, false, false);
             ImGui::EndMenu();
         }
 
-        if (ImGui::BeginMenu("Entity"))
+        if (ImGui::BeginMenu("Window"))
+        {
+            ImGui::MenuItem("Viewport", nullptr, false, false);
+            ImGui::MenuItem(ICON_FA_SITEMAP "  Outliner", nullptr, false, false);
+            ImGui::MenuItem(ICON_FA_SLIDERS "  Details", nullptr, false, false);
+
+            if (ImGui::MenuItem(ICON_FA_FOLDER "  Content Browser", nullptr, m_Context.ShowContentDrawer))
+            {
+                m_Context.ShowContentDrawer = !m_Context.ShowContentDrawer;
+                if (m_Context.ShowContentDrawer)
+                {
+                    m_Context.ShowConsoleDrawer = false;
+                }
+            }
+            
+            if (ImGui::MenuItem(ICON_FA_TERMINAL "  Console", nullptr, m_Context.ShowConsoleDrawer))
+            {
+                m_Context.ShowConsoleDrawer = !m_Context.ShowConsoleDrawer;
+                if (m_Context.ShowConsoleDrawer)
+                {
+                    m_Context.ShowContentDrawer = false;
+                }
+            }
+
+            ImGui::Separator();
+            if (ImGui::MenuItem(ICON_FA_ARROWS_ROTATE "  Reset Layout"))
+            {
+                m_Context.ResetLayout = true;
+            }
+
+            Window& l_Window = Application::Get().GetWindow();
+            if (ImGui::MenuItem(ICON_FA_EXPAND "  Enable Fullscreen", "F11", l_Window.IsMaximized()))
+            {
+                if (l_Window.IsMaximized())
+                {
+                    l_Window.Restore();
+                }
+                else
+                {
+                    l_Window.Maximize();
+                }
+            }
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Tools"))
+        {
+            ImGui::MenuItem("Build Tool", nullptr, false, false);
+            ImGui::MenuItem("Asset Cooker", nullptr, false, false);
+            ImGui::MenuItem("Shader Compiler", nullptr, false, false);
+            ImGui::Separator();
+            ImGui::MenuItem("Material Editor", nullptr, false, false);
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Build"))
+        {
+            ImGui::MenuItem("Build All", nullptr, false, false);
+            ImGui::MenuItem("Build Lighting", nullptr, false, false);
+            ImGui::Separator();
+            ImGui::MenuItem("Build Profiles...", nullptr, false, false);
+            ImGui::MenuItem("Package Project", nullptr, false, false);
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Select"))
+        {
+            ImGui::MenuItem("Select All", "Ctrl+A", false, false);
+            if (ImGui::MenuItem("Select None", "Esc", false, l_HasSelection))
+            {
+                m_Context.SelectedEntity = entt::null;
+            }
+
+            ImGui::MenuItem("Invert Selection", "Ctrl+I", false, false);
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Actor"))
         {
             if (ImGui::MenuItem(ICON_FA_PLUS "  Create Empty"))
             {
                 m_Context.Action = PendingAction::Create;
             }
-
-            bool l_HasSelection = m_Context.SelectedEntity != entt::null;
+            
             if (ImGui::MenuItem(ICON_FA_COPY "  Duplicate", "Ctrl+D", false, l_HasSelection))
             {
                 m_Context.Action = PendingAction::Duplicate;
@@ -153,19 +269,21 @@ namespace Trinity
                 m_Context.Action = PendingAction::Delete;
                 m_Context.ActionTarget = m_Context.SelectedEntity;
             }
-
+            
+            ImGui::Separator();
+            ImGui::MenuItem("Attach To...", nullptr, false, false);
+            ImGui::MenuItem("Detach", nullptr, false, false);
             ImGui::EndMenu();
         }
 
-        if (ImGui::BeginMenu("Window"))
+        if (ImGui::BeginMenu("Help"))
         {
-            if (ImGui::MenuItem(ICON_FA_ARROWS_ROTATE "  Reset Layout"))
-            {
-                m_Context.ResetLayout = true;
-            }
-
+            ImGui::MenuItem("Documentation", nullptr, false, false);
+            ImGui::MenuItem("About Forge", nullptr, false, false);
             ImGui::EndMenu();
         }
+
+        ImGui::PopStyleVar();
     }
 
     void MenuBarPanel::RenderMenuBar()

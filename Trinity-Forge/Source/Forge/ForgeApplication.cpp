@@ -68,6 +68,7 @@ namespace Trinity
 
         m_Context.ChromeTop = 0.0f;
         m_Context.ChromeBottom = 0.0f;
+        m_Context.DrawerToggled = false;
 
         m_MenuBarPanel->OnImGuiRender();
         m_MainToolBarPanel->OnImGuiRender();
@@ -76,9 +77,11 @@ namespace Trinity
         m_ViewportPanel->OnImGuiRender();
         m_HierarchyPanel->OnImGuiRender();
         ProcessPendingAction();
-        m_ConsolePanel->OnImGuiRender();
         m_InspectorPanel->OnImGuiRender();
-        RenderContentDrawer();
+
+        RenderDrawer("##ForgeContentDrawer", "Content Browser", m_Context.ShowContentDrawer, m_ContentDrawerOpenPrev, [this]() { m_ContentBrowserPanel->RenderContents(); });
+        RenderDrawer("##ForgeConsoleDrawer", "Console", m_Context.ShowConsoleDrawer, m_ConsoleDrawerOpenPrev, [this]() { m_ConsolePanel->RenderContents(); });
+
         ProcessDeferredComponentOp();
         ProcessPendingFileOp();
     }
@@ -148,64 +151,88 @@ namespace Trinity
         ImGuiID l_Main = dockspaceID;
         ImGuiID l_Right = ImGui::DockBuilderSplitNode(l_Main, ImGuiDir_Right, 0.22f, nullptr, &l_Main);
         ImGuiID l_RightBottom = ImGui::DockBuilderSplitNode(l_Right, ImGuiDir_Down, 0.55f, nullptr, &l_Right);
-        ImGuiID l_Bottom = ImGui::DockBuilderSplitNode(l_Main, ImGuiDir_Down, 0.26f, nullptr, &l_Main);
 
         ImGui::DockBuilderDockWindow("Viewport", l_Main);
         ImGui::DockBuilderDockWindow("Hierarchy", l_Right);
         ImGui::DockBuilderDockWindow("Inspector", l_RightBottom);
-        ImGui::DockBuilderDockWindow("Console", l_Bottom);
 
         ImGui::DockBuilderFinish(dockspaceID);
     }
 
-    void ForgeApplication::RenderContentDrawer()
+    void ForgeApplication::RenderDrawer(const char* id, const char* title, bool& show, bool& openPrev, const std::function<void()>& body)
     {
-        if (!m_Context.ShowContentDrawer)
+        if (!show)
         {
-            m_ContentDrawerOpenPrev = false;
+            openPrev = false;
 
             return;
         }
 
         ImGuiViewport* l_Viewport = ImGui::GetMainViewport();
-        float l_DrawerHeight = l_Viewport->Size.y * 0.40f;
-        float l_DrawerY = l_Viewport->Pos.y + l_Viewport->Size.y - m_Context.ChromeBottom - l_DrawerHeight;
+        float l_Bottom = l_Viewport->Pos.y + l_Viewport->Size.y - m_Context.ChromeBottom;
+        float l_MinHeight = l_Viewport->Size.y * 0.12f;
+        float l_MaxHeight = l_Viewport->Size.y * 0.85f;
 
-        ImGui::SetNextWindowPos(ImVec2(l_Viewport->Pos.x, l_DrawerY));
-        ImGui::SetNextWindowSize(ImVec2(l_Viewport->Size.x, l_DrawerHeight));
+        if (m_DrawerHeight <= 0.0f)
+        {
+            m_DrawerHeight = l_Viewport->Size.y * 0.40f;
+        }
+        if (m_DrawerHeight < l_MinHeight)
+        {
+            m_DrawerHeight = l_MinHeight;
+        }
+        if (m_DrawerHeight > l_MaxHeight)
+        {
+            m_DrawerHeight = l_MaxHeight;
+        }
+
+        ImGui::SetNextWindowPos(ImVec2(l_Viewport->Pos.x, l_Bottom - m_DrawerHeight), ImGuiCond_Always);
+        ImGui::SetNextWindowSizeConstraints(ImVec2(l_Viewport->Size.x, l_MinHeight), ImVec2(l_Viewport->Size.x, l_MaxHeight));
+        ImGui::SetNextWindowSize(ImVec2(l_Viewport->Size.x, m_DrawerHeight), ImGuiCond_Once);
         ImGui::SetNextWindowViewport(l_Viewport->ID);
 
-        if (!m_ContentDrawerOpenPrev)
+        if (!openPrev)
         {
             ImGui::SetNextWindowFocus();
         }
 
-        ImGuiWindowFlags l_Flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoSavedSettings;
+        ImGuiWindowFlags l_Flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoSavedSettings;
 
-        ImGui::Begin("##ForgeContentDrawer", nullptr, l_Flags);
+        ImGui::Begin(id, nullptr, l_Flags);
 
-        bool l_Focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+        ImVec2 l_DrawerMin = ImGui::GetWindowPos();
+        ImVec2 l_DrawerSize = ImGui::GetWindowSize();
+        m_DrawerHeight = l_DrawerSize.y;
 
-        ImGui::TextUnformatted("Content Drawer");
+        ImGui::TextUnformatted(title);
         ImGui::Separator();
 
-        if (m_ContentBrowserPanel)
-        {
-            m_ContentBrowserPanel->RenderContents();
-        }
+        body();
 
         ImGui::End();
 
+        bool l_Close = false;
         if (ImGui::IsKeyPressed(ImGuiKey_Escape, false))
         {
-            m_Context.ShowContentDrawer = false;
+            l_Close = true;
         }
-        else if (m_ContentDrawerOpenPrev && !l_Focused && !ImGui::IsDragDropActive())
+        else if (openPrev && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsDragDropActive())
         {
-            m_Context.ShowContentDrawer = false;
+            ImVec2 l_Mouse = ImGui::GetIO().MousePos;
+            bool l_InDrawer = l_Mouse.x >= l_DrawerMin.x && l_Mouse.x <= l_DrawerMin.x + l_DrawerSize.x && l_Mouse.y >= l_DrawerMin.y && l_Mouse.y <= l_DrawerMin.y + l_DrawerSize.y;
+            bool l_InStatusBar = l_Mouse.y >= l_Bottom;
+            if (!l_InDrawer && !l_InStatusBar)
+            {
+                l_Close = true;
+            }
         }
 
-        m_ContentDrawerOpenPrev = m_Context.ShowContentDrawer;
+        if (l_Close)
+        {
+            show = false;
+        }
+
+        openPrev = show;
     }
 
     bool ForgeApplication::IsAncestorOf(Scene& scene, entt::entity ancestor, entt::entity node)

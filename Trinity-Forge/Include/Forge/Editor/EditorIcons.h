@@ -2,35 +2,38 @@
 
 #include <imgui.h>
 
+#include <Forge/Editor/IconsMaterialDesignIcons.h>
+
 namespace Trinity
 {
-    static constexpr ImWchar k_IconRangeMin = 0xe000;
-    static constexpr ImWchar k_IconRangeMax = 0xf8ff;
+    static constexpr ImWchar k_IconRangeMin = ICON_MIN_MDI;
+    static constexpr ImWchar k_IconRangeMax = ICON_MAX_MDI;
 }
 
-#define ICON_FA_FOLDER "\xef\x81\xbb"
-#define ICON_FA_FOLDER_OPEN "\xef\x81\xbc"
-#define ICON_FA_FILE "\xef\x85\x9b"
-#define ICON_FA_CUBE "\xef\x86\xb2"
-#define ICON_FA_CAMERA "\xef\x80\xb0"
-#define ICON_FA_VOLUME_HIGH "\xef\x80\xa8"
-#define ICON_FA_PLAY "\xef\x81\x8b"
-#define ICON_FA_STOP "\xef\x81\x8d"
-#define ICON_FA_FLOPPY_DISK "\xef\x83\x87"
-#define ICON_FA_TRASH "\xef\x87\xb8"
-#define ICON_FA_PLUS "\xef\x81\xa7"
-#define ICON_FA_MINUS "\xef\x81\xa8"
-#define ICON_FA_EXPAND "\xef\x81\xa5"
-#define ICON_FA_COMPRESS "\xef\x81\xa6"
-#define ICON_FA_XMARK "\xef\x80\x8d"
-#define ICON_FA_EYE "\xef\x81\xae"
-#define ICON_FA_SITEMAP "\xef\x83\xa8"
-#define ICON_FA_SLIDERS "\xef\x87\x9e"
-#define ICON_FA_TERMINAL "\xef\x84\xa0"
-#define ICON_FA_CIRCLE_INFO "\xef\x81\x9a"
-#define ICON_FA_TRIANGLE_EXCLAMATION "\xef\x81\xb1"
-#define ICON_FA_ARROWS_ROTATE "\xef\x80\xa1"
-#define ICON_FA_GEAR "\xef\x80\x93"
-#define ICON_FA_UP_DOWN_LEFT_RIGHT "\xef\x82\xb2"
-#define ICON_FA_COPY "\xef\x83\x85"
-#define ICON_FA_PAINTBRUSH "\xef\x87\xbc"
+#define ICON_FA_FOLDER ICON_MDI_FOLDER
+#define ICON_FA_FOLDER_OPEN ICON_MDI_FOLDER_OPEN
+#define ICON_FA_FILE ICON_MDI_FILE
+#define ICON_FA_IMAGE ICON_MDI_IMAGE
+#define ICON_FA_CUBE ICON_MDI_CUBE_OUTLINE
+#define ICON_FA_CAMERA ICON_MDI_CAMERA
+#define ICON_FA_VOLUME_HIGH ICON_MDI_VOLUME_HIGH
+#define ICON_FA_PLAY ICON_MDI_PLAY
+#define ICON_FA_STOP ICON_MDI_STOP
+#define ICON_FA_FLOPPY_DISK ICON_MDI_CONTENT_SAVE
+#define ICON_FA_TRASH ICON_MDI_DELETE
+#define ICON_FA_PLUS ICON_MDI_PLUS
+#define ICON_FA_MINUS ICON_MDI_MINUS
+#define ICON_FA_EXPAND ICON_MDI_FULLSCREEN
+#define ICON_FA_COMPRESS ICON_MDI_FULLSCREEN_EXIT
+#define ICON_FA_XMARK ICON_MDI_CLOSE
+#define ICON_FA_EYE ICON_MDI_EYE
+#define ICON_FA_SITEMAP ICON_MDI_SITEMAP
+#define ICON_FA_SLIDERS ICON_MDI_TUNE
+#define ICON_FA_TERMINAL ICON_MDI_CONSOLE
+#define ICON_FA_CIRCLE_INFO ICON_MDI_INFORMATION
+#define ICON_FA_TRIANGLE_EXCLAMATION ICON_MDI_ALERT
+#define ICON_FA_ARROWS_ROTATE ICON_MDI_REFRESH
+#define ICON_FA_GEAR ICON_MDI_COG
+#define ICON_FA_UP_DOWN_LEFT_RIGHT ICON_MDI_CURSOR_MOVE
+#define ICON_FA_COPY ICON_MDI_CONTENT_COPY
+#define ICON_FA_PAINTBRUSH ICON_MDI_BRUSH

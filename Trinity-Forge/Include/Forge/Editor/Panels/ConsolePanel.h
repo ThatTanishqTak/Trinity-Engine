@@ -13,6 +13,7 @@ namespace Trinity
         }
 
         void OnImGuiRender() override;
+        void RenderContents();
 
     private:
         bool m_Autoscroll = true;
