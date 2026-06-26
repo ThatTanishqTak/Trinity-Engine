@@ -198,6 +198,11 @@ namespace Trinity
                 }
             }
 
+            if (ImGui::MenuItem(ICON_FA_SITEMAP "  Render Graph", nullptr, m_Context.ShowRenderGraph))
+            {
+                m_Context.ShowRenderGraph = !m_Context.ShowRenderGraph;
+            }
+
             ImGui::Separator();
             if (ImGui::MenuItem(ICON_FA_ARROWS_ROTATE "  Reset Layout"))
             {

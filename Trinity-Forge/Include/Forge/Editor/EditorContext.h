@@ -47,6 +47,7 @@ namespace Trinity
         bool ShowConsoleDrawer = false;
         bool DrawerToggled = false;
         bool PlayMode = false;
+        bool ShowRenderGraph = false;
 
         float ChromeTop = 0.0f;
         float ChromeBottom = 0.0f;

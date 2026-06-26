@@ -711,119 +711,135 @@ namespace Trinity
         uint32_t l_SwapWidth = m_Swapchain.GetWidth();
         uint32_t l_SwapHeight = m_Swapchain.GetHeight();
 
-        l_CommandList.Begin();
+        // Fresh per-frame targets start in Undefined (contents discarded).
+        m_RenderGraph.Reset();
+        m_RenderGraph.Import(m_SceneColor, ResourceState::Undefined, "SceneColor");
+        m_RenderGraph.Import(m_SceneDepth, ResourceState::Undefined, "SceneDepth");
+        m_RenderGraph.Import(l_Frame.BackBuffer, ResourceState::Undefined, "BackBuffer");
+        if (l_UseViewport)
+        {
+            m_RenderGraph.Import(m_ViewportColor, ResourceState::Undefined, "ViewportColor");
+        }
 
-        l_CommandList.TransitionTexture(m_SceneColor, ResourceState::Undefined, ResourceState::RenderTarget);
-        l_CommandList.TransitionTexture(m_SceneDepth, ResourceState::Undefined, ResourceState::DepthStencil);
+        // Scene pass: draw the lit scene into the HDR color target.
+        {
+            RenderGraphPass& l_Pass = m_RenderGraph.AddPass("Scene");
 
-        RenderingAttachment l_SceneColorAttachment;
-        l_SceneColorAttachment.Target = m_SceneColor;
-        l_SceneColorAttachment.Clear = true;
-        l_SceneColorAttachment.ClearColor[0] = 0.0f;
-        l_SceneColorAttachment.ClearColor[1] = 0.0f;
-        l_SceneColorAttachment.ClearColor[2] = 0.0f;
-        l_SceneColorAttachment.ClearColor[3] = 1.0f;
+            RenderGraphColorTarget l_Color;
+            l_Color.Target = m_SceneColor;
+            l_Color.Clear = true;
+            l_Color.ClearColor[0] = 0.0f;
+            l_Color.ClearColor[1] = 0.0f;
+            l_Color.ClearColor[2] = 0.0f;
+            l_Color.ClearColor[3] = 1.0f;
+            l_Pass.Colors.push_back(l_Color);
 
-        DepthAttachment l_SceneDepthAttachment;
-        l_SceneDepthAttachment.Target = m_SceneDepth;
-        l_SceneDepthAttachment.Clear = true;
-        l_SceneDepthAttachment.ClearDepth = 1.0f;
-
-        RenderingInfo l_SceneInfo;
-        l_SceneInfo.ColorAttachments = &l_SceneColorAttachment;
-        l_SceneInfo.ColorAttachmentCount = 1;
-        l_SceneInfo.Depth = &l_SceneDepthAttachment;
-        l_SceneInfo.Width = m_RenderWidth;
-        l_SceneInfo.Height = m_RenderHeight;
-
-        l_CommandList.BeginRendering(l_SceneInfo);
-
-        Viewport l_SceneViewport;
-        l_SceneViewport.X = 0.0f;
-        l_SceneViewport.Y = 0.0f;
-        l_SceneViewport.Width = static_cast<float>(m_RenderWidth);
-        l_SceneViewport.Height = static_cast<float>(m_RenderHeight);
-        l_SceneViewport.MinDepth = 0.0f;
-        l_SceneViewport.MaxDepth = 1.0f;
-        l_CommandList.SetViewport(l_SceneViewport);
-
-        Scissor l_SceneScissor;
-        l_SceneScissor.X = 0;
-        l_SceneScissor.Y = 0;
-        l_SceneScissor.Width = m_RenderWidth;
-        l_SceneScissor.Height = m_RenderHeight;
-        l_CommandList.SetScissor(l_SceneScissor);
-
-        DrawScene(l_CommandList, scene, assetDatabase, camera);
-
-        l_CommandList.EndRendering();
-
-        l_CommandList.TransitionTexture(m_SceneColor, ResourceState::RenderTarget, ResourceState::ShaderResource);
+            l_Pass.Depth = m_SceneDepth;
+            l_Pass.ClearDepth = true;
+            l_Pass.DepthClearValue = 1.0f;
+            l_Pass.Width = m_RenderWidth;
+            l_Pass.Height = m_RenderHeight;
+            l_Pass.ManageRendering = true;
+            l_Pass.Execute = [this, &scene, &assetDatabase, &camera](CommandList& commandList)
+                {
+                    DrawScene(commandList, scene, assetDatabase, camera);
+                };
+        }
 
         if (l_UseViewport)
         {
-            l_CommandList.TransitionTexture(m_ViewportColor, ResourceState::Undefined, ResourceState::RenderTarget);
-
-            m_PostProcess.Execute(l_CommandList, m_SceneColor, m_ViewportColor, m_RenderWidth, m_RenderHeight, m_Exposure);
-
-            l_CommandList.TransitionTexture(m_ViewportColor, ResourceState::RenderTarget, ResourceState::ShaderResource);
-            l_CommandList.TransitionTexture(l_Frame.BackBuffer, ResourceState::Undefined, ResourceState::RenderTarget);
-
-            RenderingAttachment l_BackColor;
-            l_BackColor.Target = l_Frame.BackBuffer;
-            l_BackColor.Clear = true;
-            l_BackColor.ClearColor[0] = 0.02f;
-            l_BackColor.ClearColor[1] = 0.02f;
-            l_BackColor.ClearColor[2] = 0.02f;
-            l_BackColor.ClearColor[3] = 1.0f;
-
-            RenderingInfo l_BackInfo;
-            l_BackInfo.ColorAttachments = &l_BackColor;
-            l_BackInfo.ColorAttachmentCount = 1;
-            l_BackInfo.Depth = nullptr;
-            l_BackInfo.Width = l_SwapWidth;
-            l_BackInfo.Height = l_SwapHeight;
-
-            l_CommandList.BeginRendering(l_BackInfo);
-
-            if (imgui != nullptr && imgui->IsInitialized())
+            // Post-process the HDR scene into the viewport color target.
             {
-                imgui->EndFrame(l_CommandList);
+                RenderGraphPass& l_Pass = m_RenderGraph.AddPass("PostProcess");
+                l_Pass.Reads.push_back(m_SceneColor);
+
+                RenderGraphColorTarget l_Color;
+                l_Color.Target = m_ViewportColor;
+                l_Color.Clear = false;
+                l_Pass.Colors.push_back(l_Color);
+
+                l_Pass.Width = m_RenderWidth;
+                l_Pass.Height = m_RenderHeight;
+                l_Pass.ManageRendering = false;
+                l_Pass.Execute = [this](CommandList& commandList)
+                    {
+                        m_PostProcess.Execute(commandList, m_SceneColor, m_ViewportColor, m_RenderWidth, m_RenderHeight, m_Exposure);
+                    };
             }
 
-            l_CommandList.EndRendering();
+            // Composite: clear the swapchain and draw the editor UI, which samples the viewport target.
+            {
+                RenderGraphPass& l_Pass = m_RenderGraph.AddPass("Composite");
+                l_Pass.Reads.push_back(m_ViewportColor);
 
-            l_CommandList.TransitionTexture(l_Frame.BackBuffer, ResourceState::RenderTarget, ResourceState::Present);
+                RenderGraphColorTarget l_Color;
+                l_Color.Target = l_Frame.BackBuffer;
+                l_Color.Clear = true;
+                l_Color.ClearColor[0] = 0.02f;
+                l_Color.ClearColor[1] = 0.02f;
+                l_Color.ClearColor[2] = 0.02f;
+                l_Color.ClearColor[3] = 1.0f;
+                l_Pass.Colors.push_back(l_Color);
+
+                l_Pass.Width = l_SwapWidth;
+                l_Pass.Height = l_SwapHeight;
+                l_Pass.ManageRendering = true;
+                l_Pass.Execute = [imgui](CommandList& commandList)
+                    {
+                        if (imgui != nullptr && imgui->IsInitialized())
+                        {
+                            imgui->EndFrame(commandList);
+                        }
+                    };
+            }
         }
         else
         {
-            l_CommandList.TransitionTexture(l_Frame.BackBuffer, ResourceState::Undefined, ResourceState::RenderTarget);
-
-            m_PostProcess.Execute(l_CommandList, m_SceneColor, l_Frame.BackBuffer, l_SwapWidth, l_SwapHeight, m_Exposure);
-
-            if (imgui != nullptr && imgui->IsInitialized())
+            // Post-process the HDR scene straight to the swapchain.
             {
-                l_CommandList.TransitionTexture(l_Frame.BackBuffer, ResourceState::RenderTarget, ResourceState::RenderTarget);
+                RenderGraphPass& l_Pass = m_RenderGraph.AddPass("PostProcess");
+                l_Pass.Reads.push_back(m_SceneColor);
 
-                RenderingAttachment l_ImGuiColor;
-                l_ImGuiColor.Target = l_Frame.BackBuffer;
-                l_ImGuiColor.Clear = false;
+                RenderGraphColorTarget l_Color;
+                l_Color.Target = l_Frame.BackBuffer;
+                l_Color.Clear = false;
+                l_Pass.Colors.push_back(l_Color);
 
-                RenderingInfo l_ImGuiInfo;
-                l_ImGuiInfo.ColorAttachments = &l_ImGuiColor;
-                l_ImGuiInfo.ColorAttachmentCount = 1;
-                l_ImGuiInfo.Depth = nullptr;
-                l_ImGuiInfo.Width = l_SwapWidth;
-                l_ImGuiInfo.Height = l_SwapHeight;
+                l_Pass.Width = l_SwapWidth;
+                l_Pass.Height = l_SwapHeight;
+                l_Pass.ManageRendering = false;
 
-                l_CommandList.BeginRendering(l_ImGuiInfo);
-                imgui->EndFrame(l_CommandList);
-                l_CommandList.EndRendering();
+                TextureHandle l_BackBuffer = l_Frame.BackBuffer;
+                l_Pass.Execute = [this, l_BackBuffer, l_SwapWidth, l_SwapHeight](CommandList& commandList)
+                    {
+                        m_PostProcess.Execute(commandList, m_SceneColor, l_BackBuffer, l_SwapWidth, l_SwapHeight, m_Exposure);
+                    };
             }
 
-            l_CommandList.TransitionTexture(l_Frame.BackBuffer, ResourceState::RenderTarget, ResourceState::Present);
+            // Draw the editor UI directly over the swapchain.
+            if (imgui != nullptr && imgui->IsInitialized())
+            {
+                RenderGraphPass& l_Pass = m_RenderGraph.AddPass("ImGui");
+
+                RenderGraphColorTarget l_Color;
+                l_Color.Target = l_Frame.BackBuffer;
+                l_Color.Clear = false;
+                l_Pass.Colors.push_back(l_Color);
+
+                l_Pass.Width = l_SwapWidth;
+                l_Pass.Height = l_SwapHeight;
+                l_Pass.ManageRendering = true;
+                l_Pass.Execute = [imgui](CommandList& commandList)
+                    {
+                        imgui->EndFrame(commandList);
+                    };
+            }
         }
 
+        m_RenderGraph.SetPresent(l_Frame.BackBuffer);
+
+        l_CommandList.Begin();
+        m_RenderGraph.Execute(l_CommandList);
         l_CommandList.End();
 
         m_Device.Submit(l_CommandList);

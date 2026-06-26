@@ -22,6 +22,7 @@ namespace Trinity
     class InspectorPanel;
     class ConsolePanel;
     class ContentBrowserPanel;
+    class RenderGraphPanel;
 
     class ForgeApplication : public Application
     {
@@ -53,6 +54,7 @@ namespace Trinity
         std::unique_ptr<InspectorPanel> m_InspectorPanel;
         std::unique_ptr<ConsolePanel> m_ConsolePanel;
         std::unique_ptr<ContentBrowserPanel> m_ContentBrowserPanel;
+        std::unique_ptr<RenderGraphPanel> m_RenderGraphPanel;
 
         bool m_ContentDrawerOpenPrev = false;
         bool m_ConsoleDrawerOpenPrev = false;

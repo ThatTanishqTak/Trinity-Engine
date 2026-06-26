@@ -265,6 +265,11 @@ namespace Trinity
         return m_Renderer->GetMeshLibrary();
     }
 
+    Renderer& Engine::GetRenderer()
+    {
+        return *m_Renderer;
+    }
+
     void Engine::SetViewportInteractive(bool interactive)
     {
         m_ViewportInteractive = interactive;

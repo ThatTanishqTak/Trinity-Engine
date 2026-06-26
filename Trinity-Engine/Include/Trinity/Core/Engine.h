@@ -56,6 +56,7 @@ namespace Trinity
         bool HasSwapchain() const { return m_Swapchain != nullptr; }
 
         bool HasRenderer() const { return m_Renderer != nullptr; }
+        Renderer& GetRenderer();
 
         Scene& GetScene() { return *m_Scene; }
         bool HasScene() const { return m_Scene != nullptr; }

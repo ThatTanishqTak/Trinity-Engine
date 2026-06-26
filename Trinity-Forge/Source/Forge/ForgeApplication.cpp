@@ -25,6 +25,7 @@
 #include <Forge/Editor/Panels/InspectorPanel.h>
 #include <Forge/Editor/Panels/ConsolePanel.h>
 #include <Forge/Editor/Panels/ContentBrowserPanel.h>
+#include <Forge/Editor/Panels/RenderGraphPanel.h>
 #include <Forge/Editor/Commands/EntityCommands.h>
 
 #include <memory>
@@ -53,6 +54,7 @@ namespace Trinity
         m_InspectorPanel = std::make_unique<InspectorPanel>(m_Context, GetEngine());
         m_ConsolePanel = std::make_unique<ConsolePanel>(m_Context, GetEngine());
         m_ContentBrowserPanel = std::make_unique<ContentBrowserPanel>(m_Context, GetEngine());
+        m_RenderGraphPanel = std::make_unique<RenderGraphPanel>(m_Context, GetEngine());
 
         TR_INFO("Forge initialized");
     }
@@ -78,6 +80,7 @@ namespace Trinity
         m_HierarchyPanel->OnImGuiRender();
         ProcessPendingAction();
         m_InspectorPanel->OnImGuiRender();
+        m_RenderGraphPanel->OnImGuiRender();
 
         RenderDrawer("##ForgeContentDrawer", "Content Browser", m_Context.ShowContentDrawer, m_ContentDrawerOpenPrev, [this]() { m_ContentBrowserPanel->RenderContents(); });
         RenderDrawer("##ForgeConsoleDrawer", "Console", m_Context.ShowConsoleDrawer, m_ConsoleDrawerOpenPrev, [this]() { m_ConsolePanel->RenderContents(); });

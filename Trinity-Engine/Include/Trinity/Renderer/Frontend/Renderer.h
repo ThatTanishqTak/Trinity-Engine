@@ -14,6 +14,7 @@
 #include <Trinity/Renderer/Textures/TextureManager.h>
 #include <Trinity/Renderer/Meshes/MeshLibrary.h>
 #include <Trinity/Renderer/PostProcess/PostProcessStage.h>
+#include <Trinity/Renderer/Graph/RenderGraph.h>
 
 namespace Trinity
 {
@@ -42,6 +43,7 @@ namespace Trinity
 
         void SetViewportSize(uint32_t width, uint32_t height);
         uint64_t GetViewportTextureID() const { return m_ViewportTextureID; }
+        const RenderGraph& GetRenderGraph() const { return m_RenderGraph; }
         void ApplyViewportResize();
 
     private:
@@ -69,6 +71,7 @@ namespace Trinity
         MeshLibrary m_MeshLibrary;
 
         PostProcessStage m_PostProcess;
+        RenderGraph m_RenderGraph;
 
         std::vector<BufferHandle> m_FrameUniforms;
 
