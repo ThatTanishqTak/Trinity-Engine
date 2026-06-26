@@ -2,6 +2,8 @@
 #include <Trinity/ImGui/ImGuiLayer.h>
 #include <Trinity/ImGui/IImGuiRenderBackend.h>
 
+#include <cmath>
+
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -14,14 +16,36 @@
 #include <Trinity/Scene/Scene.h>
 #include <Trinity/Scene/Components/TransformComponent.h>
 #include <Trinity/Scene/Components/MeshRendererComponent.h>
+#include <Trinity/Scene/Components/LightComponent.h>
 #include <Trinity/Assets/AssetDatabase.h>
 
 namespace Trinity
 {
+    static constexpr uint32_t k_MaxLights = 16;
+
     struct MeshPushConstants
     {
-        glm::mat4 MVP;
+        glm::mat4 Model;
         glm::vec4 BaseColorFactor;
+        glm::vec4 PbrFactors;      // x = metallic, y = roughness, z = occlusionStrength, w = normalScale
+        glm::vec4 EmissiveFactor;  // rgb = emissive color, a = emissive strength
+    };
+
+    // Matches the std140 layout of FrameData / GpuLight in Mesh.slang.
+    struct GpuLight
+    {
+        glm::vec4 PositionType;
+        glm::vec4 DirectionRange;
+        glm::vec4 ColorIntensity;
+        glm::vec4 SpotAngles;
+    };
+
+    struct FrameData
+    {
+        glm::mat4 ViewProjection;
+        glm::vec4 CameraPosition;
+        glm::vec4 AmbientAndCount;
+        GpuLight Lights[k_MaxLights];
     };
 
     static void LogShaderDiagnostics(const char* stage, const ShaderCompileResult& result)
@@ -65,6 +89,26 @@ namespace Trinity
             m_CommandLists.push_back(m_Device.CreateCommandList());
         }
 
+        m_FrameUniforms.reserve(l_FramesInFlight);
+        for (uint32_t l_Index = 0; l_Index < l_FramesInFlight; ++l_Index)
+        {
+            BufferDescription l_FrameDescription;
+            l_FrameDescription.Size = sizeof(FrameData);
+            l_FrameDescription.Usage = BufferUsage::Uniform;
+            l_FrameDescription.Memory = MemoryUsage::CpuToGpu;
+            l_FrameDescription.DebugName = "FrameUniform";
+
+            BufferHandle l_Frame = m_Device.CreateBuffer(l_FrameDescription);
+            if (!l_Frame.IsValid())
+            {
+                TR_CORE_ERROR("Renderer: frame uniform buffer creation failed");
+
+                return false;
+            }
+
+            m_FrameUniforms.push_back(l_Frame);
+        }
+
         if (!CreatePipeline())
         {
             return false;
@@ -104,6 +148,15 @@ namespace Trinity
     void Renderer::Shutdown()
     {
         m_CommandLists.clear();
+
+        for (BufferHandle& it_Frame : m_FrameUniforms)
+        {
+            if (it_Frame.IsValid())
+            {
+                m_Device.DestroyBuffer(it_Frame);
+            }
+        }
+        m_FrameUniforms.clear();
 
         m_PostProcess.Shutdown();
 
@@ -212,12 +265,38 @@ namespace Trinity
         l_PipelineDescription.ColorFormats = { Format::RGBA16_SFLOAT };
         l_PipelineDescription.PushConstantSize = static_cast<uint32_t>(sizeof(MeshPushConstants));
 
-        ResourceBinding l_TextureBinding;
-        l_TextureBinding.Set = 0;
-        l_TextureBinding.Binding = 0;
-        l_TextureBinding.Type = ResourceBindingType::CombinedImageSampler;
-        l_TextureBinding.Stages = ShaderStage::Fragment;
-        l_PipelineDescription.Bindings = { l_TextureBinding };
+        // The Vulkan backend allocates one descriptor set per bind call, so each resource lives in its own set.
+        ResourceBinding l_FrameBinding;
+        l_FrameBinding.Set = 0;
+        l_FrameBinding.Binding = 0;
+        l_FrameBinding.Type = ResourceBindingType::UniformBuffer;
+        l_FrameBinding.Stages = ShaderStage::Vertex | ShaderStage::Fragment;
+
+        ResourceBinding l_BaseColorBinding;
+        l_BaseColorBinding.Set = 1;
+        l_BaseColorBinding.Binding = 0;
+        l_BaseColorBinding.Type = ResourceBindingType::CombinedImageSampler;
+        l_BaseColorBinding.Stages = ShaderStage::Fragment;
+
+        ResourceBinding l_NormalBinding;
+        l_NormalBinding.Set = 2;
+        l_NormalBinding.Binding = 0;
+        l_NormalBinding.Type = ResourceBindingType::CombinedImageSampler;
+        l_NormalBinding.Stages = ShaderStage::Fragment;
+
+        ResourceBinding l_MetallicRoughnessBinding;
+        l_MetallicRoughnessBinding.Set = 3;
+        l_MetallicRoughnessBinding.Binding = 0;
+        l_MetallicRoughnessBinding.Type = ResourceBindingType::CombinedImageSampler;
+        l_MetallicRoughnessBinding.Stages = ShaderStage::Fragment;
+
+        ResourceBinding l_EmissiveBinding;
+        l_EmissiveBinding.Set = 4;
+        l_EmissiveBinding.Binding = 0;
+        l_EmissiveBinding.Type = ResourceBindingType::CombinedImageSampler;
+        l_EmissiveBinding.Stages = ShaderStage::Fragment;
+
+        l_PipelineDescription.Bindings = { l_FrameBinding, l_BaseColorBinding, l_NormalBinding, l_MetallicRoughnessBinding, l_EmissiveBinding };
         l_PipelineDescription.DebugName = "Mesh";
 
         pipeline = m_Device.CreatePipeline(l_PipelineDescription);
@@ -439,9 +518,56 @@ namespace Trinity
 
     void Renderer::DrawScene(CommandList& commandList, Scene& scene, AssetDatabase& assetDatabase, const Camera& camera)
     {
-        commandList.BindPipeline(m_Pipeline);
+        FrameData l_FrameData{};
+        l_FrameData.ViewProjection = camera.GetViewProjection();
+        l_FrameData.CameraPosition = glm::vec4(camera.GetPosition(), 1.0f);
+        l_FrameData.AmbientAndCount = glm::vec4(0.03f, 0.03f, 0.03f, 0.0f);
 
-        glm::mat4 l_ViewProjection = camera.GetViewProjection();
+        uint32_t l_LightCount = 0;
+        auto l_LightView = scene.GetRegistry().view<TransformComponent, LightComponent>();
+        for (entt::entity l_Entity : l_LightView)
+        {
+            if (l_LightCount >= k_MaxLights)
+            {
+                break;
+            }
+
+            const LightComponent& l_Light = l_LightView.get<LightComponent>(l_Entity);
+
+            glm::mat4 l_World = scene.GetWorldMatrix(l_Entity);
+            glm::vec3 l_Position = glm::vec3(l_World[3]);
+            glm::vec3 l_Direction = glm::normalize(glm::mat3(l_World) * glm::vec3(0.0f, 0.0f, -1.0f));
+
+            GpuLight& l_GpuLight = l_FrameData.Lights[l_LightCount];
+            l_GpuLight.PositionType = glm::vec4(l_Position, static_cast<float>(l_Light.Type));
+            l_GpuLight.DirectionRange = glm::vec4(l_Direction, l_Light.Range);
+            l_GpuLight.ColorIntensity = glm::vec4(l_Light.Color, l_Light.Intensity);
+            l_GpuLight.SpotAngles = glm::vec4(std::cos(l_Light.InnerConeAngle), std::cos(l_Light.OuterConeAngle), 0.0f, 0.0f);
+
+            ++l_LightCount;
+        }
+
+        // Fall back to a default directional light so scenes authored before lights existed remain visible.
+        if (l_LightCount == 0)
+        {
+            GpuLight& l_GpuLight = l_FrameData.Lights[0];
+            l_GpuLight.PositionType = glm::vec4(0.0f, 0.0f, 0.0f, static_cast<float>(LightType::Directional));
+            l_GpuLight.DirectionRange = glm::vec4(glm::normalize(glm::vec3(-0.5f, -1.0f, -0.3f)), 0.0f);
+            l_GpuLight.ColorIntensity = glm::vec4(1.0f, 1.0f, 1.0f, 3.0f);
+            l_GpuLight.SpotAngles = glm::vec4(0.0f);
+
+            l_LightCount = 1;
+        }
+
+        l_FrameData.AmbientAndCount.a = static_cast<float>(l_LightCount);
+
+        BufferHandle l_FrameUniform = m_FrameUniforms[m_FrameIndex];
+        m_Device.UpdateBuffer(l_FrameUniform, &l_FrameData, sizeof(FrameData), 0);
+
+        commandList.BindPipeline(m_Pipeline);
+        commandList.BindUniformBuffer(0, 0, l_FrameUniform, 0, sizeof(FrameData));
+
+        SamplerHandle l_Sampler = m_TextureManager.DefaultSampler();
 
         auto l_View = scene.GetRegistry().view<TransformComponent, MeshRendererComponent>();
         for (entt::entity l_Entity : l_View)
@@ -455,7 +581,7 @@ namespace Trinity
             Mesh& l_Mesh = *l_MeshRenderer.MeshReference;
             const std::vector<MaterialSlot>& l_Slots = l_Mesh.GetMaterialSlots();
 
-            glm::mat4 l_ModelViewProjection = l_ViewProjection * scene.GetWorldMatrix(l_Entity);
+            glm::mat4 l_Model = scene.GetWorldMatrix(l_Entity);
 
             commandList.BindVertexBuffer(l_Mesh.GetVertexBuffer(), 0);
             commandList.BindIndexBuffer(l_Mesh.GetIndexBuffer(), 0);
@@ -463,23 +589,76 @@ namespace Trinity
             for (const Submesh& l_Submesh : l_Mesh.GetSubmeshes())
             {
                 MeshPushConstants l_PushConstants;
-                l_PushConstants.MVP = l_ModelViewProjection;
+                l_PushConstants.Model = l_Model;
                 l_PushConstants.BaseColorFactor = glm::vec4(1.0f);
+                l_PushConstants.PbrFactors = glm::vec4(0.0f, 0.5f, 1.0f, 1.0f);
+                l_PushConstants.EmissiveFactor = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 
                 TextureHandle l_BaseColor = m_TextureManager.White();
+                TextureHandle l_Normal = m_TextureManager.Normal();
+                TextureHandle l_MetallicRoughness = m_TextureManager.White();
+                TextureHandle l_Emissive = m_TextureManager.White();
 
                 UUID l_MaterialAsset = l_Submesh.MaterialIndex < l_MeshRenderer.Materials.size() ? l_MeshRenderer.Materials[l_Submesh.MaterialIndex] : UUID(0);
                 if (static_cast<uint64_t>(l_MaterialAsset) != 0)
                 {
                     std::shared_ptr<Material> l_Material = assetDatabase.ResolveMaterial(l_MaterialAsset);
-                    if (const MaterialParameter* l_Factor = l_Material->FindParameter(Material::BaseColorFactor))
+                    if (l_Material)
                     {
-                        l_PushConstants.BaseColorFactor = l_Factor->AsVec4();
-                    }
+                        if (const MaterialParameter* l_Factor = l_Material->FindParameter(Material::BaseColorFactor))
+                        {
+                            l_PushConstants.BaseColorFactor = l_Factor->AsVec4();
+                        }
 
-                    if (const MaterialParameter* l_Texture = l_Material->FindParameter(Material::BaseColorTexture))
-                    {
-                        l_BaseColor = assetDatabase.ResolveTexture(l_Texture->AsTexture());
+                        if (const MaterialParameter* l_Metallic = l_Material->FindParameter(Material::MetallicFactor))
+                        {
+                            l_PushConstants.PbrFactors.x = l_Metallic->AsFloat();
+                        }
+
+                        if (const MaterialParameter* l_Roughness = l_Material->FindParameter(Material::RoughnessFactor))
+                        {
+                            l_PushConstants.PbrFactors.y = l_Roughness->AsFloat();
+                        }
+
+                        if (const MaterialParameter* l_Occlusion = l_Material->FindParameter(Material::OcclusionStrength))
+                        {
+                            l_PushConstants.PbrFactors.z = l_Occlusion->AsFloat();
+                        }
+
+                        if (const MaterialParameter* l_NormalScale = l_Material->FindParameter(Material::NormalScale))
+                        {
+                            l_PushConstants.PbrFactors.w = l_NormalScale->AsFloat();
+                        }
+
+                        if (const MaterialParameter* l_Emissive = l_Material->FindParameter(Material::EmissiveFactor))
+                        {
+                            l_PushConstants.EmissiveFactor = glm::vec4(l_Emissive->AsVec3(), l_PushConstants.EmissiveFactor.a);
+                        }
+
+                        if (const MaterialParameter* l_EmissiveStrength = l_Material->FindParameter(Material::EmissiveStrength))
+                        {
+                            l_PushConstants.EmissiveFactor.a = l_EmissiveStrength->AsFloat();
+                        }
+
+                        if (const MaterialParameter* l_Texture = l_Material->FindParameter(Material::BaseColorTexture); l_Texture != nullptr && static_cast<uint64_t>(l_Texture->AsTexture()) != 0)
+                        {
+                            l_BaseColor = assetDatabase.ResolveTexture(l_Texture->AsTexture());
+                        }
+
+                        if (const MaterialParameter* l_Texture = l_Material->FindParameter(Material::NormalTexture); l_Texture != nullptr && static_cast<uint64_t>(l_Texture->AsTexture()) != 0)
+                        {
+                            l_Normal = assetDatabase.ResolveTexture(l_Texture->AsTexture());
+                        }
+
+                        if (const MaterialParameter* l_Texture = l_Material->FindParameter(Material::MetallicRoughnessTexture); l_Texture != nullptr && static_cast<uint64_t>(l_Texture->AsTexture()) != 0)
+                        {
+                            l_MetallicRoughness = assetDatabase.ResolveTexture(l_Texture->AsTexture());
+                        }
+
+                        if (const MaterialParameter* l_Texture = l_Material->FindParameter(Material::EmissiveTexture); l_Texture != nullptr && static_cast<uint64_t>(l_Texture->AsTexture()) != 0)
+                        {
+                            l_Emissive = assetDatabase.ResolveTexture(l_Texture->AsTexture());
+                        }
                     }
                 }
                 else if (l_Submesh.MaterialIndex < l_Slots.size())
@@ -487,7 +666,10 @@ namespace Trinity
                     l_PushConstants.BaseColorFactor = l_Slots[l_Submesh.MaterialIndex].BaseColorFactor;
                 }
 
-                commandList.BindTexture(0, 0, l_BaseColor, m_TextureManager.DefaultSampler());
+                commandList.BindTexture(1, 0, l_BaseColor, l_Sampler);
+                commandList.BindTexture(2, 0, l_Normal, l_Sampler);
+                commandList.BindTexture(3, 0, l_MetallicRoughness, l_Sampler);
+                commandList.BindTexture(4, 0, l_Emissive, l_Sampler);
                 commandList.PushConstants(ShaderStage::Vertex | ShaderStage::Fragment, 0, static_cast<uint32_t>(sizeof(l_PushConstants)), &l_PushConstants);
 
                 commandList.DrawIndexed(l_Submesh.IndexCount, 1, l_Submesh.FirstIndex, static_cast<int32_t>(l_Submesh.BaseVertex), 0);

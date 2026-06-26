@@ -96,7 +96,7 @@ namespace Trinity
         EventDispatcher l_Dispatcher(event);
         l_Dispatcher.Dispatch<KeyPressedEvent>([](KeyPressedEvent& key)
         {
-            TR_INFO("Key pressed: {}", key.GetKeyCode());
+            //TR_INFO("Key pressed: {}", key.GetKeyCode());
             return false;
         });
     }

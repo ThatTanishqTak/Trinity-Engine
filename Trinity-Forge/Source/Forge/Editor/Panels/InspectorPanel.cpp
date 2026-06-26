@@ -25,6 +25,7 @@
 #include <Trinity/Scene/Components/NameComponent.h>
 #include <Trinity/Scene/Components/MeshRendererComponent.h>
 #include <Trinity/Scene/Components/CameraComponent.h>
+#include <Trinity/Scene/Components/LightComponent.h>
 #include <Trinity/Scene/Components/AudioSourceComponent.h>
 #include <Trinity/Scene/Components/AudioListenerComponent.h>
 #include <Trinity/Renderer/Meshes/Mesh.h>
@@ -36,6 +37,43 @@
 
 namespace Trinity
 {
+    static void DrawMaterialTextureParameter(AssetDatabase& assetDatabase, Material& material, const char* label, const char* parameterName)
+    {
+        UUID l_Texture = UUID(0);
+        if (const MaterialParameter* l_TextureParameter = material.FindParameter(parameterName))
+        {
+            l_Texture = l_TextureParameter->AsTexture();
+        }
+
+        const AssetMetadata* l_TextureMeta = static_cast<uint64_t>(l_Texture) != 0 ? assetDatabase.GetMetadata(l_Texture) : nullptr;
+        std::string l_TextureLabel = l_TextureMeta != nullptr ? l_TextureMeta->SourcePath : "(none)";
+
+        if (ImGui::BeginCombo(label, l_TextureLabel.c_str()))
+        {
+            if (ImGui::Selectable("(none)", static_cast<uint64_t>(l_Texture) == 0))
+            {
+                material.SetParameter(parameterName, MaterialParameter::MakeTexture(UUID(0)));
+            }
+
+            for (UUID it_Texture : assetDatabase.GetAssetsOfType(AssetType::Texture))
+            {
+                const AssetMetadata* l_Meta = assetDatabase.GetMetadata(it_Texture);
+                if (l_Meta == nullptr)
+                {
+                    continue;
+                }
+
+                bool l_Selected = static_cast<uint64_t>(it_Texture) == static_cast<uint64_t>(l_Texture);
+                if (ImGui::Selectable(l_Meta->SourcePath.c_str(), l_Selected) && !l_Selected)
+                {
+                    material.SetParameter(parameterName, MaterialParameter::MakeTexture(it_Texture));
+                }
+            }
+
+            ImGui::EndCombo();
+        }
+    }
+
     static void DrawMaterialEditor(Engine& engine, AssetDatabase& assetDatabase, UUID material)
     {
         const AssetMetadata* l_Metadata = assetDatabase.GetMetadata(material);
@@ -90,6 +128,66 @@ namespace Trinity
 
             ImGui::EndCombo();
         }
+
+        float l_Metallic = 0.0f;
+        if (const MaterialParameter* l_Parameter = l_Material->FindParameter(Material::MetallicFactor))
+        {
+            l_Metallic = l_Parameter->AsFloat();
+        }
+
+        if (ImGui::SliderFloat("Metallic", &l_Metallic, 0.0f, 1.0f))
+        {
+            l_Material->SetParameter(Material::MetallicFactor, MaterialParameter::MakeFloat(l_Metallic));
+        }
+
+        float l_Roughness = 0.5f;
+        if (const MaterialParameter* l_Parameter = l_Material->FindParameter(Material::RoughnessFactor))
+        {
+            l_Roughness = l_Parameter->AsFloat();
+        }
+
+        if (ImGui::SliderFloat("Roughness", &l_Roughness, 0.0f, 1.0f))
+        {
+            l_Material->SetParameter(Material::RoughnessFactor, MaterialParameter::MakeFloat(l_Roughness));
+        }
+
+        DrawMaterialTextureParameter(assetDatabase, *l_Material, "Metallic Roughness Texture", Material::MetallicRoughnessTexture);
+        DrawMaterialTextureParameter(assetDatabase, *l_Material, "Normal Texture", Material::NormalTexture);
+
+        float l_NormalScale = 1.0f;
+        if (const MaterialParameter* l_Parameter = l_Material->FindParameter(Material::NormalScale))
+        {
+            l_NormalScale = l_Parameter->AsFloat();
+        }
+
+        if (ImGui::DragFloat("Normal Scale", &l_NormalScale, 0.01f, 0.0f, 4.0f))
+        {
+            l_Material->SetParameter(Material::NormalScale, MaterialParameter::MakeFloat(l_NormalScale));
+        }
+
+        glm::vec3 l_Emissive = glm::vec3(0.0f);
+        if (const MaterialParameter* l_Parameter = l_Material->FindParameter(Material::EmissiveFactor))
+        {
+            l_Emissive = l_Parameter->AsVec3();
+        }
+
+        if (ImGui::ColorEdit3("Emissive", &l_Emissive.x))
+        {
+            l_Material->SetParameter(Material::EmissiveFactor, MaterialParameter::MakeVec3(l_Emissive));
+        }
+
+        float l_EmissiveStrength = 1.0f;
+        if (const MaterialParameter* l_Parameter = l_Material->FindParameter(Material::EmissiveStrength))
+        {
+            l_EmissiveStrength = l_Parameter->AsFloat();
+        }
+
+        if (ImGui::DragFloat("Emissive Strength", &l_EmissiveStrength, 0.05f, 0.0f, 100.0f))
+        {
+            l_Material->SetParameter(Material::EmissiveStrength, MaterialParameter::MakeFloat(l_EmissiveStrength));
+        }
+
+        DrawMaterialTextureParameter(assetDatabase, *l_Material, "Emissive Texture", Material::EmissiveTexture);
 
         if (ImGui::SmallButton("Save##Material"))
         {
@@ -326,6 +424,43 @@ namespace Trinity
                     }
                 }
 
+                if (l_Entity.HasComponent<LightComponent>())
+                {
+                    ImGui::SeparatorText(ICON_FA_LIGHTBULB "  Light");
+                    LightComponent& l_Light = l_Entity.GetComponent<LightComponent>();
+
+                    const char* l_TypeNames[] = { "Directional", "Point", "Spot" };
+                    int l_TypeIndex = static_cast<int>(l_Light.Type);
+                    if (ImGui::Combo("Type", &l_TypeIndex, l_TypeNames, IM_ARRAYSIZE(l_TypeNames)))
+                    {
+                        l_Light.Type = static_cast<LightType>(l_TypeIndex);
+                    }
+
+                    ImGui::ColorEdit3("Color", &l_Light.Color.x);
+                    ImGui::DragFloat("Intensity", &l_Light.Intensity, 0.05f, 0.0f, 100.0f);
+
+                    if (l_Light.Type != LightType::Directional)
+                    {
+                        ImGui::DragFloat("Range", &l_Light.Range, 0.1f, 0.0f, 1000.0f);
+                    }
+
+                    if (l_Light.Type == LightType::Spot)
+                    {
+                        ImGui::SliderAngle("Inner Cone", &l_Light.InnerConeAngle, 0.0f, 89.0f);
+                        ImGui::SliderAngle("Outer Cone", &l_Light.OuterConeAngle, 0.0f, 90.0f);
+                    }
+
+                    if (ImGui::SmallButton("Remove##Light"))
+                    {
+                        uint64_t l_TargetUUID = static_cast<uint64_t>(l_Entity.GetUUID());
+                        m_Context.ComponentOp = [this, l_TargetUUID]()
+                            {
+                                Scene& l_OpScene = m_Engine.GetScene();
+                                m_Context.History.Execute(std::make_unique<RemoveComponentCommand<LightComponent>>(l_OpScene, l_TargetUUID, "Light"));
+                            };
+                    }
+                }
+
                 if (l_Entity.HasComponent<AudioSourceComponent>())
                 {
                     ImGui::SeparatorText(ICON_FA_VOLUME_HIGH "  Audio Source");
@@ -441,6 +576,15 @@ namespace Trinity
                             Scene& l_OpScene = m_Engine.GetScene();
                             m_Context.History.Execute(std::make_unique<AddComponentCommand<CameraComponent>>(l_OpScene, l_TargetUUID, "Camera"));
                         };
+                    }
+
+                    if (!l_Entity.HasComponent<LightComponent>() && ImGui::MenuItem(ICON_FA_LIGHTBULB "  Light"))
+                    {
+                        m_Context.ComponentOp = [this, l_TargetUUID]()
+                            {
+                                Scene& l_OpScene = m_Engine.GetScene();
+                                m_Context.History.Execute(std::make_unique<AddComponentCommand<LightComponent>>(l_OpScene, l_TargetUUID, "Light"));
+                            };
                     }
 
                     if (!l_Entity.HasComponent<AudioSourceComponent>() && ImGui::MenuItem(ICON_FA_VOLUME_HIGH "  Audio Source"))

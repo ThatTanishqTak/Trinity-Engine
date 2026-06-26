@@ -16,6 +16,7 @@
 #include <Trinity/Scene/Components/HierarchyComponent.h>
 #include <Trinity/Scene/Components/MeshRendererComponent.h>
 #include <Trinity/Scene/Components/CameraComponent.h>
+#include <Trinity/Scene/Components/LightComponent.h>
 #include <Trinity/Scene/Components/AudioSourceComponent.h>
 #include <Trinity/Scene/Components/AudioListenerComponent.h>
 #include <Trinity/Assets/AssetDatabase.h>
@@ -70,6 +71,18 @@ namespace Trinity
         {
             out << YAML::Key << "Camera" << YAML::Value << YAML::BeginMap;
             out << YAML::Key << "Primary" << YAML::Value << l_Camera->Primary;
+            out << YAML::EndMap;
+        }
+
+        if (const LightComponent* l_Light = l_Registry.try_get<LightComponent>(handle))
+        {
+            out << YAML::Key << "Light" << YAML::Value << YAML::BeginMap;
+            out << YAML::Key << "Type" << YAML::Value << LightTypeToString(l_Light->Type);
+            out << YAML::Key << "Color" << YAML::Value << l_Light->Color;
+            out << YAML::Key << "Intensity" << YAML::Value << l_Light->Intensity;
+            out << YAML::Key << "Range" << YAML::Value << l_Light->Range;
+            out << YAML::Key << "InnerConeAngle" << YAML::Value << l_Light->InnerConeAngle;
+            out << YAML::Key << "OuterConeAngle" << YAML::Value << l_Light->OuterConeAngle;
             out << YAML::EndMap;
         }
 
@@ -130,6 +143,42 @@ namespace Trinity
             CameraComponent l_Component;
             l_Component.Primary = l_CameraNode["Primary"] ? l_CameraNode["Primary"].as<bool>() : true;
             entity.AddComponent<CameraComponent>(l_Component);
+        }
+
+        if (YAML::Node l_LightNode = node["Light"])
+        {
+            LightComponent l_Component;
+            if (l_LightNode["Type"])
+            {
+                l_Component.Type = LightTypeFromString(l_LightNode["Type"].as<std::string>());
+            }
+
+            if (l_LightNode["Color"])
+            {
+                l_Component.Color = l_LightNode["Color"].as<glm::vec3>();
+            }
+
+            if (l_LightNode["Intensity"])
+            {
+                l_Component.Intensity = l_LightNode["Intensity"].as<float>();
+            }
+
+            if (l_LightNode["Range"])
+            {
+                l_Component.Range = l_LightNode["Range"].as<float>();
+            }
+
+            if (l_LightNode["InnerConeAngle"])
+            {
+                l_Component.InnerConeAngle = l_LightNode["InnerConeAngle"].as<float>();
+            }
+
+            if (l_LightNode["OuterConeAngle"])
+            {
+                l_Component.OuterConeAngle = l_LightNode["OuterConeAngle"].as<float>();
+            }
+
+            entity.AddComponent<LightComponent>(l_Component);
         }
 
         if (YAML::Node l_AudioSourceNode = node["AudioSource"])

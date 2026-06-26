@@ -15,6 +15,7 @@
 #include <Trinity/Scene/Components/NameComponent.h>
 #include <Trinity/Scene/Components/HierarchyComponent.h>
 #include <Trinity/Scene/Components/CameraComponent.h>
+#include <Trinity/Scene/Components/LightComponent.h>
 #include <Trinity/Scene/Components/MeshRendererComponent.h>
 #include <Trinity/Scene/Components/AudioSourceComponent.h>
 #include <Trinity/Scene/Components/AudioListenerComponent.h>
@@ -39,6 +40,11 @@ namespace Trinity
             return ICON_FA_CAMERA;
         }
 
+        if (registry.all_of<LightComponent>(entity))
+        {
+            return ICON_FA_LIGHTBULB;
+        }
+
         if (registry.all_of<AudioSourceComponent>(entity) || registry.all_of<AudioListenerComponent>(entity))
         {
             return ICON_FA_VOLUME_HIGH;
@@ -57,6 +63,11 @@ namespace Trinity
         if (registry.all_of<CameraComponent>(entity))
         {
             return "Camera";
+        }
+
+        if (registry.all_of<LightComponent>(entity))
+        {
+            return "Light";
         }
 
         if (registry.all_of<AudioSourceComponent>(entity))

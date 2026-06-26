@@ -70,6 +70,8 @@ namespace Trinity
 
         PostProcessStage m_PostProcess;
 
+        std::vector<BufferHandle> m_FrameUniforms;
+
         TextureHandle m_SceneColor;
         TextureHandle m_SceneDepth;
 
