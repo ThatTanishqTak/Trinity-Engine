@@ -135,6 +135,11 @@ namespace Trinity
             return false;
         }
 
+        if (!m_DepthVisualizeStage.Initialize(m_Device, m_ShaderCompiler, l_ShaderDirectory, Format::RGBA8_UNORM))
+        {
+            return false;
+        }
+
         m_Timer.Reset();
 
         m_ShaderSourcePath = m_FileSystem.Resolve(BaseDirectory::Executable, "Shaders/Mesh.slang");
@@ -159,6 +164,7 @@ namespace Trinity
         m_FrameUniforms.clear();
 
         m_PostProcess.Shutdown();
+        m_DepthVisualizeStage.Shutdown();
 
         if (m_Pipeline.IsValid())
         {
@@ -401,7 +407,7 @@ namespace Trinity
         TextureDescription l_DepthDescription;
         l_DepthDescription.Type = TextureType::Texture2D;
         l_DepthDescription.Format = Format::D32_SFLOAT;
-        l_DepthDescription.Usage = TextureUsage::DepthStencil;
+        l_DepthDescription.Usage = TextureUsage::DepthStencil | TextureUsage::Sampled;
         l_DepthDescription.Width = width;
         l_DepthDescription.Height = height;
         l_DepthDescription.Depth = 1;
@@ -414,6 +420,26 @@ namespace Trinity
         if (!m_SceneDepth.IsValid())
         {
             TR_CORE_ERROR("Renderer: scene depth target creation failed");
+
+            return false;
+        }
+
+        TextureDescription l_DepthVisDescription;
+        l_DepthVisDescription.Type = TextureType::Texture2D;
+        l_DepthVisDescription.Format = Format::RGBA8_UNORM;
+        l_DepthVisDescription.Usage = TextureUsage::Sampled | TextureUsage::RenderTarget;
+        l_DepthVisDescription.Width = width;
+        l_DepthVisDescription.Height = height;
+        l_DepthVisDescription.Depth = 1;
+        l_DepthVisDescription.MipLevels = 1;
+        l_DepthVisDescription.ArrayLayers = 1;
+        l_DepthVisDescription.SampleCount = 1;
+        l_DepthVisDescription.DebugName = "DepthVis";
+
+        m_DepthVis = m_Device.CreateTexture(l_DepthVisDescription);
+        if (!m_DepthVis.IsValid())
+        {
+            TR_CORE_ERROR("Renderer: depth visualization target creation failed");
 
             return false;
         }
@@ -436,6 +462,12 @@ namespace Trinity
         {
             m_Device.DestroyTexture(m_SceneDepth);
             m_SceneDepth = TextureHandle{};
+        }
+
+        if (m_DepthVis.IsValid())
+        {
+            m_Device.DestroyTexture(m_DepthVis);
+            m_DepthVis = TextureHandle{};
         }
 
         m_RenderWidth = 0;
@@ -514,6 +546,28 @@ namespace Trinity
             m_Device.DestroyTexture(m_ViewportColor);
             m_ViewportColor = TextureHandle{};
         }
+    }
+
+    std::vector<DebugRenderTarget> Renderer::GetDebugRenderTargets() const
+    {
+        std::vector<DebugRenderTarget> l_Targets;
+
+        if (m_SceneColor.IsValid())
+        {
+            l_Targets.push_back({ "SceneColor", m_SceneColor, m_RenderWidth, m_RenderHeight });
+        }
+
+        if (m_ViewportColor.IsValid())
+        {
+            l_Targets.push_back({ "ViewportColor", m_ViewportColor, m_RenderWidth, m_RenderHeight });
+        }
+
+        if (m_DepthVisualize && m_DepthVis.IsValid())
+        {
+            l_Targets.push_back({ "DepthVis", m_DepthVis, m_RenderWidth, m_RenderHeight });
+        }
+
+        return l_Targets;
     }
 
     void Renderer::DrawScene(CommandList& commandList, Scene& scene, AssetDatabase& assetDatabase, const Camera& camera)
@@ -746,6 +800,31 @@ namespace Trinity
                 };
         }
 
+        // Optional depth linearization pass for the editor's render-target viewer.
+        if (m_DepthVisualize && m_DepthVis.IsValid())
+        {
+            m_RenderGraph.Import(m_DepthVis, ResourceState::Undefined, "DepthVis");
+
+            RenderGraphPass& l_Pass = m_RenderGraph.AddPass("DepthVisualize");
+            l_Pass.Reads.push_back(m_SceneDepth);
+
+            RenderGraphColorTarget l_Color;
+            l_Color.Target = m_DepthVis;
+            l_Color.Clear = false;
+            l_Pass.Colors.push_back(l_Color);
+
+            l_Pass.Width = m_RenderWidth;
+            l_Pass.Height = m_RenderHeight;
+            l_Pass.ManageRendering = false;
+
+            float l_Near = camera.GetNear();
+            float l_Far = camera.GetFar();
+            l_Pass.Execute = [this, l_Near, l_Far](CommandList& commandList)
+                {
+                    m_DepthVisualizeStage.Execute(commandList, m_SceneDepth, m_DepthVis, m_RenderWidth, m_RenderHeight, l_Near, l_Far);
+                };
+        }
+
         if (l_UseViewport)
         {
             // Post-process the HDR scene into the viewport color target.
@@ -771,6 +850,10 @@ namespace Trinity
             {
                 RenderGraphPass& l_Pass = m_RenderGraph.AddPass("Composite");
                 l_Pass.Reads.push_back(m_ViewportColor);
+                if (m_DepthVisualize && m_DepthVis.IsValid())
+                {
+                    l_Pass.Reads.push_back(m_DepthVis);
+                }
 
                 RenderGraphColorTarget l_Color;
                 l_Color.Target = l_Frame.BackBuffer;
@@ -820,6 +903,10 @@ namespace Trinity
             if (imgui != nullptr && imgui->IsInitialized())
             {
                 RenderGraphPass& l_Pass = m_RenderGraph.AddPass("ImGui");
+                if (m_DepthVisualize && m_DepthVis.IsValid())
+                {
+                    l_Pass.Reads.push_back(m_DepthVis);
+                }
 
                 RenderGraphColorTarget l_Color;
                 l_Color.Target = l_Frame.BackBuffer;

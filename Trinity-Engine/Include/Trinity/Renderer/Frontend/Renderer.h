@@ -14,6 +14,7 @@
 #include <Trinity/Renderer/Textures/TextureManager.h>
 #include <Trinity/Renderer/Meshes/MeshLibrary.h>
 #include <Trinity/Renderer/PostProcess/PostProcessStage.h>
+#include <Trinity/Renderer/PostProcess/DepthVisualizeStage.h>
 #include <Trinity/Renderer/Graph/RenderGraph.h>
 
 namespace Trinity
@@ -22,6 +23,14 @@ namespace Trinity
     class Scene;
     class ImGuiLayer;
     class AssetDatabase;
+
+    struct DebugRenderTarget
+    {
+        const char* Name;
+        TextureHandle Texture;
+        uint32_t Width;
+        uint32_t Height;
+    };
 
     class Renderer
     {
@@ -43,8 +52,12 @@ namespace Trinity
 
         void SetViewportSize(uint32_t width, uint32_t height);
         uint64_t GetViewportTextureID() const { return m_ViewportTextureID; }
+        void SetDepthVisualizationEnabled(bool enabled) { m_DepthVisualize = enabled; }
         const RenderGraph& GetRenderGraph() const { return m_RenderGraph; }
         void ApplyViewportResize();
+
+        // Color render targets exposed for the editor's render-target viewer.
+        std::vector<DebugRenderTarget> GetDebugRenderTargets() const;
 
     private:
         bool CreatePipeline();
@@ -71,12 +84,15 @@ namespace Trinity
         MeshLibrary m_MeshLibrary;
 
         PostProcessStage m_PostProcess;
+        DepthVisualizeStage m_DepthVisualizeStage;
         RenderGraph m_RenderGraph;
 
         std::vector<BufferHandle> m_FrameUniforms;
 
         TextureHandle m_SceneColor;
         TextureHandle m_SceneDepth;
+        TextureHandle m_DepthVis;
+        bool m_DepthVisualize = false;
 
         uint32_t m_RenderWidth = 0;
         uint32_t m_RenderHeight = 0;
