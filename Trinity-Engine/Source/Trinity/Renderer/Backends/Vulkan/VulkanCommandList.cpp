@@ -121,9 +121,15 @@ namespace Trinity
                 continue;
             }
 
+            VkImageView l_AttachmentView = l_Texture->View;
+            if (l_Attachment.MipLevel != 0 || l_Attachment.ArrayLayer != 0)
+            {
+                l_AttachmentView = m_Device.GetRenderTargetView(l_Attachment.Target, l_Attachment.MipLevel, l_Attachment.ArrayLayer);
+            }
+
             VkRenderingAttachmentInfo l_RenderingAttachmentInfo{};
             l_RenderingAttachmentInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-            l_RenderingAttachmentInfo.imageView = l_Texture->View;
+            l_RenderingAttachmentInfo.imageView = l_AttachmentView;
             l_RenderingAttachmentInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             l_RenderingAttachmentInfo.loadOp = l_Attachment.Clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
             l_RenderingAttachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;

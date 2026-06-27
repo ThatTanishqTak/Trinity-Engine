@@ -31,6 +31,13 @@ namespace Trinity
         std::string DebugName;
     };
 
+    struct VulkanSubresourceView
+    {
+        uint32_t Mip = 0;
+        uint32_t Layer = 0;
+        VkImageView View = VK_NULL_HANDLE;
+    };
+
     struct VulkanTextureResource
     {
         VkImage Image = VK_NULL_HANDLE;
@@ -42,6 +49,7 @@ namespace Trinity
         bool OwnsImage = true;
         bool OwnsView = true;
         ResourceState CurrentState = ResourceState::Undefined;
+        std::vector<VulkanSubresourceView> SubViews;
         std::string DebugName;
     };
 
@@ -90,6 +98,7 @@ namespace Trinity
         VkPipeline Pipeline = VK_NULL_HANDLE;
         VkPipelineLayout Layout = VK_NULL_HANDLE;
         std::vector<VkDescriptorSetLayout> SetLayouts;
+        std::vector<VkImageView> ExtraViews;
 
         bool OwnsImage = true;
         bool OwnsView = true;
@@ -229,6 +238,7 @@ namespace Trinity
 
         VulkanBufferResource* GetBuffer(BufferHandle handle) { return m_Buffers.Get(handle); }
         VulkanTextureResource* GetTexture(TextureHandle handle) { return m_Textures.Get(handle); }
+        VkImageView GetRenderTargetView(TextureHandle handle, uint32_t mip, uint32_t layer);
         VulkanSamplerResource* GetSampler(SamplerHandle handle) { return m_Samplers.Get(handle); }
         VulkanPipelineResource* GetPipeline(PipelineHandle handle) { return m_Pipelines.Get(handle); }
 

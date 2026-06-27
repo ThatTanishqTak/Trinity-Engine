@@ -12,6 +12,7 @@
 
 #include <Trinity/Renderer/Meshes/Mesh.h>
 #include <Trinity/Renderer/Materials/Material.h>
+#include <Trinity/Renderer/Textures/Image.h>
 #include <Trinity/Renderer/Materials/MaterialParameter.h>
 #include <Trinity/Scene/Scene.h>
 #include <Trinity/Scene/Components/TransformComponent.h>
@@ -140,6 +141,13 @@ namespace Trinity
             return false;
         }
 
+        if (!m_SkyboxStage.Initialize(m_Device, m_ShaderCompiler, l_ShaderDirectory, Format::RGBA16_SFLOAT, Format::D32_SFLOAT))
+        {
+            return false;
+        }
+
+        LoadEnvironmentMap();
+
         m_Timer.Reset();
 
         m_ShaderSourcePath = m_FileSystem.Resolve(BaseDirectory::Executable, "Shaders/Mesh.slang");
@@ -165,6 +173,13 @@ namespace Trinity
 
         m_PostProcess.Shutdown();
         m_DepthVisualizeStage.Shutdown();
+        m_SkyboxStage.Shutdown();
+
+        if (m_EnvironmentMap.IsValid())
+        {
+            m_Device.DestroyTexture(m_EnvironmentMap);
+            m_EnvironmentMap = TextureHandle{};
+        }
 
         if (m_Pipeline.IsValid())
         {
@@ -548,6 +563,45 @@ namespace Trinity
         }
     }
 
+    void Renderer::LoadEnvironmentMap()
+    {
+        std::filesystem::path l_Path = m_FileSystem.Resolve(BaseDirectory::Executable, "Assets/Environment.hdr");
+
+        std::error_code l_Error;
+        if (!std::filesystem::exists(l_Path, l_Error))
+        {
+            TR_CORE_WARN("Renderer: no environment map at '{}'; skybox disabled", l_Path.string());
+
+            return;
+        }
+
+        std::optional<ImageData> l_Image = Image::Load(l_Path, false);
+        if (!l_Image)
+        {
+            return;
+        }
+
+        TextureDescription l_Description;
+        l_Description.Type = TextureType::Texture2D;
+        l_Description.Format = l_Image->SuggestedFormat;
+        l_Description.Usage = TextureUsage::Sampled;
+        l_Description.Width = l_Image->Width;
+        l_Description.Height = l_Image->Height;
+        l_Description.Depth = 1;
+        l_Description.MipLevels = 1;
+        l_Description.ArrayLayers = 1;
+        l_Description.SampleCount = 1;
+        l_Description.InitialData = l_Image->Pixels.data();
+        l_Description.InitialDataSize = l_Image->Pixels.size();
+        l_Description.DebugName = "EnvironmentMap";
+
+        m_EnvironmentMap = m_Device.CreateTexture(l_Description);
+        if (!m_EnvironmentMap.IsValid())
+        {
+            TR_CORE_ERROR("Renderer: environment map upload failed");
+        }
+    }
+
     std::vector<DebugRenderTarget> Renderer::GetDebugRenderTargets() const
     {
         std::vector<DebugRenderTarget> l_Targets;
@@ -796,6 +850,12 @@ namespace Trinity
             l_Pass.ManageRendering = true;
             l_Pass.Execute = [this, &scene, &assetDatabase, &camera](CommandList& commandList)
                 {
+                    if (m_EnvironmentMap.IsValid())
+                    {
+                        glm::mat4 l_InverseViewProjection = glm::inverse(camera.GetViewProjection());
+                        m_SkyboxStage.Record(commandList, m_EnvironmentMap, l_InverseViewProjection, camera.GetPosition(), 1.0f);
+                    }
+
                     DrawScene(commandList, scene, assetDatabase, camera);
                 };
         }

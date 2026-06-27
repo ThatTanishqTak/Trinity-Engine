@@ -15,6 +15,7 @@
 #include <Trinity/Renderer/Meshes/MeshLibrary.h>
 #include <Trinity/Renderer/PostProcess/PostProcessStage.h>
 #include <Trinity/Renderer/PostProcess/DepthVisualizeStage.h>
+#include <Trinity/Renderer/Environment/SkyboxStage.h>
 #include <Trinity/Renderer/Graph/RenderGraph.h>
 
 namespace Trinity
@@ -65,6 +66,7 @@ namespace Trinity
         void ReloadShaders();
         void CheckHotReload();
         bool CreateTextureResources();
+        void LoadEnvironmentMap();
         bool CreateSceneTargets(uint32_t width, uint32_t height);
         void DestroySceneTargets();
         bool CreateViewportOutput(uint32_t width, uint32_t height);
@@ -85,6 +87,8 @@ namespace Trinity
 
         PostProcessStage m_PostProcess;
         DepthVisualizeStage m_DepthVisualizeStage;
+        SkyboxStage m_SkyboxStage;
+        TextureHandle m_EnvironmentMap;
         RenderGraph m_RenderGraph;
 
         std::vector<BufferHandle> m_FrameUniforms;

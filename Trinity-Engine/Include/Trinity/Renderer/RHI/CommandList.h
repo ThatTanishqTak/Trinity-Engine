@@ -29,10 +29,13 @@ namespace Trinity
     struct RenderingAttachment
     {
         TextureHandle Target;
-        
+
         bool Clear = true;
-        
+
         float ClearColor[4] = { 0.05f, 0.05f, 0.05f, 1.0f };
+
+        uint32_t MipLevel = 0;
+        uint32_t ArrayLayer = 0;
     };
 
     struct DepthAttachment

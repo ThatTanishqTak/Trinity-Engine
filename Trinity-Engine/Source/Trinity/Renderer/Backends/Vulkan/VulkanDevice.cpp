@@ -933,7 +933,55 @@ namespace Trinity
         l_Release.OwnsImage = l_Resource.OwnsImage;
         l_Release.OwnsView = l_Resource.OwnsView;
 
+        for (const VulkanSubresourceView& it_View : l_Resource.SubViews)
+        {
+            if (it_View.View != VK_NULL_HANDLE)
+            {
+                l_Release.ExtraViews.push_back(it_View.View);
+            }
+        }
+
         m_DeferredReleases.push_back(l_Release);
+    }
+
+    VkImageView VulkanDevice::GetRenderTargetView(TextureHandle handle, uint32_t mip, uint32_t layer)
+    {
+        VulkanTextureResource* l_Texture = m_Textures.Get(handle);
+        if (l_Texture == nullptr)
+        {
+            return VK_NULL_HANDLE;
+        }
+
+        for (const VulkanSubresourceView& it_View : l_Texture->SubViews)
+        {
+            if (it_View.Mip == mip && it_View.Layer == layer)
+            {
+                return it_View.View;
+            }
+        }
+
+        VkImageViewCreateInfo l_ViewInfo{};
+        l_ViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        l_ViewInfo.image = l_Texture->Image;
+        l_ViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        l_ViewInfo.format = l_Texture->Format;
+        l_ViewInfo.subresourceRange.aspectMask = l_Texture->Aspect;
+        l_ViewInfo.subresourceRange.baseMipLevel = mip;
+        l_ViewInfo.subresourceRange.levelCount = 1;
+        l_ViewInfo.subresourceRange.baseArrayLayer = layer;
+        l_ViewInfo.subresourceRange.layerCount = 1;
+
+        VkImageView l_View = VK_NULL_HANDLE;
+        if (vkCreateImageView(m_Device, &l_ViewInfo, nullptr, &l_View) != VK_SUCCESS)
+        {
+            TR_CORE_ERROR("VulkanDevice: subresource image view creation failed");
+
+            return VK_NULL_HANDLE;
+        }
+
+        l_Texture->SubViews.push_back({ mip, layer, l_View });
+
+        return l_View;
     }
 
     void VulkanDevice::DestroySampler(SamplerHandle handle)
@@ -992,6 +1040,14 @@ namespace Trinity
                 break;
 
             case DeferredRelease::Kind::Texture:
+                for (VkImageView it_View : release.ExtraViews)
+                {
+                    if (it_View != VK_NULL_HANDLE)
+                    {
+                        vkDestroyImageView(m_Device, it_View, nullptr);
+                    }
+                }
+
                 if (release.OwnsView && release.View != VK_NULL_HANDLE)
                 {
                     vkDestroyImageView(m_Device, release.View, nullptr);

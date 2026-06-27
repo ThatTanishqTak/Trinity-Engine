@@ -180,10 +180,12 @@ namespace Trinity
         {
             m_DrawerHeight = l_Viewport->Size.y * 0.40f;
         }
+
         if (m_DrawerHeight < l_MinHeight)
         {
             m_DrawerHeight = l_MinHeight;
         }
+
         if (m_DrawerHeight > l_MaxHeight)
         {
             m_DrawerHeight = l_MaxHeight;

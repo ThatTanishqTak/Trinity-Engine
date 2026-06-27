@@ -151,6 +151,7 @@ namespace Trinity
         {
             l_Scale *= Application::Get().GetWindow().GetContentScale();
         }
+
         if (l_Scale < 1.0f)
         {
             l_Scale = 1.0f;
