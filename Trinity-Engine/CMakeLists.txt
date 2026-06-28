@@ -72,6 +72,9 @@ if(TRINITY_ENABLE_VULKAN)
         "${TRINITY_ENGINE_SHADER_DIR}/Tonemap.slang"
         "${TRINITY_ENGINE_SHADER_DIR}/DepthVisualize.slang"
         "${TRINITY_ENGINE_SHADER_DIR}/Skybox.slang"
+        "${TRINITY_ENGINE_SHADER_DIR}/IrradianceConvolve.slang"
+        "${TRINITY_ENGINE_SHADER_DIR}/Prefilter.slang"
+        "${TRINITY_ENGINE_SHADER_DIR}/BrdfLut.slang"
     )
 
     file(MAKE_DIRECTORY "${TRINITY_SHADER_OUTPUT_DIR}")

@@ -16,6 +16,7 @@
 #include <Trinity/Renderer/PostProcess/PostProcessStage.h>
 #include <Trinity/Renderer/PostProcess/DepthVisualizeStage.h>
 #include <Trinity/Renderer/Environment/SkyboxStage.h>
+#include <Trinity/Renderer/Environment/IBLProcessor.h>
 #include <Trinity/Renderer/Graph/RenderGraph.h>
 
 namespace Trinity
@@ -67,6 +68,7 @@ namespace Trinity
         void CheckHotReload();
         bool CreateTextureResources();
         void LoadEnvironmentMap();
+        bool CreateIBLResources();
         bool CreateSceneTargets(uint32_t width, uint32_t height);
         void DestroySceneTargets();
         bool CreateViewportOutput(uint32_t width, uint32_t height);
@@ -89,6 +91,19 @@ namespace Trinity
         DepthVisualizeStage m_DepthVisualizeStage;
         SkyboxStage m_SkyboxStage;
         TextureHandle m_EnvironmentMap;
+
+        IBLProcessor m_IBLProcessor;
+        TextureHandle m_IrradianceMap;
+        TextureHandle m_PrefilteredMap;
+        TextureHandle m_BrdfLut;
+        SamplerHandle m_IblCubeSampler;
+        SamplerHandle m_BrdfSampler;
+        bool m_IblGenerated = false;
+
+        static constexpr uint32_t k_IrradianceSize = 32;
+        static constexpr uint32_t k_PrefilterSize = 128;
+        static constexpr uint32_t k_PrefilterMips = 5;
+        static constexpr uint32_t k_BrdfLutSize = 512;
         RenderGraph m_RenderGraph;
 
         std::vector<BufferHandle> m_FrameUniforms;

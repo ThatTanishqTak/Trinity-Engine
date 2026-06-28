@@ -46,6 +46,7 @@ namespace Trinity
         glm::mat4 ViewProjection;
         glm::vec4 CameraPosition;
         glm::vec4 AmbientAndCount;
+        glm::vec4 IblParams;        // x = IBL enabled, y = max prefilter LOD
         GpuLight Lights[k_MaxLights];
     };
 
@@ -146,7 +147,17 @@ namespace Trinity
             return false;
         }
 
+        if (!m_IBLProcessor.Initialize(m_Device, m_ShaderCompiler, l_ShaderDirectory))
+        {
+            return false;
+        }
+
         LoadEnvironmentMap();
+
+        if (!CreateIBLResources())
+        {
+            return false;
+        }
 
         m_Timer.Reset();
 
@@ -174,11 +185,33 @@ namespace Trinity
         m_PostProcess.Shutdown();
         m_DepthVisualizeStage.Shutdown();
         m_SkyboxStage.Shutdown();
+        m_IBLProcessor.Shutdown();
 
         if (m_EnvironmentMap.IsValid())
         {
             m_Device.DestroyTexture(m_EnvironmentMap);
             m_EnvironmentMap = TextureHandle{};
+        }
+
+        for (TextureHandle* it_Texture : { &m_IrradianceMap, &m_PrefilteredMap, &m_BrdfLut })
+        {
+            if (it_Texture->IsValid())
+            {
+                m_Device.DestroyTexture(*it_Texture);
+                *it_Texture = TextureHandle{};
+            }
+        }
+
+        if (m_IblCubeSampler.IsValid())
+        {
+            m_Device.DestroySampler(m_IblCubeSampler);
+            m_IblCubeSampler = SamplerHandle{};
+        }
+        
+        if (m_BrdfSampler.IsValid())
+        {
+            m_Device.DestroySampler(m_BrdfSampler);
+            m_BrdfSampler = SamplerHandle{};
         }
 
         if (m_Pipeline.IsValid())
@@ -317,7 +350,25 @@ namespace Trinity
         l_EmissiveBinding.Type = ResourceBindingType::CombinedImageSampler;
         l_EmissiveBinding.Stages = ShaderStage::Fragment;
 
-        l_PipelineDescription.Bindings = { l_FrameBinding, l_BaseColorBinding, l_NormalBinding, l_MetallicRoughnessBinding, l_EmissiveBinding };
+        ResourceBinding l_IrradianceBinding;
+        l_IrradianceBinding.Set = 5;
+        l_IrradianceBinding.Binding = 0;
+        l_IrradianceBinding.Type = ResourceBindingType::CombinedImageSampler;
+        l_IrradianceBinding.Stages = ShaderStage::Fragment;
+
+        ResourceBinding l_PrefilteredBinding;
+        l_PrefilteredBinding.Set = 6;
+        l_PrefilteredBinding.Binding = 0;
+        l_PrefilteredBinding.Type = ResourceBindingType::CombinedImageSampler;
+        l_PrefilteredBinding.Stages = ShaderStage::Fragment;
+
+        ResourceBinding l_BrdfBinding;
+        l_BrdfBinding.Set = 7;
+        l_BrdfBinding.Binding = 0;
+        l_BrdfBinding.Type = ResourceBindingType::CombinedImageSampler;
+        l_BrdfBinding.Stages = ShaderStage::Fragment;
+
+        l_PipelineDescription.Bindings = { l_FrameBinding, l_BaseColorBinding, l_NormalBinding, l_MetallicRoughnessBinding, l_EmissiveBinding, l_IrradianceBinding, l_PrefilteredBinding, l_BrdfBinding };
         l_PipelineDescription.DebugName = "Mesh";
 
         pipeline = m_Device.CreatePipeline(l_PipelineDescription);
@@ -602,6 +653,69 @@ namespace Trinity
         }
     }
 
+    bool Renderer::CreateIBLResources()
+    {
+        auto l_MakeCube = [this](uint32_t size, uint32_t mips, const char* name) -> TextureHandle
+            {
+                TextureDescription l_Description;
+                l_Description.Type = TextureType::TextureCube;
+                l_Description.Format = Format::RGBA16_SFLOAT;
+                l_Description.Usage = TextureUsage::Sampled | TextureUsage::RenderTarget;
+                l_Description.Width = size;
+                l_Description.Height = size;
+                l_Description.Depth = 1;
+                l_Description.MipLevels = mips;
+                l_Description.ArrayLayers = 1;
+                l_Description.SampleCount = 1;
+                l_Description.DebugName = name;
+
+                return m_Device.CreateTexture(l_Description);
+            };
+
+        m_IrradianceMap = l_MakeCube(k_IrradianceSize, 1, "IrradianceMap");
+        m_PrefilteredMap = l_MakeCube(k_PrefilterSize, k_PrefilterMips, "PrefilteredMap");
+
+        TextureDescription l_LutDescription;
+        l_LutDescription.Type = TextureType::Texture2D;
+        l_LutDescription.Format = Format::RG16_SFLOAT;
+        l_LutDescription.Usage = TextureUsage::Sampled | TextureUsage::RenderTarget;
+        l_LutDescription.Width = k_BrdfLutSize;
+        l_LutDescription.Height = k_BrdfLutSize;
+        l_LutDescription.Depth = 1;
+        l_LutDescription.MipLevels = 1;
+        l_LutDescription.ArrayLayers = 1;
+        l_LutDescription.SampleCount = 1;
+        l_LutDescription.DebugName = "BrdfLut";
+        m_BrdfLut = m_Device.CreateTexture(l_LutDescription);
+
+        if (!m_IrradianceMap.IsValid() || !m_PrefilteredMap.IsValid() || !m_BrdfLut.IsValid())
+        {
+            TR_CORE_ERROR("Renderer: IBL resource creation failed");
+
+            return false;
+        }
+
+        SamplerDescription l_CubeSampler;
+        l_CubeSampler.LinearFilter = true;
+        l_CubeSampler.LinearMipmap = true;
+        l_CubeSampler.RepeatU = false;
+        l_CubeSampler.RepeatV = false;
+        l_CubeSampler.RepeatW = false;
+        l_CubeSampler.DebugName = "IBLCubeSampler";
+        m_IblCubeSampler = m_Device.CreateSampler(l_CubeSampler);
+
+        SamplerDescription l_LutSampler;
+        l_LutSampler.LinearFilter = true;
+        l_LutSampler.LinearMipmap = false;
+        l_LutSampler.RepeatU = false;
+        l_LutSampler.RepeatV = false;
+        l_LutSampler.RepeatW = false;
+        l_LutSampler.DebugName = "BrdfLutSampler";
+        m_BrdfSampler = m_Device.CreateSampler(l_LutSampler);
+
+        return m_IblCubeSampler.IsValid() && m_BrdfSampler.IsValid();
+    }
+
     std::vector<DebugRenderTarget> Renderer::GetDebugRenderTargets() const
     {
         std::vector<DebugRenderTarget> l_Targets;
@@ -668,12 +782,16 @@ namespace Trinity
         }
 
         l_FrameData.AmbientAndCount.a = static_cast<float>(l_LightCount);
+        l_FrameData.IblParams = glm::vec4(m_EnvironmentMap.IsValid() ? 1.0f : 0.0f, static_cast<float>(k_PrefilterMips - 1), 0.0f, 0.0f);
 
         BufferHandle l_FrameUniform = m_FrameUniforms[m_FrameIndex];
         m_Device.UpdateBuffer(l_FrameUniform, &l_FrameData, sizeof(FrameData), 0);
 
         commandList.BindPipeline(m_Pipeline);
         commandList.BindUniformBuffer(0, 0, l_FrameUniform, 0, sizeof(FrameData));
+        commandList.BindTexture(5, 0, m_IrradianceMap, m_IblCubeSampler);
+        commandList.BindTexture(6, 0, m_PrefilteredMap, m_IblCubeSampler);
+        commandList.BindTexture(7, 0, m_BrdfLut, m_BrdfSampler);
 
         SamplerHandle l_Sampler = m_TextureManager.DefaultSampler();
 
@@ -986,6 +1104,25 @@ namespace Trinity
         m_RenderGraph.SetPresent(l_Frame.BackBuffer);
 
         l_CommandList.Begin();
+
+        if (!m_IblGenerated)
+        {
+            m_IBLProcessor.GenerateBrdfLut(l_CommandList, m_BrdfLut, k_BrdfLutSize);
+
+            if (m_EnvironmentMap.IsValid())
+            {
+                m_IBLProcessor.GenerateIrradiance(l_CommandList, m_EnvironmentMap, m_IrradianceMap, k_IrradianceSize);
+                m_IBLProcessor.GeneratePrefilter(l_CommandList, m_EnvironmentMap, m_PrefilteredMap, k_PrefilterSize, k_PrefilterMips);
+            }
+            else
+            {
+                m_IBLProcessor.ClearCube(l_CommandList, m_IrradianceMap, k_IrradianceSize, 1);
+                m_IBLProcessor.ClearCube(l_CommandList, m_PrefilteredMap, k_PrefilterSize, k_PrefilterMips);
+            }
+
+            m_IblGenerated = true;
+        }
+
         m_RenderGraph.Execute(l_CommandList);
         l_CommandList.End();
 

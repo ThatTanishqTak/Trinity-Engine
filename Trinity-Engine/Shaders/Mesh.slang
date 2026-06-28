@@ -14,6 +14,7 @@ struct FrameData
     float4x4 ViewProjection;
     float4 CameraPosition;   // xyz = camera world position
     float4 AmbientAndCount;  // rgb = ambient color, a = active light count
+    float4 IblParams;        // x = IBL enabled, y = max prefilter LOD
     GpuLight Lights[MAX_LIGHTS];
 };
 
@@ -31,6 +32,9 @@ struct PushConstants
 [[vk::binding(0, 2)]] Sampler2D u_Normal;
 [[vk::binding(0, 3)]] Sampler2D u_MetallicRoughness;
 [[vk::binding(0, 4)]] Sampler2D u_Emissive;
+[[vk::binding(0, 5)]] SamplerCube u_Irradiance;
+[[vk::binding(0, 6)]] SamplerCube u_Prefiltered;
+[[vk::binding(0, 7)]] Sampler2D u_BrdfLut;
 
 struct VertexInput
 {
@@ -91,6 +95,13 @@ float GeometrySmith(float NdotV, float NdotL, float roughness)
 float3 FresnelSchlick(float cosTheta, float3 f0)
 {
     return f0 + (1.0 - f0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+float3 FresnelSchlickRoughness(float cosTheta, float3 f0, float roughness)
+{
+    float3 fmax = max(float3(1.0 - roughness, 1.0 - roughness, 1.0 - roughness), f0);
+
+    return f0 + (fmax - f0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
 [shader("fragment")]
@@ -176,7 +187,26 @@ float4 fragmentMain(VertexOutput input) : SV_Target
         outgoing += (diffuse + specular) * radiance * NdotL;
     }
 
-    float3 ambient = u_Frame.AmbientAndCount.rgb * albedo * occlusion;
+    float3 ambient;
+    if (u_Frame.IblParams.x > 0.5)
+    {
+        float3 F = FresnelSchlickRoughness(NdotV, f0, roughness);
+        float3 kd = (1.0 - F) * (1.0 - metallic);
+
+        float3 irradiance = u_Irradiance.Sample(normal).rgb;
+        float3 diffuseIBL = irradiance * albedo;
+
+        float3 reflection = reflect(-viewDirection, normal);
+        float3 prefiltered = u_Prefiltered.SampleLevel(reflection, roughness * u_Frame.IblParams.y).rgb;
+        float2 brdf = u_BrdfLut.Sample(float2(NdotV, roughness)).rg;
+        float3 specularIBL = prefiltered * (F * brdf.x + brdf.y);
+
+        ambient = (kd * diffuseIBL + specularIBL) * occlusion;
+    }
+    else
+    {
+        ambient = u_Frame.AmbientAndCount.rgb * albedo * occlusion;
+    }
 
     float3 emissive = u_Emissive.Sample(input.UV).rgb * pushConstants.EmissiveFactor.rgb * pushConstants.EmissiveFactor.a;
 
