@@ -13,8 +13,10 @@ struct FrameData
 {
     float4x4 ViewProjection;
     float4 CameraPosition;   // xyz = camera world position
-    float4 AmbientAndCount;  // rgb = ambient color, a = active light count
-    float4 IblParams;        // x = IBL enabled, y = max prefilter LOD
+    float4 AmbientAndCount;      // rgb = ambient color, a = active light count
+    float4 IblParams;            // x = IBL enabled, y = max prefilter LOD
+    float4x4 LightViewProjection;
+    float4 ShadowParams;         // x = enabled, y = bias, w = 1 / shadow map size
     GpuLight Lights[MAX_LIGHTS];
 };
 
@@ -35,6 +37,7 @@ struct PushConstants
 [[vk::binding(0, 5)]] SamplerCube u_Irradiance;
 [[vk::binding(0, 6)]] SamplerCube u_Prefiltered;
 [[vk::binding(0, 7)]] Sampler2D u_BrdfLut;
+[[vk::binding(0, 8)]] Sampler2D u_ShadowMap;
 
 struct VertexInput
 {
@@ -139,6 +142,7 @@ float4 fragmentMain(VertexOutput input) : SV_Target
     {
         GpuLight light = u_Frame.Lights[i];
         uint type = (uint)light.PositionType.w;
+        float shadow = 1.0;
 
         float3 lightDirection;
         float attenuation = 1.0;
@@ -184,7 +188,33 @@ float4 fragmentMain(VertexOutput input) : SV_Target
         float3 diffuseFactor = (float3(1.0, 1.0, 1.0) - fresnel) * (1.0 - metallic);
         float3 diffuse = diffuseFactor * albedo / PI;
 
-        outgoing += (diffuse + specular) * radiance * NdotL;
+        if (type == 0 && u_Frame.ShadowParams.x > 0.5)
+        {
+            float4 lightClip = mul(u_Frame.LightViewProjection, float4(input.WorldPosition, 1.0));
+            float3 lightProj = lightClip.xyz / lightClip.w;
+            float2 shadowUV = lightProj.xy * 0.5 + 0.5;
+            shadowUV.y = 1.0 - shadowUV.y;
+
+            if (shadowUV.x >= 0.0 && shadowUV.x <= 1.0 && shadowUV.y >= 0.0 && shadowUV.y <= 1.0 && lightProj.z <= 1.0 && lightProj.z >= 0.0)
+            {
+                float bias = max(u_Frame.ShadowParams.y * (1.0 - NdotL), u_Frame.ShadowParams.y * 0.15);
+                float texel = u_Frame.ShadowParams.w;
+
+                float occlusion = 0.0;
+                for (int sx = -1; sx <= 1; ++sx)
+                {
+                    for (int sy = -1; sy <= 1; ++sy)
+                    {
+                        float sampled = u_ShadowMap.SampleLevel(shadowUV + float2(sx, sy) * texel, 0.0).r;
+                        occlusion += (lightProj.z - bias) > sampled ? 0.0 : 1.0;
+                    }
+                }
+
+                shadow = occlusion / 9.0;
+            }
+        }
+
+        outgoing += (diffuse + specular) * radiance * NdotL * shadow;
     }
 
     float3 ambient;

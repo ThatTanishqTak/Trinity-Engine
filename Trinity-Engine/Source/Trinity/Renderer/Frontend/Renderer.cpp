@@ -46,7 +46,9 @@ namespace Trinity
         glm::mat4 ViewProjection;
         glm::vec4 CameraPosition;
         glm::vec4 AmbientAndCount;
-        glm::vec4 IblParams;        // x = IBL enabled, y = max prefilter LOD
+        glm::vec4 IblParams;            // x = IBL enabled, y = max prefilter LOD
+        glm::mat4 LightViewProjection;  // directional shadow caster
+        glm::vec4 ShadowParams;         // x = enabled, y = bias, w = 1 / shadow map size
         GpuLight Lights[k_MaxLights];
     };
 
@@ -159,6 +161,11 @@ namespace Trinity
             return false;
         }
 
+        if (!CreateShadowResources())
+        {
+            return false;
+        }
+
         m_Timer.Reset();
 
         m_ShaderSourcePath = m_FileSystem.Resolve(BaseDirectory::Executable, "Shaders/Mesh.slang");
@@ -203,15 +210,45 @@ namespace Trinity
         }
 
         if (m_IblCubeSampler.IsValid())
-        {
+        { 
             m_Device.DestroySampler(m_IblCubeSampler);
             m_IblCubeSampler = SamplerHandle{};
         }
-        
+
         if (m_BrdfSampler.IsValid())
         {
             m_Device.DestroySampler(m_BrdfSampler);
             m_BrdfSampler = SamplerHandle{};
+        }
+
+        if (m_ShadowPipeline.IsValid())
+        {
+            m_Device.DestroyPipeline(m_ShadowPipeline);
+            m_ShadowPipeline = PipelineHandle{};
+        }
+        
+        if (m_ShadowVertex.IsValid())
+        {
+            m_Device.DestroyShader(m_ShadowVertex);
+            m_ShadowVertex = ShaderHandle{};
+        }
+
+        if (m_ShadowFragment.IsValid())
+        {
+            m_Device.DestroyShader(m_ShadowFragment);
+            m_ShadowFragment = ShaderHandle{};
+        }
+
+        if (m_ShadowSampler.IsValid())
+        {
+            m_Device.DestroySampler(m_ShadowSampler);
+            m_ShadowSampler = SamplerHandle{};
+        }
+
+        if (m_ShadowMap.IsValid())
+        {
+            m_Device.DestroyTexture(m_ShadowMap);
+            m_ShadowMap = TextureHandle{};
         }
 
         if (m_Pipeline.IsValid())
@@ -368,7 +405,13 @@ namespace Trinity
         l_BrdfBinding.Type = ResourceBindingType::CombinedImageSampler;
         l_BrdfBinding.Stages = ShaderStage::Fragment;
 
-        l_PipelineDescription.Bindings = { l_FrameBinding, l_BaseColorBinding, l_NormalBinding, l_MetallicRoughnessBinding, l_EmissiveBinding, l_IrradianceBinding, l_PrefilteredBinding, l_BrdfBinding };
+        ResourceBinding l_ShadowBinding;
+        l_ShadowBinding.Set = 8;
+        l_ShadowBinding.Binding = 0;
+        l_ShadowBinding.Type = ResourceBindingType::CombinedImageSampler;
+        l_ShadowBinding.Stages = ShaderStage::Fragment;
+
+        l_PipelineDescription.Bindings = { l_FrameBinding, l_BaseColorBinding, l_NormalBinding, l_MetallicRoughnessBinding, l_EmissiveBinding, l_IrradianceBinding, l_PrefilteredBinding, l_BrdfBinding, l_ShadowBinding };
         l_PipelineDescription.DebugName = "Mesh";
 
         pipeline = m_Device.CreatePipeline(l_PipelineDescription);
@@ -738,6 +781,177 @@ namespace Trinity
         return l_Targets;
     }
 
+    bool Renderer::CreateShadowResources()
+    {
+        TextureDescription l_Description;
+        l_Description.Type = TextureType::Texture2D;
+        l_Description.Format = Format::D32_SFLOAT;
+        l_Description.Usage = TextureUsage::DepthStencil | TextureUsage::Sampled;
+        l_Description.Width = k_ShadowMapSize;
+        l_Description.Height = k_ShadowMapSize;
+        l_Description.Depth = 1;
+        l_Description.MipLevels = 1;
+        l_Description.ArrayLayers = 1;
+        l_Description.SampleCount = 1;
+        l_Description.DebugName = "ShadowMap";
+
+        m_ShadowMap = m_Device.CreateTexture(l_Description);
+        if (!m_ShadowMap.IsValid())
+        {
+            TR_CORE_ERROR("Renderer: shadow map creation failed");
+
+            return false;
+        }
+
+        SamplerDescription l_SamplerDescription;
+        l_SamplerDescription.LinearFilter = false;
+        l_SamplerDescription.LinearMipmap = false;
+        l_SamplerDescription.RepeatU = false;
+        l_SamplerDescription.RepeatV = false;
+        l_SamplerDescription.RepeatW = false;
+        l_SamplerDescription.DebugName = "ShadowSampler";
+        m_ShadowSampler = m_Device.CreateSampler(l_SamplerDescription);
+
+        std::filesystem::path l_ShaderDirectory = m_FileSystem.Resolve(BaseDirectory::Executable, "Shaders");
+
+        ShaderCompileResult l_VertexResult = m_ShaderCompiler.Compile(l_ShaderDirectory, "Shadow", "vertexMain");
+        ShaderCompileResult l_FragmentResult = m_ShaderCompiler.Compile(l_ShaderDirectory, "Shadow", "fragmentMain");
+        if (!l_VertexResult.Success || !l_FragmentResult.Success)
+        {
+            TR_CORE_ERROR("Renderer: shadow shader compilation failed");
+
+            return false;
+        }
+
+        ShaderDescription l_VertexDescription;
+        l_VertexDescription.Stage = ShaderStage::Vertex;
+        l_VertexDescription.Bytecode = l_VertexResult.SPIRV;
+        l_VertexDescription.EntryPoint = "vertexMain";
+        l_VertexDescription.DebugName = "Shadow.vertexMain";
+        m_ShadowVertex = m_Device.CreateShader(l_VertexDescription);
+
+        ShaderDescription l_FragmentDescription;
+        l_FragmentDescription.Stage = ShaderStage::Fragment;
+        l_FragmentDescription.Bytecode = l_FragmentResult.SPIRV;
+        l_FragmentDescription.EntryPoint = "fragmentMain";
+        l_FragmentDescription.DebugName = "Shadow.fragmentMain";
+        m_ShadowFragment = m_Device.CreateShader(l_FragmentDescription);
+
+        if (!m_ShadowVertex.IsValid() || !m_ShadowFragment.IsValid())
+        {
+            TR_CORE_ERROR("Renderer: shadow shader creation failed");
+
+            return false;
+        }
+
+        // The shadow vertex shader only consumes Position, but the bound buffer is a full MeshVertex, so keep the stride and expose just location 0
+        VertexLayout l_ShadowLayout;
+        l_ShadowLayout.Stride = sizeof(MeshVertex);
+        l_ShadowLayout.Attributes = { { 0, offsetof(MeshVertex, Position), Format::RGB32_SFLOAT } };
+
+        PipelineDescription l_PipelineDescription;
+        l_PipelineDescription.VertexShader = m_ShadowVertex;
+        l_PipelineDescription.FragmentShader = m_ShadowFragment;
+        l_PipelineDescription.Vertex = l_ShadowLayout;
+        l_PipelineDescription.Topology = PrimitiveTopology::TriangleList;
+        l_PipelineDescription.Rasterizer.Cull = CullMode::None;
+        l_PipelineDescription.DepthStencil.DepthTest = true;
+        l_PipelineDescription.DepthStencil.DepthWrite = true;
+        l_PipelineDescription.DepthFormat = Format::D32_SFLOAT;
+        l_PipelineDescription.PushConstantSize = static_cast<uint32_t>(sizeof(glm::mat4));
+        l_PipelineDescription.DebugName = "Shadow";
+
+        m_ShadowPipeline = m_Device.CreatePipeline(l_PipelineDescription);
+        if (!m_ShadowPipeline.IsValid())
+        {
+            TR_CORE_ERROR("Renderer: shadow pipeline creation failed");
+
+            return false;
+        }
+
+        return m_ShadowSampler.IsValid();
+    }
+
+    glm::mat4 Renderer::ComputeLightMatrix(const glm::vec3& direction) const
+    {
+        glm::vec3 l_Direction = glm::normalize(direction);
+
+        // Up vector guarded against a near-vertical light.
+        glm::vec3 l_Up = glm::abs(l_Direction.y) > 0.99f ? glm::vec3(0.0f, 0.0f, 1.0f) : glm::vec3(0.0f, 1.0f, 0.0f);
+
+        const float l_Radius = 25.0f;
+        glm::vec3 l_Center(0.0f);
+        glm::vec3 l_Eye = l_Center - l_Direction * 50.0f;
+
+        glm::mat4 l_View = glm::lookAt(l_Eye, l_Center, l_Up);
+        glm::mat4 l_Projection = glm::ortho(-l_Radius, l_Radius, -l_Radius, l_Radius, 0.1f, 100.0f);
+
+        return l_Projection * l_View;
+    }
+
+    bool Renderer::ComputeShadowLight(Scene& scene, glm::mat4& outMatrix)
+    {
+        glm::vec3 l_Direction(0.0f);
+        bool l_Found = false;
+        uint32_t l_LightCount = 0;
+
+        auto l_View = scene.GetRegistry().view<TransformComponent, LightComponent>();
+        for (entt::entity l_Entity : l_View)
+        {
+            ++l_LightCount;
+
+            const LightComponent& l_Light = l_View.get<LightComponent>(l_Entity);
+            if (!l_Found && l_Light.Type == LightType::Directional)
+            {
+                glm::mat4 l_World = scene.GetWorldMatrix(l_Entity);
+                l_Direction = glm::normalize(glm::mat3(l_World) * glm::vec3(0.0f, 0.0f, -1.0f));
+                l_Found = true;
+            }
+        }
+
+        if (!l_Found)
+        {
+            if (l_LightCount != 0)
+            {
+                return false;
+            }
+
+            // Matches the default sun injected in DrawScene when the scene has no lights.
+            l_Direction = glm::normalize(glm::vec3(-0.5f, -1.0f, -0.3f));
+        }
+
+        outMatrix = ComputeLightMatrix(l_Direction);
+
+        return true;
+    }
+
+    void Renderer::DrawSceneDepth(CommandList& commandList, Scene& scene, const glm::mat4& lightViewProjection)
+    {
+        commandList.BindPipeline(m_ShadowPipeline);
+
+        auto l_View = scene.GetRegistry().view<TransformComponent, MeshRendererComponent>();
+        for (entt::entity l_Entity : l_View)
+        {
+            const MeshRendererComponent& l_MeshRenderer = l_View.get<MeshRendererComponent>(l_Entity);
+            if (!l_MeshRenderer.MeshReference || !l_MeshRenderer.MeshReference->IsValid())
+            {
+                continue;
+            }
+
+            Mesh& l_Mesh = *l_MeshRenderer.MeshReference;
+            glm::mat4 l_MVP = lightViewProjection * scene.GetWorldMatrix(l_Entity);
+
+            commandList.BindVertexBuffer(l_Mesh.GetVertexBuffer(), 0);
+            commandList.BindIndexBuffer(l_Mesh.GetIndexBuffer(), 0);
+
+            for (const Submesh& l_Submesh : l_Mesh.GetSubmeshes())
+            {
+                commandList.PushConstants(ShaderStage::Vertex | ShaderStage::Fragment, 0, static_cast<uint32_t>(sizeof(glm::mat4)), &l_MVP);
+                commandList.DrawIndexed(l_Submesh.IndexCount, 1, l_Submesh.FirstIndex, static_cast<int32_t>(l_Submesh.BaseVertex), 0);
+            }
+        }
+    }
+
     void Renderer::DrawScene(CommandList& commandList, Scene& scene, AssetDatabase& assetDatabase, const Camera& camera)
     {
         FrameData l_FrameData{};
@@ -783,6 +997,8 @@ namespace Trinity
 
         l_FrameData.AmbientAndCount.a = static_cast<float>(l_LightCount);
         l_FrameData.IblParams = glm::vec4(m_EnvironmentMap.IsValid() ? 1.0f : 0.0f, static_cast<float>(k_PrefilterMips - 1), 0.0f, 0.0f);
+        l_FrameData.LightViewProjection = m_ShadowLightViewProjection;
+        l_FrameData.ShadowParams = glm::vec4(m_ShadowActive ? 1.0f : 0.0f, k_ShadowBias, 0.0f, 1.0f / static_cast<float>(k_ShadowMapSize));
 
         BufferHandle l_FrameUniform = m_FrameUniforms[m_FrameIndex];
         m_Device.UpdateBuffer(l_FrameUniform, &l_FrameData, sizeof(FrameData), 0);
@@ -792,6 +1008,7 @@ namespace Trinity
         commandList.BindTexture(5, 0, m_IrradianceMap, m_IblCubeSampler);
         commandList.BindTexture(6, 0, m_PrefilteredMap, m_IblCubeSampler);
         commandList.BindTexture(7, 0, m_BrdfLut, m_BrdfSampler);
+        commandList.BindTexture(8, 0, m_ShadowMap, m_ShadowSampler);
 
         SamplerHandle l_Sampler = m_TextureManager.DefaultSampler();
 
@@ -947,9 +1164,33 @@ namespace Trinity
             m_RenderGraph.Import(m_ViewportColor, ResourceState::Undefined, "ViewportColor");
         }
 
+        // Directional shadow map (depth-only). Always recorded so the map stays valid to sample.
+        m_ShadowActive = ComputeShadowLight(scene, m_ShadowLightViewProjection);
+        m_RenderGraph.Import(m_ShadowMap, ResourceState::Undefined, "ShadowMap");
+        {
+            RenderGraphPass& l_Pass = m_RenderGraph.AddPass("Shadow");
+            l_Pass.Depth = m_ShadowMap;
+            l_Pass.ClearDepth = true;
+            l_Pass.DepthClearValue = 1.0f;
+            l_Pass.Width = k_ShadowMapSize;
+            l_Pass.Height = k_ShadowMapSize;
+            l_Pass.ManageRendering = true;
+
+            glm::mat4 l_LightViewProjection = m_ShadowLightViewProjection;
+            bool l_Active = m_ShadowActive;
+            l_Pass.Execute = [this, &scene, l_LightViewProjection, l_Active](CommandList& commandList)
+                {
+                    if (l_Active)
+                    {
+                        DrawSceneDepth(commandList, scene, l_LightViewProjection);
+                    }
+                };
+        }
+
         // Scene pass: draw the lit scene into the HDR color target.
         {
             RenderGraphPass& l_Pass = m_RenderGraph.AddPass("Scene");
+            l_Pass.Reads.push_back(m_ShadowMap);
 
             RenderGraphColorTarget l_Color;
             l_Color.Target = m_SceneColor;

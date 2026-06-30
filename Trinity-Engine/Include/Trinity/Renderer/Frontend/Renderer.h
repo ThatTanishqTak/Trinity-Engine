@@ -69,6 +69,10 @@ namespace Trinity
         bool CreateTextureResources();
         void LoadEnvironmentMap();
         bool CreateIBLResources();
+        bool CreateShadowResources();
+        bool ComputeShadowLight(Scene& scene, glm::mat4& outMatrix);
+        glm::mat4 ComputeLightMatrix(const glm::vec3& direction) const;
+        void DrawSceneDepth(CommandList& commandList, Scene& scene, const glm::mat4& lightViewProjection);
         bool CreateSceneTargets(uint32_t width, uint32_t height);
         void DestroySceneTargets();
         bool CreateViewportOutput(uint32_t width, uint32_t height);
@@ -99,6 +103,17 @@ namespace Trinity
         SamplerHandle m_IblCubeSampler;
         SamplerHandle m_BrdfSampler;
         bool m_IblGenerated = false;
+
+        TextureHandle m_ShadowMap;
+        SamplerHandle m_ShadowSampler;
+        ShaderHandle m_ShadowVertex;
+        ShaderHandle m_ShadowFragment;
+        PipelineHandle m_ShadowPipeline;
+        glm::mat4 m_ShadowLightViewProjection{ 1.0f };
+        bool m_ShadowActive = false;
+
+        static constexpr uint32_t k_ShadowMapSize = 2048;
+        static constexpr float k_ShadowBias = 0.0015f;
 
         static constexpr uint32_t k_IrradianceSize = 32;
         static constexpr uint32_t k_PrefilterSize = 128;

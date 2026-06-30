@@ -312,8 +312,20 @@ namespace Trinity
     {
         ImGuiStyle& l_Style = ImGui::GetStyle();
 
-        float l_BarPadding = ImGui::GetFontSize() * 0.35f;
-        float l_Height = ImGui::GetFontSize() + l_BarPadding * 2.0f + 2.0f;
+        // Match the native Windows title bar height (~32px at 100% DPI), scaled for DPI.
+        float l_Height = 32.0f * window.GetContentScale();
+        float l_MinHeight = ImGui::GetFontSize() + 8.0f;
+        if (l_Height < l_MinHeight)
+        {
+            l_Height = l_MinHeight;
+        }
+
+        // Center the menu text vertically and let the window buttons fill the bar height.
+        float l_BarPadding = (l_Height - ImGui::GetFontSize()) * 0.5f;
+        if (l_BarPadding < 0.0f)
+        {
+            l_BarPadding = 0.0f;
+        }
 
         ImGuiViewport* l_Viewport = ImGui::GetMainViewport();
 
@@ -364,14 +376,18 @@ namespace Trinity
             ImGui::SameLine(l_TitleX);
             ImGui::TextDisabled("%s", l_Title.c_str());
 
+            // Scale the control glyphs to a fraction of the button size (DPI-robust).
+            float l_IconScale = (l_ButtonWidth * 0.50f) / ImGui::GetFontSize();
+            ImGui::SetWindowFontScale(l_IconScale);
+
             ImGui::SameLine(l_ButtonsX);
-            if (ImGui::Button(ICON_FA_MINUS, ImVec2(l_ButtonWidth, 0.0f)))
+            if (ImGui::Button(ICON_FA_WINDOW_MINIMIZE, ImVec2(l_ButtonWidth, l_ButtonWidth)))
             {
                 window.Minimize();
             }
 
             ImGui::SameLine();
-            if (ImGui::Button(window.IsMaximized() ? ICON_FA_COMPRESS : ICON_FA_EXPAND, ImVec2(l_ButtonWidth, 0.0f)))
+            if (ImGui::Button(window.IsMaximized() ? ICON_FA_WINDOW_RESTORE : ICON_FA_WINDOW_MAXIMIZE, ImVec2(l_ButtonWidth, l_ButtonWidth)))
             {
                 if (window.IsMaximized())
                 {
@@ -384,10 +400,15 @@ namespace Trinity
             }
 
             ImGui::SameLine();
-            if (ImGui::Button(ICON_FA_XMARK, ImVec2(l_ButtonWidth, 0.0f)))
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.90f, 0.10f, 0.15f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.78f, 0.08f, 0.15f, 1.0f));
+            if (ImGui::Button(ICON_FA_WINDOW_CLOSE, ImVec2(l_ButtonWidth, l_ButtonWidth)))
             {
                 window.RequestClose();
             }
+            ImGui::PopStyleColor(2);
+
+            ImGui::SetWindowFontScale(1.0f);
 
             float l_WinX = ImGui::GetWindowPos().x;
             float l_WinY = ImGui::GetWindowPos().y;
