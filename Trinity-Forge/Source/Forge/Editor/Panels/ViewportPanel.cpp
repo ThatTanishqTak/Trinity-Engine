@@ -6,6 +6,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include <Forge/Editor/EditorContext.h>
+#include <Forge/Editor/EditorIcons.h>
 #include <Forge/Editor/Commands/PropertyCommands.h>
 
 #include <Trinity/Core/Engine.h>
@@ -62,7 +63,9 @@ namespace Trinity
             if (l_TextureId != 0)
             {
                 ImGui::Image((ImTextureID)l_TextureId, l_Available);
-                RenderGizmo(ImGui::GetItemRectMin(), ImGui::GetItemRectSize());
+                ImVec2 l_ImageMin = ImGui::GetItemRectMin();
+                RenderGizmo(l_ImageMin, ImGui::GetItemRectSize());
+                RenderOverlayToolbar(l_ImageMin);
             }
             else
             {
@@ -98,7 +101,25 @@ namespace Trinity
 
         TransformComponent l_PreEdit = l_Registry.get<TransformComponent>(m_Context.SelectedEntity);
 
-        ImGuizmo::Manipulate(glm::value_ptr(l_View), glm::value_ptr(l_Projection), m_GizmoOperation, ImGuizmo::LOCAL, glm::value_ptr(l_World));
+        float l_SnapValues[3] = { 0.0f, 0.0f, 0.0f };
+        float* l_Snap = nullptr;
+        if (m_SnapEnabled)
+        {
+            float l_Amount = m_SnapTranslation;
+            if (m_GizmoOperation == ImGuizmo::ROTATE)
+            {
+                l_Amount = m_SnapRotation;
+            }
+            else if (m_GizmoOperation == ImGuizmo::SCALE)
+            {
+                l_Amount = m_SnapScale;
+            }
+
+            l_SnapValues[0] = l_SnapValues[1] = l_SnapValues[2] = l_Amount;
+            l_Snap = l_SnapValues;
+        }
+
+        ImGuizmo::Manipulate(glm::value_ptr(l_View), glm::value_ptr(l_Projection), m_GizmoOperation, m_GizmoMode, glm::value_ptr(l_World), nullptr, l_Snap);
 
         bool l_IsUsing = ImGuizmo::IsUsing();
 
@@ -140,5 +161,132 @@ namespace Trinity
         }
 
         m_GizmoWasUsing = l_IsUsing;
+    }
+
+    void ViewportPanel::RenderOverlayToolbar(const ImVec2& viewportMin)
+    {
+        const float l_Margin = 12.0f;
+        const float l_Pad = 6.0f;
+        float l_ButtonSize = ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y * 2.0f;
+        const ImVec4 l_Accent = ImVec4(0.16f, 0.30f, 0.49f, 1.0f);
+        ImU32 l_SeparatorColor = ImGui::GetColorU32(ImGuiCol_Separator);
+
+        // Split so the rounded panel can be drawn behind the controls after they are measured.
+        ImDrawList* l_DrawList = ImGui::GetWindowDrawList();
+        l_DrawList->ChannelsSplit(2);
+        l_DrawList->ChannelsSetCurrent(1);
+
+        ImGui::SetCursorScreenPos(ImVec2(viewportMin.x + l_Margin + l_Pad, viewportMin.y + l_Margin + l_Pad));
+        ImGui::BeginGroup();
+
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4.0f, 0.0f));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+
+        auto l_ModeButton = [&](const char* icon, ImGuizmo::OPERATION op, const char* tooltip)
+            {
+                bool l_Active = m_GizmoOperation == op;
+                if (l_Active)
+                {
+                    ImGui::PushStyleColor(ImGuiCol_Button, l_Accent);
+                }
+
+                if (ImGui::Button(icon, ImVec2(l_ButtonSize, l_ButtonSize)))
+                {
+                    m_GizmoOperation = op;
+                }
+
+                if (l_Active)
+                {
+                    ImGui::PopStyleColor();
+                }
+
+                if (ImGui::IsItemHovered())
+                {
+                    ImGui::SetTooltip("%s", tooltip);
+                }
+            };
+
+        auto l_VerticalSeparator = [&]()
+            {
+                ImGui::SameLine(0.0f, 7.0f);
+                ImVec2 l_Pos = ImGui::GetCursorScreenPos();
+                l_DrawList->AddLine(ImVec2(l_Pos.x, l_Pos.y + 3.0f), ImVec2(l_Pos.x, l_Pos.y + l_ButtonSize - 3.0f), l_SeparatorColor);
+                ImGui::SameLine(0.0f, 7.0f);
+            };
+
+        l_ModeButton(ICON_FA_ARROWS_UP_DOWN_LEFT_RIGHT, ImGuizmo::TRANSLATE, "Move (W)");
+        ImGui::SameLine();
+        l_ModeButton(ICON_FA_ROTATE, ImGuizmo::ROTATE, "Rotate (E)");
+        ImGui::SameLine();
+        l_ModeButton(ICON_FA_MAXIMIZE, ImGuizmo::SCALE, "Scale (R)");
+
+        l_VerticalSeparator();
+
+        const char* l_SpaceLabel = m_GizmoMode == ImGuizmo::LOCAL ? "Local" : "World";
+        if (ImGui::Button(l_SpaceLabel, ImVec2(0.0f, l_ButtonSize)))
+        {
+            m_GizmoMode = m_GizmoMode == ImGuizmo::LOCAL ? ImGuizmo::WORLD : ImGuizmo::LOCAL;
+        }
+
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip("Transform space (World / Local)");
+        }
+
+        l_VerticalSeparator();
+
+        if (m_SnapEnabled)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Button, l_Accent);
+        }
+
+        if (ImGui::Button(ICON_FA_MAGNET, ImVec2(l_ButtonSize, l_ButtonSize)))
+        {
+            m_SnapEnabled = !m_SnapEnabled;
+        }
+
+        if (m_SnapEnabled)
+        {
+            ImGui::PopStyleColor();
+        }
+
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip(m_SnapEnabled ? "Grid Snapping: On" : "Grid Snapping: Off");
+        }
+
+        // The snap increment field tracks whichever transform mode is active.
+        float* l_SnapField = &m_SnapTranslation;
+        const char* l_SnapFormat = "%.2f";
+        if (m_GizmoOperation == ImGuizmo::ROTATE)
+        {
+            l_SnapField = &m_SnapRotation;
+            l_SnapFormat = "%.0f";
+        }
+        else if (m_GizmoOperation == ImGuizmo::SCALE)
+        {
+            l_SnapField = &m_SnapScale;
+        }
+
+        ImGui::SameLine(0.0f, 4.0f);
+        ImGui::SetNextItemWidth(60.0f);
+        ImGui::DragFloat("##ViewportSnapValue", l_SnapField, 0.05f, 0.0f, 1000.0f, l_SnapFormat);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip("Snap increment");
+        }
+
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar(2);
+        ImGui::EndGroup();
+
+        ImVec2 l_Min = ImGui::GetItemRectMin();
+        ImVec2 l_Max = ImGui::GetItemRectMax();
+
+        l_DrawList->ChannelsSetCurrent(0);
+        l_DrawList->AddRectFilled(ImVec2(l_Min.x - l_Pad, l_Min.y - l_Pad), ImVec2(l_Max.x + l_Pad, l_Max.y + l_Pad), IM_COL32(18, 18, 18, 220), 5.0f);
+        l_DrawList->AddRect(ImVec2(l_Min.x - l_Pad, l_Min.y - l_Pad), ImVec2(l_Max.x + l_Pad, l_Max.y + l_Pad), IM_COL32(70, 70, 70, 160), 5.0f);
+        l_DrawList->ChannelsMerge();
     }
 }

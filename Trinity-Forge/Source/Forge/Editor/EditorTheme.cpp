@@ -35,7 +35,7 @@ namespace Trinity
         l_Style.TabBorderSize = 0.0f;
 
         l_Style.WindowPadding = ImVec2(8.0f, 6.0f);
-        l_Style.FramePadding = ImVec2(8.0f, 5.0f);
+        l_Style.FramePadding = ImVec2(8.0f, 7.0f);
         l_Style.ItemSpacing = ImVec2(8.0f, 6.0f);
         l_Style.ItemInnerSpacing = ImVec2(6.0f, 5.0f);
         l_Style.CellPadding = ImVec2(6.0f, 4.0f);
@@ -46,9 +46,10 @@ namespace Trinity
         l_Style.WindowTitleAlign = ImVec2(0.0f, 0.5f);
         l_Style.WindowMenuButtonPosition = ImGuiDir_None;
 
-        const ImVec4 l_Accent = ImVec4(0.78f, 0.78f, 0.78f, 1.00f);
-        const ImVec4 l_AccentHovered = ImVec4(0.90f, 0.90f, 0.90f, 1.00f);
-        const ImVec4 l_AccentActive = ImVec4(0.64f, 0.64f, 0.64f, 1.00f);
+        // Unreal uses a saturated editor blue as its interactive accent for checkmarks, sliders, drag-drop targets and keyboard-nav highlights
+        const ImVec4 l_Accent = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+        const ImVec4 l_AccentHovered = ImVec4(0.38f, 0.67f, 1.00f, 1.00f);
+        const ImVec4 l_AccentActive = ImVec4(0.20f, 0.48f, 0.86f, 1.00f);
 
         ImVec4* l_Colors = l_Style.Colors;
         l_Colors[ImGuiCol_Text] = ImVec4(0.87f, 0.87f, 0.87f, 1.00f);
@@ -75,20 +76,22 @@ namespace Trinity
         l_Colors[ImGuiCol_Button] = ImVec4(0.150f, 0.150f, 0.150f, 1.00f);
         l_Colors[ImGuiCol_ButtonHovered] = ImVec4(0.210f, 0.210f, 0.210f, 1.00f);
         l_Colors[ImGuiCol_ButtonActive] = ImVec4(0.260f, 0.260f, 0.260f, 1.00f);
-        l_Colors[ImGuiCol_Header] = ImVec4(0.240f, 0.240f, 0.240f, 1.00f);
-        l_Colors[ImGuiCol_HeaderHovered] = ImVec4(0.300f, 0.300f, 0.300f, 1.00f);
-        l_Colors[ImGuiCol_HeaderActive] = ImVec4(0.340f, 0.340f, 0.340f, 1.00f);
+        // Selected Outliner rows / collapsing headers use Unreal's blue selection fill.
+        l_Colors[ImGuiCol_Header] = ImVec4(0.180f, 0.330f, 0.540f, 1.00f);
+        l_Colors[ImGuiCol_HeaderHovered] = ImVec4(0.220f, 0.400f, 0.650f, 1.00f);
+        l_Colors[ImGuiCol_HeaderActive] = ImVec4(0.260f, 0.450f, 0.720f, 1.00f);
         l_Colors[ImGuiCol_Separator] = ImVec4(0.180f, 0.180f, 0.180f, 1.00f);
         l_Colors[ImGuiCol_SeparatorHovered] = ImVec4(0.350f, 0.350f, 0.350f, 1.00f);
         l_Colors[ImGuiCol_SeparatorActive] = ImVec4(0.450f, 0.450f, 0.450f, 1.00f);
         l_Colors[ImGuiCol_ResizeGrip] = ImVec4(0.220f, 0.220f, 0.220f, 0.60f);
         l_Colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.350f, 0.350f, 0.350f, 1.00f);
         l_Colors[ImGuiCol_ResizeGripActive] = ImVec4(0.450f, 0.450f, 0.450f, 1.00f);
-        l_Colors[ImGuiCol_Tab] = ImVec4(0.100f, 0.100f, 0.100f, 1.00f);
-        l_Colors[ImGuiCol_TabHovered] = ImVec4(0.240f, 0.240f, 0.240f, 1.00f);
-        l_Colors[ImGuiCol_TabActive] = ImVec4(0.170f, 0.170f, 0.170f, 1.00f);
+        // Active tab carries the Unreal-style blue accent; hover tints toward it too.
+        l_Colors[ImGuiCol_Tab] = ImVec4(0.090f, 0.090f, 0.090f, 1.00f);
+        l_Colors[ImGuiCol_TabHovered] = ImVec4(0.230f, 0.420f, 0.680f, 1.00f);
+        l_Colors[ImGuiCol_TabActive] = ImVec4(0.160f, 0.300f, 0.490f, 1.00f);
         l_Colors[ImGuiCol_TabUnfocused] = ImVec4(0.080f, 0.080f, 0.080f, 1.00f);
-        l_Colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.130f, 0.130f, 0.130f, 1.00f);
+        l_Colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.130f, 0.180f, 0.260f, 1.00f);
         l_Colors[ImGuiCol_DockingPreview] = ImVec4(0.450f, 0.450f, 0.450f, 0.55f);
         l_Colors[ImGuiCol_DockingEmptyBg] = ImVec4(0.050f, 0.050f, 0.050f, 1.00f);
         l_Colors[ImGuiCol_PlotLines] = l_Accent;

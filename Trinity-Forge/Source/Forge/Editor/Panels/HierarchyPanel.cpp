@@ -90,7 +90,7 @@ namespace Trinity
 
     void HierarchyPanel::OnImGuiRender()
     {
-        ImGui::Begin("Hierarchy");
+        ImGui::Begin("Outliner");
 
         if (m_Engine.HasScene())
         {

@@ -28,5 +28,6 @@ namespace Trinity
 
         std::string m_RenameOldName;
         TransformComponent m_TransformEditOld;
+        char m_DetailsSearch[128] = "";
     };
 }

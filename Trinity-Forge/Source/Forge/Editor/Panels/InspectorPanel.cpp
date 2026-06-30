@@ -1,5 +1,7 @@
 #include <Forge/Editor/Panels/InspectorPanel.h>
 
+#include <algorithm>
+#include <cctype>
 #include <cstring>
 #include <memory>
 #include <string>
@@ -7,6 +9,7 @@
 #include <filesystem>
 
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <glm/glm.hpp>
 
 #include <Forge/Editor/EditorContext.h>
@@ -37,6 +40,17 @@
 
 namespace Trinity
 {
+    static std::string ToLower(const std::string& text)
+    {
+        std::string l_Result = text;
+        std::transform(l_Result.begin(), l_Result.end(), l_Result.begin(), [](unsigned char character)
+            {
+                return static_cast<char>(std::tolower(character));
+            });
+
+        return l_Result;
+    }
+
     static void DrawMaterialTextureParameter(AssetDatabase& assetDatabase, Material& material, const char* label, const char* parameterName)
     {
         UUID l_Texture = UUID(0);
@@ -198,7 +212,7 @@ namespace Trinity
 
     void InspectorPanel::OnImGuiRender()
     {
-        ImGui::Begin("Inspector");
+        ImGui::Begin("Details");
 
         if (m_Engine.HasScene() && m_Context.SelectedEntity != entt::null)
         {
@@ -235,7 +249,23 @@ namespace Trinity
                     l_NameComponent.Name = m_RenameOldName;
                 }
 
-                if (l_Entity.HasComponent<TransformComponent>())
+                ImGui::Spacing();
+                ImGui::SetNextItemWidth(-1.0f);
+                ImGui::InputTextWithHint("##DetailsSearch", ICON_FA_SLIDERS "  Search...", m_DetailsSearch, sizeof(m_DetailsSearch));
+                ImGui::Spacing();
+
+                std::string l_DetailsFilter = ToLower(m_DetailsSearch);
+                auto l_Show = [&l_DetailsFilter](const char* section) -> bool
+                    {
+                        if (l_DetailsFilter.empty())
+                        {
+                            return true;
+                        }
+
+                        return ToLower(section).find(l_DetailsFilter) != std::string::npos;
+                    };
+
+                if (l_Entity.HasComponent<TransformComponent>() && l_Show("Transform"))
                 {
                     ImGui::SeparatorText(ICON_FA_UP_DOWN_LEFT_RIGHT "  Transform");
                     TransformComponent& l_Transform = l_Entity.GetComponent<TransformComponent>();
@@ -245,7 +275,7 @@ namespace Trinity
                     DragTransformField(l_Scene, l_TransformUUID, "Scale", l_Transform, l_Transform.Scale, 0.1f);
                 }
 
-                if (l_Entity.HasComponent<MeshRendererComponent>())
+                if (l_Entity.HasComponent<MeshRendererComponent>() && l_Show("Mesh Renderer"))
                 {
                     ImGui::SeparatorText(ICON_FA_CUBE "  Mesh Renderer");
                     MeshRendererComponent& l_MeshRenderer = l_Entity.GetComponent<MeshRendererComponent>();
@@ -413,7 +443,7 @@ namespace Trinity
                     }
                 }
 
-                if (l_Entity.HasComponent<CameraComponent>())
+                if (l_Entity.HasComponent<CameraComponent>() && l_Show("Camera"))
                 {
                     ImGui::SeparatorText(ICON_FA_CAMERA "  Camera");
                     CameraComponent& l_Camera = l_Entity.GetComponent<CameraComponent>();
@@ -433,7 +463,7 @@ namespace Trinity
                     }
                 }
 
-                if (l_Entity.HasComponent<LightComponent>())
+                if (l_Entity.HasComponent<LightComponent>() && l_Show("Light"))
                 {
                     ImGui::SeparatorText(ICON_FA_LIGHTBULB "  Light");
                     LightComponent& l_Light = l_Entity.GetComponent<LightComponent>();
@@ -470,7 +500,7 @@ namespace Trinity
                     }
                 }
 
-                if (l_Entity.HasComponent<AudioSourceComponent>())
+                if (l_Entity.HasComponent<AudioSourceComponent>() && l_Show("Audio Source"))
                 {
                     ImGui::SeparatorText(ICON_FA_VOLUME_HIGH "  Audio Source");
                     AudioSourceComponent& l_Source = l_Entity.GetComponent<AudioSourceComponent>();
@@ -542,7 +572,7 @@ namespace Trinity
                     }
                 }
 
-                if (l_Entity.HasComponent<AudioListenerComponent>())
+                if (l_Entity.HasComponent<AudioListenerComponent>() && l_Show("Audio Listener"))
                 {
                     ImGui::SeparatorText(ICON_FA_VOLUME_HIGH "  Audio Listener");
                     AudioListenerComponent& l_Listener = l_Entity.GetComponent<AudioListenerComponent>();
@@ -559,11 +589,19 @@ namespace Trinity
                     }
                 }
 
+                ImGui::Spacing();
                 ImGui::Separator();
-                if (ImGui::Button(ICON_FA_PLUS "  Add Component"))
+                ImGui::Spacing();
+
+                float l_AddWidth = ImGui::GetContentRegionAvail().x;
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.60f, 0.28f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.28f, 0.72f, 0.34f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.18f, 0.52f, 0.24f, 1.0f));
+                if (ImGui::Button(ICON_FA_PLUS "  Add Component", ImVec2(l_AddWidth, 0.0f)))
                 {
                     ImGui::OpenPopup("AddComponentPopup");
                 }
+                ImGui::PopStyleColor(3);
 
                 if (ImGui::BeginPopup("AddComponentPopup"))
                 {
@@ -624,14 +662,57 @@ namespace Trinity
 
     void InspectorPanel::DragTransformField(Scene& scene, uint64_t uuid, const char* label, TransformComponent& transform, glm::vec3& value, float speed)
     {
-        ImGui::DragFloat3(label, &value.x, speed);
+        ImGuiStyle& l_Style = ImGui::GetStyle();
+        float l_LineHeight = ImGui::GetFontSize() + l_Style.FramePadding.y * 2.0f;
+        ImVec2 l_ButtonSize = ImVec2(l_LineHeight + 3.0f, l_LineHeight);
 
-        if (ImGui::IsItemActivated())
+        ImGui::PushID(label);
+
+        // Unreal aligns every property name in a fixed left-hand label column.
+        ImGui::Columns(2, nullptr, false);
+        ImGui::SetColumnWidth(0, 100.0f);
+        ImGui::TextUnformatted(label);
+        ImGui::NextColumn();
+
+        ImGui::PushMultiItemsWidths(3, ImGui::CalcItemWidth());
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, l_Style.ItemSpacing.y));
+
+        bool l_Activated = false;
+        bool l_Committed = false;
+
+        auto l_Axis = [&](const char* axisLabel, const ImVec4& color, const ImVec4& colorHovered, float* component)
+            {
+                ImGui::PushStyleColor(ImGuiCol_Button, color);
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colorHovered);
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, color);
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+                ImGui::Button(axisLabel, l_ButtonSize);
+                ImGui::PopStyleColor(4);
+
+                ImGui::SameLine();
+                std::string l_DragId = std::string("##") + axisLabel;
+                ImGui::DragFloat(l_DragId.c_str(), component, speed);
+                l_Activated = l_Activated || ImGui::IsItemActivated();
+                l_Committed = l_Committed || ImGui::IsItemDeactivatedAfterEdit();
+                ImGui::PopItemWidth();
+            };
+
+        l_Axis("X", ImVec4(0.60f, 0.16f, 0.18f, 1.0f), ImVec4(0.74f, 0.21f, 0.23f, 1.0f), &value.x);
+        ImGui::SameLine();
+        l_Axis("Y", ImVec4(0.18f, 0.49f, 0.21f, 1.0f), ImVec4(0.24f, 0.60f, 0.27f, 1.0f), &value.y);
+        ImGui::SameLine();
+        l_Axis("Z", ImVec4(0.14f, 0.33f, 0.60f, 1.0f), ImVec4(0.20f, 0.43f, 0.76f, 1.0f), &value.z);
+
+        ImGui::PopStyleVar();
+        ImGui::Columns(1);
+        ImGui::PopID();
+
+        if (l_Activated)
         {
             m_TransformEditOld = transform;
         }
 
-        if (ImGui::IsItemDeactivatedAfterEdit())
+        if (l_Committed)
         {
             m_Context.History.Execute(std::make_unique<SetTransformCommand>(scene, uuid, m_TransformEditOld, transform));
         }

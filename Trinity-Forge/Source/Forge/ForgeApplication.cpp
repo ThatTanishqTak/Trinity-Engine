@@ -156,8 +156,8 @@ namespace Trinity
         ImGuiID l_RightBottom = ImGui::DockBuilderSplitNode(l_Right, ImGuiDir_Down, 0.55f, nullptr, &l_Right);
 
         ImGui::DockBuilderDockWindow("Viewport", l_Main);
-        ImGui::DockBuilderDockWindow("Hierarchy", l_Right);
-        ImGui::DockBuilderDockWindow("Inspector", l_RightBottom);
+        ImGui::DockBuilderDockWindow("Outliner", l_Right);
+        ImGui::DockBuilderDockWindow("Details", l_RightBottom);
 
         ImGui::DockBuilderFinish(dockspaceID);
     }
