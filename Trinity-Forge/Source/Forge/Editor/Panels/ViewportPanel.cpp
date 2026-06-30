@@ -236,7 +236,8 @@ namespace Trinity
 
         l_VerticalSeparator();
 
-        if (m_SnapEnabled)
+        bool l_SnapActive = m_SnapEnabled;
+        if (l_SnapActive)
         {
             ImGui::PushStyleColor(ImGuiCol_Button, l_Accent);
         }
@@ -246,7 +247,7 @@ namespace Trinity
             m_SnapEnabled = !m_SnapEnabled;
         }
 
-        if (m_SnapEnabled)
+        if (l_SnapActive)
         {
             ImGui::PopStyleColor();
         }
