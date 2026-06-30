@@ -25,6 +25,7 @@ namespace Trinity
     {
     public:
         static constexpr uint64_t BuiltinCube = 1;
+        static constexpr uint64_t BuiltinPlane = 2;
 
         AssetDatabase(FileSystem& fileSystem, MeshLibrary& meshLibrary, TextureManager& textureManager, AudioEngine& audioEngine);
 

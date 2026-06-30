@@ -26,6 +26,7 @@ namespace Trinity
 
         std::shared_ptr<Mesh> Load(const std::string& relativePath);
         std::shared_ptr<Mesh> GetCube();
+        std::shared_ptr<Mesh> GetPlane();
 
         void Invalidate(const std::string& relativePath);
 
@@ -39,5 +40,6 @@ namespace Trinity
 
         std::unordered_map<std::string, std::shared_ptr<Mesh>> m_Cache;
         std::shared_ptr<Mesh> m_Cube;
+        std::shared_ptr<Mesh> m_Plane;
     };
 }

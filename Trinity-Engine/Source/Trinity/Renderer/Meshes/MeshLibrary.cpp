@@ -63,6 +63,42 @@ namespace Trinity
         return l_Data;
     }
 
+    static MeshData BuildPlaneMeshData()
+    {
+        MeshData l_Data;
+
+        const glm::vec3 l_Normal = { 0.0f, 1.0f, 0.0f };
+        const glm::vec3 l_Tangent = { 1.0f, 0.0f, 0.0f };
+        const glm::vec3 l_Positions[4] = { { -0.5f, 0.0f, -0.5f }, { 0.5f, 0.0f, -0.5f }, { 0.5f, 0.0f, 0.5f }, { -0.5f, 0.0f, 0.5f } };
+        const glm::vec2 l_UVs[4] = { { 0.0f, 0.0f }, { 1.0f, 0.0f }, { 1.0f, 1.0f }, { 0.0f, 1.0f } };
+
+        for (int l_Corner = 0; l_Corner < 4; ++l_Corner)
+        {
+            MeshVertex l_Vertex{};
+            l_Vertex.Position = l_Positions[l_Corner];
+            l_Vertex.Normal = l_Normal;
+            l_Vertex.Tangent = l_Tangent;
+            l_Vertex.UV = l_UVs[l_Corner];
+            l_Data.Vertices.push_back(l_Vertex);
+        }
+
+        l_Data.Indices = { 0, 1, 2, 2, 3, 0 };
+
+        Submesh l_Submesh;
+        l_Submesh.IndexCount = static_cast<uint32_t>(l_Data.Indices.size());
+        l_Submesh.Name = "Plane";
+        l_Data.Submeshes.push_back(l_Submesh);
+
+        MaterialSlot l_Slot;
+        l_Slot.Name = "Default";
+        l_Data.MaterialSlots.push_back(l_Slot);
+
+        l_Data.Diagnostics.SourcePath = "<procedural plane>";
+        l_Data.Diagnostics.SourceFormat = "procedural";
+
+        return l_Data;
+    }
+
     MeshLibrary::MeshLibrary(GraphicsDevice& device, FileSystem& fileSystem) : m_Device(device), m_FileSystem(fileSystem)
     {
 
@@ -79,6 +115,13 @@ namespace Trinity
             return false;
         }
 
+        if (!GetPlane())
+        {
+            TR_CORE_ERROR("MeshLibrary: failed to create procedural plane");
+
+            return false;
+        }
+
         return true;
     }
 
@@ -86,6 +129,7 @@ namespace Trinity
     {
         m_Cache.clear();
         m_Cube.reset();
+        m_Plane.reset();
     }
 
     std::shared_ptr<Mesh> MeshLibrary::Load(const std::string& relativePath)
@@ -137,6 +181,18 @@ namespace Trinity
         m_Cube = CreateFromData(BuildCubeMeshData(), "ProceduralCube");
 
         return m_Cube;
+    }
+
+    std::shared_ptr<Mesh> MeshLibrary::GetPlane()
+    {
+        if (m_Plane)
+        {
+            return m_Plane;
+        }
+
+        m_Plane = CreateFromData(BuildPlaneMeshData(), "ProceduralPlane");
+
+        return m_Plane;
     }
 
     void MeshLibrary::Invalidate(const std::string& relativePath)

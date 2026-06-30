@@ -174,6 +174,11 @@ namespace Trinity
             return m_MeshLibrary.GetCube();
         }
 
+        if (l_Raw == BuiltinPlane)
+        {
+            return m_MeshLibrary.GetPlane();
+        }
+
         const AssetMetadata* l_Metadata = GetMetadata(id);
         if (l_Metadata == nullptr || l_Metadata->Type != AssetType::Mesh)
         {
