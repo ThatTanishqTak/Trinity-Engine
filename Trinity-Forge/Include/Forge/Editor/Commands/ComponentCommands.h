@@ -86,4 +86,44 @@ namespace Trinity
         std::string m_Label;
         T m_Value{};
     };
+
+    template<typename T>
+    class ResetComponentCommand : public ICommand
+    {
+    public:
+        ResetComponentCommand(Scene& scene, uint64_t uuid, const std::string& label) : m_Scene(scene), m_UUID(uuid), m_Label(label)
+        {
+            Entity l_Entity = FindEntityByUUID(m_Scene, m_UUID);
+            if (l_Entity.IsValid() && l_Entity.HasComponent<T>())
+            {
+                m_Old = l_Entity.GetComponent<T>();
+            }
+        }
+
+        void Execute() override
+        {
+            Entity l_Entity = FindEntityByUUID(m_Scene, m_UUID);
+            if (l_Entity.IsValid() && l_Entity.HasComponent<T>())
+            {
+                l_Entity.GetComponent<T>() = T{};
+            }
+        }
+
+        void Undo() override
+        {
+            Entity l_Entity = FindEntityByUUID(m_Scene, m_UUID);
+            if (l_Entity.IsValid() && l_Entity.HasComponent<T>())
+            {
+                l_Entity.GetComponent<T>() = m_Old;
+            }
+        }
+
+        std::string GetName() const override { return "Reset " + m_Label; }
+
+    private:
+        Scene& m_Scene;
+        uint64_t m_UUID = 0;
+        std::string m_Label;
+        T m_Old{};
+    };
 }

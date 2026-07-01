@@ -24,7 +24,7 @@ namespace Trinity
         void OnImGuiRender() override;
 
     private:
-        void DragTransformField(Scene& scene, uint64_t uuid, const char* label, TransformComponent& transform, glm::vec3& value, float speed);
+        void DragTransformField(Scene& scene, uint64_t uuid, const char* label, TransformComponent& transform, glm::vec3& value, float resetValue, float speed);
 
         std::string m_RenameOldName;
         TransformComponent m_TransformEditOld;

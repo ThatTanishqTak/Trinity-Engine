@@ -210,6 +210,115 @@ namespace Trinity
         }
     }
 
+    // Result of a single DrawVec3Control call, so callers can wire it into their own undo stack.
+    struct Vec3ControlResult
+    {
+        bool Activated = false;
+        bool Committed = false;
+        bool Reset = false;
+    };
+
+    // Reusable Unreal-style colored XYZ control. Double-click an axis button to reset just that axis to resetValue.
+    static Vec3ControlResult DrawVec3Control(const char* label, glm::vec3& value, float resetValue, float speed)
+    {
+        Vec3ControlResult l_Result;
+
+        ImGuiStyle& l_Style = ImGui::GetStyle();
+        float l_LineHeight = ImGui::GetFontSize() + l_Style.FramePadding.y * 2.0f;
+        ImVec2 l_ButtonSize = ImVec2(l_LineHeight + 3.0f, l_LineHeight);
+
+        ImGui::PushID(label);
+
+        // Unreal aligns every property name in a fixed left-hand label column.
+        ImGui::Columns(2, nullptr, false);
+        ImGui::SetColumnWidth(0, 100.0f);
+        ImGui::TextUnformatted(label);
+        ImGui::NextColumn();
+
+        ImGui::PushMultiItemsWidths(3, ImGui::CalcItemWidth());
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, l_Style.ItemSpacing.y));
+
+        auto l_Axis = [&](const char* axisLabel, const ImVec4& color, const ImVec4& colorHovered, float* component)
+            {
+                ImGui::PushStyleColor(ImGuiCol_Button, color);
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colorHovered);
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, color);
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+                ImGui::Button(axisLabel, l_ButtonSize);
+                if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+                {
+                    *component = resetValue;
+                    l_Result.Reset = true;
+                }
+                ImGui::PopStyleColor(4);
+
+                ImGui::SameLine();
+                std::string l_DragId = std::string("##") + axisLabel;
+                ImGui::DragFloat(l_DragId.c_str(), component, speed);
+                l_Result.Activated = l_Result.Activated || ImGui::IsItemActivated();
+                l_Result.Committed = l_Result.Committed || ImGui::IsItemDeactivatedAfterEdit();
+                ImGui::PopItemWidth();
+            };
+
+        l_Axis("X", ImVec4(0.60f, 0.16f, 0.18f, 1.0f), ImVec4(0.74f, 0.21f, 0.23f, 1.0f), &value.x);
+        ImGui::SameLine();
+        l_Axis("Y", ImVec4(0.18f, 0.49f, 0.21f, 1.0f), ImVec4(0.24f, 0.60f, 0.27f, 1.0f), &value.y);
+        ImGui::SameLine();
+        l_Axis("Z", ImVec4(0.14f, 0.33f, 0.60f, 1.0f), ImVec4(0.20f, 0.43f, 0.76f, 1.0f), &value.z);
+
+        ImGui::PopStyleVar();
+        ImGui::Columns(1);
+        ImGui::PopID();
+
+        return l_Result;
+    }
+
+    // Requests raised by a component header's "..." menu for the current frame.
+    struct ComponentSection
+    {
+        bool Open = false;
+        bool Reset = false;
+        bool Remove = false;
+    };
+
+    // Draws a UE-style collapsible component header with a right-aligned "..." menu (Reset / Remove).
+    static ComponentSection BeginComponentSection(const char* id, const char* header, bool removable)
+    {
+        ComponentSection l_Result;
+
+        ImGui::PushID(id);
+
+        // Fold like an Unreal component category; open by default so nothing hides on selectionAllowOverlap lets the right-aligned "..." button on the same row receive clicks
+        l_Result.Open = ImGui::CollapsingHeader(header, ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_AllowOverlap);
+
+        // Right-aligned options button on the header row; available whether the section is open or collapsed.
+        float l_LineHeight = ImGui::GetFrameHeight();
+        ImGui::SameLine(ImGui::GetContentRegionMax().x - l_LineHeight);
+        if (ImGui::SmallButton(ICON_FA_ELLIPSIS_VERTICAL))
+        {
+            ImGui::OpenPopup("ComponentSectionMenu");
+        }
+
+        if (ImGui::BeginPopup("ComponentSectionMenu"))
+        {
+            if (ImGui::MenuItem(ICON_FA_ARROWS_ROTATE "  Reset"))
+            {
+                l_Result.Reset = true;
+            }
+
+            if (removable && ImGui::MenuItem(ICON_FA_TRASH "  Remove"))
+            {
+                l_Result.Remove = true;
+            }
+
+            ImGui::EndPopup();
+        }
+
+        ImGui::PopID();
+
+        return l_Result;
+    }
+
     void InspectorPanel::OnImGuiRender()
     {
         ImGui::Begin("Details");
@@ -267,231 +376,283 @@ namespace Trinity
 
                 if (l_Entity.HasComponent<TransformComponent>() && l_Show("Transform"))
                 {
-                    ImGui::SeparatorText(ICON_FA_UP_DOWN_LEFT_RIGHT "  Transform");
-                    TransformComponent& l_Transform = l_Entity.GetComponent<TransformComponent>();
-                    uint64_t l_TransformUUID = static_cast<uint64_t>(l_Entity.GetUUID());
-                    DragTransformField(l_Scene, l_TransformUUID, "Translation", l_Transform, l_Transform.Translation, 0.1f);
-                    DragTransformField(l_Scene, l_TransformUUID, "Rotation", l_Transform, l_Transform.Rotation, 0.01f);
-                    DragTransformField(l_Scene, l_TransformUUID, "Scale", l_Transform, l_Transform.Scale, 0.1f);
+                    ComponentSection l_Section = BeginComponentSection("Transform", ICON_FA_UP_DOWN_LEFT_RIGHT "  Transform", false);
+                    uint64_t l_TargetUUID = static_cast<uint64_t>(l_Entity.GetUUID());
+
+                    if (l_Section.Open)
+                    {
+                        TransformComponent& l_Transform = l_Entity.GetComponent<TransformComponent>();
+                        DragTransformField(l_Scene, l_TargetUUID, "Translation", l_Transform, l_Transform.Translation, 0.0f, 0.1f);
+                        DragTransformField(l_Scene, l_TargetUUID, "Rotation", l_Transform, l_Transform.Rotation, 0.0f, 0.01f);
+                        DragTransformField(l_Scene, l_TargetUUID, "Scale", l_Transform, l_Transform.Scale, 1.0f, 0.1f);
+                    }
+
+                    if (l_Section.Reset)
+                    {
+                        m_Context.ComponentOp = [this, l_TargetUUID]()
+                            {
+                                Scene& l_OpScene = m_Engine.GetScene();
+                                m_Context.History.Execute(std::make_unique<ResetComponentCommand<TransformComponent>>(l_OpScene, l_TargetUUID, "Transform"));
+                            };
+                    }
                 }
 
                 if (l_Entity.HasComponent<MeshRendererComponent>() && l_Show("Mesh Renderer"))
                 {
-                    ImGui::SeparatorText(ICON_FA_CUBE "  Mesh Renderer");
-                    MeshRendererComponent& l_MeshRenderer = l_Entity.GetComponent<MeshRendererComponent>();
+                    ComponentSection l_Section = BeginComponentSection("MeshRenderer", ICON_FA_CUBE "  Mesh Renderer", true);
                     uint64_t l_MeshUUID = static_cast<uint64_t>(l_Entity.GetUUID());
-                    AssetDatabase& l_Assets = m_Engine.GetAssetDatabase();
 
-                    uint64_t l_CurrentAsset = static_cast<uint64_t>(l_MeshRenderer.MeshAsset);
-                    std::string l_CurrentLabel;
-                    if (l_CurrentAsset == 0)
+                    if (l_Section.Open)
                     {
-                        l_CurrentLabel = "(none)";
-                    }
-                    else if (l_CurrentAsset == AssetDatabase::BuiltinCube)
-                    {
-                        l_CurrentLabel = "(procedural cube)";
-                    }
-                    else if (l_CurrentAsset == AssetDatabase::BuiltinPlane)
-                    {
-                        l_CurrentLabel = "(procedural plane)";
-                    }
-                    else
-                    {
-                        const AssetMetadata* l_Meta = l_Assets.GetMetadata(l_MeshRenderer.MeshAsset);
-                        l_CurrentLabel = l_Meta != nullptr ? l_Meta->SourcePath : "(missing)";
-                    }
+                        MeshRendererComponent& l_MeshRenderer = l_Entity.GetComponent<MeshRendererComponent>();
+                        AssetDatabase& l_Assets = m_Engine.GetAssetDatabase();
 
-                    if (ImGui::BeginCombo("Mesh", l_CurrentLabel.c_str()))
-                    {
-                        if (ImGui::Selectable("(none)", l_CurrentAsset == 0) && l_CurrentAsset != 0)
+                        uint64_t l_CurrentAsset = static_cast<uint64_t>(l_MeshRenderer.MeshAsset);
+                        std::string l_CurrentLabel;
+                        if (l_CurrentAsset == 0)
                         {
-                            m_Context.History.Execute(std::make_unique<SetMeshCommand>(l_Scene, l_Assets, l_MeshUUID, UUID(0)));
+                            l_CurrentLabel = "(none)";
+                        }
+                        else if (l_CurrentAsset == AssetDatabase::BuiltinCube)
+                        {
+                            l_CurrentLabel = "(procedural cube)";
+                        }
+                        else if (l_CurrentAsset == AssetDatabase::BuiltinPlane)
+                        {
+                            l_CurrentLabel = "(procedural plane)";
+                        }
+                        else
+                        {
+                            const AssetMetadata* l_Meta = l_Assets.GetMetadata(l_MeshRenderer.MeshAsset);
+                            l_CurrentLabel = l_Meta != nullptr ? l_Meta->SourcePath : "(missing)";
                         }
 
-                        if (ImGui::Selectable("(procedural cube)", l_CurrentAsset == AssetDatabase::BuiltinCube) && l_CurrentAsset != AssetDatabase::BuiltinCube)
+                        if (ImGui::BeginCombo("Mesh", l_CurrentLabel.c_str()))
                         {
-                            m_Context.History.Execute(std::make_unique<SetMeshCommand>(l_Scene, l_Assets, l_MeshUUID, UUID(AssetDatabase::BuiltinCube)));
-                        }
-
-                        if (ImGui::Selectable("(procedural plane)", l_CurrentAsset == AssetDatabase::BuiltinPlane) && l_CurrentAsset != AssetDatabase::BuiltinPlane)
-                        {
-                            m_Context.History.Execute(std::make_unique<SetMeshCommand>(l_Scene, l_Assets, l_MeshUUID, UUID(AssetDatabase::BuiltinPlane)));
-                        }
-
-                        for (UUID it_Asset : l_Assets.GetAssetsOfType(AssetType::Mesh))
-                        {
-                            const AssetMetadata* l_Meta = l_Assets.GetMetadata(it_Asset);
-                            if (l_Meta == nullptr)
+                            if (ImGui::Selectable("(none)", l_CurrentAsset == 0) && l_CurrentAsset != 0)
                             {
-                                continue;
+                                m_Context.History.Execute(std::make_unique<SetMeshCommand>(l_Scene, l_Assets, l_MeshUUID, UUID(0)));
                             }
 
-                            bool l_Selected = static_cast<uint64_t>(it_Asset) == l_CurrentAsset;
-                            if (ImGui::Selectable(l_Meta->SourcePath.c_str(), l_Selected) && !l_Selected)
+                            if (ImGui::Selectable("(procedural cube)", l_CurrentAsset == AssetDatabase::BuiltinCube) && l_CurrentAsset != AssetDatabase::BuiltinCube)
                             {
-                                m_Context.History.Execute(std::make_unique<SetMeshCommand>(l_Scene, l_Assets, l_MeshUUID, it_Asset));
-                            }
-                        }
-
-                        ImGui::EndCombo();
-                    }
-
-                    if (ImGui::BeginDragDropTarget())
-                    {
-                        if (const ImGuiPayload* l_Accepted = ImGui::AcceptDragDropPayload("TRINITY_ASSET_MESH"))
-                        {
-                            uint64_t l_Dropped = *static_cast<const uint64_t*>(l_Accepted->Data);
-                            m_Context.History.Execute(std::make_unique<SetMeshCommand>(l_Scene, l_Assets, l_MeshUUID, UUID(l_Dropped)));
-                        }
-
-                        ImGui::EndDragDropTarget();
-                    }
-
-                    if (l_MeshRenderer.MeshReference && l_MeshRenderer.MeshReference->IsValid())
-                    {
-                        ImGui::SeparatorText(ICON_FA_PAINTBRUSH "  Materials");
-
-                        const std::vector<MaterialSlot>& l_MeshSlots = l_MeshRenderer.MeshReference->GetMaterialSlots();
-                        size_t l_SlotCount = l_MeshSlots.empty() ? 1 : l_MeshSlots.size();
-
-                        for (size_t l_SlotIndex = 0; l_SlotIndex < l_SlotCount; ++l_SlotIndex)
-                        {
-                            ImGui::PushID(static_cast<int>(l_SlotIndex));
-
-                            std::string l_SlotName = l_SlotIndex < l_MeshSlots.size() && !l_MeshSlots[l_SlotIndex].Name.empty() ? l_MeshSlots[l_SlotIndex].Name : ("Slot " + std::to_string(l_SlotIndex));
-
-                            uint64_t l_CurrentMaterial = l_SlotIndex < l_MeshRenderer.Materials.size() ? static_cast<uint64_t>(l_MeshRenderer.Materials[l_SlotIndex]) : 0;
-                            std::string l_MaterialLabel;
-                            if (l_CurrentMaterial == 0)
-                            {
-                                l_MaterialLabel = "(default)";
-                            }
-                            else
-                            {
-                                const AssetMetadata* l_Meta = l_Assets.GetMetadata(UUID(l_CurrentMaterial));
-                                l_MaterialLabel = l_Meta != nullptr ? l_Meta->SourcePath : "(missing)";
+                                m_Context.History.Execute(std::make_unique<SetMeshCommand>(l_Scene, l_Assets, l_MeshUUID, UUID(AssetDatabase::BuiltinCube)));
                             }
 
-                            if (ImGui::BeginCombo(l_SlotName.c_str(), l_MaterialLabel.c_str()))
+                            if (ImGui::Selectable("(procedural plane)", l_CurrentAsset == AssetDatabase::BuiltinPlane) && l_CurrentAsset != AssetDatabase::BuiltinPlane)
                             {
-                                if (ImGui::Selectable("(default)", l_CurrentMaterial == 0) && l_CurrentMaterial != 0)
+                                m_Context.History.Execute(std::make_unique<SetMeshCommand>(l_Scene, l_Assets, l_MeshUUID, UUID(AssetDatabase::BuiltinPlane)));
+                            }
+
+                            for (UUID it_Asset : l_Assets.GetAssetsOfType(AssetType::Mesh))
+                            {
+                                const AssetMetadata* l_Meta = l_Assets.GetMetadata(it_Asset);
+                                if (l_Meta == nullptr)
                                 {
-                                    m_Context.History.Execute(std::make_unique<SetMaterialCommand>(l_Scene, l_MeshUUID, static_cast<uint32_t>(l_SlotIndex), UUID(0)));
+                                    continue;
                                 }
 
-                                for (UUID it_Material : l_Assets.GetAssetsOfType(AssetType::Material))
+                                bool l_Selected = static_cast<uint64_t>(it_Asset) == l_CurrentAsset;
+                                if (ImGui::Selectable(l_Meta->SourcePath.c_str(), l_Selected) && !l_Selected)
                                 {
-                                    const AssetMetadata* l_Meta = l_Assets.GetMetadata(it_Material);
-                                    if (l_Meta == nullptr)
-                                    {
-                                        continue;
-                                    }
-
-                                    bool l_Selected = static_cast<uint64_t>(it_Material) == l_CurrentMaterial;
-                                    if (ImGui::Selectable(l_Meta->SourcePath.c_str(), l_Selected) && !l_Selected)
-                                    {
-                                        m_Context.History.Execute(std::make_unique<SetMaterialCommand>(l_Scene, l_MeshUUID, static_cast<uint32_t>(l_SlotIndex), it_Material));
-                                    }
+                                    m_Context.History.Execute(std::make_unique<SetMeshCommand>(l_Scene, l_Assets, l_MeshUUID, it_Asset));
                                 }
-
-                                for (UUID it_Material : l_Assets.GetAssetsOfType(AssetType::MaterialInstance))
-                                {
-                                    const AssetMetadata* l_Meta = l_Assets.GetMetadata(it_Material);
-                                    if (l_Meta == nullptr)
-                                    {
-                                        continue;
-                                    }
-
-                                    bool l_Selected = static_cast<uint64_t>(it_Material) == l_CurrentMaterial;
-                                    if (ImGui::Selectable(l_Meta->SourcePath.c_str(), l_Selected) && !l_Selected)
-                                    {
-                                        m_Context.History.Execute(std::make_unique<SetMaterialCommand>(l_Scene, l_MeshUUID, static_cast<uint32_t>(l_SlotIndex), it_Material));
-                                    }
-                                }
-
-                                ImGui::EndCombo();
                             }
 
-                            if (ImGui::BeginDragDropTarget())
+                            ImGui::EndCombo();
+                        }
+
+                        if (ImGui::BeginDragDropTarget())
+                        {
+                            if (const ImGuiPayload* l_Accepted = ImGui::AcceptDragDropPayload("TRINITY_ASSET_MESH"))
                             {
-                                if (const ImGuiPayload* l_Accepted = ImGui::AcceptDragDropPayload("TRINITY_ASSET_MATERIAL"))
+                                uint64_t l_Dropped = *static_cast<const uint64_t*>(l_Accepted->Data);
+                                m_Context.History.Execute(std::make_unique<SetMeshCommand>(l_Scene, l_Assets, l_MeshUUID, UUID(l_Dropped)));
+                            }
+
+                            ImGui::EndDragDropTarget();
+                        }
+
+                        if (l_MeshRenderer.MeshReference && l_MeshRenderer.MeshReference->IsValid())
+                        {
+                            ImGui::SeparatorText(ICON_FA_PAINTBRUSH "  Materials");
+
+                            const std::vector<MaterialSlot>& l_MeshSlots = l_MeshRenderer.MeshReference->GetMaterialSlots();
+                            size_t l_SlotCount = l_MeshSlots.empty() ? 1 : l_MeshSlots.size();
+
+                            for (size_t l_SlotIndex = 0; l_SlotIndex < l_SlotCount; ++l_SlotIndex)
+                            {
+                                ImGui::PushID(static_cast<int>(l_SlotIndex));
+
+                                std::string l_SlotName = l_SlotIndex < l_MeshSlots.size() && !l_MeshSlots[l_SlotIndex].Name.empty() ? l_MeshSlots[l_SlotIndex].Name : ("Slot " + std::to_string(l_SlotIndex));
+
+                                uint64_t l_CurrentMaterial = l_SlotIndex < l_MeshRenderer.Materials.size() ? static_cast<uint64_t>(l_MeshRenderer.Materials[l_SlotIndex]) : 0;
+                                std::string l_MaterialLabel;
+                                if (l_CurrentMaterial == 0)
                                 {
-                                    uint64_t l_Dropped = *static_cast<const uint64_t*>(l_Accepted->Data);
-                                    m_Context.History.Execute(std::make_unique<SetMaterialCommand>(l_Scene, l_MeshUUID, static_cast<uint32_t>(l_SlotIndex), UUID(l_Dropped)));
+                                    l_MaterialLabel = "(default)";
+                                }
+                                else
+                                {
+                                    const AssetMetadata* l_Meta = l_Assets.GetMetadata(UUID(l_CurrentMaterial));
+                                    l_MaterialLabel = l_Meta != nullptr ? l_Meta->SourcePath : "(missing)";
                                 }
 
-                                ImGui::EndDragDropTarget();
-                            }
+                                if (ImGui::BeginCombo(l_SlotName.c_str(), l_MaterialLabel.c_str()))
+                                {
+                                    if (ImGui::Selectable("(default)", l_CurrentMaterial == 0) && l_CurrentMaterial != 0)
+                                    {
+                                        m_Context.History.Execute(std::make_unique<SetMaterialCommand>(l_Scene, l_MeshUUID, static_cast<uint32_t>(l_SlotIndex), UUID(0)));
+                                    }
 
-                            if (l_CurrentMaterial != 0)
-                            {
-                                DrawMaterialEditor(m_Engine, l_Assets, UUID(l_CurrentMaterial));
-                            }
+                                    for (UUID it_Material : l_Assets.GetAssetsOfType(AssetType::Material))
+                                    {
+                                        const AssetMetadata* l_Meta = l_Assets.GetMetadata(it_Material);
+                                        if (l_Meta == nullptr)
+                                        {
+                                            continue;
+                                        }
 
-                            ImGui::PopID();
+                                        bool l_Selected = static_cast<uint64_t>(it_Material) == l_CurrentMaterial;
+                                        if (ImGui::Selectable(l_Meta->SourcePath.c_str(), l_Selected) && !l_Selected)
+                                        {
+                                            m_Context.History.Execute(std::make_unique<SetMaterialCommand>(l_Scene, l_MeshUUID, static_cast<uint32_t>(l_SlotIndex), it_Material));
+                                        }
+                                    }
+
+                                    for (UUID it_Material : l_Assets.GetAssetsOfType(AssetType::MaterialInstance))
+                                    {
+                                        const AssetMetadata* l_Meta = l_Assets.GetMetadata(it_Material);
+                                        if (l_Meta == nullptr)
+                                        {
+                                            continue;
+                                        }
+
+                                        bool l_Selected = static_cast<uint64_t>(it_Material) == l_CurrentMaterial;
+                                        if (ImGui::Selectable(l_Meta->SourcePath.c_str(), l_Selected) && !l_Selected)
+                                        {
+                                            m_Context.History.Execute(std::make_unique<SetMaterialCommand>(l_Scene, l_MeshUUID, static_cast<uint32_t>(l_SlotIndex), it_Material));
+                                        }
+                                    }
+
+                                    ImGui::EndCombo();
+                                }
+
+                                if (ImGui::BeginDragDropTarget())
+                                {
+                                    if (const ImGuiPayload* l_Accepted = ImGui::AcceptDragDropPayload("TRINITY_ASSET_MATERIAL"))
+                                    {
+                                        uint64_t l_Dropped = *static_cast<const uint64_t*>(l_Accepted->Data);
+                                        m_Context.History.Execute(std::make_unique<SetMaterialCommand>(l_Scene, l_MeshUUID, static_cast<uint32_t>(l_SlotIndex), UUID(l_Dropped)));
+                                    }
+
+                                    ImGui::EndDragDropTarget();
+                                }
+
+                                if (l_CurrentMaterial != 0)
+                                {
+                                    DrawMaterialEditor(m_Engine, l_Assets, UUID(l_CurrentMaterial));
+                                }
+
+                                ImGui::PopID();
+                            }
                         }
                     }
 
-                    if (ImGui::SmallButton("Remove##MeshRenderer"))
+                    if (l_Section.Reset)
                     {
                         m_Context.ComponentOp = [this, l_MeshUUID]()
-                        {
-                            Scene& l_OpScene = m_Engine.GetScene();
-                            m_Context.History.Execute(std::make_unique<RemoveComponentCommand<MeshRendererComponent>>(l_OpScene, l_MeshUUID, "Mesh Renderer"));
-                        };
+                            {
+                                Scene& l_OpScene = m_Engine.GetScene();
+                                m_Context.History.Execute(std::make_unique<ResetComponentCommand<MeshRendererComponent>>(l_OpScene, l_MeshUUID, "Mesh Renderer"));
+                            };
+                    }
+
+                    if (l_Section.Remove)
+                    {
+                        m_Context.ComponentOp = [this, l_MeshUUID]()
+                            {
+                                Scene& l_OpScene = m_Engine.GetScene();
+                                m_Context.History.Execute(std::make_unique<RemoveComponentCommand<MeshRendererComponent>>(l_OpScene, l_MeshUUID, "Mesh Renderer"));
+                            };
                     }
                 }
 
                 if (l_Entity.HasComponent<CameraComponent>() && l_Show("Camera"))
                 {
-                    ImGui::SeparatorText(ICON_FA_CAMERA "  Camera");
-                    CameraComponent& l_Camera = l_Entity.GetComponent<CameraComponent>();
-                    if (ImGui::Checkbox("Primary", &l_Camera.Primary))
+                    ComponentSection l_Section = BeginComponentSection("Camera", ICON_FA_CAMERA "  Camera", true);
+                    uint64_t l_TargetUUID = static_cast<uint64_t>(l_Entity.GetUUID());
+
+                    if (l_Section.Open)
                     {
-                        m_Context.History.Execute(std::make_unique<SetCameraPrimaryCommand>(l_Scene, static_cast<uint64_t>(l_Entity.GetUUID()), !l_Camera.Primary, l_Camera.Primary));
+                        CameraComponent& l_Camera = l_Entity.GetComponent<CameraComponent>();
+                        if (ImGui::Checkbox("Primary", &l_Camera.Primary))
+                        {
+                            m_Context.History.Execute(std::make_unique<SetCameraPrimaryCommand>(l_Scene, l_TargetUUID, !l_Camera.Primary, l_Camera.Primary));
+                        }
                     }
 
-                    if (ImGui::SmallButton("Remove##Camera"))
+                    if (l_Section.Reset)
                     {
-                        uint64_t l_TargetUUID = static_cast<uint64_t>(l_Entity.GetUUID());
                         m_Context.ComponentOp = [this, l_TargetUUID]()
-                        {
-                            Scene& l_OpScene = m_Engine.GetScene();
-                            m_Context.History.Execute(std::make_unique<RemoveComponentCommand<CameraComponent>>(l_OpScene, l_TargetUUID, "Camera"));
-                        };
+                            {
+                                Scene& l_OpScene = m_Engine.GetScene();
+                                m_Context.History.Execute(std::make_unique<ResetComponentCommand<CameraComponent>>(l_OpScene, l_TargetUUID, "Camera"));
+                            };
+                    }
+
+                    if (l_Section.Remove)
+                    {
+                        m_Context.ComponentOp = [this, l_TargetUUID]()
+                            {
+                                Scene& l_OpScene = m_Engine.GetScene();
+                                m_Context.History.Execute(std::make_unique<RemoveComponentCommand<CameraComponent>>(l_OpScene, l_TargetUUID, "Camera"));
+                            };
                     }
                 }
 
                 if (l_Entity.HasComponent<LightComponent>() && l_Show("Light"))
                 {
-                    ImGui::SeparatorText(ICON_FA_LIGHTBULB "  Light");
-                    LightComponent& l_Light = l_Entity.GetComponent<LightComponent>();
+                    ComponentSection l_Section = BeginComponentSection("Light", ICON_FA_LIGHTBULB "  Light", true);
+                    uint64_t l_TargetUUID = static_cast<uint64_t>(l_Entity.GetUUID());
 
-                    const char* l_TypeNames[] = { "Directional", "Point", "Spot" };
-                    int l_TypeIndex = static_cast<int>(l_Light.Type);
-                    if (ImGui::Combo("Type", &l_TypeIndex, l_TypeNames, IM_ARRAYSIZE(l_TypeNames)))
+                    if (l_Section.Open)
                     {
-                        l_Light.Type = static_cast<LightType>(l_TypeIndex);
+                        LightComponent& l_Light = l_Entity.GetComponent<LightComponent>();
+
+                        const char* l_TypeNames[] = { "Directional", "Point", "Spot" };
+                        int l_TypeIndex = static_cast<int>(l_Light.Type);
+                        if (ImGui::Combo("Type", &l_TypeIndex, l_TypeNames, IM_ARRAYSIZE(l_TypeNames)))
+                        {
+                            l_Light.Type = static_cast<LightType>(l_TypeIndex);
+                        }
+
+                        ImGui::ColorEdit3("Color", &l_Light.Color.x);
+                        ImGui::DragFloat("Intensity", &l_Light.Intensity, 0.05f, 0.0f, 100.0f);
+
+                        if (l_Light.Type != LightType::Directional)
+                        {
+                            ImGui::DragFloat("Range", &l_Light.Range, 0.1f, 0.0f, 1000.0f);
+                        }
+
+                        if (l_Light.Type == LightType::Spot)
+                        {
+                            ImGui::SliderAngle("Inner Cone", &l_Light.InnerConeAngle, 0.0f, 89.0f);
+                            ImGui::SliderAngle("Outer Cone", &l_Light.OuterConeAngle, 0.0f, 90.0f);
+                        }
                     }
 
-                    ImGui::ColorEdit3("Color", &l_Light.Color.x);
-                    ImGui::DragFloat("Intensity", &l_Light.Intensity, 0.05f, 0.0f, 100.0f);
-
-                    if (l_Light.Type != LightType::Directional)
+                    if (l_Section.Reset)
                     {
-                        ImGui::DragFloat("Range", &l_Light.Range, 0.1f, 0.0f, 1000.0f);
+                        m_Context.ComponentOp = [this, l_TargetUUID]()
+                            {
+                                Scene& l_OpScene = m_Engine.GetScene();
+                                m_Context.History.Execute(std::make_unique<ResetComponentCommand<LightComponent>>(l_OpScene, l_TargetUUID, "Light"));
+                            };
                     }
 
-                    if (l_Light.Type == LightType::Spot)
+                    if (l_Section.Remove)
                     {
-                        ImGui::SliderAngle("Inner Cone", &l_Light.InnerConeAngle, 0.0f, 89.0f);
-                        ImGui::SliderAngle("Outer Cone", &l_Light.OuterConeAngle, 0.0f, 90.0f);
-                    }
-
-                    if (ImGui::SmallButton("Remove##Light"))
-                    {
-                        uint64_t l_TargetUUID = static_cast<uint64_t>(l_Entity.GetUUID());
                         m_Context.ComponentOp = [this, l_TargetUUID]()
                             {
                                 Scene& l_OpScene = m_Engine.GetScene();
@@ -502,90 +663,116 @@ namespace Trinity
 
                 if (l_Entity.HasComponent<AudioSourceComponent>() && l_Show("Audio Source"))
                 {
-                    ImGui::SeparatorText(ICON_FA_VOLUME_HIGH "  Audio Source");
-                    AudioSourceComponent& l_Source = l_Entity.GetComponent<AudioSourceComponent>();
-                    AssetDatabase& l_Assets = m_Engine.GetAssetDatabase();
+                    ComponentSection l_Section = BeginComponentSection("AudioSource", ICON_FA_VOLUME_HIGH "  Audio Source", true);
+                    uint64_t l_TargetUUID = static_cast<uint64_t>(l_Entity.GetUUID());
 
-                    uint64_t l_CurrentClip = static_cast<uint64_t>(l_Source.Clip);
-                    std::string l_ClipLabel;
-                    if (l_CurrentClip == 0)
+                    if (l_Section.Open)
                     {
-                        l_ClipLabel = "(none)";
-                    }
-                    else
-                    {
-                        const AssetMetadata* l_Meta = l_Assets.GetMetadata(l_Source.Clip);
-                        l_ClipLabel = l_Meta != nullptr ? l_Meta->SourcePath : "(missing)";
-                    }
+                        AudioSourceComponent& l_Source = l_Entity.GetComponent<AudioSourceComponent>();
+                        AssetDatabase& l_Assets = m_Engine.GetAssetDatabase();
 
-                    if (ImGui::BeginCombo("Clip", l_ClipLabel.c_str()))
-                    {
-                        if (ImGui::Selectable("(none)", l_CurrentClip == 0) && l_CurrentClip != 0)
+                        uint64_t l_CurrentClip = static_cast<uint64_t>(l_Source.Clip);
+                        std::string l_ClipLabel;
+                        if (l_CurrentClip == 0)
                         {
-                            l_Source.Clip = UUID(0);
+                            l_ClipLabel = "(none)";
+                        }
+                        else
+                        {
+                            const AssetMetadata* l_Meta = l_Assets.GetMetadata(l_Source.Clip);
+                            l_ClipLabel = l_Meta != nullptr ? l_Meta->SourcePath : "(missing)";
                         }
 
-                        for (UUID it_Clip : l_Assets.GetAssetsOfType(AssetType::Audio))
+                        if (ImGui::BeginCombo("Clip", l_ClipLabel.c_str()))
                         {
-                            const AssetMetadata* l_Meta = l_Assets.GetMetadata(it_Clip);
-                            if (l_Meta == nullptr)
+                            if (ImGui::Selectable("(none)", l_CurrentClip == 0) && l_CurrentClip != 0)
                             {
-                                continue;
+                                l_Source.Clip = UUID(0);
                             }
 
-                            bool l_Selected = static_cast<uint64_t>(it_Clip) == l_CurrentClip;
-                            if (ImGui::Selectable(l_Meta->SourcePath.c_str(), l_Selected) && !l_Selected)
+                            for (UUID it_Clip : l_Assets.GetAssetsOfType(AssetType::Audio))
                             {
-                                l_Source.Clip = it_Clip;
+                                const AssetMetadata* l_Meta = l_Assets.GetMetadata(it_Clip);
+                                if (l_Meta == nullptr)
+                                {
+                                    continue;
+                                }
+
+                                bool l_Selected = static_cast<uint64_t>(it_Clip) == l_CurrentClip;
+                                if (ImGui::Selectable(l_Meta->SourcePath.c_str(), l_Selected) && !l_Selected)
+                                {
+                                    l_Source.Clip = it_Clip;
+                                }
                             }
+
+                            ImGui::EndCombo();
                         }
 
-                        ImGui::EndCombo();
+                        ImGui::DragFloat("Volume", &l_Source.Volume, 0.01f, 0.0f, 2.0f);
+                        ImGui::DragFloat("Pitch", &l_Source.Pitch, 0.01f, 0.1f, 4.0f);
+                        ImGui::Checkbox("Loop", &l_Source.Loop);
+                        ImGui::Checkbox("Play On Start", &l_Source.PlayOnStart);
+                        ImGui::Checkbox("Spatial", &l_Source.Spatial);
+
+                        if (ImGui::SmallButton(ICON_FA_PLAY " Play##AudioSource"))
+                        {
+                            glm::vec3 l_WorldPosition = glm::vec3(l_Scene.GetWorldMatrix(l_Entity)[3]);
+                            m_Engine.GetAudioEngine().PlaySource(l_Source, l_Assets, l_WorldPosition);
+                        }
+
+                        ImGui::SameLine();
+                        if (ImGui::SmallButton(ICON_FA_STOP " Stop##AudioSource"))
+                        {
+                            m_Engine.GetAudioEngine().StopSource(l_Source);
+                        }
                     }
 
-                    ImGui::DragFloat("Volume", &l_Source.Volume, 0.01f, 0.0f, 2.0f);
-                    ImGui::DragFloat("Pitch", &l_Source.Pitch, 0.01f, 0.1f, 4.0f);
-                    ImGui::Checkbox("Loop", &l_Source.Loop);
-                    ImGui::Checkbox("Play On Start", &l_Source.PlayOnStart);
-                    ImGui::Checkbox("Spatial", &l_Source.Spatial);
-
-                    if (ImGui::SmallButton(ICON_FA_PLAY " Play##AudioSource"))
+                    if (l_Section.Reset)
                     {
-                        glm::vec3 l_WorldPosition = glm::vec3(l_Scene.GetWorldMatrix(l_Entity)[3]);
-                        m_Engine.GetAudioEngine().PlaySource(l_Source, l_Assets, l_WorldPosition);
-                    }
-
-                    ImGui::SameLine();
-                    if (ImGui::SmallButton(ICON_FA_STOP " Stop##AudioSource"))
-                    {
-                        m_Engine.GetAudioEngine().StopSource(l_Source);
-                    }
-
-                    if (ImGui::SmallButton("Remove##AudioSource"))
-                    {
-                        uint64_t l_TargetUUID = static_cast<uint64_t>(l_Entity.GetUUID());
                         m_Context.ComponentOp = [this, l_TargetUUID]()
-                        {
-                            Scene& l_OpScene = m_Engine.GetScene();
-                            m_Context.History.Execute(std::make_unique<RemoveComponentCommand<AudioSourceComponent>>(l_OpScene, l_TargetUUID, "Audio Source"));
-                        };
+                            {
+                                Scene& l_OpScene = m_Engine.GetScene();
+                                m_Context.History.Execute(std::make_unique<ResetComponentCommand<AudioSourceComponent>>(l_OpScene, l_TargetUUID, "Audio Source"));
+                            };
+                    }
+
+                    if (l_Section.Remove)
+                    {
+                        m_Context.ComponentOp = [this, l_TargetUUID]()
+                            {
+                                Scene& l_OpScene = m_Engine.GetScene();
+                                m_Context.History.Execute(std::make_unique<RemoveComponentCommand<AudioSourceComponent>>(l_OpScene, l_TargetUUID, "Audio Source"));
+                            };
                     }
                 }
 
                 if (l_Entity.HasComponent<AudioListenerComponent>() && l_Show("Audio Listener"))
                 {
-                    ImGui::SeparatorText(ICON_FA_VOLUME_HIGH "  Audio Listener");
-                    AudioListenerComponent& l_Listener = l_Entity.GetComponent<AudioListenerComponent>();
-                    ImGui::Checkbox("Active", &l_Listener.Active);
+                    ComponentSection l_Section = BeginComponentSection("AudioListener", ICON_FA_VOLUME_HIGH "  Audio Listener", true);
+                    uint64_t l_TargetUUID = static_cast<uint64_t>(l_Entity.GetUUID());
 
-                    if (ImGui::SmallButton("Remove##AudioListener"))
+                    if (l_Section.Open)
                     {
-                        uint64_t l_TargetUUID = static_cast<uint64_t>(l_Entity.GetUUID());
+                        AudioListenerComponent& l_Listener = l_Entity.GetComponent<AudioListenerComponent>();
+                        ImGui::Checkbox("Active", &l_Listener.Active);
+                    }
+
+                    if (l_Section.Reset)
+                    {
                         m_Context.ComponentOp = [this, l_TargetUUID]()
-                        {
-                            Scene& l_OpScene = m_Engine.GetScene();
-                            m_Context.History.Execute(std::make_unique<RemoveComponentCommand<AudioListenerComponent>>(l_OpScene, l_TargetUUID, "Audio Listener"));
-                        };
+                            {
+                                Scene& l_OpScene = m_Engine.GetScene();
+                                m_Context.History.Execute(std::make_unique<ResetComponentCommand<AudioListenerComponent>>(l_OpScene, l_TargetUUID, "Audio Listener"));
+                            };
+                    }
+
+                    if (l_Section.Remove)
+                    {
+                        m_Context.ComponentOp = [this, l_TargetUUID]()
+                            {
+                                Scene& l_OpScene = m_Engine.GetScene();
+                                m_Context.History.Execute(std::make_unique<RemoveComponentCommand<AudioListenerComponent>>(l_OpScene, l_TargetUUID, "Audio Listener"));
+                            };
                     }
                 }
 
@@ -610,19 +797,19 @@ namespace Trinity
                     if (!l_Entity.HasComponent<MeshRendererComponent>() && ImGui::MenuItem(ICON_FA_CUBE "  Mesh Renderer"))
                     {
                         m_Context.ComponentOp = [this, l_TargetUUID]()
-                        {
-                            Scene& l_OpScene = m_Engine.GetScene();
-                            m_Context.History.Execute(std::make_unique<AddComponentCommand<MeshRendererComponent>>(l_OpScene, l_TargetUUID, "Mesh Renderer"));
-                        };
+                            {
+                                Scene& l_OpScene = m_Engine.GetScene();
+                                m_Context.History.Execute(std::make_unique<AddComponentCommand<MeshRendererComponent>>(l_OpScene, l_TargetUUID, "Mesh Renderer"));
+                            };
                     }
 
                     if (!l_Entity.HasComponent<CameraComponent>() && ImGui::MenuItem(ICON_FA_CAMERA "  Camera"))
                     {
                         m_Context.ComponentOp = [this, l_TargetUUID]()
-                        {
-                            Scene& l_OpScene = m_Engine.GetScene();
-                            m_Context.History.Execute(std::make_unique<AddComponentCommand<CameraComponent>>(l_OpScene, l_TargetUUID, "Camera"));
-                        };
+                            {
+                                Scene& l_OpScene = m_Engine.GetScene();
+                                m_Context.History.Execute(std::make_unique<AddComponentCommand<CameraComponent>>(l_OpScene, l_TargetUUID, "Camera"));
+                            };
                     }
 
                     if (!l_Entity.HasComponent<LightComponent>() && ImGui::MenuItem(ICON_FA_LIGHTBULB "  Light"))
@@ -637,19 +824,19 @@ namespace Trinity
                     if (!l_Entity.HasComponent<AudioSourceComponent>() && ImGui::MenuItem(ICON_FA_VOLUME_HIGH "  Audio Source"))
                     {
                         m_Context.ComponentOp = [this, l_TargetUUID]()
-                        {
-                            Scene& l_OpScene = m_Engine.GetScene();
-                            m_Context.History.Execute(std::make_unique<AddComponentCommand<AudioSourceComponent>>(l_OpScene, l_TargetUUID, "Audio Source"));
-                        };
+                            {
+                                Scene& l_OpScene = m_Engine.GetScene();
+                                m_Context.History.Execute(std::make_unique<AddComponentCommand<AudioSourceComponent>>(l_OpScene, l_TargetUUID, "Audio Source"));
+                            };
                     }
 
                     if (!l_Entity.HasComponent<AudioListenerComponent>() && ImGui::MenuItem(ICON_FA_VOLUME_HIGH "  Audio Listener"))
                     {
                         m_Context.ComponentOp = [this, l_TargetUUID]()
-                        {
-                            Scene& l_OpScene = m_Engine.GetScene();
-                            m_Context.History.Execute(std::make_unique<AddComponentCommand<AudioListenerComponent>>(l_OpScene, l_TargetUUID, "Audio Listener"));
-                        };
+                            {
+                                Scene& l_OpScene = m_Engine.GetScene();
+                                m_Context.History.Execute(std::make_unique<AddComponentCommand<AudioListenerComponent>>(l_OpScene, l_TargetUUID, "Audio Listener"));
+                            };
                     }
 
                     ImGui::EndPopup();
@@ -660,59 +847,23 @@ namespace Trinity
         ImGui::End();
     }
 
-    void InspectorPanel::DragTransformField(Scene& scene, uint64_t uuid, const char* label, TransformComponent& transform, glm::vec3& value, float speed)
+    void InspectorPanel::DragTransformField(Scene& scene, uint64_t uuid, const char* label, TransformComponent& transform, glm::vec3& value, float resetValue, float speed)
     {
-        ImGuiStyle& l_Style = ImGui::GetStyle();
-        float l_LineHeight = ImGui::GetFontSize() + l_Style.FramePadding.y * 2.0f;
-        ImVec2 l_ButtonSize = ImVec2(l_LineHeight + 3.0f, l_LineHeight);
+        // Snapshot before the control runs so a double-click reset has a correct undo baseline.
+        TransformComponent l_Before = transform;
 
-        ImGui::PushID(label);
+        Vec3ControlResult l_Result = DrawVec3Control(label, value, resetValue, speed);
 
-        // Unreal aligns every property name in a fixed left-hand label column.
-        ImGui::Columns(2, nullptr, false);
-        ImGui::SetColumnWidth(0, 100.0f);
-        ImGui::TextUnformatted(label);
-        ImGui::NextColumn();
-
-        ImGui::PushMultiItemsWidths(3, ImGui::CalcItemWidth());
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, l_Style.ItemSpacing.y));
-
-        bool l_Activated = false;
-        bool l_Committed = false;
-
-        auto l_Axis = [&](const char* axisLabel, const ImVec4& color, const ImVec4& colorHovered, float* component)
-            {
-                ImGui::PushStyleColor(ImGuiCol_Button, color);
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colorHovered);
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, color);
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
-                ImGui::Button(axisLabel, l_ButtonSize);
-                ImGui::PopStyleColor(4);
-
-                ImGui::SameLine();
-                std::string l_DragId = std::string("##") + axisLabel;
-                ImGui::DragFloat(l_DragId.c_str(), component, speed);
-                l_Activated = l_Activated || ImGui::IsItemActivated();
-                l_Committed = l_Committed || ImGui::IsItemDeactivatedAfterEdit();
-                ImGui::PopItemWidth();
-            };
-
-        l_Axis("X", ImVec4(0.60f, 0.16f, 0.18f, 1.0f), ImVec4(0.74f, 0.21f, 0.23f, 1.0f), &value.x);
-        ImGui::SameLine();
-        l_Axis("Y", ImVec4(0.18f, 0.49f, 0.21f, 1.0f), ImVec4(0.24f, 0.60f, 0.27f, 1.0f), &value.y);
-        ImGui::SameLine();
-        l_Axis("Z", ImVec4(0.14f, 0.33f, 0.60f, 1.0f), ImVec4(0.20f, 0.43f, 0.76f, 1.0f), &value.z);
-
-        ImGui::PopStyleVar();
-        ImGui::Columns(1);
-        ImGui::PopID();
-
-        if (l_Activated)
+        if (l_Result.Activated)
         {
-            m_TransformEditOld = transform;
+            m_TransformEditOld = l_Before;
         }
 
-        if (l_Committed)
+        if (l_Result.Reset)
+        {
+            m_Context.History.Execute(std::make_unique<SetTransformCommand>(scene, uuid, l_Before, transform));
+        }
+        else if (l_Result.Committed)
         {
             m_Context.History.Execute(std::make_unique<SetTransformCommand>(scene, uuid, m_TransformEditOld, transform));
         }
