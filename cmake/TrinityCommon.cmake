@@ -167,6 +167,13 @@ function(trinity_add_application TARGET_NAME SOURCE_DIR)
     add_executable(${TARGET_NAME} ${_sources})
     trinity_apply_common_settings(${TARGET_NAME})
 
+    # Let the executable find runtime shared libraries (e.g. Slang) copied next to it.
+    if(APPLE)
+        set_target_properties(${TARGET_NAME} PROPERTIES BUILD_RPATH "@loader_path" INSTALL_RPATH "@loader_path")
+    elseif(UNIX)
+        set_target_properties(${TARGET_NAME} PROPERTIES BUILD_RPATH "$ORIGIN" INSTALL_RPATH "$ORIGIN")
+    endif()
+
     if(TARGET Trinity-Shaders)
         add_dependencies(${TARGET_NAME} Trinity-Shaders)
 
@@ -180,12 +187,12 @@ function(trinity_add_application TARGET_NAME SOURCE_DIR)
         )
     endif()
 
-    if(TRINITY_SLANG_RUNTIME_DLLS)
-        foreach(_dll ${TRINITY_SLANG_RUNTIME_DLLS})
+    if(TRINITY_SLANG_RUNTIME_LIBS)
+        foreach(_lib ${TRINITY_SLANG_RUNTIME_LIBS})
             add_custom_command(
                 TARGET ${TARGET_NAME} POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                    "${_dll}"
+                    "${_lib}"
                     "$<TARGET_FILE_DIR:${TARGET_NAME}>"
                 VERBATIM
             )

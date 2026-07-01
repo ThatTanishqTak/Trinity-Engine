@@ -93,13 +93,15 @@ if(TRINITY_ENABLE_VULKAN)
 
     find_path(TRINITY_SLANG_INCLUDE_DIR
         NAMES slang.h
-        PATHS "$ENV{VULKAN_SDK}/Include" "$ENV{VULKAN_SDK}/Include/slang"
+        PATHS
+            "$ENV{VULKAN_SDK}/Include" "$ENV{VULKAN_SDK}/Include/slang"
+            "$ENV{VULKAN_SDK}/include" "$ENV{VULKAN_SDK}/include/slang"
         NO_DEFAULT_PATH
     )
 
     find_library(TRINITY_SLANG_LIBRARY
         NAMES slang
-        PATHS "$ENV{VULKAN_SDK}/Lib"
+        PATHS "$ENV{VULKAN_SDK}/Lib" "$ENV{VULKAN_SDK}/lib"
         NO_DEFAULT_PATH
     )
 
@@ -111,7 +113,13 @@ if(TRINITY_ENABLE_VULKAN)
     target_include_directories(Slang SYSTEM INTERFACE "${TRINITY_SLANG_INCLUDE_DIR}")
     target_link_libraries(Slang INTERFACE "${TRINITY_SLANG_LIBRARY}")
 
-    file(GLOB TRINITY_SLANG_RUNTIME_DLLS "$ENV{VULKAN_SDK}/Bin/slang*.dll")
+    if(WIN32)
+        file(GLOB TRINITY_SLANG_RUNTIME_LIBS "$ENV{VULKAN_SDK}/Bin/slang*.dll")
+    elseif(APPLE)
+        file(GLOB TRINITY_SLANG_RUNTIME_LIBS "$ENV{VULKAN_SDK}/lib/libslang*.dylib")
+    else()
+        file(GLOB TRINITY_SLANG_RUNTIME_LIBS "$ENV{VULKAN_SDK}/lib/libslang*.so*")
+    endif()
 endif()
 
 add_library(stb INTERFACE)
@@ -157,19 +165,31 @@ endif()
 add_library(EnTT INTERFACE)
 target_include_directories(EnTT SYSTEM INTERFACE "${CMAKE_SOURCE_DIR}/Vendor/entt/single_include")
 
-add_library(imgui STATIC
+set(TRINITY_IMGUI_SOURCES
     "${CMAKE_SOURCE_DIR}/Vendor/imgui/imgui.cpp"
     "${CMAKE_SOURCE_DIR}/Vendor/imgui/imgui_draw.cpp"
     "${CMAKE_SOURCE_DIR}/Vendor/imgui/imgui_tables.cpp"
     "${CMAKE_SOURCE_DIR}/Vendor/imgui/imgui_widgets.cpp"
-    "${CMAKE_SOURCE_DIR}/Vendor/imgui/imgui_demo.cpp"
-    "${CMAKE_SOURCE_DIR}/Vendor/imgui/backends/imgui_impl_sdl3.cpp"
-    "${CMAKE_SOURCE_DIR}/Vendor/imgui/backends/imgui_impl_vulkan.cpp"
     "${CMAKE_SOURCE_DIR}/Vendor/ImGuizmo/src/ImGuizmo.cpp"
 )
+
+# Backend translation units only make sense when their platform/renderer is enabled.
+if(TRINITY_ENABLE_SDL)
+    list(APPEND TRINITY_IMGUI_SOURCES "${CMAKE_SOURCE_DIR}/Vendor/imgui/backends/imgui_impl_sdl3.cpp")
+endif()
+
+if(TRINITY_ENABLE_VULKAN)
+    list(APPEND TRINITY_IMGUI_SOURCES "${CMAKE_SOURCE_DIR}/Vendor/imgui/backends/imgui_impl_vulkan.cpp")
+endif()
+
+add_library(imgui STATIC ${TRINITY_IMGUI_SOURCES})
 target_include_directories(imgui SYSTEM PUBLIC "${CMAKE_SOURCE_DIR}/Vendor/imgui" "${CMAKE_SOURCE_DIR}/Vendor/ImGuizmo/src")
 target_include_directories(imgui SYSTEM PRIVATE "${CMAKE_SOURCE_DIR}/Vendor/imgui/backends")
-target_link_libraries(imgui PRIVATE SDL3-static Vulkan::Vulkan)
+target_link_libraries(imgui
+    PRIVATE
+        $<$<BOOL:${TRINITY_ENABLE_SDL}>:SDL3::SDL3-static>
+        $<$<BOOL:${TRINITY_ENABLE_VULKAN}>:Vulkan::Vulkan>
+)
 trinity_set_ide_folder(imgui "Trinity/Vendor")
 target_compile_definitions(imgui PUBLIC IMGUI_USE_WCHAR32)
 
