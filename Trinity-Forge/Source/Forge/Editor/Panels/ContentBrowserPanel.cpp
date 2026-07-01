@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdlib>
+#include <cstring>
 #include <string>
 #include <system_error>
 #include <vector>
@@ -79,6 +81,75 @@ namespace Trinity
         return false;
     }
 
+    static ImU32 AssetTypeColor(AssetType type)
+    {
+        switch (type)
+        {
+        case AssetType::Mesh:
+            return IM_COL32(54, 170, 235, 255);   // blue
+        case AssetType::Texture:
+            return IM_COL32(216, 92, 92, 255);     // red
+        case AssetType::Material:
+            return IM_COL32(230, 168, 50, 255);    // amber
+        case AssetType::MaterialInstance:
+            return IM_COL32(230, 120, 40, 255);    // orange
+        case AssetType::Audio:
+            return IM_COL32(150, 110, 215, 255);   // purple
+        default:
+            return IM_COL32(130, 130, 130, 255);   // gray
+        }
+    }
+
+    static void DrawTileDecoration(const ImVec2& thumbnailMin, float thumbnail, ImU32 typeColor, bool selected)
+    {
+        ImDrawList* l_DrawList = ImGui::GetWindowDrawList();
+
+        // Unreal-style colored type strip along the bottom edge of the thumbnail.
+        const float l_BarHeight = 3.0f;
+        l_DrawList->AddRectFilled(ImVec2(thumbnailMin.x, thumbnailMin.y + thumbnail - l_BarHeight), ImVec2(thumbnailMin.x + thumbnail, thumbnailMin.y + thumbnail), typeColor);
+
+        if (selected)
+        {
+            l_DrawList->AddRect(ImVec2(thumbnailMin.x - 1.0f, thumbnailMin.y - 1.0f), ImVec2(thumbnailMin.x + thumbnail + 1.0f, thumbnailMin.y + thumbnail + 1.0f), IM_COL32(66, 150, 250, 255), 3.0f, 0, 2.0f);
+        }
+    }
+
+    static void CenteredClippedText(const std::string& text, float width)
+    {
+        ImVec2 l_Size = ImGui::CalcTextSize(text.c_str());
+        if (l_Size.x <= width)
+        {
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (width - l_Size.x) * 0.5f);
+            ImGui::TextUnformatted(text.c_str());
+
+            return;
+        }
+
+        std::string l_Clipped = text;
+        while (l_Clipped.size() > 1 && ImGui::CalcTextSize((l_Clipped + "...").c_str()).x > width)
+        {
+            l_Clipped.pop_back();
+        }
+
+        l_Clipped += "...";
+        ImGui::TextUnformatted(l_Clipped.c_str());
+    }
+
+    static void OpenInFileExplorer(const std::filesystem::path& target)
+    {
+        std::string l_Path = target.string();
+
+#if defined(_WIN32)
+        std::string l_Command = "explorer.exe /select,\"" + l_Path + "\"";
+#elif defined(__APPLE__)
+        std::string l_Command = "open -R \"" + l_Path + "\"";
+#else
+        std::string l_Command = "xdg-open \"" + target.parent_path().string() + "\"";
+#endif
+
+        std::system(l_Command.c_str());
+    }
+
     void ContentBrowserPanel::OnImGuiRender()
     {
         ImGui::Begin("Content Browser");
@@ -112,17 +183,20 @@ namespace Trinity
         RenderToolbar(l_Assets);
         ImGui::Separator();
 
+        float l_FooterHeight = ImGui::GetFrameHeightWithSpacing();
         float l_TreeWidth = ImGui::GetFontSize() * 12.0f;
 
-        ImGui::BeginChild("##ContentBrowserTree", ImVec2(l_TreeWidth, 0.0f), ImGuiChildFlags_Borders);
+        ImGui::BeginChild("##ContentBrowserTree", ImVec2(l_TreeWidth, -l_FooterHeight), ImGuiChildFlags_Borders);
         RenderFolderTree();
         ImGui::EndChild();
 
         ImGui::SameLine();
 
-        ImGui::BeginChild("##ContentBrowserGrid", ImVec2(0.0f, 0.0f), ImGuiChildFlags_Borders);
+        ImGui::BeginChild("##ContentBrowserGrid", ImVec2(0.0f, -l_FooterHeight), ImGuiChildFlags_Borders);
         RenderGrid(l_Assets);
         ImGui::EndChild();
+
+        RenderFooter();
     }
 
     void ContentBrowserPanel::RenderToolbar(AssetDatabase& assetDatabase)
@@ -292,7 +366,7 @@ namespace Trinity
             }
         }
 
-        float l_Thumbnail = ImGui::GetFontSize() * 3.2f;
+        float l_Thumbnail = ImGui::GetFontSize() * 3.2f * m_ThumbnailScale;
         float l_CellSize = l_Thumbnail + ImGui::GetStyle().ItemSpacing.x + 16.0f;
         float l_Available = ImGui::GetContentRegionAvail().x;
         int l_Columns = static_cast<int>(l_Available / l_CellSize);
@@ -300,6 +374,8 @@ namespace Trinity
         {
             l_Columns = 1;
         }
+
+        m_AssetCount = 0;
 
         ImGui::Columns(l_Columns, "##ContentBrowserColumns", false);
 
@@ -313,16 +389,34 @@ namespace Trinity
 
             ImGui::PushID(it_Directory.string().c_str());
 
-            ImGui::SetWindowFontScale(2.2f);
+            bool l_Selected = m_SelectedAsset == it_Directory;
+            ImVec2 l_ThumbMin = ImGui::GetCursorScreenPos();
+
+            ImGui::PushStyleColor(ImGuiCol_Button, l_Selected ? ImVec4(0.18f, 0.30f, 0.46f, 1.0f) : ImVec4(0.105f, 0.105f, 0.105f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.200f, 0.200f, 0.200f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.160f, 0.160f, 0.160f, 1.0f));
+            ImGui::SetWindowFontScale(2.2f * m_ThumbnailScale);
             ImGui::Button(ICON_FA_FOLDER, ImVec2(l_Thumbnail, l_Thumbnail));
             ImGui::SetWindowFontScale(1.0f);
+            ImGui::PopStyleColor(3);
+
+            if (ImGui::IsItemClicked())
+            {
+                m_SelectedAsset = it_Directory;
+            }
 
             if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
             {
                 m_CurrentDirectory = it_Directory;
+                m_SelectedAsset.clear();
             }
 
-            ImGui::TextWrapped("%s", l_Name.c_str());
+            RenderItemContextMenu(it_Directory, assetDatabase);
+
+            DrawTileDecoration(l_ThumbMin, l_Thumbnail, IM_COL32(220, 180, 70, 255), l_Selected);
+            RenderTileLabel(it_Directory, l_Name, l_Thumbnail, assetDatabase);
+
+            ++m_AssetCount;
 
             ImGui::NextColumn();
             ImGui::PopID();
@@ -340,9 +434,23 @@ namespace Trinity
 
             ImGui::PushID(it_File.string().c_str());
 
-            ImGui::SetWindowFontScale(2.2f);
+            bool l_Selected = m_SelectedAsset == it_File;
+            ImVec2 l_ThumbMin = ImGui::GetCursorScreenPos();
+
+            ImGui::PushStyleColor(ImGuiCol_Button, l_Selected ? ImVec4(0.18f, 0.30f, 0.46f, 1.0f) : ImVec4(0.105f, 0.105f, 0.105f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.200f, 0.200f, 0.200f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.160f, 0.160f, 0.160f, 1.0f));
+            ImGui::SetWindowFontScale(2.2f * m_ThumbnailScale);
             ImGui::Button(AssetIcon(l_Type), ImVec2(l_Thumbnail, l_Thumbnail));
             ImGui::SetWindowFontScale(1.0f);
+            ImGui::PopStyleColor(3);
+
+            if (ImGui::IsItemClicked())
+            {
+                m_SelectedAsset = it_File;
+            }
+
+            RenderItemContextMenu(it_File, assetDatabase);
 
             const char* l_Payload = DragPayloadId(l_Type);
             if (l_Payload != nullptr)
@@ -361,13 +469,38 @@ namespace Trinity
                 }
             }
 
-            ImGui::TextWrapped("%s", l_Name.c_str());
+            DrawTileDecoration(l_ThumbMin, l_Thumbnail, AssetTypeColor(l_Type), l_Selected);
+            RenderTileLabel(it_File, l_Name, l_Thumbnail, assetDatabase);
+
+            ++m_AssetCount;
 
             ImGui::NextColumn();
             ImGui::PopID();
         }
 
         ImGui::Columns(1);
+
+        if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered())
+        {
+            m_SelectedAsset.clear();
+        }
+
+        if (ImGui::BeginPopupContextWindow("##GridContext", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
+        {
+            if (ImGui::MenuItem(ICON_FA_FOLDER "  New Folder"))
+            {
+                CreateNewFolder();
+            }
+
+            if (ImGui::MenuItem(ICON_FA_PLUS "  Import..."))
+            {
+                ImportAssets();
+            }
+
+            ImGui::EndPopup();
+        }
+
+        RenderDeleteModal(assetDatabase);
     }
 
     void ContentBrowserPanel::ReResolveModifiedMeshes()
@@ -399,5 +532,240 @@ namespace Trinity
                 }
             }
         }
+    }
+
+    void ContentBrowserPanel::RenderItemContextMenu(const std::filesystem::path& path, AssetDatabase& assetDatabase)
+    {
+        if (ImGui::BeginPopupContextItem("##ItemContext"))
+        {
+            m_SelectedAsset = path;
+
+            if (ImGui::MenuItem(ICON_FA_PEN "  Rename"))
+            {
+                BeginRename(path);
+            }
+
+            if (ImGui::MenuItem(ICON_FA_TRASH "  Delete"))
+            {
+                m_PendingDelete = path;
+                m_OpenDeleteModal = true;
+            }
+
+            ImGui::Separator();
+
+            if (ImGui::MenuItem(ICON_FA_FOLDER_OPEN "  Show in Explorer"))
+            {
+                OpenInFileExplorer(path);
+            }
+
+            ImGui::EndPopup();
+        }
+    }
+
+    void ContentBrowserPanel::RenderTileLabel(const std::filesystem::path& path, const std::string& name, float thumbnail, AssetDatabase& assetDatabase)
+    {
+        if (m_RenamingAsset != path)
+        {
+            CenteredClippedText(name, thumbnail);
+
+            return;
+        }
+
+        ImGui::SetNextItemWidth(thumbnail);
+
+        if (m_RenameRequestFocus)
+        {
+            ImGui::SetKeyboardFocusHere();
+            m_RenameRequestFocus = false;
+        }
+
+        if (ImGui::InputText("##RenameField", m_RenameBuffer, sizeof(m_RenameBuffer), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll))
+        {
+            CommitRename(assetDatabase);
+        }
+        else if (ImGui::IsItemDeactivated())
+        {
+            m_RenamingAsset.clear();
+        }
+    }
+
+    void ContentBrowserPanel::RenderFooter()
+    {
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text("%d item%s", m_AssetCount, m_AssetCount == 1 ? "" : "s");
+
+        float l_SliderWidth = ImGui::GetFontSize() * 8.0f;
+        ImGui::SameLine();
+        ImGui::SetCursorPosX(ImGui::GetWindowContentRegionMax().x - l_SliderWidth);
+        ImGui::SetNextItemWidth(l_SliderWidth);
+        ImGui::SliderFloat("##ThumbnailZoom", &m_ThumbnailScale, 0.5f, 2.0f, "");
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip("Thumbnail size");
+        }
+    }
+
+    void ContentBrowserPanel::RenderDeleteModal(AssetDatabase& assetDatabase)
+    {
+        if (m_OpenDeleteModal)
+        {
+            ImGui::OpenPopup("Delete Asset?");
+            m_OpenDeleteModal = false;
+        }
+
+        ImVec2 l_Center = ImGui::GetMainViewport()->GetCenter();
+        ImGui::SetNextWindowPos(l_Center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+        if (ImGui::BeginPopupModal("Delete Asset?", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::Text("Delete '%s'?", m_PendingDelete.filename().string().c_str());
+            ImGui::TextDisabled("This action cannot be undone.");
+            ImGui::Separator();
+
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.70f, 0.24f, 0.24f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.82f, 0.30f, 0.30f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.60f, 0.20f, 0.20f, 1.0f));
+            if (ImGui::Button("Delete", ImVec2(120.0f, 0.0f)))
+            {
+                std::error_code l_Error;
+                std::filesystem::remove_all(m_PendingDelete, l_Error);
+
+                std::filesystem::path l_Meta = m_PendingDelete;
+                l_Meta += ".meta";
+                std::error_code l_MetaError;
+                std::filesystem::remove(l_Meta, l_MetaError);
+
+                if (m_SelectedAsset == m_PendingDelete)
+                {
+                    m_SelectedAsset.clear();
+                }
+
+                m_PendingDelete.clear();
+                assetDatabase.Refresh();
+                ReResolveModifiedMeshes();
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::PopStyleColor(3);
+
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel", ImVec2(120.0f, 0.0f)))
+            {
+                m_PendingDelete.clear();
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::EndPopup();
+        }
+    }
+
+    void ContentBrowserPanel::BeginRename(const std::filesystem::path& path)
+    {
+        m_RenamingAsset = path;
+
+        std::string l_Current = std::filesystem::is_directory(path) ? path.filename().string() : path.stem().string();
+        std::strncpy(m_RenameBuffer, l_Current.c_str(), sizeof(m_RenameBuffer) - 1);
+        m_RenameBuffer[sizeof(m_RenameBuffer) - 1] = '\0';
+
+        m_RenameRequestFocus = true;
+    }
+
+    void ContentBrowserPanel::CommitRename(AssetDatabase& assetDatabase)
+    {
+        if (m_RenamingAsset.empty())
+        {
+            return;
+        }
+
+        std::string l_NewName = m_RenameBuffer;
+        if (!l_NewName.empty())
+        {
+            std::filesystem::path l_Target = m_RenamingAsset.parent_path() / l_NewName;
+            if (!std::filesystem::is_directory(m_RenamingAsset))
+            {
+                l_Target += m_RenamingAsset.extension();
+            }
+
+            std::error_code l_ExistsError;
+            if (l_Target != m_RenamingAsset && !std::filesystem::exists(l_Target, l_ExistsError))
+            {
+                std::error_code l_RenameError;
+                std::filesystem::rename(m_RenamingAsset, l_Target, l_RenameError);
+
+                std::filesystem::path l_Meta = m_RenamingAsset;
+                l_Meta += ".meta";
+                std::error_code l_MetaError;
+                if (std::filesystem::exists(l_Meta, l_MetaError))
+                {
+                    std::filesystem::path l_NewMeta = l_Target;
+                    l_NewMeta += ".meta";
+                    std::filesystem::rename(l_Meta, l_NewMeta, l_MetaError);
+                }
+
+                if (!l_RenameError)
+                {
+                    if (m_SelectedAsset == m_RenamingAsset)
+                    {
+                        m_SelectedAsset = l_Target;
+                    }
+
+                    assetDatabase.Refresh();
+                    ReResolveModifiedMeshes();
+                }
+            }
+        }
+
+        m_RenamingAsset.clear();
+    }
+
+    void ContentBrowserPanel::CreateNewFolder()
+    {
+        std::string l_Base = "NewFolder";
+        std::filesystem::path l_Path = m_CurrentDirectory / l_Base;
+        uint32_t l_Index = 1;
+
+        std::error_code l_ExistsError;
+        while (std::filesystem::exists(l_Path, l_ExistsError))
+        {
+            l_Path = m_CurrentDirectory / (l_Base + "_" + std::to_string(l_Index++));
+        }
+
+        std::error_code l_CreateError;
+        std::filesystem::create_directory(l_Path, l_CreateError);
+        if (!l_CreateError)
+        {
+            m_SelectedAsset = l_Path;
+            BeginRename(l_Path);
+        }
+    }
+
+    void ContentBrowserPanel::ImportAssets()
+    {
+        std::filesystem::path l_Destination = m_CurrentDirectory;
+
+        std::vector<FileFilter> l_Filters =
+        {
+            { "Assets", "gltf;glb;obj;fbx;png;jpg;jpeg;tga;hdr;wav;ogg;mp3;material" },
+            { "All Files", "*" }
+        };
+
+        m_Engine.GetPlatform().OpenFileDialog(l_Filters, true, l_Destination, [this, l_Destination](const std::vector<std::filesystem::path>& files)
+            {
+                if (files.empty())
+                {
+                    return;
+                }
+
+                for (const std::filesystem::path& it_File : files)
+                {
+                    std::error_code l_Error;
+                    std::filesystem::copy_file(it_File, l_Destination / it_File.filename(), std::filesystem::copy_options::overwrite_existing, l_Error);
+                }
+
+                if (m_Engine.HasAssetDatabase())
+                {
+                    m_Engine.GetAssetDatabase().Refresh();
+                    ReResolveModifiedMeshes();
+                }
+            });
     }
 }

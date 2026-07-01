@@ -1,5 +1,10 @@
 #pragma once
 
+#include <filesystem>
+#include <functional>
+#include <string>
+#include <vector>
+
 #include <Trinity/Platform/PlatformTypes.h>
 #include <Trinity/Platform/Window.h>
 #include <Trinity/Platform/Input.h>
@@ -9,6 +14,14 @@
 namespace Trinity
 {
     class IImGuiPlatformBackend;
+
+    struct FileFilter
+    {
+        std::string Name;
+        std::string Pattern;
+    };
+
+    using FileDialogCallback = std::function<void(const std::vector<std::filesystem::path>&)>;
 
     class IPlatform
     {
@@ -28,6 +41,9 @@ namespace Trinity
         virtual Gamepad& GetGamepad() = 0;
         virtual FileSystem& GetFileSystem() = 0;
         virtual IImGuiPlatformBackend& GetImGuiBackend() = 0;
+
+        // Shows a native asynchronous file-open dialog. The callback is invoked on the main thread during event polling with the selected paths (empty if cancelled)
+        virtual void OpenFileDialog(const std::vector<FileFilter>& filters, bool allowMany, const std::filesystem::path& defaultLocation, const FileDialogCallback& callback) = 0;
 
         virtual PlatformType GetType() const = 0;
     };

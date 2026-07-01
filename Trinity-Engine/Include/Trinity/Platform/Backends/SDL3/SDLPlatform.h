@@ -28,6 +28,8 @@ namespace Trinity
         FileSystem& GetFileSystem() override;
         IImGuiPlatformBackend& GetImGuiBackend() override;
 
+        void OpenFileDialog(const std::vector<FileFilter>& filters, bool allowMany, const std::filesystem::path& defaultLocation, const FileDialogCallback& callback) override;
+
         PlatformType GetType() const override { return m_Type; }
 
     private:

@@ -1,5 +1,10 @@
 #include <Trinity/Platform/Backends/SDL3/SDLPlatform.h>
 
+#include <filesystem>
+#include <memory>
+#include <string>
+#include <vector>
+
 #include <SDL3/SDL.h>
 
 #include <Trinity/Core/Log.h>
@@ -115,6 +120,85 @@ namespace Trinity
     IImGuiPlatformBackend& SDLPlatform::GetImGuiBackend()
     {
         return *m_ImGuiBackend;
+    }
+
+    namespace
+    {
+        // SDL keeps the filter pointers (not copies) for the duration of the async dialog, so the backing storage must outlive the call. Only one dialog is ever open at a time, so file-scope storage is sufficient
+        std::vector<std::string> g_DialogFilterNames;
+        std::vector<std::string> g_DialogFilterPatterns;
+        std::vector<SDL_DialogFileFilter> g_DialogFilters;
+        std::string g_DialogDefaultLocation;
+
+        void SDLCALL FileDialogBridge(void* userdata, const char* const* filelist, int /*filter*/)
+        {
+            std::unique_ptr<FileDialogCallback> l_Callback(static_cast<FileDialogCallback*>(userdata));
+
+            std::vector<std::filesystem::path> l_Paths;
+            if (filelist != nullptr)
+            {
+                for (const char* const* it_Entry = filelist; *it_Entry != nullptr; ++it_Entry)
+                {
+                    l_Paths.emplace_back(*it_Entry);
+                }
+            }
+
+            if (l_Callback && *l_Callback)
+            {
+                (*l_Callback)(l_Paths);
+            }
+        }
+    }
+
+    void SDLPlatform::OpenFileDialog(const std::vector<FileFilter>& filters, bool allowMany, const std::filesystem::path& defaultLocation, const FileDialogCallback& callback)
+    {
+        g_DialogFilterNames.clear();
+        g_DialogFilterPatterns.clear();
+        g_DialogFilters.clear();
+
+        g_DialogFilterNames.reserve(filters.size());
+        g_DialogFilterPatterns.reserve(filters.size());
+        g_DialogFilters.reserve(filters.size());
+
+        for (const FileFilter& it_Filter : filters)
+        {
+            g_DialogFilterNames.push_back(it_Filter.Name);
+            g_DialogFilterPatterns.push_back(it_Filter.Pattern);
+        }
+
+        for (size_t l_Index = 0; l_Index < filters.size(); ++l_Index)
+        {
+            SDL_DialogFileFilter l_SDLFilter;
+            l_SDLFilter.name = g_DialogFilterNames[l_Index].c_str();
+            l_SDLFilter.pattern = g_DialogFilterPatterns[l_Index].c_str();
+            g_DialogFilters.push_back(l_SDLFilter);
+        }
+
+        g_DialogDefaultLocation = defaultLocation.string();
+        if (!g_DialogDefaultLocation.empty())
+        {
+            // SDL treats a trailing separator as "open this folder"; without it some
+            // backends read the last path component as a suggested file name.
+            std::error_code l_DirError;
+            if (std::filesystem::is_directory(defaultLocation, l_DirError))
+            {
+                char l_Back = g_DialogDefaultLocation.back();
+                if (l_Back != '/' && l_Back != '\\')
+                {
+                    g_DialogDefaultLocation.push_back(static_cast<char>(std::filesystem::path::preferred_separator));
+                }
+            }
+        }
+
+        SDL_Window* l_SDLWindow = nullptr;
+        if (m_Window != nullptr)
+        {
+            l_SDLWindow = static_cast<SDLWindow*>(m_Window.get())->GetSDLWindow();
+        }
+
+        FileDialogCallback* l_HeapCallback = new FileDialogCallback(callback);
+
+        SDL_ShowOpenFileDialog(&FileDialogBridge, l_HeapCallback, l_SDLWindow, g_DialogFilters.empty() ? nullptr : g_DialogFilters.data(), static_cast<int>(g_DialogFilters.size()), g_DialogDefaultLocation.empty() ? nullptr : g_DialogDefaultLocation.c_str(), allowMany);
     }
 
     void SDLPlatform::PollEvents()

@@ -212,16 +212,18 @@ namespace Trinity
         ImGui::TextUnformatted(title);
         ImGui::Separator();
 
+        bool l_PopupActive = ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel);
+
         body();
 
         ImGui::End();
 
         bool l_Close = false;
-        if (ImGui::IsKeyPressed(ImGuiKey_Escape, false))
+        if (ImGui::IsKeyPressed(ImGuiKey_Escape, false) && !l_PopupActive && !ImGui::GetIO().WantTextInput)
         {
             l_Close = true;
         }
-        else if (openPrev && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsDragDropActive())
+        else if (openPrev && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsDragDropActive() && !l_PopupActive)
         {
             ImVec2 l_Mouse = ImGui::GetIO().MousePos;
             bool l_InDrawer = l_Mouse.x >= l_DrawerMin.x && l_Mouse.x <= l_DrawerMin.x + l_DrawerSize.x && l_Mouse.y >= l_DrawerMin.y && l_Mouse.y <= l_DrawerMin.y + l_DrawerSize.y;
