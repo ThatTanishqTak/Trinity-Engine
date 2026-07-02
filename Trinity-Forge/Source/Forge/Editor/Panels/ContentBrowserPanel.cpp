@@ -67,6 +67,26 @@ namespace Trinity
         return nullptr;
     }
 
+    // Generic payload carrying a filesystem path string; lets any tile (including folders and non-asset files) be dragged onto a folder to move it. Coexists with the typed asset payloads
+    static const char* const k_ContentPathPayload = "TRINITY_CONTENT_PATH";
+
+    // First free "Name_N" slot in the target folder, for the conflict modal's Keep Both option
+    static std::filesystem::path UniqueDestination(const std::filesystem::path& targetDirectory, const std::filesystem::path& filename)
+    {
+        std::string l_Stem = filename.stem().string();
+        std::string l_Extension = filename.extension().string();
+
+        uint32_t l_Index = 1;
+        std::filesystem::path l_Candidate;
+        std::error_code l_Error;
+        do
+        {
+            l_Candidate = targetDirectory / (l_Stem + "_" + std::to_string(l_Index++) + l_Extension);
+        } while (std::filesystem::exists(l_Candidate, l_Error));
+
+        return l_Candidate;
+    }
+
     static bool HasSubdirectory(const std::filesystem::path& directory)
     {
         std::error_code l_Error;
@@ -187,7 +207,7 @@ namespace Trinity
         float l_TreeWidth = ImGui::GetFontSize() * 12.0f;
 
         ImGui::BeginChild("##ContentBrowserTree", ImVec2(l_TreeWidth, -l_FooterHeight), ImGuiChildFlags_Borders);
-        RenderFolderTree();
+        RenderFolderTree(l_Assets);
         ImGui::EndChild();
 
         ImGui::SameLine();
@@ -195,6 +215,8 @@ namespace Trinity
         ImGui::BeginChild("##ContentBrowserGrid", ImVec2(0.0f, -l_FooterHeight), ImGuiChildFlags_Borders);
         RenderGrid(l_Assets);
         ImGui::EndChild();
+
+        RenderMoveConflictModal(l_Assets);
 
         RenderFooter();
     }
@@ -267,7 +289,7 @@ namespace Trinity
         }
     }
 
-    void ContentBrowserPanel::RenderFolderTree()
+    void ContentBrowserPanel::RenderFolderTree(AssetDatabase& assetDatabase)
     {
         ImGuiTreeNodeFlags l_RootFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
         if (m_CurrentDirectory == m_AssetsRoot)
@@ -281,14 +303,16 @@ namespace Trinity
             m_CurrentDirectory = m_AssetsRoot;
         }
 
+        AcceptMoveInto(m_AssetsRoot, assetDatabase);
+
         if (l_Open)
         {
-            RenderFolderNode(m_AssetsRoot);
+            RenderFolderNode(m_AssetsRoot, assetDatabase);
             ImGui::TreePop();
         }
     }
 
-    void ContentBrowserPanel::RenderFolderNode(const std::filesystem::path& directory)
+    void ContentBrowserPanel::RenderFolderNode(const std::filesystem::path& directory, AssetDatabase& assetDatabase)
     {
         std::error_code l_Error;
         for (const std::filesystem::directory_entry& it_Entry : std::filesystem::directory_iterator(directory, l_Error))
@@ -319,9 +343,11 @@ namespace Trinity
                 m_CurrentDirectory = l_Child;
             }
 
+            AcceptMoveInto(l_Child, assetDatabase);
+
             if (l_Open)
             {
-                RenderFolderNode(l_Child);
+                RenderFolderNode(l_Child, assetDatabase);
                 ImGui::TreePop();
             }
             ImGui::PopID();
@@ -411,6 +437,16 @@ namespace Trinity
                 m_SelectedAsset.clear();
             }
 
+            if (ImGui::BeginDragDropSource())
+            {
+                std::string l_PathString = it_Directory.string();
+                ImGui::SetDragDropPayload(k_ContentPathPayload, l_PathString.c_str(), l_PathString.size() + 1);
+                ImGui::TextUnformatted((std::string(ICON_FA_FOLDER) + "  " + l_Name).c_str());
+                ImGui::EndDragDropSource();
+            }
+
+            AcceptMoveInto(it_Directory, assetDatabase);
+
             RenderItemContextMenu(it_Directory, assetDatabase);
 
             DrawTileDecoration(l_ThumbMin, l_Thumbnail, IM_COL32(220, 180, 70, 255), l_Selected);
@@ -467,6 +503,14 @@ namespace Trinity
                     ImGui::TextUnformatted(l_Name.c_str());
                     ImGui::EndDragDropSource();
                 }
+            }
+            else if (ImGui::BeginDragDropSource())
+            {
+                // Non-asset file: carry its path so it can be moved between folders.
+                std::string l_PathString = it_File.string();
+                ImGui::SetDragDropPayload(k_ContentPathPayload, l_PathString.c_str(), l_PathString.size() + 1);
+                ImGui::TextUnformatted(l_Name.c_str());
+                ImGui::EndDragDropSource();
             }
 
             DrawTileDecoration(l_ThumbMin, l_Thumbnail, AssetTypeColor(l_Type), l_Selected);
@@ -532,6 +576,198 @@ namespace Trinity
                 }
             }
         }
+    }
+
+    void ContentBrowserPanel::MoveEntry(const std::filesystem::path& source, const std::filesystem::path& targetDirectory, AssetDatabase& assetDatabase)
+    {
+        std::error_code l_Error;
+
+        // Already living in the target folder: nothing to do.
+        if (std::filesystem::equivalent(source.parent_path(), targetDirectory, l_Error))
+        {
+            return;
+        }
+
+        // Never move a folder into itself or one of its own descendants.
+        if (std::filesystem::is_directory(source, l_Error))
+        {
+            std::filesystem::path l_Probe = targetDirectory;
+            while (!l_Probe.empty())
+            {
+                std::error_code l_SameError;
+                if (std::filesystem::equivalent(l_Probe, source, l_SameError))
+                {
+                    return;
+                }
+
+                if (l_Probe == l_Probe.parent_path())
+                {
+                    break;
+                }
+
+                l_Probe = l_Probe.parent_path();
+            }
+        }
+
+        std::filesystem::path l_Destination = targetDirectory / source.filename();
+
+        std::error_code l_ExistsError;
+        if (std::filesystem::exists(l_Destination, l_ExistsError))
+        {
+            // Name collision: stash the move and let the user decide via the conflict modal.
+            m_PendingMoveSource = source;
+            m_PendingMoveTarget = targetDirectory;
+            m_OpenMoveConflictModal = true;
+
+            return;
+        }
+
+        PerformMove(source, l_Destination, assetDatabase);
+    }
+
+    void ContentBrowserPanel::PerformMove(const std::filesystem::path& source, const std::filesystem::path& destination, AssetDatabase& assetDatabase)
+    {
+        std::error_code l_MoveError;
+        std::filesystem::rename(source, destination, l_MoveError);
+        if (l_MoveError)
+        {
+            return;
+        }
+
+        // Keep the .meta sidecar next to the file (directories don't have one).
+        std::filesystem::path l_Meta = source;
+        l_Meta += ".meta";
+        std::error_code l_MetaExists;
+        if (std::filesystem::exists(l_Meta, l_MetaExists))
+        {
+            std::filesystem::path l_NewMeta = destination;
+            l_NewMeta += ".meta";
+            std::error_code l_MetaError;
+            std::filesystem::rename(l_Meta, l_NewMeta, l_MetaError);
+        }
+
+        if (m_SelectedAsset == source)
+        {
+            m_SelectedAsset = destination;
+        }
+
+        if (m_CurrentDirectory == source)
+        {
+            m_CurrentDirectory = destination;
+        }
+
+        assetDatabase.Refresh();
+        ReResolveModifiedMeshes();
+    }
+
+    void ContentBrowserPanel::RenderMoveConflictModal(AssetDatabase& assetDatabase)
+    {
+        if (m_OpenMoveConflictModal)
+        {
+            ImGui::OpenPopup("Move Conflict");
+            m_OpenMoveConflictModal = false;
+        }
+
+        ImVec2 l_Center = ImGui::GetMainViewport()->GetCenter();
+        ImGui::SetNextWindowPos(l_Center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+        if (ImGui::BeginPopupModal("Move Conflict", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::Text("'%s' already exists in '%s'.", m_PendingMoveSource.filename().string().c_str(), m_PendingMoveTarget.filename().string().c_str());
+            ImGui::TextDisabled("Replace deletes the existing entry. This cannot be undone.");
+            ImGui::Separator();
+
+            std::filesystem::path l_Destination = m_PendingMoveTarget / m_PendingMoveSource.filename();
+
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.70f, 0.24f, 0.24f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.82f, 0.30f, 0.30f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.60f, 0.20f, 0.20f, 1.0f));
+            if (ImGui::Button("Replace", ImVec2(120.0f, 0.0f)))
+            {
+                std::error_code l_RemoveError;
+                std::filesystem::remove_all(l_Destination, l_RemoveError);
+
+                std::filesystem::path l_Meta = l_Destination;
+                l_Meta += ".meta";
+                std::error_code l_MetaError;
+                std::filesystem::remove(l_Meta, l_MetaError);
+
+                if (!l_RemoveError)
+                {
+                    if (m_SelectedAsset == l_Destination)
+                    {
+                        m_SelectedAsset.clear();
+                    }
+
+                    PerformMove(m_PendingMoveSource, l_Destination, assetDatabase);
+                }
+
+                m_PendingMoveSource.clear();
+                m_PendingMoveTarget.clear();
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::PopStyleColor(3);
+
+            ImGui::SameLine();
+            if (ImGui::Button("Keep Both", ImVec2(120.0f, 0.0f)))
+            {
+                PerformMove(m_PendingMoveSource, UniqueDestination(m_PendingMoveTarget, m_PendingMoveSource.filename()), assetDatabase);
+
+                m_PendingMoveSource.clear();
+                m_PendingMoveTarget.clear();
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel", ImVec2(120.0f, 0.0f)))
+            {
+                m_PendingMoveSource.clear();
+                m_PendingMoveTarget.clear();
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::EndPopup();
+        }
+    }
+
+    void ContentBrowserPanel::AcceptMoveInto(const std::filesystem::path& targetDirectory, AssetDatabase& assetDatabase)
+    {
+        if (!ImGui::BeginDragDropTarget())
+        {
+            return;
+        }
+
+        std::filesystem::path l_Source;
+
+        // Generic path payload: folders and non-asset files carry their path directly.
+        if (const ImGuiPayload* l_Payload = ImGui::AcceptDragDropPayload(k_ContentPathPayload))
+        {
+            l_Source = std::string(static_cast<const char*>(l_Payload->Data));
+        }
+        // Typed asset payloads (unchanged, still used by the Inspector): resolve the UUID back to a path.
+        else if (const ImGuiPayload* l_MeshPayload = ImGui::AcceptDragDropPayload("TRINITY_ASSET_MESH"))
+        {
+            uint64_t l_Raw = *static_cast<const uint64_t*>(l_MeshPayload->Data);
+            if (const AssetMetadata* l_Meta = assetDatabase.GetMetadata(UUID(l_Raw)))
+            {
+                l_Source = m_Engine.GetPlatform().GetFileSystem().Resolve(BaseDirectory::Executable, l_Meta->SourcePath);
+            }
+        }
+        else if (const ImGuiPayload* l_MaterialPayload = ImGui::AcceptDragDropPayload("TRINITY_ASSET_MATERIAL"))
+        {
+            uint64_t l_Raw = *static_cast<const uint64_t*>(l_MaterialPayload->Data);
+            if (const AssetMetadata* l_Meta = assetDatabase.GetMetadata(UUID(l_Raw)))
+            {
+                l_Source = m_Engine.GetPlatform().GetFileSystem().Resolve(BaseDirectory::Executable, l_Meta->SourcePath);
+            }
+        }
+
+        if (!l_Source.empty())
+        {
+            MoveEntry(l_Source, targetDirectory, assetDatabase);
+        }
+
+        ImGui::EndDragDropTarget();
     }
 
     void ContentBrowserPanel::RenderItemContextMenu(const std::filesystem::path& path, AssetDatabase& assetDatabase)
