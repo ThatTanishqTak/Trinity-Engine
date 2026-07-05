@@ -34,6 +34,15 @@ namespace Trinity
         uint32_t Height;
     };
 
+    // Per-frame draw statistics, reset at the start of RenderFrame and filled by the passes.
+    struct RenderStats
+    {
+        uint32_t DrawCalls = 0;
+        uint32_t ShadowDrawCalls = 0;
+        uint32_t Triangles = 0;
+        uint32_t Meshes = 0;
+    };
+
     class Renderer
     {
     public:
@@ -60,6 +69,9 @@ namespace Trinity
 
         // Color render targets exposed for the editor's render-target viewer.
         std::vector<DebugRenderTarget> GetDebugRenderTargets() const;
+
+        // Draw statistics of the most recently rendered frame.
+        const RenderStats& GetStats() const { return m_Stats; }
 
     private:
         bool CreatePipeline();
@@ -144,6 +156,7 @@ namespace Trinity
         uint32_t m_FrameIndex = 0;
 
         Timer m_Timer;
+        RenderStats m_Stats;
 
         std::filesystem::path m_ShaderSourcePath;
         std::filesystem::file_time_type m_ShaderWriteTime;

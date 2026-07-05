@@ -2,10 +2,12 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <string>
 #include <system_error>
+#include <utility>
 #include <vector>
 
 #include <imgui.h>
@@ -20,6 +22,8 @@
 #include <Trinity/Renderer/Materials/Material.h>
 #include <Trinity/Serialization/MaterialSerializer.h>
 #include <Trinity/Assets/AssetDatabase.h>
+#include <Trinity/Renderer/RHI/GraphicsDevice.h>
+#include <Trinity/ImGui/IImGuiRenderBackend.h>
 
 namespace Trinity
 {
@@ -69,6 +73,9 @@ namespace Trinity
 
     // Generic payload carrying a filesystem path string; lets any tile (including folders and non-asset files) be dragged onto a folder to move it. Coexists with the typed asset payloads
     static const char* const k_ContentPathPayload = "TRINITY_CONTENT_PATH";
+
+    // ImGui_ImplVulkan_RemoveTexture frees the descriptor set immediately, so retired thumbnails must outlive the current frame plus the swapchain's 2 frames in flight before being freed
+    static constexpr int k_ThumbnailRetireFrames = 4;
 
     // First free "Name_N" slot in the target folder, for the conflict modal's Keep Both option
     static std::filesystem::path UniqueDestination(const std::filesystem::path& targetDirectory, const std::filesystem::path& filename)
@@ -197,6 +204,7 @@ namespace Trinity
         }
 
         EnsureRoot();
+        ProcessRetiredThumbnails();
 
         AssetDatabase& l_Assets = m_Engine.GetAssetDatabase();
 
@@ -225,8 +233,7 @@ namespace Trinity
     {
         if (ImGui::Button(ICON_FA_ARROWS_ROTATE " Refresh"))
         {
-            assetDatabase.Refresh();
-            ReResolveModifiedMeshes();
+            RefreshAssets(assetDatabase);
         }
 
         ImGui::SameLine();
@@ -246,7 +253,7 @@ namespace Trinity
             Material l_Material;
             if (MaterialSerializer::SerializeMaterial(l_Material, l_File))
             {
-                assetDatabase.Refresh();
+                RefreshAssets(assetDatabase);
             }
         }
 
@@ -473,12 +480,30 @@ namespace Trinity
             bool l_Selected = m_SelectedAsset == it_File;
             ImVec2 l_ThumbMin = ImGui::GetCursorScreenPos();
 
+            uint64_t l_Thumb = 0;
+            if (l_Type == AssetType::Texture && ImGui::IsRectVisible(ImVec2(l_Thumbnail, l_Thumbnail)))
+            {
+                l_Thumb = GetThumbnailTexture(it_File, assetDatabase);
+            }
+
             ImGui::PushStyleColor(ImGuiCol_Button, l_Selected ? ImVec4(0.18f, 0.30f, 0.46f, 1.0f) : ImVec4(0.105f, 0.105f, 0.105f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.200f, 0.200f, 0.200f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.160f, 0.160f, 0.160f, 1.0f));
-            ImGui::SetWindowFontScale(2.2f * m_ThumbnailScale);
-            ImGui::Button(AssetIcon(l_Type), ImVec2(l_Thumbnail, l_Thumbnail));
-            ImGui::SetWindowFontScale(1.0f);
+            if (l_Thumb != 0)
+            {
+                // Keep the button as the interactive item (selection, context menu, drag) and draw the texture over it so all existing behavior is preserved
+                ImGui::Button("##TextureThumb", ImVec2(l_Thumbnail, l_Thumbnail));
+                ImVec2 l_ImageMin = ImGui::GetItemRectMin();
+                ImVec2 l_ImageMax = ImGui::GetItemRectMax();
+                const float l_Inset = 3.0f;
+                ImGui::GetWindowDrawList()->AddImage((ImTextureID)l_Thumb, ImVec2(l_ImageMin.x + l_Inset, l_ImageMin.y + l_Inset), ImVec2(l_ImageMax.x - l_Inset, l_ImageMax.y - l_Inset));
+            }
+            else
+            {
+                ImGui::SetWindowFontScale(2.2f * m_ThumbnailScale);
+                ImGui::Button(AssetIcon(l_Type), ImVec2(l_Thumbnail, l_Thumbnail));
+                ImGui::SetWindowFontScale(1.0f);
+            }
             ImGui::PopStyleColor(3);
 
             if (ImGui::IsItemClicked())
@@ -578,6 +603,87 @@ namespace Trinity
         }
     }
 
+    void ContentBrowserPanel::RefreshAssets(AssetDatabase& assetDatabase)
+    {
+        ClearThumbnailCache();
+        assetDatabase.Refresh();
+        ReResolveModifiedMeshes();
+    }
+
+    uint64_t ContentBrowserPanel::GetThumbnailTexture(const std::filesystem::path& file, AssetDatabase& assetDatabase)
+    {
+        if (!m_Engine.HasDevice())
+        {
+            return 0;
+        }
+
+        std::error_code l_RelError;
+        std::filesystem::path l_Relative = std::filesystem::relative(file, m_AssetsRoot, l_RelError);
+        if (l_RelError)
+        {
+            return 0;
+        }
+
+        std::string l_SourcePath = "Assets/" + l_Relative.generic_string();
+        uint64_t l_Raw = static_cast<uint64_t>(assetDatabase.GetAssetByPath(l_SourcePath));
+        if (l_Raw == 0)
+        {
+            return 0;
+        }
+
+        auto l_Cached = m_ThumbnailCache.find(l_Raw);
+        if (l_Cached != m_ThumbnailCache.end())
+        {
+            return l_Cached->second;
+        }
+
+        // Failures are cached as 0 as well, so a broken texture falls back to the icon without being re-resolved every frame; the entry clears on the next refresh
+        TextureHandle l_Texture = assetDatabase.ResolveTexture(UUID(l_Raw));
+        uint64_t l_TextureID = l_Texture.IsValid() ? m_Engine.GetDevice().GetImGuiBackend().RegisterTexture(l_Texture) : 0;
+        m_ThumbnailCache[l_Raw] = l_TextureID;
+
+        return l_TextureID;
+    }
+
+    void ContentBrowserPanel::ClearThumbnailCache()
+    {
+        for (const auto& it_Entry : m_ThumbnailCache)
+        {
+            if (it_Entry.second != 0)
+            {
+                // The descriptor set may still be referenced by this frame's draw list or by frames in flight on the GPU; retire it and free it a few frames later
+                m_RetiredThumbnails.emplace_back(it_Entry.second, k_ThumbnailRetireFrames);
+            }
+        }
+
+        m_ThumbnailCache.clear();
+    }
+
+    void ContentBrowserPanel::ProcessRetiredThumbnails()
+    {
+        if (m_RetiredThumbnails.empty())
+        {
+            return;
+        }
+
+        bool l_HasDevice = m_Engine.HasDevice();
+        for (auto it_Retired = m_RetiredThumbnails.begin(); it_Retired != m_RetiredThumbnails.end();)
+        {
+            if (--it_Retired->second > 0)
+            {
+                ++it_Retired;
+                continue;
+            }
+
+            if (l_HasDevice)
+            {
+                m_Engine.GetDevice().GetImGuiBackend().UnregisterTexture(it_Retired->first);
+            }
+
+            it_Retired = m_RetiredThumbnails.erase(it_Retired);
+        }
+    }
+
     void ContentBrowserPanel::MoveEntry(const std::filesystem::path& source, const std::filesystem::path& targetDirectory, AssetDatabase& assetDatabase)
     {
         std::error_code l_Error;
@@ -656,8 +762,7 @@ namespace Trinity
             m_CurrentDirectory = destination;
         }
 
-        assetDatabase.Refresh();
-        ReResolveModifiedMeshes();
+        RefreshAssets(assetDatabase);
     }
 
     void ContentBrowserPanel::RenderMoveConflictModal(AssetDatabase& assetDatabase)
@@ -834,7 +939,7 @@ namespace Trinity
         ImGui::SameLine();
         ImGui::SetCursorPosX(ImGui::GetWindowContentRegionMax().x - l_SliderWidth);
         ImGui::SetNextItemWidth(l_SliderWidth);
-        ImGui::SliderFloat("##ThumbnailZoom", &m_ThumbnailScale, 0.5f, 2.0f, "");
+        ImGui::SliderFloat("##ThumbnailZoom", &m_ThumbnailScale, 0.5f, 2.5f, "");
         if (ImGui::IsItemHovered())
         {
             ImGui::SetTooltip("Thumbnail size");
@@ -877,8 +982,7 @@ namespace Trinity
                 }
 
                 m_PendingDelete.clear();
-                assetDatabase.Refresh();
-                ReResolveModifiedMeshes();
+                RefreshAssets(assetDatabase);
                 ImGui::CloseCurrentPopup();
             }
             ImGui::PopStyleColor(3);
@@ -944,8 +1048,7 @@ namespace Trinity
                         m_SelectedAsset = l_Target;
                     }
 
-                    assetDatabase.Refresh();
-                    ReResolveModifiedMeshes();
+                    RefreshAssets(assetDatabase);
                 }
             }
         }
@@ -999,8 +1102,7 @@ namespace Trinity
 
                 if (m_Engine.HasAssetDatabase())
                 {
-                    m_Engine.GetAssetDatabase().Refresh();
-                    ReResolveModifiedMeshes();
+                    RefreshAssets(m_Engine.GetAssetDatabase());
                 }
             });
     }

@@ -22,9 +22,12 @@ namespace Trinity
     private:
         void RenderGizmo(const ImVec2& imageMin, const ImVec2& imageSize);
         void RenderOverlayToolbar(const ImVec2& viewportMin);
+        void RenderStatsOverlay(const ImVec2& viewportMin, const ImVec2& viewportSize);
 
+    private:
         bool m_Focused = false;
         bool m_Hovered = false;
+        bool m_ShowStats = true;
         ImGuizmo::OPERATION m_GizmoOperation = ImGuizmo::TRANSLATE;
         ImGuizmo::MODE m_GizmoMode = ImGuizmo::LOCAL;
         bool m_GizmoWasUsing = false;

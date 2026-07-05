@@ -1,7 +1,11 @@
 #pragma once
 
+#include <cstdint>
 #include <filesystem>
 #include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include <Forge/Editor/EditorPanel.h>
 
@@ -40,6 +44,10 @@ namespace Trinity
         void AcceptMoveInto(const std::filesystem::path& targetDirectory, AssetDatabase& assetDatabase);
         void PerformMove(const std::filesystem::path& source, const std::filesystem::path& destination, AssetDatabase& assetDatabase);
         void RenderMoveConflictModal(AssetDatabase& assetDatabase);
+        void RefreshAssets(AssetDatabase& assetDatabase);
+        uint64_t GetThumbnailTexture(const std::filesystem::path& file, AssetDatabase& assetDatabase);
+        void ClearThumbnailCache();
+        void ProcessRetiredThumbnails();
 
         std::filesystem::path m_AssetsRoot;
         std::filesystem::path m_CurrentDirectory;
@@ -49,10 +57,12 @@ namespace Trinity
         std::filesystem::path m_PendingMoveSource;
         std::filesystem::path m_PendingMoveTarget;
         bool m_OpenMoveConflictModal = false;
+        std::unordered_map<uint64_t, uint64_t> m_ThumbnailCache;
+        std::vector<std::pair<uint64_t, int>> m_RetiredThumbnails;
         bool m_Initialized = false;
         bool m_RenameRequestFocus = false;
         bool m_OpenDeleteModal = false;
-        float m_ThumbnailScale = 2.0f;
+        float m_ThumbnailScale = 2.5f;
         int m_AssetCount = 0;
         char m_SearchBuffer[128] = "";
         char m_RenameBuffer[128] = "";

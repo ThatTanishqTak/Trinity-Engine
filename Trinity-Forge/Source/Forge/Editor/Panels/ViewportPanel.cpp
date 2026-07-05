@@ -1,6 +1,10 @@
 #include <Forge/Editor/Panels/ViewportPanel.h>
 
+#include <cstdio>
 #include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -12,10 +16,12 @@
 #include <Trinity/Core/Engine.h>
 #include <Trinity/Platform/IPlatform.h>
 #include <Trinity/Renderer/Frontend/Camera.h>
+#include <Trinity/Renderer/Frontend/Renderer.h>
 #include <Trinity/Scene/Scene.h>
 #include <Trinity/Scene/Entity.h>
 #include <Trinity/Scene/Components/TransformComponent.h>
 #include <Trinity/Scene/Components/HierarchyComponent.h>
+#include <Trinity/Scene/Components/IDComponent.h>
 
 namespace Trinity
 {
@@ -64,8 +70,10 @@ namespace Trinity
             {
                 ImGui::Image((ImTextureID)l_TextureId, l_Available);
                 ImVec2 l_ImageMin = ImGui::GetItemRectMin();
-                RenderGizmo(l_ImageMin, ImGui::GetItemRectSize());
+                ImVec2 l_ImageSize = ImGui::GetItemRectSize();
+                RenderGizmo(l_ImageMin, l_ImageSize);
                 RenderOverlayToolbar(l_ImageMin);
+                RenderStatsOverlay(l_ImageMin, l_ImageSize);
             }
             else
             {
@@ -278,6 +286,29 @@ namespace Trinity
             ImGui::SetTooltip("Snap increment");
         }
 
+        l_VerticalSeparator();
+
+        bool l_StatsActive = m_ShowStats;
+        if (l_StatsActive)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Button, l_Accent);
+        }
+
+        if (ImGui::Button(ICON_FA_CIRCLE_INFO, ImVec2(l_ButtonSize, l_ButtonSize)))
+        {
+            m_ShowStats = !m_ShowStats;
+        }
+
+        if (l_StatsActive)
+        {
+            ImGui::PopStyleColor();
+        }
+
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip(m_ShowStats ? "Viewport Statistics: On" : "Viewport Statistics: Off");
+        }
+
         ImGui::PopStyleColor();
         ImGui::PopStyleVar(2);
         ImGui::EndGroup();
@@ -289,5 +320,75 @@ namespace Trinity
         l_DrawList->AddRectFilled(ImVec2(l_Min.x - l_Pad, l_Min.y - l_Pad), ImVec2(l_Max.x + l_Pad, l_Max.y + l_Pad), IM_COL32(18, 18, 18, 220), 5.0f);
         l_DrawList->AddRect(ImVec2(l_Min.x - l_Pad, l_Min.y - l_Pad), ImVec2(l_Max.x + l_Pad, l_Max.y + l_Pad), IM_COL32(70, 70, 70, 160), 5.0f);
         l_DrawList->ChannelsMerge();
+    }
+
+    void ViewportPanel::RenderStatsOverlay(const ImVec2& viewportMin, const ImVec2& viewportSize)
+    {
+        if (!m_ShowStats)
+        {
+            return;
+        }
+
+        const float l_Margin = 12.0f;
+        const float l_Pad = 6.0f;
+
+        ImGuiIO& l_IO = ImGui::GetIO();
+        float l_FrameMs = l_IO.Framerate > 0.0f ? 1000.0f / l_IO.Framerate : 0.0f;
+
+        std::vector<std::pair<std::string, std::string>> l_Rows;
+        char l_Buffer[64];
+
+        std::snprintf(l_Buffer, sizeof(l_Buffer), "%.1f", l_IO.Framerate);
+        l_Rows.emplace_back("FPS", l_Buffer);
+
+        std::snprintf(l_Buffer, sizeof(l_Buffer), "%.2f ms", l_FrameMs);
+        l_Rows.emplace_back("Frame", l_Buffer);
+
+        if (m_Engine.HasScene())
+        {
+            std::snprintf(l_Buffer, sizeof(l_Buffer), "%d", static_cast<int>(m_Engine.GetScene().GetRegistry().view<IDComponent>().size()));
+            l_Rows.emplace_back("Entities", l_Buffer);
+        }
+
+        if (m_Engine.HasRenderer())
+        {
+            const RenderStats& l_Stats = m_Engine.GetRenderer().GetStats();
+
+            std::snprintf(l_Buffer, sizeof(l_Buffer), "%u", l_Stats.Meshes);
+            l_Rows.emplace_back("Meshes", l_Buffer);
+
+            std::snprintf(l_Buffer, sizeof(l_Buffer), "%u", l_Stats.DrawCalls);
+            l_Rows.emplace_back("Draw Calls", l_Buffer);
+
+            std::snprintf(l_Buffer, sizeof(l_Buffer), "%u", l_Stats.ShadowDrawCalls);
+            l_Rows.emplace_back("Shadow Draws", l_Buffer);
+
+            std::snprintf(l_Buffer, sizeof(l_Buffer), "%u", l_Stats.Triangles);
+            l_Rows.emplace_back("Triangles", l_Buffer);
+        }
+
+        float l_LineHeight = ImGui::GetTextLineHeightWithSpacing();
+        float l_PanelWidth = ImGui::GetFontSize() * 11.0f;
+        float l_PanelHeight = static_cast<float>(l_Rows.size()) * l_LineHeight + l_Pad * 2.0f - ImGui::GetStyle().ItemSpacing.y;
+
+        ImVec2 l_PanelMax = ImVec2(viewportMin.x + viewportSize.x - l_Margin, viewportMin.y + l_Margin + l_PanelHeight);
+        ImVec2 l_PanelMin = ImVec2(l_PanelMax.x - l_PanelWidth, viewportMin.y + l_Margin);
+
+        // Pure draw-list overlay (no widgets), styled to match the transform toolbar's panel.
+        ImDrawList* l_DrawList = ImGui::GetWindowDrawList();
+        l_DrawList->AddRectFilled(l_PanelMin, l_PanelMax, IM_COL32(18, 18, 18, 220), 5.0f);
+        l_DrawList->AddRect(l_PanelMin, l_PanelMax, IM_COL32(70, 70, 70, 160), 5.0f);
+
+        ImU32 l_LabelColor = ImGui::GetColorU32(ImGuiCol_TextDisabled);
+        ImU32 l_ValueColor = ImGui::GetColorU32(ImGuiCol_Text);
+
+        float l_Y = l_PanelMin.y + l_Pad;
+        for (const auto& it_Row : l_Rows)
+        {
+            l_DrawList->AddText(ImVec2(l_PanelMin.x + l_Pad, l_Y), l_LabelColor, it_Row.first.c_str());
+            ImVec2 l_ValueSize = ImGui::CalcTextSize(it_Row.second.c_str());
+            l_DrawList->AddText(ImVec2(l_PanelMax.x - l_Pad - l_ValueSize.x, l_Y), l_ValueColor, it_Row.second.c_str());
+            l_Y += l_LineHeight;
+        }
     }
 }

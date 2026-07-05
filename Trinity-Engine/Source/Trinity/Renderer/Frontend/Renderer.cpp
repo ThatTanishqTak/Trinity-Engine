@@ -948,6 +948,7 @@ namespace Trinity
             {
                 commandList.PushConstants(ShaderStage::Vertex | ShaderStage::Fragment, 0, static_cast<uint32_t>(sizeof(glm::mat4)), &l_MVP);
                 commandList.DrawIndexed(l_Submesh.IndexCount, 1, l_Submesh.FirstIndex, static_cast<int32_t>(l_Submesh.BaseVertex), 0);
+                ++m_Stats.ShadowDrawCalls;
             }
         }
     }
@@ -1023,6 +1024,7 @@ namespace Trinity
 
             Mesh& l_Mesh = *l_MeshRenderer.MeshReference;
             const std::vector<MaterialSlot>& l_Slots = l_Mesh.GetMaterialSlots();
+            ++m_Stats.Meshes;
 
             glm::mat4 l_Model = scene.GetWorldMatrix(l_Entity);
 
@@ -1116,6 +1118,8 @@ namespace Trinity
                 commandList.PushConstants(ShaderStage::Vertex | ShaderStage::Fragment, 0, static_cast<uint32_t>(sizeof(l_PushConstants)), &l_PushConstants);
 
                 commandList.DrawIndexed(l_Submesh.IndexCount, 1, l_Submesh.FirstIndex, static_cast<int32_t>(l_Submesh.BaseVertex), 0);
+                ++m_Stats.DrawCalls;
+                m_Stats.Triangles += l_Submesh.IndexCount / 3;
             }
         }
     }
@@ -1128,6 +1132,8 @@ namespace Trinity
         {
             return;
         }
+
+        m_Stats = RenderStats{};
 
         float l_Elapsed = m_Timer.Elapsed();
         if (l_Elapsed - m_LastReloadCheck >= 0.5f)
