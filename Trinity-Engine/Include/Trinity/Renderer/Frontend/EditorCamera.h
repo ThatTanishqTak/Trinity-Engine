@@ -20,6 +20,12 @@ namespace Trinity
         const Camera& GetCamera() const { return m_Camera; }
         const glm::vec3& GetPosition() const { return m_Position; }
 
+        float GetMoveSpeed() const { return m_MoveSpeed; }
+        void SetMoveSpeed(float speed);
+
+        // Reposition to look at target from the given distance, keeping the current view direction.
+        void Focus(const glm::vec3& target, float distance);
+
     private:
         void RecalculateView();
         glm::vec3 GetForward() const;

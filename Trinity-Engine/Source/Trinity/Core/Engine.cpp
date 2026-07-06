@@ -260,6 +260,11 @@ namespace Trinity
         return m_EditorCamera->GetCamera();
     }
 
+    EditorCamera& Engine::GetEditorCameraController()
+    {
+        return *m_EditorCamera;
+    }
+
     MeshLibrary& Engine::GetMeshLibrary()
     {
         return m_Renderer->GetMeshLibrary();

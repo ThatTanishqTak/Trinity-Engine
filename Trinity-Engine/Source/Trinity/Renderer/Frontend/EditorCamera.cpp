@@ -93,6 +93,17 @@ namespace Trinity
         RecalculateView();
     }
 
+    void EditorCamera::SetMoveSpeed(float speed)
+    {
+        m_MoveSpeed = glm::clamp(speed, 0.1f, 100.0f);
+    }
+
+    void EditorCamera::Focus(const glm::vec3& target, float distance)
+    {
+        m_Position = target - GetForward() * distance;
+        RecalculateView();
+    }
+
     void EditorCamera::RecalculateView()
     {
         m_Camera.LookAt(m_Position, m_Position + GetForward(), glm::vec3(0.0f, 1.0f, 0.0f));

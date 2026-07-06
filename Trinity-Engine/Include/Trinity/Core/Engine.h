@@ -62,6 +62,8 @@ namespace Trinity
         bool HasScene() const { return m_Scene != nullptr; }
 
         const Camera& GetEditorCamera() const;
+        EditorCamera& GetEditorCameraController();
+        bool HasEditorCamera() const { return m_EditorCamera != nullptr; }
 
         MeshLibrary& GetMeshLibrary();
 

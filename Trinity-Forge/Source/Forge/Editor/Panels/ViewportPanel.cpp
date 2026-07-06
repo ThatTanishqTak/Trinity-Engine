@@ -1,5 +1,6 @@
 #include <Forge/Editor/Panels/ViewportPanel.h>
 
+#include <cmath>
 #include <cstdio>
 #include <memory>
 #include <string>
@@ -16,6 +17,7 @@
 #include <Trinity/Core/Engine.h>
 #include <Trinity/Platform/IPlatform.h>
 #include <Trinity/Renderer/Frontend/Camera.h>
+#include <Trinity/Renderer/Frontend/EditorCamera.h>
 #include <Trinity/Renderer/Frontend/Renderer.h>
 #include <Trinity/Scene/Scene.h>
 #include <Trinity/Scene/Entity.h>
@@ -53,6 +55,21 @@ namespace Trinity
                 if (l_Input.IsKeyPressed(Key::R))
                 {
                     m_GizmoOperation = ImGuizmo::SCALE;
+                }
+
+                if (l_Input.IsKeyPressed(Key::F))
+                {
+                    FocusOnSelection();
+                }
+            }
+            else
+            {
+                // Flying (RMB held): the mouse wheel scales the camera speed, Unreal-style.
+                float l_Wheel = ImGui::GetIO().MouseWheel;
+                if (l_Wheel != 0.0f && m_Engine.HasEditorCamera())
+                {
+                    EditorCamera& l_Camera = m_Engine.GetEditorCameraController();
+                    l_Camera.SetMoveSpeed(l_Camera.GetMoveSpeed() * std::pow(1.15f, l_Wheel));
                 }
             }
         }
@@ -288,6 +305,28 @@ namespace Trinity
 
         l_VerticalSeparator();
 
+        if (m_Engine.HasEditorCamera())
+        {
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(ICON_FA_CAMERA);
+            ImGui::SameLine(0.0f, 4.0f);
+            ImGui::SetNextItemWidth(60.0f);
+
+            EditorCamera& l_Camera = m_Engine.GetEditorCameraController();
+            float l_Speed = l_Camera.GetMoveSpeed();
+            if (ImGui::DragFloat("##ViewportCameraSpeed", &l_Speed, 0.1f, 0.1f, 100.0f, "%.1f"))
+            {
+                l_Camera.SetMoveSpeed(l_Speed);
+            }
+
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::SetTooltip("Camera fly speed (scroll wheel while flying)");
+            }
+
+            l_VerticalSeparator();
+        }
+
         bool l_StatsActive = m_ShowStats;
         if (l_StatsActive)
         {
@@ -390,5 +429,28 @@ namespace Trinity
             l_DrawList->AddText(ImVec2(l_PanelMax.x - l_Pad - l_ValueSize.x, l_Y), l_ValueColor, it_Row.second.c_str());
             l_Y += l_LineHeight;
         }
+    }
+
+    void ViewportPanel::FocusOnSelection()
+    {
+        if (!m_Engine.HasScene() || !m_Engine.HasEditorCamera() || m_Context.SelectedEntity == entt::null)
+        {
+            return;
+        }
+
+        Scene& l_Scene = m_Engine.GetScene();
+        if (!l_Scene.GetRegistry().valid(m_Context.SelectedEntity))
+        {
+            return;
+        }
+
+        glm::mat4 l_World = l_Scene.GetWorldMatrix(m_Context.SelectedEntity);
+        glm::vec3 l_Target = glm::vec3(l_World[3]);
+
+        // Meshes carry no bounds yet, so approximate the entity's world size from the matrix axes.
+        float l_Radius = glm::max(glm::length(glm::vec3(l_World[0])), glm::max(glm::length(glm::vec3(l_World[1])), glm::length(glm::vec3(l_World[2]))));
+        float l_Distance = glm::max(l_Radius * 3.0f, 2.0f);
+
+        m_Engine.GetEditorCameraController().Focus(l_Target, l_Distance);
     }
 }

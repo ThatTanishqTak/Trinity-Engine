@@ -56,6 +56,24 @@ namespace Trinity
         }
     }
 
+    // Indices match the toolbar's filter combo: All, Meshes, Textures, Materials, Audio.
+    static bool PassesTypeFilter(AssetType type, int filter)
+    {
+        switch (filter)
+        {
+        case 1:
+            return type == AssetType::Mesh;
+        case 2:
+            return type == AssetType::Texture;
+        case 3:
+            return type == AssetType::Material || type == AssetType::MaterialInstance;
+        case 4:
+            return type == AssetType::Audio;
+        default:
+            return true;
+        }
+    }
+
     static const char* DragPayloadId(AssetType type)
     {
         if (type == AssetType::Mesh)
@@ -260,6 +278,15 @@ namespace Trinity
         ImGui::SameLine();
         ImGui::SetNextItemWidth(ImGui::GetFontSize() * 14.0f);
         ImGui::InputTextWithHint("##ContentBrowserSearch", ICON_FA_SLIDERS "  Search...", m_SearchBuffer, sizeof(m_SearchBuffer));
+
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 7.0f);
+        const char* l_FilterNames[] = { "All", "Meshes", "Textures", "Materials", "Audio" };
+        ImGui::Combo("##ContentBrowserTypeFilter", &m_TypeFilter, l_FilterNames, IM_ARRAYSIZE(l_FilterNames));
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip("Filter by asset type");
+        }
 
         RenderBreadcrumbs();
     }
@@ -474,6 +501,10 @@ namespace Trinity
             }
 
             AssetType l_Type = AssetTypeFromExtension(it_File.extension().string());
+            if (!PassesTypeFilter(l_Type, m_TypeFilter))
+            {
+                continue;
+            }
 
             ImGui::PushID(it_File.string().c_str());
 
@@ -509,6 +540,20 @@ namespace Trinity
             if (ImGui::IsItemClicked())
             {
                 m_SelectedAsset = it_File;
+            }
+
+            // Enlarged preview on hover; ForTooltip = stationary-mouse + delay, so it doesn't flicker while sweeping across tiles or fight the drag-drop preview
+            if (l_Type == AssetType::Texture && ImGui::IsItemHovered(ImGuiHoveredFlags_ForTooltip) && !ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+            {
+                uint64_t l_Preview = GetThumbnailTexture(it_File, assetDatabase);
+                if (l_Preview != 0)
+                {
+                    ImGui::BeginTooltip();
+                    float l_PreviewSize = ImGui::GetFontSize() * 16.0f;
+                    ImGui::Image((ImTextureID)l_Preview, ImVec2(l_PreviewSize, l_PreviewSize));
+                    ImGui::TextDisabled("%s", l_Name.c_str());
+                    ImGui::EndTooltip();
+                }
             }
 
             RenderItemContextMenu(it_File, assetDatabase);

@@ -23,6 +23,7 @@ namespace Trinity
         void RenderGizmo(const ImVec2& imageMin, const ImVec2& imageSize);
         void RenderOverlayToolbar(const ImVec2& viewportMin);
         void RenderStatsOverlay(const ImVec2& viewportMin, const ImVec2& viewportSize);
+        void FocusOnSelection();
 
     private:
         bool m_Focused = false;

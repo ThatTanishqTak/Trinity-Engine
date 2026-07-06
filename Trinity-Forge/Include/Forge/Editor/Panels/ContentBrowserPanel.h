@@ -64,6 +64,7 @@ namespace Trinity
         bool m_OpenDeleteModal = false;
         float m_ThumbnailScale = 2.5f;
         int m_AssetCount = 0;
+        int m_TypeFilter = 0;
         char m_SearchBuffer[128] = "";
         char m_RenameBuffer[128] = "";
     };
