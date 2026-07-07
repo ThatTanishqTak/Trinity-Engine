@@ -2,6 +2,8 @@
 
 #include <cstdint>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <glm/glm.hpp>
 
@@ -25,9 +27,11 @@ namespace Trinity
 
     private:
         void DragTransformField(Scene& scene, uint64_t uuid, const char* label, TransformComponent& transform, glm::vec3& value, float resetValue, float speed);
+        void DrawMultiSelectionInspector(Scene& scene);
 
         std::string m_RenameOldName;
         TransformComponent m_TransformEditOld;
+        std::vector<std::pair<uint64_t, TransformComponent>> m_MultiEditOld;
         char m_DetailsSearch[128] = "";
     };
 }

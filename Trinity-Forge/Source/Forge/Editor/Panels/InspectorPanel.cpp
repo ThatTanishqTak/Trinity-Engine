@@ -16,6 +16,7 @@
 #include <Forge/Editor/EditorIcons.h>
 #include <Forge/Editor/Commands/EntityCommands.h>
 #include <Forge/Editor/Commands/ComponentCommands.h>
+#include <Forge/Editor/Commands/CompositeCommand.h>
 #include <Forge/Editor/Commands/PropertyCommands.h>
 #include <Forge/Editor/Commands/MeshCommands.h>
 #include <Forge/Editor/Commands/MaterialCommands.h>
@@ -323,7 +324,11 @@ namespace Trinity
     {
         ImGui::Begin("Details");
 
-        if (m_Engine.HasScene() && m_Context.SelectedEntity != entt::null)
+        if (m_Engine.HasScene() && m_Context.Selection.size() > 1)
+        {
+            DrawMultiSelectionInspector(m_Engine.GetScene());
+        }
+        else if (m_Engine.HasScene() && m_Context.SelectedEntity != entt::null)
         {
             Scene& l_Scene = m_Engine.GetScene();
             if (l_Scene.GetRegistry().valid(m_Context.SelectedEntity))
@@ -866,6 +871,111 @@ namespace Trinity
         else if (l_Result.Committed)
         {
             m_Context.History.Execute(std::make_unique<SetTransformCommand>(scene, uuid, m_TransformEditOld, transform));
+        }
+    }
+
+    void InspectorPanel::DrawMultiSelectionInspector(Scene& scene)
+    {
+        entt::registry& l_Registry = scene.GetRegistry();
+
+        ImGui::Text("%d entities selected", static_cast<int>(m_Context.Selection.size()));
+
+        // Shared editing is only offered when every selected entity has a transform.
+        for (entt::entity it_Entity : m_Context.Selection)
+        {
+            if (!l_Registry.valid(it_Entity) || !l_Registry.all_of<TransformComponent>(it_Entity))
+            {
+                ImGui::TextDisabled("Selection has no common editable components.");
+
+                return;
+            }
+        }
+
+        ImGui::TextDisabled("Transform edits apply to the whole selection.");
+        ImGui::Spacing();
+
+        ComponentSection l_Section = BeginComponentSection("Transform", ICON_FA_UP_DOWN_LEFT_RIGHT "  Transform", false);
+
+        if (l_Section.Reset)
+        {
+            std::unique_ptr<CompositeCommand> l_Composite = std::make_unique<CompositeCommand>("Reset Transforms");
+            for (entt::entity it_Entity : m_Context.Selection)
+            {
+                uint64_t l_UUID = static_cast<uint64_t>(Entity(it_Entity, &scene).GetUUID());
+                l_Composite->Add(std::make_unique<SetTransformCommand>(scene, l_UUID, l_Registry.get<TransformComponent>(it_Entity), TransformComponent{}));
+            }
+
+            m_Context.History.Execute(std::move(l_Composite));
+
+            return;
+        }
+
+        if (!l_Section.Open)
+        {
+            return;
+        }
+
+        // Edit a proxy seeded from the primary selection; only axes the user actually changes this frame are written through to every selected entity (UE semantics).
+        TransformComponent l_Proxy = l_Registry.get<TransformComponent>(m_Context.SelectedEntity);
+        TransformComponent l_Before = l_Proxy;
+
+        Vec3ControlResult l_Translation = DrawVec3Control("Translation", l_Proxy.Translation, 0.0f, 0.1f);
+        Vec3ControlResult l_Rotation = DrawVec3Control("Rotation", l_Proxy.Rotation, 0.0f, 0.01f);
+        Vec3ControlResult l_Scale = DrawVec3Control("Scale", l_Proxy.Scale, 1.0f, 0.1f);
+
+        bool l_Activated = l_Translation.Activated || l_Rotation.Activated || l_Scale.Activated;
+        bool l_Committed = l_Translation.Committed || l_Rotation.Committed || l_Scale.Committed;
+        bool l_Reset = l_Translation.Reset || l_Rotation.Reset || l_Scale.Reset;
+
+        if (l_Activated || l_Reset)
+        {
+            // Snapshot every selected transform (pre-apply) as the undo baseline for this edit.
+            m_MultiEditOld.clear();
+            for (entt::entity it_Entity : m_Context.Selection)
+            {
+                uint64_t l_UUID = static_cast<uint64_t>(Entity(it_Entity, &scene).GetUUID());
+                m_MultiEditOld.emplace_back(l_UUID, l_Registry.get<TransformComponent>(it_Entity));
+            }
+        }
+
+        auto l_ApplyChangedAxes = [&](glm::vec3 TransformComponent::* field)
+            {
+                const glm::vec3& l_New = l_Proxy.*field;
+                const glm::vec3& l_Old = l_Before.*field;
+                for (int l_Axis = 0; l_Axis < 3; ++l_Axis)
+                {
+                    if (l_New[l_Axis] != l_Old[l_Axis])
+                    {
+                        for (entt::entity it_Entity : m_Context.Selection)
+                        {
+                            (l_Registry.get<TransformComponent>(it_Entity).*field)[l_Axis] = l_New[l_Axis];
+                        }
+                    }
+                }
+            };
+
+        l_ApplyChangedAxes(&TransformComponent::Translation);
+        l_ApplyChangedAxes(&TransformComponent::Rotation);
+        l_ApplyChangedAxes(&TransformComponent::Scale);
+
+        if (l_Committed || l_Reset)
+        {
+            std::unique_ptr<CompositeCommand> l_Composite = std::make_unique<CompositeCommand>("Edit Transforms");
+            for (const auto& it_Snapshot : m_MultiEditOld)
+            {
+                Entity l_Entity = FindEntityByUUID(scene, it_Snapshot.first);
+                if (l_Entity.IsValid() && l_Entity.HasComponent<TransformComponent>())
+                {
+                    l_Composite->Add(std::make_unique<SetTransformCommand>(scene, it_Snapshot.first, it_Snapshot.second, l_Entity.GetComponent<TransformComponent>()));
+                }
+            }
+
+            if (!l_Composite->Empty())
+            {
+                m_Context.History.Execute(std::move(l_Composite));
+            }
+
+            m_MultiEditOld.clear();
         }
     }
 }

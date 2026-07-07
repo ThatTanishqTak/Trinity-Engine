@@ -9,6 +9,8 @@
 
 #include <Trinity/Core/Application.h>
 #include <Trinity/Core/Engine.h>
+#include <Trinity/Scene/Scene.h>
+#include <Trinity/Scene/Components/NameComponent.h>
 #include <Trinity/Platform/Window.h>
 #include <Trinity/Renderer/RHI/GraphicsDevice.h>
 #include <Trinity/ImGui/IImGuiRenderBackend.h>
@@ -246,10 +248,21 @@ namespace Trinity
 
         if (ImGui::BeginMenu("Select"))
         {
-            ImGui::MenuItem("Select All", "Ctrl+A", false, false);
+            if (ImGui::MenuItem("Select All", "Ctrl+A", false, m_Engine.HasScene()))
+            {
+                m_Context.ClearSelection();
+                auto l_View = m_Engine.GetScene().GetRegistry().view<NameComponent>();
+                for (entt::entity it_Entity : l_View)
+                {
+                    m_Context.Selection.push_back(it_Entity);
+                }
+
+                m_Context.SelectedEntity = m_Context.Selection.empty() ? entt::null : m_Context.Selection.back();
+            }
+
             if (ImGui::MenuItem("Select None", "Esc", false, l_HasSelection))
             {
-                m_Context.SelectedEntity = entt::null;
+                m_Context.ClearSelection();
             }
 
             ImGui::MenuItem("Invert Selection", "Ctrl+I", false, false);

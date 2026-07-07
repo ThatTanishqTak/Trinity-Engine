@@ -279,7 +279,7 @@ namespace Trinity
             m_Context.History.Execute(std::move(l_Command));
 
             Entity l_Created = FindEntityByUUID(l_Scene, l_Raw->GetResultUUID());
-            m_Context.SelectedEntity = l_Created.IsValid() ? l_Created.GetHandle() : entt::null;
+            m_Context.Select(l_Created.IsValid() ? l_Created.GetHandle() : entt::null);
         }
         else if (m_Context.Action == PendingAction::Duplicate)
         {
@@ -290,7 +290,7 @@ namespace Trinity
                 m_Context.History.Execute(std::move(l_Command));
 
                 Entity l_Duplicate = FindEntityByUUID(l_Scene, l_Raw->GetResultUUID());
-                m_Context.SelectedEntity = l_Duplicate.IsValid() ? l_Duplicate.GetHandle() : entt::null;
+                m_Context.Select(l_Duplicate.IsValid() ? l_Duplicate.GetHandle() : entt::null);
             }
         }
         else if (m_Context.Action == PendingAction::Delete)
@@ -299,10 +299,7 @@ namespace Trinity
             {
                 m_Context.History.Execute(std::make_unique<DeleteEntityCommand>(l_Scene, GetEngine().GetAssetDatabase(), m_Context.ActionTarget));
 
-                if (m_Context.SelectedEntity == m_Context.ActionTarget)
-                {
-                    m_Context.SelectedEntity = entt::null;
-                }
+                m_Context.Deselect(m_Context.ActionTarget);
             }
         }
         else if (m_Context.Action == PendingAction::Reparent)
@@ -361,7 +358,7 @@ namespace Trinity
         else if (m_Context.FileOp == PendingFileOp::Load)
         {
             l_Scene.GetRegistry().clear();
-            m_Context.SelectedEntity = entt::null;
+            m_Context.ClearSelection();
             SceneSerializer::Deserialize(l_Scene, GetEngine().GetAssetDatabase(), m_Context.ScenePath);
             m_Context.History.Clear();
         }

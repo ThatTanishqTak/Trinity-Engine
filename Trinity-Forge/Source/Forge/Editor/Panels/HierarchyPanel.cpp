@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cctype>
 #include <string>
+#include <utility>
 
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -97,10 +98,14 @@ namespace Trinity
             Scene& l_Scene = m_Engine.GetScene();
             entt::registry& l_Registry = l_Scene.GetRegistry();
 
-            if (m_Context.SelectedEntity != entt::null && !l_Registry.valid(m_Context.SelectedEntity))
+            m_Context.PruneSelection(l_Registry);
+            if (m_SelectionAnchor != entt::null && !l_Registry.valid(m_SelectionAnchor))
             {
-                m_Context.SelectedEntity = entt::null;
+                m_SelectionAnchor = entt::null;
             }
+
+            m_RowsLastFrame = std::move(m_RowsThisFrame);
+            m_RowsThisFrame.clear();
 
             ImGui::SetNextItemWidth(-1.0f);
             ImGui::InputTextWithHint("##HierarchySearch", ICON_FA_SLIDERS "  Search...", m_SearchBuffer, sizeof(m_SearchBuffer));
@@ -135,7 +140,8 @@ namespace Trinity
 
             if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && ImGui::IsWindowHovered() && !ImGui::IsAnyItemHovered())
             {
-                m_Context.SelectedEntity = entt::null;
+                m_Context.ClearSelection();
+                m_SelectionAnchor = entt::null;
             }
 
             if (ImGui::BeginPopupContextWindow("HierarchyContext", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
@@ -163,13 +169,15 @@ namespace Trinity
         const char* l_Icon = EntityIcon(l_Registry, entity);
         std::string l_Label = l_Icon != nullptr ? (std::string(l_Icon) + "  " + l_Name) : l_Name;
 
+        m_RowsThisFrame.push_back(entity);
+
         ImGuiTreeNodeFlags l_Flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
         if (!l_HasChildren)
         {
             l_Flags |= ImGuiTreeNodeFlags_Leaf;
         }
 
-        if (m_Context.SelectedEntity == entity)
+        if (m_Context.IsSelected(entity))
         {
             l_Flags |= ImGuiTreeNodeFlags_Selected;
         }
@@ -178,7 +186,7 @@ namespace Trinity
 
         if (ImGui::IsItemClicked())
         {
-            m_Context.SelectedEntity = entity;
+            HandleRowClick(entity);
         }
 
         if (ImGui::BeginDragDropSource())
@@ -204,7 +212,11 @@ namespace Trinity
 
         if (ImGui::BeginPopupContextItem())
         {
-            m_Context.SelectedEntity = entity;
+            if (!m_Context.IsSelected(entity))
+            {
+                m_Context.Select(entity);
+                m_SelectionAnchor = entity;
+            }
 
             if (ImGui::MenuItem("Duplicate"))
             {
@@ -257,15 +269,21 @@ namespace Trinity
         const char* l_Icon = EntityIcon(l_Registry, entity);
         std::string l_Label = l_Icon != nullptr ? (std::string(l_Icon) + "  " + l_Name) : l_Name;
 
-        bool l_Selected = m_Context.SelectedEntity == entity;
+        m_RowsThisFrame.push_back(entity);
+
+        bool l_Selected = m_Context.IsSelected(entity);
         if (ImGui::Selectable(l_Label.c_str(), l_Selected, ImGuiSelectableFlags_SpanAvailWidth))
         {
-            m_Context.SelectedEntity = entity;
+            HandleRowClick(entity);
         }
 
         if (ImGui::BeginPopupContextItem())
         {
-            m_Context.SelectedEntity = entity;
+            if (!m_Context.IsSelected(entity))
+            {
+                m_Context.Select(entity);
+                m_SelectionAnchor = entity;
+            }
 
             if (ImGui::MenuItem("Duplicate"))
             {
@@ -287,5 +305,46 @@ namespace Trinity
         ImGui::SameLine();
         ImGui::SetCursorPosX(ImGui::GetContentRegionMax().x - l_TypeWidth);
         ImGui::TextDisabled("%s", l_Type);
+    }
+
+    void HierarchyPanel::HandleRowClick(entt::entity entity)
+    {
+        ImGuiIO& l_IO = ImGui::GetIO();
+
+        if (l_IO.KeyShift && m_SelectionAnchor != entt::null)
+        {
+            // Range-select across the visible rows as laid out last frame; the current frame's
+            // list is still being built while this click is handled.
+            auto l_Anchor = std::find(m_RowsLastFrame.begin(), m_RowsLastFrame.end(), m_SelectionAnchor);
+            auto l_Target = std::find(m_RowsLastFrame.begin(), m_RowsLastFrame.end(), entity);
+            if (l_Anchor != m_RowsLastFrame.end() && l_Target != m_RowsLastFrame.end())
+            {
+                if (l_Target < l_Anchor)
+                {
+                    std::swap(l_Anchor, l_Target);
+                }
+
+                m_Context.Selection.clear();
+                for (auto it_Row = l_Anchor; it_Row != l_Target + 1; ++it_Row)
+                {
+                    m_Context.Selection.push_back(*it_Row);
+                }
+
+                m_Context.SelectedEntity = entity;
+
+                return;
+            }
+        }
+
+        if (l_IO.KeyCtrl)
+        {
+            m_Context.ToggleSelection(entity);
+        }
+        else
+        {
+            m_Context.Select(entity);
+        }
+
+        m_SelectionAnchor = entity;
     }
 }
