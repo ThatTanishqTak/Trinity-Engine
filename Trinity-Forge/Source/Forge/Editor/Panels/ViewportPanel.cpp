@@ -1,5 +1,6 @@
 #include <Forge/Editor/Panels/ViewportPanel.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <memory>
@@ -13,6 +14,7 @@
 #include <Forge/Editor/EditorContext.h>
 #include <Forge/Editor/EditorIcons.h>
 #include <Forge/Editor/Commands/PropertyCommands.h>
+#include <Forge/Editor/Commands/CompositeCommand.h>
 
 #include <Trinity/Core/Engine.h>
 #include <Trinity/Platform/IPlatform.h>
@@ -27,6 +29,25 @@
 
 namespace Trinity
 {
+    static bool HasSelectedAncestor(Scene& scene, entt::entity entity, const std::vector<entt::entity>& selection)
+    {
+        entt::registry& l_Registry = scene.GetRegistry();
+        const HierarchyComponent* l_Hierarchy = l_Registry.try_get<HierarchyComponent>(entity);
+        entt::entity l_Current = l_Hierarchy != nullptr ? l_Hierarchy->Parent : entt::null;
+        while (l_Current != entt::null)
+        {
+            if (std::find(selection.begin(), selection.end(), l_Current) != selection.end())
+            {
+                return true;
+            }
+
+            const HierarchyComponent* l_ParentHierarchy = l_Registry.try_get<HierarchyComponent>(l_Current);
+            l_Current = l_ParentHierarchy != nullptr ? l_ParentHierarchy->Parent : entt::null;
+        }
+
+        return false;
+    }
+
     void ViewportPanel::OnImGuiRender()
     {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
@@ -123,8 +144,7 @@ namespace Trinity
         glm::mat4 l_View = m_Engine.GetEditorCamera().GetView();
         glm::mat4 l_Projection = m_Engine.GetEditorCamera().GetProjection();
         glm::mat4 l_World = l_Scene.GetWorldMatrix(m_Context.SelectedEntity);
-
-        TransformComponent l_PreEdit = l_Registry.get<TransformComponent>(m_Context.SelectedEntity);
+        glm::mat4 l_WorldBefore = l_World;
 
         float l_SnapValues[3] = { 0.0f, 0.0f, 0.0f };
         float* l_Snap = nullptr;
@@ -152,37 +172,96 @@ namespace Trinity
         {
             if (!m_GizmoWasUsing)
             {
-                m_GizmoStartTransform = l_PreEdit;
+                // Snapshot the top-most selected transforms as undo baselines; children of
+                // selected parents follow through the hierarchy and are not written directly.
+                m_GizmoStartTransforms.clear();
+                for (entt::entity it_Entity : m_Context.Selection)
+                {
+                    if (!l_Registry.valid(it_Entity) || !l_Registry.all_of<TransformComponent>(it_Entity))
+                    {
+                        continue;
+                    }
+
+                    if (HasSelectedAncestor(l_Scene, it_Entity, m_Context.Selection))
+                    {
+                        continue;
+                    }
+
+                    uint64_t l_UUID = static_cast<uint64_t>(Entity(it_Entity, &l_Scene).GetUUID());
+                    m_GizmoStartTransforms.emplace_back(l_UUID, l_Registry.get<TransformComponent>(it_Entity));
+                }
             }
 
-            glm::mat4 l_ParentWorld(1.0f);
-            const HierarchyComponent* l_Hierarchy = l_Registry.try_get<HierarchyComponent>(m_Context.SelectedEntity);
-            if (l_Hierarchy != nullptr && l_Hierarchy->Parent != entt::null)
+            glm::mat4 l_Delta = l_World * glm::inverse(l_WorldBefore);
+
+            auto l_ApplyWorld = [&](entt::entity entity, const glm::mat4& world)
+                {
+                    glm::mat4 l_ParentWorld(1.0f);
+                    const HierarchyComponent* l_Hierarchy = l_Registry.try_get<HierarchyComponent>(entity);
+                    if (l_Hierarchy != nullptr && l_Hierarchy->Parent != entt::null)
+                    {
+                        l_ParentWorld = l_Scene.GetWorldMatrix(l_Hierarchy->Parent);
+                    }
+
+                    glm::mat4 l_Local = glm::inverse(l_ParentWorld) * world;
+
+                    float l_Translation[3];
+                    float l_Rotation[3];
+                    float l_Scale[3];
+                    ImGuizmo::DecomposeMatrixToComponents(glm::value_ptr(l_Local), l_Translation, l_Rotation, l_Scale);
+
+                    TransformComponent& l_Transform = l_Registry.get<TransformComponent>(entity);
+                    l_Transform.Translation = glm::vec3(l_Translation[0], l_Translation[1], l_Translation[2]);
+                    l_Transform.Rotation = glm::radians(glm::vec3(l_Rotation[0], l_Rotation[1], l_Rotation[2]));
+                    l_Transform.Scale = glm::vec3(l_Scale[0], l_Scale[1], l_Scale[2]);
+                };
+
+            for (const auto& it_Start : m_GizmoStartTransforms)
             {
-                l_ParentWorld = l_Scene.GetWorldMatrix(l_Hierarchy->Parent);
+                Entity l_Target = FindEntityByUUID(l_Scene, it_Start.first);
+                if (!l_Target.IsValid() || !l_Target.HasComponent<TransformComponent>())
+                {
+                    continue;
+                }
+
+                entt::entity l_Handle = l_Target.GetHandle();
+                if (l_Handle == m_Context.SelectedEntity)
+                {
+                    // The primary takes the gizmo's exact matrix so it never drifts.
+                    l_ApplyWorld(l_Handle, l_World);
+                }
+                else
+                {
+                    // Everyone else receives the same world-space delta this frame.
+                    l_ApplyWorld(l_Handle, l_Delta * l_Scene.GetWorldMatrix(l_Handle));
+                }
             }
-
-            glm::mat4 l_Local = glm::inverse(l_ParentWorld) * l_World;
-
-            float l_Translation[3];
-            float l_Rotation[3];
-            float l_Scale[3];
-            ImGuizmo::DecomposeMatrixToComponents(glm::value_ptr(l_Local), l_Translation, l_Rotation, l_Scale);
-
-            TransformComponent& l_Transform = l_Registry.get<TransformComponent>(m_Context.SelectedEntity);
-            l_Transform.Translation = glm::vec3(l_Translation[0], l_Translation[1], l_Translation[2]);
-            l_Transform.Rotation = glm::radians(glm::vec3(l_Rotation[0], l_Rotation[1], l_Rotation[2]));
-            l_Transform.Scale = glm::vec3(l_Scale[0], l_Scale[1], l_Scale[2]);
         }
 
         if (!l_IsUsing && m_GizmoWasUsing)
         {
-            TransformComponent l_Current = l_Registry.get<TransformComponent>(m_Context.SelectedEntity);
-            if (l_Current.Translation != m_GizmoStartTransform.Translation || l_Current.Rotation != m_GizmoStartTransform.Rotation || l_Current.Scale != m_GizmoStartTransform.Scale)
+            std::unique_ptr<CompositeCommand> l_Composite = std::make_unique<CompositeCommand>(m_GizmoStartTransforms.size() > 1 ? "Edit Transforms" : "Edit Transform");
+            for (const auto& it_Start : m_GizmoStartTransforms)
             {
-                uint64_t l_UUID = static_cast<uint64_t>(Entity(m_Context.SelectedEntity, &l_Scene).GetUUID());
-                m_Context.History.Execute(std::make_unique<SetTransformCommand>(l_Scene, l_UUID, m_GizmoStartTransform, l_Current));
+                Entity l_Target = FindEntityByUUID(l_Scene, it_Start.first);
+                if (!l_Target.IsValid() || !l_Target.HasComponent<TransformComponent>())
+                {
+                    continue;
+                }
+
+                const TransformComponent& l_Current = l_Target.GetComponent<TransformComponent>();
+                if (l_Current.Translation != it_Start.second.Translation || l_Current.Rotation != it_Start.second.Rotation || l_Current.Scale != it_Start.second.Scale)
+                {
+                    l_Composite->Add(std::make_unique<SetTransformCommand>(l_Scene, it_Start.first, it_Start.second, l_Current));
+                }
             }
+
+            if (!l_Composite->Empty())
+            {
+                m_Context.History.Execute(std::move(l_Composite));
+            }
+
+            m_GizmoStartTransforms.clear();
         }
 
         m_GizmoWasUsing = l_IsUsing;

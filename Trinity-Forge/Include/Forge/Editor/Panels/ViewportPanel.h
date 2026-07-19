@@ -1,5 +1,9 @@
 #pragma once
 
+#include <cstdint>
+#include <utility>
+#include <vector>
+
 #include <imgui.h>
 #include <ImGuizmo.h>
 
@@ -32,7 +36,9 @@ namespace Trinity
         ImGuizmo::OPERATION m_GizmoOperation = ImGuizmo::TRANSLATE;
         ImGuizmo::MODE m_GizmoMode = ImGuizmo::LOCAL;
         bool m_GizmoWasUsing = false;
-        TransformComponent m_GizmoStartTransform;
+
+        // Gizmo-drag undo baselines for every top-most selected entity being written.
+        std::vector<std::pair<uint64_t, TransformComponent>> m_GizmoStartTransforms;
         bool m_SnapEnabled = false;
         float m_SnapTranslation = 0.5f;
         float m_SnapRotation = 15.0f;

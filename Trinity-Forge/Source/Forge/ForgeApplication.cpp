@@ -27,6 +27,7 @@
 #include <Forge/Editor/Panels/ContentBrowserPanel.h>
 #include <Forge/Editor/Panels/RenderGraphPanel.h>
 #include <Forge/Editor/Commands/EntityCommands.h>
+#include <Forge/Editor/Commands/CompositeCommand.h>
 
 #include <memory>
 
@@ -277,6 +278,45 @@ namespace Trinity
 
         Scene& l_Scene = GetEngine().GetScene();
 
+        // Actions triggered on a member of a multi-selection apply to the whole selection, reduced to top-most entities so selected parents don't double-process selected children.
+        auto l_CollectActionTargets = [this, &l_Scene](entt::entity primary) -> std::vector<entt::entity>
+            {
+                std::vector<entt::entity> l_Targets;
+
+                if (m_Context.Selection.size() <= 1 || !m_Context.IsSelected(primary))
+                {
+                    l_Targets.push_back(primary);
+
+                    return l_Targets;
+                }
+
+                for (entt::entity it_Entity : m_Context.Selection)
+                {
+                    if (!l_Scene.GetRegistry().valid(it_Entity))
+                    {
+                        continue;
+                    }
+
+                    bool l_HasSelectedAncestor = false;
+                    for (entt::entity it_Other : m_Context.Selection)
+                    {
+                        if (it_Other != it_Entity && l_Scene.GetRegistry().valid(it_Other) && IsAncestorOf(l_Scene, it_Other, it_Entity))
+                        {
+                            l_HasSelectedAncestor = true;
+
+                            break;
+                        }
+                    }
+
+                    if (!l_HasSelectedAncestor)
+                    {
+                        l_Targets.push_back(it_Entity);
+                    }
+                }
+
+                return l_Targets;
+            };
+
         if (m_Context.Action == PendingAction::Create)
         {
             std::unique_ptr<CreateEntityCommand> l_Command = std::make_unique<CreateEntityCommand>(l_Scene, "Entity");
@@ -290,21 +330,48 @@ namespace Trinity
         {
             if (m_Context.ActionTarget != entt::null && l_Scene.GetRegistry().valid(m_Context.ActionTarget))
             {
-                std::unique_ptr<DuplicateEntityCommand> l_Command = std::make_unique<DuplicateEntityCommand>(l_Scene, GetEngine().GetAssetDatabase(), m_Context.ActionTarget);
-                DuplicateEntityCommand* l_Raw = l_Command.get();
-                m_Context.History.Execute(std::move(l_Command));
+                std::vector<entt::entity> l_Targets = l_CollectActionTargets(m_Context.ActionTarget);
 
-                Entity l_Duplicate = FindEntityByUUID(l_Scene, l_Raw->GetResultUUID());
-                m_Context.Select(l_Duplicate.IsValid() ? l_Duplicate.GetHandle() : entt::null);
+                std::unique_ptr<CompositeCommand> l_Composite = std::make_unique<CompositeCommand>(l_Targets.size() > 1 ? "Duplicate Entities" : "Duplicate Entity");
+                std::vector<DuplicateEntityCommand*> l_Commands;
+                for (entt::entity it_Target : l_Targets)
+                {
+                    std::unique_ptr<DuplicateEntityCommand> l_Command = std::make_unique<DuplicateEntityCommand>(l_Scene, GetEngine().GetAssetDatabase(), it_Target);
+                    l_Commands.push_back(l_Command.get());
+                    l_Composite->Add(std::move(l_Command));
+                }
+
+                m_Context.History.Execute(std::move(l_Composite));
+
+                m_Context.ClearSelection();
+                for (DuplicateEntityCommand* it_Command : l_Commands)
+                {
+                    Entity l_Duplicate = FindEntityByUUID(l_Scene, it_Command->GetResultUUID());
+                    if (l_Duplicate.IsValid())
+                    {
+                        m_Context.AddToSelection(l_Duplicate.GetHandle());
+                    }
+                }
             }
         }
         else if (m_Context.Action == PendingAction::Delete)
         {
             if (m_Context.ActionTarget != entt::null && l_Scene.GetRegistry().valid(m_Context.ActionTarget))
             {
-                m_Context.History.Execute(std::make_unique<DeleteEntityCommand>(l_Scene, GetEngine().GetAssetDatabase(), m_Context.ActionTarget));
+                std::vector<entt::entity> l_Targets = l_CollectActionTargets(m_Context.ActionTarget);
 
-                m_Context.Deselect(m_Context.ActionTarget);
+                std::unique_ptr<CompositeCommand> l_Composite = std::make_unique<CompositeCommand>(l_Targets.size() > 1 ? "Delete Entities" : "Delete Entity");
+                for (entt::entity it_Target : l_Targets)
+                {
+                    l_Composite->Add(std::make_unique<DeleteEntityCommand>(l_Scene, GetEngine().GetAssetDatabase(), it_Target));
+                }
+
+                m_Context.History.Execute(std::move(l_Composite));
+
+                for (entt::entity it_Target : l_Targets)
+                {
+                    m_Context.Deselect(it_Target);
+                }
             }
         }
         else if (m_Context.Action == PendingAction::Reparent)
