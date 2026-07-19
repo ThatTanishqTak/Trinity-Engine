@@ -22,7 +22,7 @@ namespace Trinity
         VkResult l_Result = vkCreateCommandPool(m_Device, &l_PoolInfo, nullptr, &m_Pool);
         if (l_Result != VK_SUCCESS)
         {
-            ("VulkanCommands: vkCreateCommandPool failed ({})", static_cast<int>(l_Result));
+
             return false;
         }
 
@@ -32,11 +32,11 @@ namespace Trinity
         l_Result = vkCreateFence(m_Device, &l_FenceInfo, nullptr, &m_ImmediateFence);
         if (l_Result != VK_SUCCESS)
         {
-            ("VulkanCommands: vkCreateFence failed ({})", static_cast<int>(l_Result));
+
             return false;
         }
 
-        ("VulkanCommands: created");
+
         return true;
     }
 
@@ -66,7 +66,7 @@ namespace Trinity
         VkCommandBuffer l_CommandBuffer = VK_NULL_HANDLE;
         if (vkAllocateCommandBuffers(m_Device, &l_AllocInfo, &l_CommandBuffer) != VK_SUCCESS)
         {
-            ("VulkanCommands::ImmediateSubmit: vkAllocateCommandBuffers failed");
+
             return;
         }
 

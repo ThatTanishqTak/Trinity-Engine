@@ -39,7 +39,7 @@ namespace Trinity
 
     bool MiniAudioBackend::Initialize()
     {
-        ("Initializing miniaudio backend");
+
 
         if (m_Implementation->Initialized)
         {
@@ -49,21 +49,21 @@ namespace Trinity
         ma_result l_Result = ma_engine_init(nullptr, &m_Implementation->Engine);
         if (l_Result != MA_SUCCESS)
         {
-            ("ma_engine_init failed ({})", static_cast<int>(l_Result));
+
 
             return false;
         }
 
         m_Implementation->Initialized = true;
 
-        ("Miniaudio backend initialized");
+
 
         return true;
     }
 
     void MiniAudioBackend::Shutdown()
     {
-        ("Shutting down miniaudio backend");
+
 
         if (!m_Implementation->Initialized)
         {
@@ -82,7 +82,7 @@ namespace Trinity
         ma_engine_uninit(&m_Implementation->Engine);
         m_Implementation->Initialized = false;
 
-        ("Miniaudio backend shutdown complete");
+
     }
 
     AudioClipHandle MiniAudioBackend::LoadClip(const std::filesystem::path& path)
@@ -122,7 +122,7 @@ namespace Trinity
         ma_result l_Result = ma_sound_init_from_file(&m_Implementation->Engine, it_Clip->second.c_str(), l_Flags, nullptr, nullptr, l_Sound);
         if (l_Result != MA_SUCCESS)
         {
-            ("Failed to load '{}' ({})", it_Clip->second, static_cast<int>(l_Result));
+
             delete l_Sound;
 
             return VoiceHandle::Invalid;

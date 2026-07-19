@@ -25,13 +25,13 @@ namespace Trinity
     {
         if (instance == VK_NULL_HANDLE)
         {
-            ("VulkanSurface: instance is null");
+
             return false;
         }
 
         if (!handle.IsValid())
         {
-            ("VulkanSurface: native handle is invalid");
+
             return false;
         }
 
@@ -42,7 +42,7 @@ namespace Trinity
 #if defined(TRINITY_PLATFORM_WINDOWS)
         if (handle.Type != NativeHandleType::Win32)
         {
-            ("VulkanSurface: expected Win32 handle on Windows");
+
             return false;
         }
 
@@ -73,13 +73,13 @@ namespace Trinity
         }
         else
         {
-            ("VulkanSurface: unsupported handle type on Linux");
+
             return false;
         }
 #elif defined(TRINITY_PLATFORM_MACOS)
         if (handle.Type != NativeHandleType::Cocoa)
         {
-            ("VulkanSurface: expected Cocoa handle on macOS");
+
             return false;
         }
 
@@ -89,17 +89,17 @@ namespace Trinity
 
         l_Result = vkCreateMetalSurfaceEXT(m_Instance, &l_CreateInfo, nullptr, &m_Surface);
 #else
-        ("VulkanSurface: no platform-specific surface creation available");
+
         return false;
 #endif
 
         if (l_Result != VK_SUCCESS)
         {
-            ("VulkanSurface: surface creation failed ({})", static_cast<int>(l_Result));
+
             return false;
         }
 
-        ("VulkanSurface: created");
+
         return true;
     }
 

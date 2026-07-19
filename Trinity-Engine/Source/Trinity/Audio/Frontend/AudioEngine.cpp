@@ -18,7 +18,7 @@ namespace Trinity
 
     bool AudioEngine::Initialize()
     {
-        ("INITIALIZING AUDIO ENGINE");
+
 
         if (m_Device.IsValid())
         {
@@ -27,24 +27,24 @@ namespace Trinity
 
         if (!m_Device.Initialize())
         {
-            ("device initialization failed");
+
 
             return false;
         }
 
-        ("AUDIO ENGINE INITIALIZED");
+
 
         return true;
     }
 
     void AudioEngine::Shutdown()
     {
-        ("SHUTTING DOWN AUDIO ENGINE");
+
 
         m_ClipCache.clear();
         m_Device.Shutdown();
 
-        ("AUDIO ENGINE SHUTDOWN COMPLETE");
+
     }
 
     AudioClipHandle AudioEngine::LoadClip(const std::filesystem::path& path)

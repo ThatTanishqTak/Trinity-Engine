@@ -37,13 +37,13 @@ namespace Trinity
 #if defined(TRINITY_ENABLE_SDL)
                 return std::make_unique<SDLPlatform>();
 #else
-                ("PlatformFactory: SDL backend disabled, no desktop platform available");
+                PlatformFactory: SDL backend disabled, no desktop platform available");
                 return nullptr;
 #endif
             }
 
             default:
-                ("PlatformFactory: unsupported platform type");
+
                 return nullptr;
         }
     }

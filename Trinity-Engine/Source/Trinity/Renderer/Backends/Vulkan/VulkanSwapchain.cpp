@@ -61,7 +61,7 @@ namespace Trinity
 
         RegisterBackbuffers();
 
-        ("VulkanSwapchain: created ({}x{}, {} images, format {})", m_Extent.width, m_Extent.height, m_Images.size(), static_cast<int>(m_SurfaceFormat.format));
+
         return true;
     }
 
@@ -102,7 +102,7 @@ namespace Trinity
 
         if (l_Result != VK_SUCCESS && l_Result != VK_SUBOPTIMAL_KHR)
         {
-            ("VulkanSwapchain: vkAcquireNextImageKHR failed ({})", static_cast<int>(l_Result));
+
             return false;
         }
 
@@ -138,7 +138,7 @@ namespace Trinity
         }
         else if (l_Result != VK_SUCCESS)
         {
-            ("VulkanSwapchain: vkQueuePresentKHR failed ({})", static_cast<int>(l_Result));
+
         }
 
         m_CurrentFrame = (m_CurrentFrame + 1) % MaxFramesInFlight;
@@ -253,7 +253,7 @@ namespace Trinity
         VkResult l_Result = vkCreateSwapchainKHR(m_Device.GetHandle(), &l_SwapchainCreateInfo, nullptr, &m_Swapchain);
         if (l_Result != VK_SUCCESS)
         {
-            ("VulkanSwapchain: vkCreateSwapchainKHR failed ({})", static_cast<int>(l_Result));
+
             return false;
         }
 
@@ -289,7 +289,7 @@ namespace Trinity
             VkResult l_Result = vkCreateImageView(m_Device.GetHandle(), &l_ViewCreateInfo, nullptr, &m_ImageViews[l_Index]);
             if (l_Result != VK_SUCCESS)
             {
-                ("VulkanSwapchain: vkCreateImageView failed for image {}", l_Index);
+
                 return false;
             }
         }
@@ -317,13 +317,13 @@ namespace Trinity
 
             if (vkCreateSemaphore(l_Device, &l_SemaphoreCreateInfo, nullptr, &l_Frame.ImageAvailable) != VK_SUCCESS)
             {
-                ("VulkanSwapchain: vkCreateSemaphore (imageAvailable) failed");
+
                 return false;
             }
 
             if (vkCreateFence(l_Device, &l_FenceCreateInfo, nullptr, &l_Frame.InFlight) != VK_SUCCESS)
             {
-                ("VulkanSwapchain: vkCreateFence failed");
+
                 return false;
             }
         }
@@ -332,7 +332,7 @@ namespace Trinity
         {
             if (vkCreateSemaphore(l_Device, &l_SemaphoreCreateInfo, nullptr, &m_RenderFinishedSemaphores[l_Index]) != VK_SUCCESS)
             {
-                ("VulkanSwapchain: vkCreateSemaphore (renderFinished) failed for image {}", l_Index);
+
                 return false;
             }
         }

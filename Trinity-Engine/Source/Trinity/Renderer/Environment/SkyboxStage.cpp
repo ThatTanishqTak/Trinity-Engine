@@ -24,7 +24,7 @@ namespace Trinity
         ShaderCompileResult l_FragmentResult = compiler.Compile(shaderDirectory, "Skybox", "fragmentMain");
         if (!l_VertexResult.Success || !l_FragmentResult.Success)
         {
-            ("SkyboxStage: shader compilation failed");
+
 
             return false;
         }
@@ -45,7 +45,7 @@ namespace Trinity
 
         if (!m_VertexShader.IsValid() || !m_FragmentShader.IsValid())
         {
-            ("SkyboxStage: shader creation failed");
+
             Shutdown();
 
             return false;
@@ -73,7 +73,7 @@ namespace Trinity
         m_Pipeline = device.CreatePipeline(l_PipelineDescription);
         if (!m_Pipeline.IsValid())
         {
-            ("SkyboxStage: pipeline creation failed");
+
             Shutdown();
 
             return false;
@@ -90,13 +90,13 @@ namespace Trinity
 
         if (!m_Sampler.IsValid())
         {
-            ("SkyboxStage: sampler creation failed");
+
             Shutdown();
 
             return false;
         }
 
-        ("SkyboxStage: initialized");
+
 
         return true;
     }

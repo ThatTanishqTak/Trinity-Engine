@@ -127,7 +127,7 @@ namespace Trinity
         }
         else
         {
-            ("EditorTheme: UI font '{}' not found, using default font", l_UIPath.string());
+
             l_IO.Fonts->AddFontDefault();
         }
 
@@ -143,7 +143,7 @@ namespace Trinity
         }
         else
         {
-            ("EditorTheme: icon font '{}' not found, icons disabled", l_IconPath.string());
+
         }
     }
 
@@ -164,6 +164,6 @@ namespace Trinity
         ImGui::GetStyle().ScaleAllSizes(l_Scale);
         ApplyFonts(fileSystem, l_Scale);
 
-        ("EditorTheme: applied (scale {:.2f})", l_Scale);
+
     }
 }

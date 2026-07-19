@@ -35,14 +35,14 @@ namespace Trinity
 
     void AssetDatabase::Initialize()
     {
-        ("INITIALIZING ASSET DATABASE");
+
 
         m_AssetsRoot = m_FileSystem.Resolve(BaseDirectory::Executable, "Assets");
         Refresh();
 
-        ("Root directory: {}", m_AssetsRoot.string());
 
-        ("ASSET DATABASE INITIALIZED");
+
+
     }
 
     void AssetDatabase::Refresh()
@@ -55,14 +55,14 @@ namespace Trinity
         std::error_code l_Error;
         if (!std::filesystem::exists(m_AssetsRoot, l_Error))
         {
-            ("AssetDatabase: assets root '{}' not found", m_AssetsRoot.string());
+
 
             return;
         }
 
         ScanDirectory();
 
-        ("AssetDatabase: {} assets tracked ({} modified)", m_Assets.size(), m_Modified.size());
+
     }
 
     void AssetDatabase::ScanDirectory()
@@ -188,7 +188,7 @@ namespace Trinity
         const AssetMetadata* l_Metadata = GetMetadata(id);
         if (l_Metadata == nullptr || l_Metadata->Type != AssetType::Mesh)
         {
-            ("AssetDatabase: mesh {} unresolved, using cube fallback", l_Raw);
+
 
             return m_MeshLibrary.GetCube();
         }
@@ -223,7 +223,7 @@ namespace Trinity
         const AssetMetadata* l_Metadata = GetMetadata(id);
         if (l_Metadata == nullptr)
         {
-            ("AssetDatabase: material {} unresolved, using default", l_Raw);
+
 
             return GetDefaultMaterial();
         }
@@ -259,7 +259,7 @@ namespace Trinity
             return l_Flattened;
         }
 
-        ("AssetDatabase: asset {} is not a material, using default", l_Raw);
+
 
         return GetDefaultMaterial();
     }
@@ -281,7 +281,7 @@ namespace Trinity
         const AssetMetadata* l_Metadata = GetMetadata(id);
         if (l_Metadata == nullptr || l_Metadata->Type != AssetType::MaterialInstance)
         {
-            ("AssetDatabase: material instance {} unresolved", l_Raw);
+
 
             return nullptr;
         }
@@ -310,7 +310,7 @@ namespace Trinity
         const AssetMetadata* l_Metadata = GetMetadata(id);
         if (l_Metadata == nullptr || l_Metadata->Type != AssetType::Texture)
         {
-            ("AssetDatabase: texture {} unresolved, using error texture", l_Raw);
+
 
             return m_TextureManager.Error();
         }
@@ -335,7 +335,7 @@ namespace Trinity
         const AssetMetadata* l_Metadata = GetMetadata(id);
         if (l_Metadata == nullptr || l_Metadata->Type != AssetType::Audio)
         {
-            ("AssetDatabase: audio clip {} unresolved", l_Raw);
+
 
             return AudioClipHandle::Invalid;
         }

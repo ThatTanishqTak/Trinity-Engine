@@ -51,11 +51,11 @@ namespace Trinity
             s_CoreLogger->sinks().push_back(a_FileSink);
             s_ClientLogger->sinks().push_back(a_FileSink);
 
-            ("Log: file sink at {}", path.string());
+
         }
         catch (const spdlog::spdlog_ex& l_Exception)
         {
-            ("Log: failed to create file sink at {}: {}", path.string(), l_Exception.what());
+
         }
     }
 

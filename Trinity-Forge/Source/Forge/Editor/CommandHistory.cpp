@@ -70,12 +70,12 @@ namespace Trinity
 
     void CommandHistory::Clear()
     {
-        ("Clearing command history: Undo stack: {}, Redo stack: {}", m_UndoStack.size(), m_RedoStack.size());
+
 
         m_UndoStack.clear();
         m_RedoStack.clear();
         m_Dirty = false;
 
-        ("Command history cleared: Undo stack: {}, Redo stack: {}", m_UndoStack.size(), m_RedoStack.size());
+
     }
 }

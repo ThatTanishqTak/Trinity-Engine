@@ -13,7 +13,7 @@ namespace Trinity
 
     bool ImGuiLayer::Initialize(IImGuiPlatformBackend& platform, IImGuiRenderBackend& renderer, uint32_t framesInFlight, Format colorFormat)
     {
-        ("Initializing ImGui layer");
+
 
         if (m_Initialized)
         {
@@ -24,7 +24,7 @@ namespace Trinity
         m_Render = &renderer;
 
         IMGUI_CHECKVERSION();
-        ("ImGui Version: {}", IMGUI_VERSION);
+
 
         ImGui::CreateContext();
 
@@ -36,7 +36,7 @@ namespace Trinity
 
         if (!m_Platform->Initialize())
         {
-            ("Platform backend init failed");
+
             ImGui::DestroyContext();
             m_Platform = nullptr;
             m_Render = nullptr;
@@ -46,7 +46,7 @@ namespace Trinity
 
         if (!m_Render->Initialize(framesInFlight, colorFormat))
         {
-            ("Render backend init failed");
+
             m_Platform->Shutdown();
             ImGui::DestroyContext();
             m_Platform = nullptr;
@@ -57,14 +57,14 @@ namespace Trinity
 
         m_Initialized = true;
 
-        ("ImGui layer initialized");
+
 
         return true;
     }
 
     void ImGuiLayer::Shutdown()
     {
-        ("Shutting down ImGui layer");
+
 
         if (!m_Initialized)
         {
@@ -87,7 +87,7 @@ namespace Trinity
         m_Platform = nullptr;
         m_Initialized = false;
 
-        ("ImGui layer shutdown complete");
+
     }
 
     void ImGuiLayer::BeginFrame()

@@ -57,12 +57,11 @@ namespace Trinity
         for (const ShaderDiagnostic& l_Message : result.Messages)
         {
             const char* l_Severity = l_Message.Severity == ShaderDiagnosticSeverity::Error ? "error" : (l_Message.Severity == ShaderDiagnosticSeverity::Warning ? "warning" : "info");
-            ("Renderer: [{}] {}({},{}) {} {}: {}", stage, l_Message.File, l_Message.Line, l_Message.Column, l_Severity, l_Message.Code, l_Message.Message);
         }
 
         if (result.Messages.empty() && !result.Diagnostics.empty())
         {
-            ("Renderer: [{}] {}", stage, result.Diagnostics);
+
         }
     }
 
@@ -172,7 +171,6 @@ namespace Trinity
         std::error_code l_TimeError;
         m_ShaderWriteTime = std::filesystem::last_write_time(m_ShaderSourcePath, l_TimeError);
 
-        ("Renderer: initialized");
         return true;
     }
 
@@ -308,10 +306,10 @@ namespace Trinity
             return false;
         }
 
-        ("Renderer: reflection - push constant {} bytes, {} vertex inputs", l_VertexResult.Reflection.PushConstantSize, l_VertexResult.Reflection.VertexInputs.size());
+
         for (const ShaderVertexInput& it_Input : l_VertexResult.Reflection.VertexInputs)
         {
-            ("Renderer:   input '{}' @ location {}", it_Input.Name, it_Input.Location);
+
         }
 
         ShaderDescription l_VertexDescription;
@@ -417,7 +415,7 @@ namespace Trinity
         pipeline = m_Device.CreatePipeline(l_PipelineDescription);
         if (!pipeline.IsValid())
         {
-            ("Renderer: pipeline creation failed");
+
             m_Device.DestroyShader(vertexShader); vertexShader = ShaderHandle{};
             m_Device.DestroyShader(fragmentShader); fragmentShader = ShaderHandle{};
 
@@ -429,7 +427,7 @@ namespace Trinity
 
     void Renderer::ReloadShaders()
     {
-        ("Renderer: shader change detected, recompiling");
+
 
         ShaderHandle l_NewVertex;
         ShaderHandle l_NewFragment;
@@ -437,7 +435,7 @@ namespace Trinity
 
         if (!BuildPipeline(l_NewVertex, l_NewFragment, l_NewPipeline))
         {
-            ("Renderer: shader reload failed, keeping previous pipeline");
+
             return;
         }
 
@@ -462,7 +460,7 @@ namespace Trinity
         m_FragmentShader = l_NewFragment;
         m_Pipeline = l_NewPipeline;
 
-        ("Renderer: shader reload complete");
+
     }
 
     void Renderer::CheckHotReload()
@@ -508,7 +506,7 @@ namespace Trinity
         m_SceneColor = m_Device.CreateTexture(l_ColorDescription);
         if (!m_SceneColor.IsValid())
         {
-            ("Renderer: scene color target creation failed");
+
 
             return false;
         }
@@ -528,7 +526,7 @@ namespace Trinity
         m_SceneDepth = m_Device.CreateTexture(l_DepthDescription);
         if (!m_SceneDepth.IsValid())
         {
-            ("Renderer: scene depth target creation failed");
+
 
             return false;
         }
@@ -548,7 +546,7 @@ namespace Trinity
         m_DepthVis = m_Device.CreateTexture(l_DepthVisDescription);
         if (!m_DepthVis.IsValid())
         {
-            ("Renderer: depth visualization target creation failed");
+
 
             return false;
         }
@@ -632,7 +630,7 @@ namespace Trinity
         m_ViewportColor = m_Device.CreateTexture(l_Description);
         if (!m_ViewportColor.IsValid())
         {
-            ("Renderer: viewport output creation failed");
+
 
             return false;
         }
@@ -664,7 +662,7 @@ namespace Trinity
         std::error_code l_Error;
         if (!std::filesystem::exists(l_Path, l_Error))
         {
-            ("Renderer: no environment map at '{}'; skybox disabled", l_Path.string());
+
 
             return;
         }
@@ -692,7 +690,7 @@ namespace Trinity
         m_EnvironmentMap = m_Device.CreateTexture(l_Description);
         if (!m_EnvironmentMap.IsValid())
         {
-            ("Renderer: environment map upload failed");
+
         }
     }
 
@@ -733,7 +731,7 @@ namespace Trinity
 
         if (!m_IrradianceMap.IsValid() || !m_PrefilteredMap.IsValid() || !m_BrdfLut.IsValid())
         {
-            ("Renderer: IBL resource creation failed");
+
 
             return false;
         }
@@ -798,7 +796,7 @@ namespace Trinity
         m_ShadowMap = m_Device.CreateTexture(l_Description);
         if (!m_ShadowMap.IsValid())
         {
-            ("Renderer: shadow map creation failed");
+
 
             return false;
         }
@@ -818,7 +816,7 @@ namespace Trinity
         ShaderCompileResult l_FragmentResult = m_ShaderCompiler.Compile(l_ShaderDirectory, "Shadow", "fragmentMain");
         if (!l_VertexResult.Success || !l_FragmentResult.Success)
         {
-            ("Renderer: shadow shader compilation failed");
+
 
             return false;
         }
@@ -864,7 +862,7 @@ namespace Trinity
         m_ShadowPipeline = m_Device.CreatePipeline(l_PipelineDescription);
         if (!m_ShadowPipeline.IsValid())
         {
-            ("Renderer: shadow pipeline creation failed");
+
 
             return false;
         }

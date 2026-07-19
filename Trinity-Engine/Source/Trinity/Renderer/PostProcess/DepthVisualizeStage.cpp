@@ -23,7 +23,7 @@ namespace Trinity
         ShaderCompileResult l_VertexResult = compiler.Compile(shaderDirectory, "DepthVisualize", "vertexMain");
         if (!l_VertexResult.Success)
         {
-            ("DepthVisualizeStage: DepthVisualize vertexMain compile failed");
+
 
             return false;
         }
@@ -31,7 +31,7 @@ namespace Trinity
         ShaderCompileResult l_FragmentResult = compiler.Compile(shaderDirectory, "DepthVisualize", "fragmentMain");
         if (!l_FragmentResult.Success)
         {
-            ("DepthVisualizeStage: DepthVisualize fragmentMain compile failed");
+
 
             return false;
         }
@@ -52,7 +52,7 @@ namespace Trinity
 
         if (!m_VertexShader.IsValid() || !m_FragmentShader.IsValid())
         {
-            ("DepthVisualizeStage: shader creation failed");
+
             Shutdown();
 
             return false;
@@ -80,7 +80,7 @@ namespace Trinity
         m_Pipeline = device.CreatePipeline(l_PipelineDescription);
         if (!m_Pipeline.IsValid())
         {
-            ("DepthVisualizeStage: pipeline creation failed");
+
             Shutdown();
 
             return false;
@@ -97,13 +97,13 @@ namespace Trinity
 
         if (!m_Sampler.IsValid())
         {
-            ("DepthVisualizeStage: sampler creation failed");
+
             Shutdown();
 
             return false;
         }
 
-        ("DepthVisualizeStage: initialized");
+
 
         return true;
     }

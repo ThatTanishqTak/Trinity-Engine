@@ -172,8 +172,7 @@ namespace Trinity
         {
             if (!m_GizmoWasUsing)
             {
-                // Snapshot the top-most selected transforms as undo baselines; children of
-                // selected parents follow through the hierarchy and are not written directly.
+                // Snapshot the top-most selected transforms as undo baselines; children of selected parents follow through the hierarchy and are not written directly.
                 m_GizmoStartTransforms.clear();
                 for (entt::entity it_Entity : m_Context.Selection)
                 {

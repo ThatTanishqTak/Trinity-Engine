@@ -11,7 +11,7 @@ namespace Trinity
         std::ifstream l_Stream(path, std::ios::in | std::ios::binary);
         if (!l_Stream)
         {
-            ("Failed to open: {}", path.string());
+
             return std::nullopt;
         }
 
@@ -29,7 +29,7 @@ namespace Trinity
         std::ifstream l_Stream(path, std::ios::in | std::ios::binary | std::ios::ate);
         if (!l_Stream)
         {
-            ("Failed to open: {}", path.string());
+
             return std::nullopt;
         }
 
@@ -47,7 +47,7 @@ namespace Trinity
         std::ofstream l_Stream(path, std::ios::out | std::ios::binary | std::ios::trunc);
         if (!l_Stream)
         {
-            ("Failed to open: {}", path.string());
+
             return false;
         }
 
@@ -60,7 +60,7 @@ namespace Trinity
         std::ofstream l_Stream(path, std::ios::out | std::ios::binary | std::ios::trunc);
         if (!l_Stream)
         {
-            ("Failed to open: {}", path.string());
+
             return false;
         }
 
@@ -84,7 +84,7 @@ namespace Trinity
         bool l_Created = std::filesystem::create_directories(path, l_Error);
         if (!l_Created)
         {
-            ("Failed for {}: {}", path.string(), l_Error.message());
+
         }
 
         return l_Created;

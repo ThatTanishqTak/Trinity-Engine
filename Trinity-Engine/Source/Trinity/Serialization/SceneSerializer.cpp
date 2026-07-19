@@ -266,13 +266,10 @@ namespace Trinity
         std::ofstream l_Stream(path);
         if (!l_Stream.is_open())
         {
-            ("SceneSerializer: cannot open '{}' for writing", path.string());
-
             return false;
         }
 
         l_Stream << l_Out.c_str();
-        ("SceneSerializer: saved scene to '{}'", path.string());
 
         return true;
     }
@@ -285,21 +282,19 @@ namespace Trinity
 
             if (!l_Root["Version"])
             {
-                ("SceneSerializer: '{}' missing Version field", path.string());
-
                 return false;
             }
 
             uint32_t l_Version = l_Root["Version"].as<uint32_t>();
             if (l_Version != k_SceneVersion)
             {
-                ("SceneSerializer: '{}' version {} differs from expected {}", path.string(), l_Version, k_SceneVersion);
+
             }
 
             YAML::Node l_Entities = l_Root["Entities"];
             if (!l_Entities)
             {
-                ("SceneSerializer: '{}' has no entities", path.string());
+
 
                 return true;
             }
@@ -311,7 +306,7 @@ namespace Trinity
             {
                 if (!l_EntityNode["UUID"])
                 {
-                    ("SceneSerializer: entity missing UUID, skipped");
+
 
                     continue;
                 }
@@ -340,17 +335,17 @@ namespace Trinity
                 }
                 else
                 {
-                    ("SceneSerializer: dangling parent reference {} -> {}", l_Link.first, l_Link.second);
+
                 }
             }
 
-            ("SceneSerializer: loaded {} entities from '{}'", l_EntityMap.size(), path.string());
+
 
             return true;
         }
         catch (const std::exception& a_Exception)
         {
-            ("SceneSerializer: failed to load '{}' ({})", path.string(), a_Exception.what());
+
 
             return false;
         }
@@ -454,7 +449,7 @@ namespace Trinity
         }
         catch (const std::exception& a_Exception)
         {
-            ("SceneSerializer: DeserializeEntity failed ({})", a_Exception.what());
+
 
             return Entity();
         }

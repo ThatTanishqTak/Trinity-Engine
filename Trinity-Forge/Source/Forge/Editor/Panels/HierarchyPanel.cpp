@@ -313,8 +313,7 @@ namespace Trinity
 
         if (l_IO.KeyShift && m_SelectionAnchor != entt::null)
         {
-            // Range-select across the visible rows as laid out last frame; the current frame's
-            // list is still being built while this click is handled.
+            // Range-select across the visible rows as laid out last frame; the current frame's list is still being built while this click is handled.
             auto l_Anchor = std::find(m_RowsLastFrame.begin(), m_RowsLastFrame.end(), m_SelectionAnchor);
             auto l_Target = std::find(m_RowsLastFrame.begin(), m_RowsLastFrame.end(), entity);
             if (l_Anchor != m_RowsLastFrame.end() && l_Target != m_RowsLastFrame.end())

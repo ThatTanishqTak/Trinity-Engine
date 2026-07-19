@@ -42,7 +42,7 @@ namespace Trinity
 
     void ForgeApplication::OnInitialize()
     {
-        ("INITIALIZING FORGE");
+
 
         GetEngine().InitializeImGui();
         EditorTheme::Apply(GetEngine().GetPlatform().GetFileSystem());
@@ -58,8 +58,8 @@ namespace Trinity
         m_ConsolePanel = std::make_unique<ConsolePanel>(m_Context, GetEngine());
         m_ContentBrowserPanel = std::make_unique<ContentBrowserPanel>(m_Context, GetEngine());
         m_RenderGraphPanel = std::make_unique<RenderGraphPanel>(m_Context, GetEngine());
-        
-        ("FORGE INITIALIZED");
+
+
     }
 
     void ForgeApplication::OnUpdate(Timestep)
@@ -109,11 +109,11 @@ namespace Trinity
 
     void ForgeApplication::OnShutdown()
     {
-        ("SHUTTING DOWN FORGE");
+
 
         m_Context.History.Clear();
 
-        ("FORGE SHUTDOWN COMPLETE");
+
     }
 
     void ForgeApplication::RenderDockspace()
@@ -440,7 +440,7 @@ namespace Trinity
 
     Application* CreateApplication(CommandLineArgs args)
     {
-        ("CREATING APPLICATION");
+
 
         ApplicationSpecification l_Specification;
         l_Specification.InternalName = "Trinity-Forge";
@@ -459,7 +459,7 @@ namespace Trinity
             ("Argument [{}]: {}", i, l_Specification.Arguments[i]);
         }
 
-        ("APPLICATION CREATED");
+
 
         return new ForgeApplication(l_Specification);
     }

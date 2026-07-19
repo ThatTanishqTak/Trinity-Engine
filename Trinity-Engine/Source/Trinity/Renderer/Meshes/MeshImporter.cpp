@@ -31,7 +31,7 @@ namespace Trinity
         const aiScene* l_Scene = m_Implementation->Importer.ReadFile(l_PathString, l_Flags);
         if (l_Scene == nullptr || (l_Scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) != 0 || l_Scene->mRootNode == nullptr)
         {
-            ("MeshImporter: failed to load '{}' ({})", l_PathString, m_Implementation->Importer.GetErrorString());
+
 
             return std::nullopt;
         }

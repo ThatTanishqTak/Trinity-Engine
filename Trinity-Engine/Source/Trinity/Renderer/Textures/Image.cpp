@@ -24,7 +24,7 @@ namespace Trinity
             float* l_Data = stbi_loadf(l_PathString.c_str(), &l_Width, &l_Height, &l_Channels, 4);
             if (l_Data == nullptr)
             {
-                ("Image: failed to load HDR '{}' ({})", l_PathString, stbi_failure_reason());
+
                 return std::nullopt;
             }
 
@@ -41,7 +41,7 @@ namespace Trinity
             stbi_uc* l_Data = stbi_load(l_PathString.c_str(), &l_Width, &l_Height, &l_Channels, 4);
             if (l_Data == nullptr)
             {
-                ("Image: failed to load '{}' ({})", l_PathString, stbi_failure_reason());
+
                 return std::nullopt;
             }
 
@@ -58,7 +58,7 @@ namespace Trinity
         l_Image.Height = static_cast<uint32_t>(l_Height);
         l_Image.Channels = 4;
 
-        ("Image: loaded '{}' ({}x{}, {})", l_PathString, l_Image.Width, l_Image.Height, l_Image.IsHDR ? "HDR" : "LDR");
+
 
         return l_Image;
     }

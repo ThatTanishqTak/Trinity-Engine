@@ -53,7 +53,7 @@ namespace Trinity
 
         if (vkCreateDescriptorPool(m_Device.GetHandle(), &l_PoolInfo, nullptr, &m_DescriptorPool) != VK_SUCCESS)
         {
-            ("VulkanImGuiBackend: descriptor pool creation failed");
+
 
             return false;
         }
@@ -79,7 +79,7 @@ namespace Trinity
 
         if (!ImGui_ImplVulkan_Init(&l_InitInfo))
         {
-            ("VulkanImGuiBackend: ImGui_ImplVulkan_Init failed");
+
             vkDestroyDescriptorPool(m_Device.GetHandle(), m_DescriptorPool, nullptr);
             m_DescriptorPool = VK_NULL_HANDLE;
 
@@ -100,7 +100,7 @@ namespace Trinity
 
         if (vkCreateSampler(m_Device.GetHandle(), &l_SamplerInfo, nullptr, &m_Sampler) != VK_SUCCESS)
         {
-            ("VulkanImGuiBackend: sampler creation failed");
+
             ImGui_ImplVulkan_Shutdown();
             vkDestroyDescriptorPool(m_Device.GetHandle(), m_DescriptorPool, nullptr);
             m_DescriptorPool = VK_NULL_HANDLE;
@@ -109,7 +109,7 @@ namespace Trinity
         }
 
         m_Initialized = true;
-        ("VulkanImGuiBackend: initialized");
+
 
         return true;
     }

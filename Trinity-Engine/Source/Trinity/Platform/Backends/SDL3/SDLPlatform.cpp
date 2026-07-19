@@ -40,13 +40,13 @@ namespace Trinity
 
     bool SDLPlatform::Initialize()
     {
-        ("INITIALIZING SDL PLATFORM");
 
-        TR_CORE_ASSERT(!m_Initialized, "SDLPlatform already initialized");
+
+
 
         if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
         {
-            ("SDLPlatform: SDL_Init failed: {}", SDL_GetError());
+
             return false;
         }
 
@@ -56,14 +56,14 @@ namespace Trinity
 
         m_Initialized = true;
 
-        ("SDL PLATFORM INITIALIZED");
+
 
         return true;
     }
 
     void SDLPlatform::Shutdown()
     {
-        ("");
+
 
         if (!m_Initialized)
         {
@@ -80,13 +80,12 @@ namespace Trinity
 
         m_Initialized = false;
 
-        ("SDLPlatform: shut down");
+
     }
 
     Window& SDLPlatform::CreateWindow(const WindowProperties& properties)
     {
-        TR_CORE_ASSERT(m_Initialized, "SDLPlatform not initialized");
-        TR_CORE_ASSERT(m_Window == nullptr, "SDLPlatform window already created");
+
 
         m_Window = std::make_unique<SDLWindow>(properties);
 
@@ -98,7 +97,7 @@ namespace Trinity
 
     Window& SDLPlatform::GetWindow()
     {
-        TR_CORE_ASSERT(m_Window != nullptr, "SDLPlatform has no window");
+
         return *m_Window;
     }
 

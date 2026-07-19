@@ -276,7 +276,7 @@ namespace Trinity
         m_ImGuiBackend = std::make_unique<VulkanImGuiBackend>(*this);
 
         m_Initialized = true;
-        ("VulkanDevice: initialized");
+
 
         return true;
     }
@@ -292,45 +292,45 @@ namespace Trinity
         m_Pipelines.ForEachAlive([&](VulkanPipelineResource& resource)
         {
             ++l_Pipelines;
-            ("VulkanDevice: leaked pipeline '{}'", resource.DebugName);
+
         });
 
         uint32_t l_Shaders = 0;
         m_Shaders.ForEachAlive([&](VulkanShaderResource& resource)
         {
             ++l_Shaders;
-            ("VulkanDevice: leaked shader '{}'", resource.DebugName);
+
         });
 
         uint32_t l_Samplers = 0;
         m_Samplers.ForEachAlive([&](VulkanSamplerResource& resource)
         {
             ++l_Samplers;
-            ("VulkanDevice: leaked sampler '{}'", resource.DebugName);
+
         });
 
         uint32_t l_Textures = 0;
         m_Textures.ForEachAlive([&](VulkanTextureResource& resource)
         {
             ++l_Textures;
-            ("VulkanDevice: leaked texture '{}'", resource.DebugName);
+
         });
 
         uint32_t l_Buffers = 0;
         m_Buffers.ForEachAlive([&](VulkanBufferResource& resource)
         {
             ++l_Buffers;
-            ("VulkanDevice: leaked buffer '{}'", resource.DebugName);
+
         });
 
         const uint32_t l_Total = l_Pipelines + l_Shaders + l_Samplers + l_Textures + l_Buffers;
         if (l_Total == 0)
         {
-            ("VulkanDevice: no resource leaks");
+
         }
         else
         {
-            ("VulkanDevice: {} resource leak(s) - buffers {}, textures {}, samplers {}, shaders {}, pipelines {}", l_Total, l_Buffers, l_Textures, l_Samplers, l_Shaders, l_Pipelines);
+
         }
     }
 
@@ -460,7 +460,7 @@ namespace Trinity
         VmaAllocationInfo l_Result{};
         if (vmaCreateBuffer(m_Allocator.GetHandle(), &l_BufferCreateInfo, &l_AllocationCreateInfo, &l_Resource.Buffer, &l_Resource.Allocation, &l_Result) != VK_SUCCESS)
         {
-            ("VulkanDevice: vmaCreateBuffer failed");
+
             return BufferHandle();
         }
 
@@ -472,7 +472,7 @@ namespace Trinity
             {
                 if (!UploadViaStaging(m_Allocator.GetHandle(), m_Commands, l_Resource.Buffer, description.InitialData, description.Size, 0))
                 {
-                    ("VulkanDevice: buffer staging upload failed");
+
                     vmaDestroyBuffer(m_Allocator.GetHandle(), l_Resource.Buffer, l_Resource.Allocation);
 
                     return BufferHandle();
@@ -494,7 +494,7 @@ namespace Trinity
         VkFormat l_Format = VulkanUtilities::ToVkFormat(description.Format);
         if (l_Format == VK_FORMAT_UNDEFINED)
         {
-            ("VulkanDevice: unsupported texture format");
+
             return TextureHandle();
         }
 
@@ -515,7 +515,7 @@ namespace Trinity
             }
             else
             {
-                ("VulkanDevice: linear blit unsupported for this format; skipping mip generation");
+
                 l_MipLevels = 1;
             }
         }
@@ -558,7 +558,7 @@ namespace Trinity
 
         if (vmaCreateImage(m_Allocator.GetHandle(), &l_ImageCreateInfo, &l_AllocationCreateInfo, &l_Resource.Image, &l_Resource.Allocation, nullptr) != VK_SUCCESS)
         {
-            ("VulkanDevice: vmaCreateImage failed");
+
             return TextureHandle();
         }
 
@@ -575,7 +575,7 @@ namespace Trinity
 
         if (vkCreateImageView(m_Device, &l_ImageViewCreateInfo, nullptr, &l_Resource.View) != VK_SUCCESS)
         {
-            ("VulkanDevice: vkCreateImageView failed");
+
             vmaDestroyImage(m_Allocator.GetHandle(), l_Resource.Image, l_Resource.Allocation);
 
             return TextureHandle();
@@ -585,7 +585,7 @@ namespace Trinity
         {
             if (!UploadTextureViaStaging(m_Allocator.GetHandle(), m_Commands, l_Resource.Image, l_Resource.Aspect, description.Width, description.Height, description.Depth, description.MipLevels, l_ArrayLayers, description.InitialData, description.InitialDataSize))
             {
-                ("VulkanDevice: texture staging upload failed");
+
                 vkDestroyImageView(m_Device, l_Resource.View, nullptr);
                 vmaDestroyImage(m_Allocator.GetHandle(), l_Resource.Image, l_Resource.Allocation);
 
@@ -637,7 +637,7 @@ namespace Trinity
 
         if (vkCreateSampler(m_Device, &l_SamplerCreateInfo, nullptr, &l_Resource.Sampler) != VK_SUCCESS)
         {
-            ("VulkanDevice: vkCreateSampler failed");
+
             return SamplerHandle();
         }
 
@@ -650,7 +650,7 @@ namespace Trinity
     {
         if (description.Bytecode.empty() || (description.Bytecode.size() % 4) != 0)
         {
-            ("VulkanDevice: shader bytecode is empty or not 4-byte aligned");
+
             return ShaderHandle();
         }
 
@@ -666,7 +666,7 @@ namespace Trinity
 
         if (vkCreateShaderModule(m_Device, &l_ModuleCreateInfo, nullptr, &l_Resource.Module) != VK_SUCCESS)
         {
-            ("VulkanDevice: vkCreateShaderModule failed");
+
             return ShaderHandle();
         }
 
@@ -681,7 +681,7 @@ namespace Trinity
         VulkanShaderResource* l_Fragment = m_Shaders.Get(description.FragmentShader);
         if (l_Vertex == nullptr || l_Fragment == nullptr)
         {
-            ("VulkanDevice: pipeline requires valid vertex and fragment shaders");
+
             return PipelineHandle();
         }
 
@@ -809,7 +809,7 @@ namespace Trinity
                 VkDescriptorSetLayout l_SetLayout = VK_NULL_HANDLE;
                 if (vkCreateDescriptorSetLayout(m_Device, &l_LayoutInfo, nullptr, &l_SetLayout) != VK_SUCCESS)
                 {
-                    ("VulkanDevice: vkCreateDescriptorSetLayout failed");
+
                     for (VkDescriptorSetLayout it_Layout : l_SetLayouts)
                     {
                         vkDestroyDescriptorSetLayout(m_Device, it_Layout, nullptr);
@@ -838,7 +838,7 @@ namespace Trinity
 
         if (vkCreatePipelineLayout(m_Device, &l_PipelineLayoutCreateInfo, nullptr, &l_Resource.Layout) != VK_SUCCESS)
         {
-            ("VulkanDevice: vkCreatePipelineLayout failed");
+
             for (VkDescriptorSetLayout it_Layout : l_Resource.SetLayouts)
             {
                 vkDestroyDescriptorSetLayout(m_Device, it_Layout, nullptr);
@@ -877,7 +877,7 @@ namespace Trinity
 
         if (vkCreateGraphicsPipelines(m_Device, VK_NULL_HANDLE, 1, &l_GraphicsPipelineCreateInfo, nullptr, &l_Resource.Pipeline) != VK_SUCCESS)
         {
-            ("VulkanDevice: vkCreateGraphicsPipelines failed");
+
             vkDestroyPipelineLayout(m_Device, l_Resource.Layout, nullptr);
             for (VkDescriptorSetLayout it_Layout : l_Resource.SetLayouts)
             {
@@ -974,7 +974,7 @@ namespace Trinity
         VkImageView l_View = VK_NULL_HANDLE;
         if (vkCreateImageView(m_Device, &l_ViewInfo, nullptr, &l_View) != VK_SUCCESS)
         {
-            ("VulkanDevice: subresource image view creation failed");
+
 
             return VK_NULL_HANDLE;
         }
@@ -1294,7 +1294,7 @@ namespace Trinity
         VkResult l_Result = vkCreateDevice(m_PhysicalDevice.GetHandle(), &l_DeviceCreateInfo, nullptr, &m_Device);
         if (l_Result != VK_SUCCESS)
         {
-            ("VulkanDevice: vkCreateDevice failed ({})", static_cast<int>(l_Result));
+
             return false;
         }
 

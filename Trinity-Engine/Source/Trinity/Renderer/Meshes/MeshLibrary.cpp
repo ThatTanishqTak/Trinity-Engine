@@ -110,14 +110,14 @@ namespace Trinity
     {
         if (!GetCube())
         {
-            ("MeshLibrary: failed to create procedural cube");
+
 
             return false;
         }
 
         if (!GetPlane())
         {
-            ("MeshLibrary: failed to create procedural plane");
+
 
             return false;
         }
@@ -143,7 +143,7 @@ namespace Trinity
         std::filesystem::path l_FullPath = m_FileSystem.Resolve(BaseDirectory::Executable, relativePath);
         if (!std::filesystem::exists(l_FullPath))
         {
-            ("MeshLibrary: '{}' not found, using procedural cube", relativePath);
+
             m_Cache[relativePath] = GetCube();
 
             return m_Cache[relativePath];
@@ -152,7 +152,7 @@ namespace Trinity
         std::optional<MeshData> l_Result = m_Importer.Import(l_FullPath);
         if (!l_Result.has_value())
         {
-            ("MeshLibrary: import failed for '{}', using procedural cube", relativePath);
+
             m_Cache[relativePath] = GetCube();
 
             return m_Cache[relativePath];
@@ -205,7 +205,7 @@ namespace Trinity
         std::shared_ptr<Mesh> l_Mesh = std::make_shared<Mesh>(m_Device);
         if (!l_Mesh->Upload(data))
         {
-            ("MeshLibrary: upload failed for '{}'", debugName);
+
 
             return nullptr;
         }

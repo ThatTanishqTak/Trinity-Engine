@@ -27,26 +27,24 @@ namespace Trinity
     {
         if (m_Initialized)
         {
-            ("Engine destroyed while still initialized");
+
         }
     }
 
     bool Engine::Initialize(const std::string& applicationName)
     {
-        TR_CORE_ASSERT(!m_Initialized, "Engine already initialized");
 
-        ("INITIALIZING ENGINE");
 
         m_Platform = PlatformFactory::Create();
         if (m_Platform == nullptr)
         {
-            ("Failed to create platform");
+
             return false;
         }
 
         if (!m_Platform->Initialize())
         {
-            ("Platform initialization failed");
+
             m_Platform.reset();
 
             return false;
@@ -64,19 +62,19 @@ namespace Trinity
         m_AudioEngine = std::make_unique<AudioEngine>();
         if (!m_AudioEngine->Initialize())
         {
-            ("Audio engine initialization failed; continuing without audio");
+
         }
 
         m_Initialized = true;
 
-        ("ENGINE INITIALIZED");
+
 
         return true;
     }
 
     bool Engine::InitializeRenderer(const NativeWindowHandle& window, const std::string& applicationName)
     {
-        ("INITIALIZING RENDERER");
+
 
         TR_CORE_ASSERT(m_Initialized, "Engine must be initialized before renderer");
         TR_CORE_ASSERT(m_Device == nullptr, "Renderer already initialized");
@@ -94,7 +92,7 @@ namespace Trinity
         m_Device = GraphicsBackendFactory::Create(l_DeviceDescription);
         if (m_Device == nullptr)
         {
-            ("Renderer initialization failed");
+
             return false;
         }
 
@@ -108,7 +106,7 @@ namespace Trinity
         m_Swapchain = m_Device->CreateSwapchain(l_SwapchainDescription);
         if (m_Swapchain == nullptr)
         {
-            ("Swapchain creation failed");
+
             m_Device.reset();
 
             return false;
@@ -117,7 +115,7 @@ namespace Trinity
         m_Renderer = std::make_unique<Renderer>(*m_Device, *m_Swapchain, m_Platform->GetFileSystem());
         if (!m_Renderer->Initialize())
         {
-            ("Renderer initialization failed");
+
             m_Renderer.reset();
             m_Swapchain.reset();
             m_Device.reset();
@@ -153,10 +151,10 @@ namespace Trinity
         m_Scene = std::make_unique<Scene>();
         if (!SceneSerializer::Deserialize(*m_Scene, *m_AssetDatabase, l_ScenePath))
         {
-            ("Failed to deserialize demo scene");
+
         }
 
-        ("RENDERER INITIALIZED");
+
 
         return true;
     }
@@ -206,18 +204,18 @@ namespace Trinity
 
     void Engine::InitializeImGui()
     {
-        ("INITIALIZING IMGUI");
+
 
         if (m_Platform == nullptr || m_Device == nullptr || m_Swapchain == nullptr)
         {
-            ("InitializeImGui called before renderer is ready");
+
 
             return;
         }
 
         m_ImGuiLayer.Initialize(m_Platform->GetImGuiBackend(), m_Device->GetImGuiBackend(), m_Swapchain->GetFramesInFlight(), m_Swapchain->GetFormat());
         
-        ("IMGUI INITIALIZED");
+
     }
 
     void Engine::BeginImGuiFrame()
@@ -291,7 +289,7 @@ namespace Trinity
 
     void Engine::Shutdown()
     {
-        ("SHUTTING DOWN ENGINE");
+
 
         if (!m_Initialized)
         {
@@ -328,6 +326,6 @@ namespace Trinity
 
         m_Initialized = false;
 
-        ("ENGINE SHUTDOWN COMPLETE");
+
     }
 }

@@ -21,7 +21,7 @@ namespace Trinity
 
         if (l_DeviceCount == 0)
         {
-            ("VulkanPhysicalDevice: no Vulkan-capable GPUs found");
+
             return false;
         }
 
@@ -48,7 +48,7 @@ namespace Trinity
 
         if (l_Best == VK_NULL_HANDLE)
         {
-            ("VulkanPhysicalDevice: no suitable GPU found (dynamic rendering and required features missing on all devices)");
+
             return false;
         }
 
@@ -80,7 +80,7 @@ namespace Trinity
                 break;
         }
 
-        ("VulkanPhysicalDevice: selected '{}' ({})", m_Name, l_TypeName);
+
         return true;
     }
 

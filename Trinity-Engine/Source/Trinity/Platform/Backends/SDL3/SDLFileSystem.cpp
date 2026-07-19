@@ -15,7 +15,7 @@ namespace Trinity
         }
         else
         {
-            ("SDL_GetBasePath returned null, using current path");
+
             m_BasePath = std::filesystem::current_path();
         }
     }
@@ -24,8 +24,10 @@ namespace Trinity
     {
         switch (base)
         {
-            case BaseDirectory::Executable: return m_BasePath;
-            case BaseDirectory::Working: return std::filesystem::current_path();
+            case BaseDirectory::Executable:
+                return m_BasePath;
+            case BaseDirectory::Working:
+                return std::filesystem::current_path();
             case BaseDirectory::Temp:
             {
                 std::error_code l_Error;
@@ -39,7 +41,7 @@ namespace Trinity
                 char* l_Pref = SDL_GetPrefPath(m_Organization.c_str(), m_ApplicationName.c_str());
                 if (l_Pref == nullptr)
                 {
-                    ("SDL_GetPrefPath failed, falling back to executable path");
+
                     return m_BasePath;
                 }
 
@@ -48,9 +50,12 @@ namespace Trinity
 
                 switch (base)
                 {
-                    case BaseDirectory::UserData: return l_Root / "Data";
-                    case BaseDirectory::UserConfig: return l_Root / "Config";
-                    case BaseDirectory::UserCache: return l_Root / "Cache";
+                    case BaseDirectory::UserData:
+                        return l_Root / "Data";
+                    case BaseDirectory::UserConfig:
+                        return l_Root / "Config";
+                    case BaseDirectory::UserCache:
+                        return l_Root / "Cache";
                     default: return l_Root;
                 }
             }
