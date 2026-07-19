@@ -68,7 +68,7 @@ namespace Trinity
 
         if (!m_White.IsValid() || !m_Black.IsValid() || !m_Normal.IsValid() || !m_Error.IsValid())
         {
-            TR_CORE_ERROR("TextureManager: fallback texture creation failed");
+            ("TextureManager: fallback texture creation failed");
 
             return false;
         }
@@ -85,12 +85,12 @@ namespace Trinity
         m_DefaultSampler = m_Device.CreateSampler(l_SamplerDescription);
         if (!m_DefaultSampler.IsValid())
         {
-            TR_CORE_ERROR("TextureManager: default sampler creation failed");
+            ("TextureManager: default sampler creation failed");
 
             return false;
         }
 
-        TR_CORE_INFO("TextureManager: initialized");
+        ("TextureManager: initialized");
 
         return true;
     }
@@ -151,7 +151,7 @@ namespace Trinity
         std::optional<ImageData> l_Image = Image::Load(l_FullPath, srgb);
         if (!l_Image)
         {
-            TR_CORE_WARN("TextureManager: '{}' failed to load, using error texture", l_Key);
+            ("TextureManager: '{}' failed to load, using error texture", l_Key);
 
             return m_Error;
         }
@@ -159,7 +159,7 @@ namespace Trinity
         TextureHandle l_Handle = CreateFromPixels(l_Image->Pixels.data(), l_Image->Pixels.size(), l_Image->Width, l_Image->Height, l_Image->SuggestedFormat, generateMips, l_Key);
         if (!l_Handle.IsValid())
         {
-            TR_CORE_WARN("TextureManager: '{}' upload failed, using error texture", l_Key);
+            ("TextureManager: '{}' upload failed, using error texture", l_Key);
 
             return m_Error;
         }

@@ -426,11 +426,11 @@ namespace Trinity
 
         if (SLANG_FAILED(createGlobalSession(m_Implementation->GlobalSession.writeRef())))
         {
-            TR_CORE_CRITICAL("ShaderCompiler: failed to create Slang global session");
+            ("ShaderCompiler: failed to create Slang global session");
             return false;
         }
 
-        TR_CORE_INFO("ShaderCompiler: initialized");
+        ("ShaderCompiler: initialized");
         return true;
     }
 
@@ -486,7 +486,7 @@ namespace Trinity
                     {
                         l_Result.Success = true;
 
-                        TR_CORE_INFO("ShaderCompiler: cache hit {}:{}", moduleName, entryPoint);
+                        ("ShaderCompiler: cache hit {}:{}", moduleName, entryPoint);
                         return l_Result;
                     }
                 }
@@ -611,7 +611,7 @@ namespace Trinity
         {
             if (FileManagement::WriteBinary(l_CacheFile, SerializeResult(l_Result)))
             {
-                TR_CORE_INFO("ShaderCompiler: cached {}:{}", moduleName, entryPoint);
+                ("ShaderCompiler: cached {}:{}", moduleName, entryPoint);
             }
         }
 

@@ -35,8 +35,14 @@ namespace Trinity
 
     void AssetDatabase::Initialize()
     {
+        ("INITIALIZING ASSET DATABASE");
+
         m_AssetsRoot = m_FileSystem.Resolve(BaseDirectory::Executable, "Assets");
         Refresh();
+
+        ("Root directory: {}", m_AssetsRoot.string());
+
+        ("ASSET DATABASE INITIALIZED");
     }
 
     void AssetDatabase::Refresh()
@@ -49,14 +55,14 @@ namespace Trinity
         std::error_code l_Error;
         if (!std::filesystem::exists(m_AssetsRoot, l_Error))
         {
-            TR_CORE_WARN("AssetDatabase: assets root '{}' not found", m_AssetsRoot.string());
+            ("AssetDatabase: assets root '{}' not found", m_AssetsRoot.string());
 
             return;
         }
 
         ScanDirectory();
 
-        TR_CORE_INFO("AssetDatabase: {} assets tracked ({} modified)", m_Assets.size(), m_Modified.size());
+        ("AssetDatabase: {} assets tracked ({} modified)", m_Assets.size(), m_Modified.size());
     }
 
     void AssetDatabase::ScanDirectory()
@@ -182,7 +188,7 @@ namespace Trinity
         const AssetMetadata* l_Metadata = GetMetadata(id);
         if (l_Metadata == nullptr || l_Metadata->Type != AssetType::Mesh)
         {
-            TR_CORE_WARN("AssetDatabase: mesh {} unresolved, using cube fallback", l_Raw);
+            ("AssetDatabase: mesh {} unresolved, using cube fallback", l_Raw);
 
             return m_MeshLibrary.GetCube();
         }
@@ -217,7 +223,7 @@ namespace Trinity
         const AssetMetadata* l_Metadata = GetMetadata(id);
         if (l_Metadata == nullptr)
         {
-            TR_CORE_WARN("AssetDatabase: material {} unresolved, using default", l_Raw);
+            ("AssetDatabase: material {} unresolved, using default", l_Raw);
 
             return GetDefaultMaterial();
         }
@@ -253,7 +259,7 @@ namespace Trinity
             return l_Flattened;
         }
 
-        TR_CORE_WARN("AssetDatabase: asset {} is not a material, using default", l_Raw);
+        ("AssetDatabase: asset {} is not a material, using default", l_Raw);
 
         return GetDefaultMaterial();
     }
@@ -275,7 +281,7 @@ namespace Trinity
         const AssetMetadata* l_Metadata = GetMetadata(id);
         if (l_Metadata == nullptr || l_Metadata->Type != AssetType::MaterialInstance)
         {
-            TR_CORE_WARN("AssetDatabase: material instance {} unresolved", l_Raw);
+            ("AssetDatabase: material instance {} unresolved", l_Raw);
 
             return nullptr;
         }
@@ -304,7 +310,7 @@ namespace Trinity
         const AssetMetadata* l_Metadata = GetMetadata(id);
         if (l_Metadata == nullptr || l_Metadata->Type != AssetType::Texture)
         {
-            TR_CORE_WARN("AssetDatabase: texture {} unresolved, using error texture", l_Raw);
+            ("AssetDatabase: texture {} unresolved, using error texture", l_Raw);
 
             return m_TextureManager.Error();
         }
@@ -329,7 +335,7 @@ namespace Trinity
         const AssetMetadata* l_Metadata = GetMetadata(id);
         if (l_Metadata == nullptr || l_Metadata->Type != AssetType::Audio)
         {
-            TR_CORE_WARN("AssetDatabase: audio clip {} unresolved", l_Raw);
+            ("AssetDatabase: audio clip {} unresolved", l_Raw);
 
             return AudioClipHandle::Invalid;
         }

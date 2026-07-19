@@ -20,19 +20,19 @@ namespace Trinity
 
         if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
         {
-            TR_CORE_ERROR("[Vulkan] {}", data->pMessage);
+            ("[Vulkan] {}", data->pMessage);
         }
         else if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
         {
-            TR_CORE_WARN("[Vulkan] {}", data->pMessage);
+            ("[Vulkan] {}", data->pMessage);
         }
         else if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
         {
-            TR_CORE_INFO("[Vulkan] {}", data->pMessage);
+            ("[Vulkan] {}", data->pMessage);
         }
         else
         {
-            TR_CORE_TRACE("[Vulkan] {}", data->pMessage);
+            ("[Vulkan] {}", data->pMessage);
         }
 
         return VK_FALSE;
@@ -76,45 +76,60 @@ namespace Trinity
 
     bool VulkanInstance::Initialize(const std::string& applicationName, bool enableValidation)
     {
+        ("INITIALIZING VULKAN INSTANCE");
+
         m_ValidationEnabled = enableValidation;
 
         if (m_ValidationEnabled && !CheckLayerSupport(s_ValidationLayers))
         {
-            TR_CORE_WARN("VulkanInstance: validation layers requested but not available, disabling");
+            ("Validation layers requested but not available, disabling validation");
             m_ValidationEnabled = false;
         }
 
         if (!CreateInstance(applicationName))
         {
+            ("Failed to create vulkan instance");
+
             return false;
         }
 
         if (m_ValidationEnabled && !SetupDebugMessenger())
         {
-            TR_CORE_WARN("VulkanInstance: debug messenger setup failed");
+            ("Debug messenger setup failed");
         }
 
-        TR_CORE_INFO("VulkanInstance: created (validation {})", m_ValidationEnabled ? "enabled" : "disabled");
+        ("VULKAN INSTANCE INITIALIZED");
+
         return true;
     }
 
     void VulkanInstance::Shutdown()
     {
+        ("SHUTTING DOWN VULKAN INSTANCE");
+
         if (m_DebugMessenger != VK_NULL_HANDLE)
         {
             DestroyDebugUtilsMessengerEXT(m_Instance, m_DebugMessenger);
             m_DebugMessenger = VK_NULL_HANDLE;
+
+            ("Debug messenger destroyed");
         }
 
         if (m_Instance != VK_NULL_HANDLE)
         {
             vkDestroyInstance(m_Instance, nullptr);
             m_Instance = VK_NULL_HANDLE;
+
+            ("Vulkan instance destroyed");
         }
+
+        ("VULKAN INSTANCE SHUTDOWN COMPLETE");
     }
 
     bool VulkanInstance::CreateInstance(const std::string& applicationName)
     {
+        ("Creating vulkan instance");
+
         VkApplicationInfo l_ApplicationInfo{};
         l_ApplicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
         l_ApplicationInfo.pApplicationName = applicationName.c_str();
@@ -143,23 +158,32 @@ namespace Trinity
         VkResult l_Result = vkCreateInstance(&l_InstanceCreateInfo, nullptr, &m_Instance);
         if (l_Result != VK_SUCCESS)
         {
-            TR_CORE_CRITICAL("VulkanInstance: vkCreateInstance failed ({})", static_cast<int>(l_Result));
+            ("vkCreateInstance failed ({})", static_cast<int>(l_Result));
+        
             return false;
         }
+
+        ("Vulkan instance created");
 
         return true;
     }
 
     bool VulkanInstance::SetupDebugMessenger()
     {
+        ("Setting up debug messenger");
+
         VkDebugUtilsMessengerCreateInfoEXT l_DebugCreateInfo = MakeMessengerCreateInfo();
         VkResult l_Result = CreateDebugUtilsMessengerEXT(m_Instance, &l_DebugCreateInfo, &m_DebugMessenger);
+
+        ("Debug messenger setup complete");
 
         return l_Result == VK_SUCCESS;
     }
 
     std::vector<const char*> VulkanInstance::GetRequiredExtensions() const
     {
+        ("Getting required extensions");
+
         std::vector<const char*> l_Extensions;
 
         l_Extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
@@ -179,13 +203,27 @@ namespace Trinity
             l_Extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
         }
 
+        ("Total extensions: {}", l_Extensions.size());
+        for (int i = 0; i < l_Extensions.size(); i++)
+        {
+            ("Extensions in use: {}", l_Extensions[i]);
+        }
+
         return l_Extensions;
     }
 
     std::vector<const char*> VulkanInstance::GetRequiredLayers() const
     {
+        ("Getting required layers");
+
         if (m_ValidationEnabled)
         {
+            ("Total extensions: {}", s_ValidationLayers.size());
+            for (int i = 0; i < s_ValidationLayers.size(); i++)
+            {
+                ("Layers in use: {}", s_ValidationLayers[i]);
+            }
+
             return s_ValidationLayers;
         }
 

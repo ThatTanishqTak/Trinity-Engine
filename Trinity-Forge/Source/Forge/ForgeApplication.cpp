@@ -41,6 +41,8 @@ namespace Trinity
 
     void ForgeApplication::OnInitialize()
     {
+        ("INITIALIZING FORGE");
+
         GetEngine().InitializeImGui();
         EditorTheme::Apply(GetEngine().GetPlatform().GetFileSystem());
 
@@ -55,8 +57,8 @@ namespace Trinity
         m_ConsolePanel = std::make_unique<ConsolePanel>(m_Context, GetEngine());
         m_ContentBrowserPanel = std::make_unique<ContentBrowserPanel>(m_Context, GetEngine());
         m_RenderGraphPanel = std::make_unique<RenderGraphPanel>(m_Context, GetEngine());
-
-        TR_INFO("Forge initialized");
+        
+        ("FORGE INITIALIZED");
     }
 
     void ForgeApplication::OnUpdate(Timestep)
@@ -99,16 +101,18 @@ namespace Trinity
         EventDispatcher l_Dispatcher(event);
         l_Dispatcher.Dispatch<KeyPressedEvent>([](KeyPressedEvent& key)
         {
-            //TR_INFO("Key pressed: {}", key.GetKeyCode());
+            //("Key pressed: {}", key.GetKeyCode());
             return false;
         });
     }
 
     void ForgeApplication::OnShutdown()
     {
+        ("SHUTTING DOWN FORGE");
+
         m_Context.History.Clear();
 
-        TR_INFO("Forge shutting down");
+        ("FORGE SHUTDOWN COMPLETE");
     }
 
     void ForgeApplication::RenderDockspace()
@@ -127,6 +131,7 @@ namespace Trinity
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+
         ImGui::Begin("TrinityDockspaceHost", nullptr, l_HostFlags);
         ImGui::PopStyleVar(3);
 
@@ -368,6 +373,8 @@ namespace Trinity
 
     Application* CreateApplication(CommandLineArgs args)
     {
+        ("CREATING APPLICATION");
+
         ApplicationSpecification l_Specification;
         l_Specification.InternalName = "Trinity-Forge";
         l_Specification.Window.Title = "Forge";
@@ -375,6 +382,17 @@ namespace Trinity
         l_Specification.Window.Height = 1080;
         l_Specification.Window.CustomTitleBar = true;
         l_Specification.Arguments = args;
+
+        ("Application internal name: {}, Application window title: {}", l_Specification.InternalName, l_Specification.Window.Title);
+        ("Application resolution: {}x{}, Custom title bar: {}", l_Specification.Window.Width, l_Specification.Window.Height, l_Specification.Window.CustomTitleBar);
+        ("Application argument count: {}", l_Specification.Arguments.Count);
+
+        for (int i = 0; i < l_Specification.Arguments.Count; ++i)
+        {
+            ("Argument [{}]: {}", i, l_Specification.Arguments[i]);
+        }
+
+        ("APPLICATION CREATED");
 
         return new ForgeApplication(l_Specification);
     }

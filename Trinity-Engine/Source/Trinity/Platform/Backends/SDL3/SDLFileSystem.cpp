@@ -15,7 +15,7 @@ namespace Trinity
         }
         else
         {
-            TR_CORE_WARN("SDLFileSystem: SDL_GetBasePath returned null, using current path");
+            ("SDL_GetBasePath returned null, using current path");
             m_BasePath = std::filesystem::current_path();
         }
     }
@@ -39,7 +39,7 @@ namespace Trinity
                 char* l_Pref = SDL_GetPrefPath(m_Organization.c_str(), m_ApplicationName.c_str());
                 if (l_Pref == nullptr)
                 {
-                    TR_CORE_WARN("SDLFileSystem: SDL_GetPrefPath failed, falling back to executable path");
+                    ("SDL_GetPrefPath failed, falling back to executable path");
                     return m_BasePath;
                 }
 

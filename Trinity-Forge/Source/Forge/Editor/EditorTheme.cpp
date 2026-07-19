@@ -14,8 +14,8 @@ namespace Trinity
 {
     static constexpr const char* k_UIFontFile = "JetBrainsMonoNerdFontMono-Regular.ttf";
     static constexpr const char* k_IconFontFile = "materialdesignicons-webfont.ttf";
-    static constexpr float k_BaseFontSize = 16.0f;
-    static constexpr float k_UserScale = 0.6f;
+    static constexpr float k_BaseFontSize = 16.5f;
+    static constexpr float k_UserScale = 0.65f;
 
     static void ApplyStyle()
     {
@@ -127,7 +127,7 @@ namespace Trinity
         }
         else
         {
-            TR_WARN("EditorTheme: UI font '{}' not found, using default font", l_UIPath.string());
+            ("EditorTheme: UI font '{}' not found, using default font", l_UIPath.string());
             l_IO.Fonts->AddFontDefault();
         }
 
@@ -143,7 +143,7 @@ namespace Trinity
         }
         else
         {
-            TR_WARN("EditorTheme: icon font '{}' not found, icons disabled", l_IconPath.string());
+            ("EditorTheme: icon font '{}' not found, icons disabled", l_IconPath.string());
         }
     }
 
@@ -164,6 +164,6 @@ namespace Trinity
         ImGui::GetStyle().ScaleAllSizes(l_Scale);
         ApplyFonts(fileSystem, l_Scale);
 
-        TR_INFO("EditorTheme: applied (scale {:.2f})", l_Scale);
+        ("EditorTheme: applied (scale {:.2f})", l_Scale);
     }
 }

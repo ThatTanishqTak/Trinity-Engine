@@ -16,7 +16,7 @@ namespace Trinity
 
         void OnInitialize() override
         {
-            TR_INFO("Runtime initialized");
+            ("Runtime initialized");
         }
 
         void OnUpdate(Timestep) override
@@ -34,14 +34,14 @@ namespace Trinity
             EventDispatcher l_Dispatcher(event);
             l_Dispatcher.Dispatch<KeyPressedEvent>([](KeyPressedEvent& key)
             {
-                TR_INFO("Key pressed: {}", key.GetKeyCode());
+                ("Key pressed: {}", key.GetKeyCode());
                 return false;
             });
         }
 
         void OnShutdown() override
         {
-            TR_INFO("Runtime shutting down");
+            ("Runtime shutting down");
         }
     };
 

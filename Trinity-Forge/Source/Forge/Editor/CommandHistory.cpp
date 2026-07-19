@@ -1,5 +1,7 @@
 #include <Forge/Editor/CommandHistory.h>
 
+#include "Trinity/Core/Log.h"
+
 namespace Trinity
 {
     void CommandHistory::Execute(std::unique_ptr<ICommand> command, bool allowMerge)
@@ -68,8 +70,12 @@ namespace Trinity
 
     void CommandHistory::Clear()
     {
+        ("Clearing command history: Undo stack: {}, Redo stack: {}", m_UndoStack.size(), m_RedoStack.size());
+
         m_UndoStack.clear();
         m_RedoStack.clear();
         m_Dirty = false;
+
+        ("Command history cleared: Undo stack: {}, Redo stack: {}", m_UndoStack.size(), m_RedoStack.size());
     }
 }

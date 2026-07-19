@@ -40,11 +40,13 @@ namespace Trinity
 
     bool SDLPlatform::Initialize()
     {
+        ("INITIALIZING SDL PLATFORM");
+
         TR_CORE_ASSERT(!m_Initialized, "SDLPlatform already initialized");
 
         if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
         {
-            TR_CORE_CRITICAL("SDLPlatform: SDL_Init failed: {}", SDL_GetError());
+            ("SDLPlatform: SDL_Init failed: {}", SDL_GetError());
             return false;
         }
 
@@ -54,12 +56,15 @@ namespace Trinity
 
         m_Initialized = true;
 
-        TR_CORE_INFO("SDLPlatform: initialized");
+        ("SDL PLATFORM INITIALIZED");
+
         return true;
     }
 
     void SDLPlatform::Shutdown()
     {
+        ("");
+
         if (!m_Initialized)
         {
             return;
@@ -75,7 +80,7 @@ namespace Trinity
 
         m_Initialized = false;
 
-        TR_CORE_INFO("SDLPlatform: shut down");
+        ("SDLPlatform: shut down");
     }
 
     Window& SDLPlatform::CreateWindow(const WindowProperties& properties)
@@ -177,8 +182,7 @@ namespace Trinity
         g_DialogDefaultLocation = defaultLocation.string();
         if (!g_DialogDefaultLocation.empty())
         {
-            // SDL treats a trailing separator as "open this folder"; without it some
-            // backends read the last path component as a suggested file name.
+            // SDL treats a trailing separator as "open this folder" without it some backends read the last path component as a suggested file name.
             std::error_code l_DirError;
             if (std::filesystem::is_directory(defaultLocation, l_DirError))
             {

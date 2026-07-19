@@ -49,7 +49,7 @@ namespace Trinity
 
         if (vkAllocateCommandBuffers(m_Device.GetHandle(), &l_CommandBufferAllocateInfo, &m_CommandBuffer) != VK_SUCCESS)
         {
-            TR_CORE_ERROR("VulkanCommandList: vkAllocateCommandBuffers failed");
+            ("VulkanCommandList: vkAllocateCommandBuffers failed");
         }
 
         VkDescriptorPoolSize l_PoolSizes[2]{};
@@ -66,7 +66,7 @@ namespace Trinity
 
         if (vkCreateDescriptorPool(m_Device.GetHandle(), &l_PoolInfo, nullptr, &m_DescriptorPool) != VK_SUCCESS)
         {
-            TR_CORE_ERROR("VulkanCommandList: vkCreateDescriptorPool failed");
+            ("VulkanCommandList: vkCreateDescriptorPool failed");
         }
     }
 
@@ -263,7 +263,7 @@ namespace Trinity
         VkDescriptorSet l_DescriptorSet = VK_NULL_HANDLE;
         if (vkAllocateDescriptorSets(m_Device.GetHandle(), &l_AllocateInfo, &l_DescriptorSet) != VK_SUCCESS)
         {
-            TR_CORE_ERROR("VulkanCommandList: vkAllocateDescriptorSets failed");
+            ("VulkanCommandList: vkAllocateDescriptorSets failed");
             return;
         }
 
@@ -308,7 +308,7 @@ namespace Trinity
         VkDescriptorSet l_DescriptorSet = VK_NULL_HANDLE;
         if (vkAllocateDescriptorSets(m_Device.GetHandle(), &l_AllocateInfo, &l_DescriptorSet) != VK_SUCCESS)
         {
-            TR_CORE_ERROR("VulkanCommandList: vkAllocateDescriptorSets failed");
+            ("VulkanCommandList: vkAllocateDescriptorSets failed");
             return;
         }
 
@@ -351,7 +351,7 @@ namespace Trinity
 
         if (from != ResourceState::Undefined && l_Texture->CurrentState != from)
         {
-            TR_CORE_WARN("VulkanCommandList: transition '{}' declared from {} but tracked state is {}", l_Texture->DebugName, static_cast<int>(from), static_cast<int>(l_Texture->CurrentState));
+            ("VulkanCommandList: transition '{}' declared from {} but tracked state is {}", l_Texture->DebugName, static_cast<int>(from), static_cast<int>(l_Texture->CurrentState));
         }
 
         l_Texture->CurrentState = to;

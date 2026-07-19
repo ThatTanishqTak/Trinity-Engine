@@ -863,8 +863,7 @@ namespace Trinity
         {
             m_TransformEditOld = l_Before;
         }
-
-        if (l_Result.Reset)
+        else if(l_Result.Reset)
         {
             m_Context.History.Execute(std::make_unique<SetTransformCommand>(scene, uuid, l_Before, transform));
         }

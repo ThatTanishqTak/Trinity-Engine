@@ -17,7 +17,7 @@ namespace Trinity
         ShaderCompileResult l_VertexResult = compiler.Compile(shaderDirectory, "Tonemap", "vertexMain");
         if (!l_VertexResult.Success)
         {
-            TR_CORE_ERROR("PostProcessStage: Tonemap vertexMain compile failed");
+            ("PostProcessStage: Tonemap vertexMain compile failed");
 
             return false;
         }
@@ -25,7 +25,7 @@ namespace Trinity
         ShaderCompileResult l_FragmentResult = compiler.Compile(shaderDirectory, "Tonemap", "fragmentMain");
         if (!l_FragmentResult.Success)
         {
-            TR_CORE_ERROR("PostProcessStage: Tonemap fragmentMain compile failed");
+            ("PostProcessStage: Tonemap fragmentMain compile failed");
 
             return false;
         }
@@ -46,7 +46,7 @@ namespace Trinity
 
         if (!m_VertexShader.IsValid() || !m_FragmentShader.IsValid())
         {
-            TR_CORE_ERROR("PostProcessStage: shader creation failed");
+            ("PostProcessStage: shader creation failed");
             Shutdown();
 
             return false;
@@ -74,7 +74,7 @@ namespace Trinity
         m_Pipeline = device.CreatePipeline(l_PipelineDescription);
         if (!m_Pipeline.IsValid())
         {
-            TR_CORE_ERROR("PostProcessStage: pipeline creation failed");
+            ("PostProcessStage: pipeline creation failed");
             Shutdown();
 
             return false;
@@ -91,13 +91,13 @@ namespace Trinity
 
         if (!m_Sampler.IsValid())
         {
-            TR_CORE_ERROR("PostProcessStage: sampler creation failed");
+            ("PostProcessStage: sampler creation failed");
             Shutdown();
 
             return false;
         }
 
-        TR_CORE_INFO("PostProcessStage: initialized");
+        ("PostProcessStage: initialized");
 
         return true;
     }

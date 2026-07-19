@@ -69,7 +69,7 @@ namespace Trinity
         ShaderCompileResult l_Result = compiler.Compile(dir, name, entry);
         if (!l_Result.Success)
         {
-            TR_CORE_ERROR("IBLProcessor: {} {} compile failed", name, entry);
+            ("IBLProcessor: {} {} compile failed", name, entry);
 
             return ShaderHandle{};
         }
@@ -128,7 +128,7 @@ namespace Trinity
             return false;
         }
 
-        TR_CORE_INFO("IBLProcessor: initialized");
+        ("IBLProcessor: initialized");
 
         return true;
     }

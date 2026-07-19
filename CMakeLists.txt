@@ -13,9 +13,7 @@ include(TrinityCommon)
 
 trinity_detect_architecture(ARCH_NAME)
 
-set(TRINITY_OUTPUT_BASE
-    "${CMAKE_SOURCE_DIR}/bin/$<CONFIG>-${CMAKE_SYSTEM_NAME}-${ARCH_NAME}/${PROJECT_NAME}"
-)
+set(TRINITY_OUTPUT_BASE "${CMAKE_SOURCE_DIR}/bin/$<CONFIG>-${CMAKE_SYSTEM_NAME}-${ARCH_NAME}/${PROJECT_NAME}")
 
 option(TRINITY_BUILD_ENGINE "Build Trinity-Engine" ON)
 option(TRINITY_BUILD_FORGE "Build Trinity-Forge editor" ON)

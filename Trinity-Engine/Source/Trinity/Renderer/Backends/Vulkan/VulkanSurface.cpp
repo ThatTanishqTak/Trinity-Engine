@@ -25,13 +25,13 @@ namespace Trinity
     {
         if (instance == VK_NULL_HANDLE)
         {
-            TR_CORE_ERROR("VulkanSurface: instance is null");
+            ("VulkanSurface: instance is null");
             return false;
         }
 
         if (!handle.IsValid())
         {
-            TR_CORE_ERROR("VulkanSurface: native handle is invalid");
+            ("VulkanSurface: native handle is invalid");
             return false;
         }
 
@@ -42,7 +42,7 @@ namespace Trinity
 #if defined(TRINITY_PLATFORM_WINDOWS)
         if (handle.Type != NativeHandleType::Win32)
         {
-            TR_CORE_ERROR("VulkanSurface: expected Win32 handle on Windows");
+            ("VulkanSurface: expected Win32 handle on Windows");
             return false;
         }
 
@@ -73,13 +73,13 @@ namespace Trinity
         }
         else
         {
-            TR_CORE_ERROR("VulkanSurface: unsupported handle type on Linux");
+            ("VulkanSurface: unsupported handle type on Linux");
             return false;
         }
 #elif defined(TRINITY_PLATFORM_MACOS)
         if (handle.Type != NativeHandleType::Cocoa)
         {
-            TR_CORE_ERROR("VulkanSurface: expected Cocoa handle on macOS");
+            ("VulkanSurface: expected Cocoa handle on macOS");
             return false;
         }
 
@@ -89,17 +89,17 @@ namespace Trinity
 
         l_Result = vkCreateMetalSurfaceEXT(m_Instance, &l_CreateInfo, nullptr, &m_Surface);
 #else
-        TR_CORE_ERROR("VulkanSurface: no platform-specific surface creation available");
+        ("VulkanSurface: no platform-specific surface creation available");
         return false;
 #endif
 
         if (l_Result != VK_SUCCESS)
         {
-            TR_CORE_CRITICAL("VulkanSurface: surface creation failed ({})", static_cast<int>(l_Result));
+            ("VulkanSurface: surface creation failed ({})", static_cast<int>(l_Result));
             return false;
         }
 
-        TR_CORE_INFO("VulkanSurface: created");
+        ("VulkanSurface: created");
         return true;
     }
 

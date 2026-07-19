@@ -26,7 +26,7 @@ namespace Trinity
         SDL_Gamepad* l_Handle = SDL_OpenGamepad(instanceID);
         if (l_Handle == nullptr)
         {
-            TR_CORE_WARN("SDLGamepad: failed to open gamepad {}", instanceID);
+            ("SDLGamepad: failed to open gamepad {}", instanceID);
             return;
         }
 
@@ -39,13 +39,13 @@ namespace Trinity
                 l_Slot.InstanceID = instanceID;
                 l_Slot.Connected = true;
                 
-                TR_CORE_INFO("SDLGamepad: connected '{}' at slot {}", SDL_GetGamepadName(l_Handle), l_Index);
+                ("SDLGamepad: connected '{}' at slot {}", SDL_GetGamepadName(l_Handle), l_Index);
                 
                 return;
             }
         }
 
-        TR_CORE_WARN("SDLGamepad: no free slot for gamepad {}", instanceID);
+        ("SDLGamepad: no free slot for gamepad {}", instanceID);
         SDL_CloseGamepad(l_Handle);
     }
 
@@ -61,7 +61,7 @@ namespace Trinity
                 l_Slot.InstanceID = 0;
                 l_Slot.Connected = false;
                 
-                TR_CORE_INFO("SDLGamepad: disconnected slot {}", l_Index);
+                ("SDLGamepad: disconnected slot {}", l_Index);
 
                 return;
             }

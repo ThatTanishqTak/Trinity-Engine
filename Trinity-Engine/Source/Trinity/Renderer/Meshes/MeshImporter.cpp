@@ -31,7 +31,7 @@ namespace Trinity
         const aiScene* l_Scene = m_Implementation->Importer.ReadFile(l_PathString, l_Flags);
         if (l_Scene == nullptr || (l_Scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) != 0 || l_Scene->mRootNode == nullptr)
         {
-            TR_CORE_ERROR("MeshImporter: failed to load '{}' ({})", l_PathString, m_Implementation->Importer.GetErrorString());
+            ("MeshImporter: failed to load '{}' ({})", l_PathString, m_Implementation->Importer.GetErrorString());
 
             return std::nullopt;
         }
@@ -129,15 +129,15 @@ namespace Trinity
 
         if (l_Data.Vertices.empty() || l_Data.Indices.empty())
         {
-            TR_CORE_ERROR("MeshImporter: '{}' produced no renderable geometry", l_PathString);
+            ("MeshImporter: '{}' produced no renderable geometry", l_PathString);
 
             return std::nullopt;
         }
 
-        TR_CORE_INFO("MeshImporter: loaded '{}' ({} submeshes, {} vertices, {} indices)", l_PathString, l_Data.Submeshes.size(), l_Data.Vertices.size(), l_Data.Indices.size());
+        ("MeshImporter: loaded '{}' ({} submeshes, {} vertices, {} indices)", l_PathString, l_Data.Submeshes.size(), l_Data.Vertices.size(), l_Data.Indices.size());
         for (const std::string& l_Warning : l_Data.Diagnostics.Warnings)
         {
-            TR_CORE_WARN("MeshImporter: {}", l_Warning);
+            ("MeshImporter: {}", l_Warning);
         }
 
         return l_Data;

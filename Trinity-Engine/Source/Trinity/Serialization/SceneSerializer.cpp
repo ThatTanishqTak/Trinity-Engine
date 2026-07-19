@@ -266,13 +266,13 @@ namespace Trinity
         std::ofstream l_Stream(path);
         if (!l_Stream.is_open())
         {
-            TR_CORE_ERROR("SceneSerializer: cannot open '{}' for writing", path.string());
+            ("SceneSerializer: cannot open '{}' for writing", path.string());
 
             return false;
         }
 
         l_Stream << l_Out.c_str();
-        TR_CORE_INFO("SceneSerializer: saved scene to '{}'", path.string());
+        ("SceneSerializer: saved scene to '{}'", path.string());
 
         return true;
     }
@@ -285,7 +285,7 @@ namespace Trinity
 
             if (!l_Root["Version"])
             {
-                TR_CORE_ERROR("SceneSerializer: '{}' missing Version field", path.string());
+                ("SceneSerializer: '{}' missing Version field", path.string());
 
                 return false;
             }
@@ -293,13 +293,13 @@ namespace Trinity
             uint32_t l_Version = l_Root["Version"].as<uint32_t>();
             if (l_Version != k_SceneVersion)
             {
-                TR_CORE_WARN("SceneSerializer: '{}' version {} differs from expected {}", path.string(), l_Version, k_SceneVersion);
+                ("SceneSerializer: '{}' version {} differs from expected {}", path.string(), l_Version, k_SceneVersion);
             }
 
             YAML::Node l_Entities = l_Root["Entities"];
             if (!l_Entities)
             {
-                TR_CORE_WARN("SceneSerializer: '{}' has no entities", path.string());
+                ("SceneSerializer: '{}' has no entities", path.string());
 
                 return true;
             }
@@ -311,7 +311,7 @@ namespace Trinity
             {
                 if (!l_EntityNode["UUID"])
                 {
-                    TR_CORE_WARN("SceneSerializer: entity missing UUID, skipped");
+                    ("SceneSerializer: entity missing UUID, skipped");
 
                     continue;
                 }
@@ -340,17 +340,17 @@ namespace Trinity
                 }
                 else
                 {
-                    TR_CORE_WARN("SceneSerializer: dangling parent reference {} -> {}", l_Link.first, l_Link.second);
+                    ("SceneSerializer: dangling parent reference {} -> {}", l_Link.first, l_Link.second);
                 }
             }
 
-            TR_CORE_INFO("SceneSerializer: loaded {} entities from '{}'", l_EntityMap.size(), path.string());
+            ("SceneSerializer: loaded {} entities from '{}'", l_EntityMap.size(), path.string());
 
             return true;
         }
         catch (const std::exception& a_Exception)
         {
-            TR_CORE_ERROR("SceneSerializer: failed to load '{}' ({})", path.string(), a_Exception.what());
+            ("SceneSerializer: failed to load '{}' ({})", path.string(), a_Exception.what());
 
             return false;
         }
@@ -454,7 +454,7 @@ namespace Trinity
         }
         catch (const std::exception& a_Exception)
         {
-            TR_CORE_ERROR("SceneSerializer: DeserializeEntity failed ({})", a_Exception.what());
+            ("SceneSerializer: DeserializeEntity failed ({})", a_Exception.what());
 
             return Entity();
         }

@@ -82,7 +82,7 @@ namespace Trinity
         std::ofstream l_Stream(path);
         if (!l_Stream.is_open())
         {
-            TR_CORE_ERROR("MaterialSerializer: cannot open '{}' for writing", path.string());
+            ("MaterialSerializer: cannot open '{}' for writing", path.string());
 
             return false;
         }
@@ -112,7 +112,7 @@ namespace Trinity
             return false;
         }
 
-        TR_CORE_INFO("MaterialSerializer: saved material to '{}'", path.string());
+        ("MaterialSerializer: saved material to '{}'", path.string());
 
         return true;
     }
@@ -136,7 +136,7 @@ namespace Trinity
         }
         catch (const std::exception& a_Exception)
         {
-            TR_CORE_ERROR("MaterialSerializer: failed to load material '{}' ({})", path.string(), a_Exception.what());
+            ("MaterialSerializer: failed to load material '{}' ({})", path.string(), a_Exception.what());
 
             return std::nullopt;
         }
@@ -163,7 +163,7 @@ namespace Trinity
             return false;
         }
 
-        TR_CORE_INFO("MaterialSerializer: saved material instance to '{}'", path.string());
+        ("MaterialSerializer: saved material instance to '{}'", path.string());
 
         return true;
     }
@@ -192,7 +192,7 @@ namespace Trinity
         }
         catch (const std::exception& a_Exception)
         {
-            TR_CORE_ERROR("MaterialSerializer: failed to load material instance '{}' ({})", path.string(), a_Exception.what());
+            ("MaterialSerializer: failed to load material instance '{}' ({})", path.string(), a_Exception.what());
 
             return std::nullopt;
         }

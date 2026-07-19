@@ -105,7 +105,7 @@ namespace Trinity
         m_Window = SDL_CreateWindow(m_Data.Title.c_str(), static_cast<int>(m_Data.Width), static_cast<int>(m_Data.Height), l_Flags);
         if (m_Window == nullptr)
         {
-            TR_CORE_CRITICAL("SDLWindow: SDL_CreateWindow failed: {}", SDL_GetError());
+            ("SDLWindow: SDL_CreateWindow failed: {}", SDL_GetError());
             return;
         }
 
@@ -114,7 +114,7 @@ namespace Trinity
             SDL_SetWindowHitTest(m_Window, TrinityHitTest, this);
         }
 
-        TR_CORE_INFO("SDLWindow: created '{}' ({}x{}){}", m_Data.Title, m_Data.Width, m_Data.Height, m_Data.CustomTitleBar ? " [custom title bar]" : "");
+        ("SDLWindow: created '{}' ({}x{}){}", m_Data.Title, m_Data.Width, m_Data.Height, m_Data.CustomTitleBar ? " [custom title bar]" : "");
     }
 
     SDLWindow::~SDLWindow()

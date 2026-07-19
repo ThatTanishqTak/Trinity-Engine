@@ -45,14 +45,16 @@ namespace Trinity
     };
 }
 
-#define TR_CORE_TRACE(...) ::Trinity::Log::GetCoreLogger()->trace(__VA_ARGS__)
-#define TR_CORE_INFO(...) ::Trinity::Log::GetCoreLogger()->info(__VA_ARGS__)
-#define TR_CORE_WARN(...) ::Trinity::Log::GetCoreLogger()->warn(__VA_ARGS__)
-#define TR_CORE_ERROR(...) ::Trinity::Log::GetCoreLogger()->error(__VA_ARGS__)
-#define TR_CORE_CRITICAL(...) ::Trinity::Log::GetCoreLogger()->critical(__VA_ARGS__)
+#define TR_INTERNAL_LOG(logger, level, ...) (logger)->log(spdlog::source_loc{ __FILE__, __LINE__, SPDLOG_FUNCTION }, level, __VA_ARGS__)
 
-#define TR_TRACE(...) ::Trinity::Log::GetClientLogger()->trace(__VA_ARGS__)
-#define TR_INFO(...) ::Trinity::Log::GetClientLogger()->info(__VA_ARGS__)
-#define TR_WARN(...) ::Trinity::Log::GetClientLogger()->warn(__VA_ARGS__)
-#define TR_ERROR(...) ::Trinity::Log::GetClientLogger()->error(__VA_ARGS__)
-#define TR_CRITICAL(...) ::Trinity::Log::GetClientLogger()->critical(__VA_ARGS__)
+#define TR_CORE_TRACE(...) TR_INTERNAL_LOG(::Trinity::Log::GetCoreLogger(), spdlog::level::trace, __VA_ARGS__)
+#define TR_CORE_INFO(...) TR_INTERNAL_LOG(::Trinity::Log::GetCoreLogger(), spdlog::level::info, __VA_ARGS__)
+#define TR_CORE_WARN(...) TR_INTERNAL_LOG(::Trinity::Log::GetCoreLogger(), spdlog::level::warn, __VA_ARGS__)
+#define TR_CORE_ERROR(...) TR_INTERNAL_LOG(::Trinity::Log::GetCoreLogger(), spdlog::level::err, __VA_ARGS__)
+#define TR_CORE_CRITICAL(...) TR_INTERNAL_LOG(::Trinity::Log::GetCoreLogger(), spdlog::level::critical, __VA_ARGS__)
+
+#define TR_TRACE(...) TR_INTERNAL_LOG(::Trinity::Log::GetClientLogger(), spdlog::level::trace, __VA_ARGS__)
+#define TR_INFO(...) TR_INTERNAL_LOG(::Trinity::Log::GetClientLogger(), spdlog::level::info, __VA_ARGS__)
+#define TR_WARN(...) TR_INTERNAL_LOG(::Trinity::Log::GetClientLogger(), spdlog::level::warn, __VA_ARGS__)
+#define TR_ERROR(...) TR_INTERNAL_LOG(::Trinity::Log::GetClientLogger(), spdlog::level::err, __VA_ARGS__)
+#define TR_CRITICAL(...) TR_INTERNAL_LOG(::Trinity::Log::GetClientLogger(), spdlog::level::critical, __VA_ARGS__)

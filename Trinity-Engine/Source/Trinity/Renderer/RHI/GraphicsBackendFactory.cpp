@@ -36,27 +36,27 @@ namespace Trinity
                 auto l_Device = std::make_unique<VulkanDevice>(description.Window, description.ApplicationName, description.EnableValidation);
                 if (!l_Device->Initialize())
                 {
-                    TR_CORE_CRITICAL("GraphicsBackendFactory: Vulkan device initialization failed");
+                    ("GraphicsBackendFactory: Vulkan device initialization failed");
                     return nullptr;
                 }
 
                 return l_Device;
 #else
-                TR_CORE_ERROR("GraphicsBackendFactory: Vulkan backend not compiled in");
+                ("GraphicsBackendFactory: Vulkan backend not compiled in");
                 return nullptr;
 #endif
             }
 
             case GraphicsBackend::Metal:
-                TR_CORE_ERROR("GraphicsBackendFactory: Metal backend arrives in Milestone 28");
+                ("GraphicsBackendFactory: Metal backend arrives in Milestone 28");
                 return nullptr;
 
             case GraphicsBackend::DirectX12:
-                TR_CORE_ERROR("GraphicsBackendFactory: DirectX12 backend not yet implemented");
+                ("GraphicsBackendFactory: DirectX12 backend not yet implemented");
                 return nullptr;
 
             default:
-                TR_CORE_ERROR("GraphicsBackendFactory: no graphics backend available");
+                ("GraphicsBackendFactory: no graphics backend available");
                 return nullptr;
         }
     }

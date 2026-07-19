@@ -11,7 +11,7 @@ namespace Trinity
 {
     namespace
     {
-        constexpr size_t k_MaxMessages = 1000;
+        constexpr size_t k_MaxMessages = 5000;
 
         std::deque<LogMessage> g_Messages;
         std::mutex g_MessagesMutex;
@@ -23,7 +23,7 @@ namespace Trinity
     void Log::Initialize()
     {
         auto a_ConsoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-        a_ConsoleSink->set_pattern("%^[%T] [%n] %v%$");
+        a_ConsoleSink->set_pattern("%^[%T] [%n] [%s:%#] [%!] %v%$");
 
         s_CoreLogger = std::make_shared<spdlog::logger>("TRINITY", a_ConsoleSink);
         s_CoreLogger->set_level(spdlog::level::trace);
@@ -46,16 +46,16 @@ namespace Trinity
         try
         {
             auto a_FileSink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(path.string(), true);
-            a_FileSink->set_pattern("[%Y-%m-%d %T] [%n] [%l] %v");
+            a_FileSink->set_pattern("[%d-%m-%Y] %^[%T] [%n] [%l] [%s:%#] [%!] %v");
 
             s_CoreLogger->sinks().push_back(a_FileSink);
             s_ClientLogger->sinks().push_back(a_FileSink);
 
-            TR_CORE_INFO("Log: file sink at {}", path.string());
+            ("Log: file sink at {}", path.string());
         }
         catch (const spdlog::spdlog_ex& l_Exception)
         {
-            TR_CORE_ERROR("Log: failed to create file sink at {}: {}", path.string(), l_Exception.what());
+            ("Log: failed to create file sink at {}: {}", path.string(), l_Exception.what());
         }
     }
 

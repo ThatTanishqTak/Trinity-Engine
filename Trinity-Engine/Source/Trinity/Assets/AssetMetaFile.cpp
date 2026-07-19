@@ -39,7 +39,7 @@ namespace Trinity
         std::ofstream l_Stream(metaPath);
         if (!l_Stream.is_open())
         {
-            TR_CORE_ERROR("AssetMetaFile: cannot write '{}'", metaPath.string());
+            ("AssetMetaFile: cannot write '{}'", metaPath.string());
 
             return false;
         }
@@ -57,7 +57,7 @@ namespace Trinity
 
             if (!l_Root["ID"] || !l_Root["Type"])
             {
-                TR_CORE_WARN("AssetMetaFile: '{}' missing ID/Type", metaPath.string());
+                ("AssetMetaFile: '{}' missing ID/Type", metaPath.string());
 
                 return std::nullopt;
             }
@@ -86,7 +86,7 @@ namespace Trinity
         }
         catch (const std::exception& exception)
         {
-            TR_CORE_ERROR("AssetMetaFile: failed to read '{}' ({})", metaPath.string(), exception.what());
+            ("AssetMetaFile: failed to read '{}' ({})", metaPath.string(), exception.what());
 
             return std::nullopt;
         }

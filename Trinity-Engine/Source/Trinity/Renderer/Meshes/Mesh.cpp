@@ -21,7 +21,7 @@ namespace Trinity
 
         if (data.Vertices.empty() || data.Indices.empty())
         {
-            TR_CORE_ERROR("Mesh: empty mesh data");
+            ("Mesh: empty mesh data");
 
             return false;
         }
@@ -44,7 +44,7 @@ namespace Trinity
 
         if (!m_VertexBuffer.IsValid() || !m_IndexBuffer.IsValid())
         {
-            TR_CORE_ERROR("Mesh: buffer creation failed");
+            ("Mesh: buffer creation failed");
             Shutdown();
 
             return false;
@@ -55,7 +55,7 @@ namespace Trinity
         m_Submeshes = data.Submeshes;
         m_MaterialSlots = data.MaterialSlots;
 
-        TR_CORE_INFO("Mesh: uploaded ({} vertices, {} indices, {} submeshes)", m_VertexCount, m_IndexCount, m_Submeshes.size());
+        ("Mesh: uploaded ({} vertices, {} indices, {} submeshes)", m_VertexCount, m_IndexCount, m_Submeshes.size());
 
         return true;
     }

@@ -39,7 +39,7 @@ namespace Trinity
         }
         catch (const YAML::Exception& exception)
         {
-            TR_CORE_ERROR("Config::Load failed to parse {}: {}", path.string(), exception.what());
+            ("Config::Load failed to parse {}: {}", path.string(), exception.what());
             return false;
         }
 
@@ -53,7 +53,7 @@ namespace Trinity
 
         if (!l_Emitter.good())
         {
-            TR_CORE_ERROR("Config::Save failed to emit YAML for {}", path.string());
+            ("Config::Save failed to emit YAML for {}", path.string());
             return false;
         }
 

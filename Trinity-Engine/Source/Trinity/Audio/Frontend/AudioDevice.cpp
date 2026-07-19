@@ -15,6 +15,8 @@ namespace Trinity
 
     bool AudioDevice::Initialize(AudioBackend backend)
     {
+        ("INITIALIZING AUDIO DEVICE");
+
         if (m_Backend != nullptr)
         {
             return true;
@@ -23,14 +25,14 @@ namespace Trinity
         m_Backend = AudioBackendFactory::Create(backend);
         if (m_Backend == nullptr)
         {
-            TR_CORE_ERROR("AudioDevice: failed to create audio backend");
+            ("Failed to create audio backend");
 
             return false;
         }
 
         if (!m_Backend->Initialize())
         {
-            TR_CORE_ERROR("AudioDevice: backend initialization failed");
+            ("Backend initialization failed");
             m_Backend.reset();
 
             return false;
@@ -38,11 +40,15 @@ namespace Trinity
 
         m_Backend->SetMasterVolume(m_MasterVolume);
 
+        ("AUDIO DEVICE INITIALIZED");
+
         return true;
     }
 
     void AudioDevice::Shutdown()
     {
+        ("SHUTTING DOWN AUDIO DEVICE");
+
         if (m_Backend == nullptr)
         {
             return;
@@ -50,6 +56,8 @@ namespace Trinity
 
         m_Backend->Shutdown();
         m_Backend.reset();
+
+        ("AUDIO DEVICE SHUTDOWN COMPLETE");
     }
 
     void AudioDevice::SetMasterVolume(float volume)

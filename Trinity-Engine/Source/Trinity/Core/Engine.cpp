@@ -27,7 +27,7 @@ namespace Trinity
     {
         if (m_Initialized)
         {
-            TR_CORE_WARN("Engine destroyed while still initialized");
+            ("Engine destroyed while still initialized");
         }
     }
 
@@ -35,18 +35,18 @@ namespace Trinity
     {
         TR_CORE_ASSERT(!m_Initialized, "Engine already initialized");
 
-        TR_CORE_INFO("[ENGINE]: INITIALIZING ENGINE");
+        ("INITIALIZING ENGINE");
 
         m_Platform = PlatformFactory::Create();
         if (m_Platform == nullptr)
         {
-            TR_CORE_CRITICAL("Engine: failed to create platform");
+            ("Failed to create platform");
             return false;
         }
 
         if (!m_Platform->Initialize())
         {
-            TR_CORE_CRITICAL("[Engine]: platform initialization failed");
+            ("Platform initialization failed");
             m_Platform.reset();
 
             return false;
@@ -64,17 +64,20 @@ namespace Trinity
         m_AudioEngine = std::make_unique<AudioEngine>();
         if (!m_AudioEngine->Initialize())
         {
-            TR_CORE_WARN("Engine: audio engine initialization failed; continuing without audio");
+            ("Audio engine initialization failed; continuing without audio");
         }
 
         m_Initialized = true;
 
-        TR_CORE_INFO("ENGINE INITIALIZED");
+        ("ENGINE INITIALIZED");
+
         return true;
     }
 
     bool Engine::InitializeRenderer(const NativeWindowHandle& window, const std::string& applicationName)
     {
+        ("INITIALIZING RENDERER");
+
         TR_CORE_ASSERT(m_Initialized, "Engine must be initialized before renderer");
         TR_CORE_ASSERT(m_Device == nullptr, "Renderer already initialized");
 
@@ -91,7 +94,7 @@ namespace Trinity
         m_Device = GraphicsBackendFactory::Create(l_DeviceDescription);
         if (m_Device == nullptr)
         {
-            TR_CORE_CRITICAL("Engine: renderer initialization failed");
+            ("Renderer initialization failed");
             return false;
         }
 
@@ -105,7 +108,7 @@ namespace Trinity
         m_Swapchain = m_Device->CreateSwapchain(l_SwapchainDescription);
         if (m_Swapchain == nullptr)
         {
-            TR_CORE_CRITICAL("Engine: swapchain creation failed");
+            ("Swapchain creation failed");
             m_Device.reset();
 
             return false;
@@ -114,7 +117,7 @@ namespace Trinity
         m_Renderer = std::make_unique<Renderer>(*m_Device, *m_Swapchain, m_Platform->GetFileSystem());
         if (!m_Renderer->Initialize())
         {
-            TR_CORE_CRITICAL("Engine: renderer initialization failed");
+            ("Renderer initialization failed");
             m_Renderer.reset();
             m_Swapchain.reset();
             m_Device.reset();
@@ -150,8 +153,10 @@ namespace Trinity
         m_Scene = std::make_unique<Scene>();
         if (!SceneSerializer::Deserialize(*m_Scene, *m_AssetDatabase, l_ScenePath))
         {
-            TR_CORE_ERROR("Engine: failed to deserialize demo scene");
+            ("Failed to deserialize demo scene");
         }
+
+        ("RENDERER INITIALIZED");
 
         return true;
     }
@@ -201,14 +206,18 @@ namespace Trinity
 
     void Engine::InitializeImGui()
     {
+        ("INITIALIZING IMGUI");
+
         if (m_Platform == nullptr || m_Device == nullptr || m_Swapchain == nullptr)
         {
-            TR_CORE_ERROR("Engine: InitializeImGui called before renderer is ready");
+            ("InitializeImGui called before renderer is ready");
 
             return;
         }
 
         m_ImGuiLayer.Initialize(m_Platform->GetImGuiBackend(), m_Device->GetImGuiBackend(), m_Swapchain->GetFramesInFlight(), m_Swapchain->GetFormat());
+        
+        ("IMGUI INITIALIZED");
     }
 
     void Engine::BeginImGuiFrame()
@@ -282,12 +291,12 @@ namespace Trinity
 
     void Engine::Shutdown()
     {
+        ("SHUTTING DOWN ENGINE");
+
         if (!m_Initialized)
         {
             return;
         }
-
-        TR_CORE_INFO("Engine shutting down");
 
         if (m_Device != nullptr)
         {
@@ -319,6 +328,6 @@ namespace Trinity
 
         m_Initialized = false;
 
-        TR_CORE_INFO("Engine shut down");
+        ("ENGINE SHUTDOWN COMPLETE");
     }
 }

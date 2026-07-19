@@ -13,6 +13,8 @@ namespace Trinity
 
     bool ImGuiLayer::Initialize(IImGuiPlatformBackend& platform, IImGuiRenderBackend& renderer, uint32_t framesInFlight, Format colorFormat)
     {
+        ("Initializing ImGui layer");
+
         if (m_Initialized)
         {
             return true;
@@ -22,6 +24,8 @@ namespace Trinity
         m_Render = &renderer;
 
         IMGUI_CHECKVERSION();
+        ("ImGui Version: {}", IMGUI_VERSION);
+
         ImGui::CreateContext();
 
         ImGuiIO& l_IO = ImGui::GetIO();
@@ -32,7 +36,7 @@ namespace Trinity
 
         if (!m_Platform->Initialize())
         {
-            TR_CORE_ERROR("ImGuiLayer: platform backend init failed");
+            ("Platform backend init failed");
             ImGui::DestroyContext();
             m_Platform = nullptr;
             m_Render = nullptr;
@@ -42,7 +46,7 @@ namespace Trinity
 
         if (!m_Render->Initialize(framesInFlight, colorFormat))
         {
-            TR_CORE_ERROR("ImGuiLayer: render backend init failed");
+            ("Render backend init failed");
             m_Platform->Shutdown();
             ImGui::DestroyContext();
             m_Platform = nullptr;
@@ -52,13 +56,16 @@ namespace Trinity
         }
 
         m_Initialized = true;
-        TR_CORE_INFO("ImGuiLayer: initialized");
+
+        ("ImGui layer initialized");
 
         return true;
     }
 
     void ImGuiLayer::Shutdown()
     {
+        ("Shutting down ImGui layer");
+
         if (!m_Initialized)
         {
             return;
@@ -79,6 +86,8 @@ namespace Trinity
         m_Render = nullptr;
         m_Platform = nullptr;
         m_Initialized = false;
+
+        ("ImGui layer shutdown complete");
     }
 
     void ImGuiLayer::BeginFrame()
@@ -93,7 +102,7 @@ namespace Trinity
         ImGui::NewFrame();
     }
 
-    void ImGuiLayer::EndFrame(CommandList& a_CommandList)
+    void ImGuiLayer::EndFrame(CommandList& commandList)
     {
         if (!m_Initialized)
         {
@@ -101,6 +110,6 @@ namespace Trinity
         }
 
         ImGui::Render();
-        m_Render->RecordDrawData(a_CommandList);
+        m_Render->RecordDrawData(commandList);
     }
 }

@@ -11,9 +11,11 @@ namespace Trinity
         switch (backend)
         {
             case AudioBackend::MiniAudio:
+                ("Selected Audio Backend: MiniAudio");
                 return std::make_unique<MiniAudioBackend>();
+
             default:
-                TR_CORE_ERROR("AudioBackendFactory: unsupported audio backend {}", static_cast<uint32_t>(backend));
+                ("Unsupported audio backend {}", static_cast<uint32_t>(backend));
 
                 return nullptr;
         }

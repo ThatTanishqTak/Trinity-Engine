@@ -13,14 +13,14 @@ namespace Trinity
 
     Application::Application(const ApplicationSpecification& specification) : m_Specification(specification)
     {
-        TR_CORE_ASSERT(s_Instance == nullptr, "[APPLICATION]: Application already exist");
+        TR_CORE_ASSERT(s_Instance == nullptr, "Application already exist");
         s_Instance = this;
 
-        TR_CORE_INFO("[APPLICATION]: INITIALIZING APPLICATION");
+        ("INITIALIZING APPLICATION");
 
         m_Engine = std::make_unique<Engine>();
 
-        TR_CORE_INFO("[APPLICATION]: APPLICATION INITIALIZED");
+        ("APPLICATION INITIALIZED");
     }
 
     Application::~Application()
@@ -32,7 +32,7 @@ namespace Trinity
     {
         if (!m_Engine->Initialize(m_Specification.InternalName))
         {
-            TR_CORE_CRITICAL("[Application]: Failed to initialize engine");
+            ("Failed to initialize engine");
             return;
         }
 
@@ -46,7 +46,7 @@ namespace Trinity
 
             if (!m_Engine->InitializeRenderer(m_Window->GetNativeHandle(), m_Specification.InternalName))
             {
-                TR_CORE_CRITICAL("[Application]: Failed to initialized renderer");
+                ("Failed to initialized renderer");
                 return;
             }
         }
@@ -92,7 +92,11 @@ namespace Trinity
 
     void Application::Close()
     {
+        ("CLOSING APPLICATION");
+
         m_Running = false;
+
+        ("APPLICATION CLOSED");
     }
 
     void Application::OnEvent(Event& event)

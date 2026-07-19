@@ -15,6 +15,8 @@ namespace Trinity
 
     bool VulkanAllocator::Initialize(VkInstance instance, VkPhysicalDevice physicalDevice, VkDevice device)
     {
+        ("INITIALIZING VULKAN ALLOCATOR");
+
         VmaAllocatorCreateInfo l_AllocatorCreateInfo{};
         l_AllocatorCreateInfo.instance = instance;
         l_AllocatorCreateInfo.physicalDevice = physicalDevice;
@@ -24,22 +26,28 @@ namespace Trinity
         VkResult l_Result = vmaCreateAllocator(&l_AllocatorCreateInfo, &m_Allocator);
         if (l_Result != VK_SUCCESS)
         {
-            TR_CORE_CRITICAL("VulkanAllocator: vmaCreateAllocator failed ({})", static_cast<int>(l_Result));
+            ("vmaCreateAllocator failed ({})", static_cast<int>(l_Result));
+
             return false;
         }
 
-        TR_CORE_INFO("VulkanAllocator: created");
+        ("VULKAN ALLOCATOR INITIALIZED");
+
         return true;
     }
 
     void VulkanAllocator::Shutdown()
     {
+        ("SHUTTING DOWN VULKAN ALLOCATOR");
+
         if (m_Allocator != VK_NULL_HANDLE)
         {
             LogStats();
             vmaDestroyAllocator(m_Allocator);
             m_Allocator = VK_NULL_HANDLE;
         }
+
+        ("VULKAN ALLOCATOR SHUTDOWN COMPLETE");
     }
 
     void VulkanAllocator::LogStats() const
@@ -57,11 +65,11 @@ namespace Trinity
 
         if (l_AllocationCount == 0)
         {
-            TR_CORE_INFO("VulkanAllocator: no live allocations");
+            ("No live allocations");
         }
         else
         {
-            TR_CORE_WARN("VulkanAllocator: {} live allocations ({} bytes) at shutdown", l_AllocationCount, l_UsedBytes);
+            ("VulkanAllocator: {} live allocations ({} bytes) at shutdown", l_AllocationCount, l_UsedBytes);
         }
     }
 }

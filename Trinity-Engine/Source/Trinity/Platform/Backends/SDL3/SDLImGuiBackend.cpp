@@ -28,20 +28,20 @@ namespace Trinity
 
         if (m_Window == nullptr)
         {
-            TR_CORE_ERROR("SDLImGuiBackend: null window");
+            ("SDLImGuiBackend: null window");
 
             return false;
         }
 
         if (!ImGui_ImplSDL3_InitForVulkan(m_Window))
         {
-            TR_CORE_ERROR("SDLImGuiBackend: ImGui_ImplSDL3_InitForVulkan failed");
+            ("SDLImGuiBackend: ImGui_ImplSDL3_InitForVulkan failed");
 
             return false;
         }
 
         m_Initialized = true;
-        TR_CORE_INFO("SDLImGuiBackend: initialized");
+        ("SDLImGuiBackend: initialized");
 
         return true;
     }
