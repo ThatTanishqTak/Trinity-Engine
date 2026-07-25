@@ -42,7 +42,7 @@ namespace Trinity
 
     void ForgeApplication::OnInitialize()
     {
-
+        TR_INFO("INITIALIZING FORGE");
 
         GetEngine().InitializeImGui();
         EditorTheme::Apply(GetEngine().GetPlatform().GetFileSystem());
@@ -59,7 +59,7 @@ namespace Trinity
         m_ContentBrowserPanel = std::make_unique<ContentBrowserPanel>(m_Context, GetEngine());
         m_RenderGraphPanel = std::make_unique<RenderGraphPanel>(m_Context, GetEngine());
 
-
+        TR_INFO("FORGE INITIALIZED");
     }
 
     void ForgeApplication::OnUpdate(Timestep)
@@ -96,15 +96,10 @@ namespace Trinity
     {
         if (handled)
         {
+            //TR_TRACE("{}", event.ToString());
+
             return;
         }
-
-        EventDispatcher l_Dispatcher(event);
-        l_Dispatcher.Dispatch<KeyPressedEvent>([](KeyPressedEvent& key)
-        {
-            //("Key pressed: {}", key.GetKeyCode());
-            return false;
-        });
     }
 
     void ForgeApplication::OnShutdown()
@@ -120,10 +115,10 @@ namespace Trinity
     {
         ImGuiViewport* l_Viewport = ImGui::GetMainViewport();
 
-        ImVec2 l_Pos = ImVec2(l_Viewport->Pos.x, l_Viewport->Pos.y + m_Context.ChromeTop);
+        ImVec2 l_Position = ImVec2(l_Viewport->Pos.x, l_Viewport->Pos.y + m_Context.ChromeTop);
         ImVec2 l_Size = ImVec2(l_Viewport->Size.x, l_Viewport->Size.y - m_Context.ChromeTop - m_Context.ChromeBottom);
 
-        ImGui::SetNextWindowPos(l_Pos);
+        ImGui::SetNextWindowPos(l_Position);
         ImGui::SetNextWindowSize(l_Size);
         ImGui::SetNextWindowViewport(l_Viewport->ID);
 
@@ -168,11 +163,11 @@ namespace Trinity
         ImGui::DockBuilderFinish(dockspaceID);
     }
 
-    void ForgeApplication::RenderDrawer(const char* id, const char* title, bool& show, bool& openPrev, const std::function<void()>& body)
+    void ForgeApplication::RenderDrawer(const char* id, const char* title, bool& show, bool& openPrevious, const std::function<void()>& body)
     {
         if (!show)
         {
-            openPrev = false;
+            openPrevious = false;
 
             return;
         }
@@ -202,7 +197,7 @@ namespace Trinity
         ImGui::SetNextWindowSize(ImVec2(l_Viewport->Size.x, m_DrawerHeight), ImGuiCond_Once);
         ImGui::SetNextWindowViewport(l_Viewport->ID);
 
-        if (!openPrev)
+        if (!openPrevious)
         {
             ImGui::SetNextWindowFocus();
         }
@@ -229,7 +224,7 @@ namespace Trinity
         {
             l_Close = true;
         }
-        else if (openPrev && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsDragDropActive() && !l_PopupActive)
+        else if (openPrevious && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsDragDropActive() && !l_PopupActive)
         {
             ImVec2 l_Mouse = ImGui::GetIO().MousePos;
             bool l_InDrawer = l_Mouse.x >= l_DrawerMin.x && l_Mouse.x <= l_DrawerMin.x + l_DrawerSize.x && l_Mouse.y >= l_DrawerMin.y && l_Mouse.y <= l_DrawerMin.y + l_DrawerSize.y;
@@ -245,7 +240,7 @@ namespace Trinity
             show = false;
         }
 
-        openPrev = show;
+        openPrevious = show;
     }
 
     bool ForgeApplication::IsAncestorOf(Scene& scene, entt::entity ancestor, entt::entity node)

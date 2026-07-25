@@ -343,9 +343,9 @@ namespace Trinity
 
             return true;
         }
-        catch (const std::exception& a_Exception)
+        catch (const std::exception& exception)
         {
-
+            TR_CORE_CRITICAL("{}", exception.what());
 
             return false;
         }
@@ -447,9 +447,9 @@ namespace Trinity
 
             return l_RootEntity;
         }
-        catch (const std::exception& a_Exception)
+        catch (const std::exception& exception)
         {
-
+            TR_CORE_CRITICAL("{}", exception.what());
 
             return Entity();
         }

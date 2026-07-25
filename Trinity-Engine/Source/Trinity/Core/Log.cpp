@@ -23,7 +23,7 @@ namespace Trinity
     void Log::Initialize()
     {
         auto a_ConsoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-        a_ConsoleSink->set_pattern("%^[%T] [%n] [%s:%#] [%!] %v%$");
+        a_ConsoleSink->set_pattern("%^[%T] [%n] %v%$");
 
         s_CoreLogger = std::make_shared<spdlog::logger>("TRINITY", a_ConsoleSink);
         s_CoreLogger->set_level(spdlog::level::trace);
@@ -50,12 +50,10 @@ namespace Trinity
 
             s_CoreLogger->sinks().push_back(a_FileSink);
             s_ClientLogger->sinks().push_back(a_FileSink);
-
-
         }
-        catch (const spdlog::spdlog_ex& l_Exception)
+        catch (const spdlog::spdlog_ex& exception)
         {
-
+            TR_CORE_CRITICAL("{}", exception.what());
         }
     }
 
