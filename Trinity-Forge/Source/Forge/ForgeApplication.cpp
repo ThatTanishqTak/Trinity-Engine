@@ -104,11 +104,11 @@ namespace Trinity
 
     void ForgeApplication::OnShutdown()
     {
-
+        TR_INFO("SHUTTING DOWN FORGE");
 
         m_Context.History.Clear();
 
-
+        TR_INFO("FORGE SHUTDOWN COMPLETE");
     }
 
     void ForgeApplication::RenderDockspace()
@@ -435,7 +435,7 @@ namespace Trinity
 
     Application* CreateApplication(CommandLineArgs args)
     {
-
+        TR_INFO("CREATING APPLICATION");
 
         ApplicationSpecification l_Specification;
         l_Specification.InternalName = "Trinity-Forge";
@@ -445,16 +445,16 @@ namespace Trinity
         l_Specification.Window.CustomTitleBar = true;
         l_Specification.Arguments = args;
 
-        ("Application internal name: {}, Application window title: {}", l_Specification.InternalName, l_Specification.Window.Title);
-        ("Application resolution: {}x{}, Custom title bar: {}", l_Specification.Window.Width, l_Specification.Window.Height, l_Specification.Window.CustomTitleBar);
-        ("Application argument count: {}", l_Specification.Arguments.Count);
+        TR_TRACE("Application internal name: {}, Application window title: {}", l_Specification.InternalName, l_Specification.Window.Title);
+        TR_TRACE("Application resolution: {}x{}, Custom title bar: {}", l_Specification.Window.Width, l_Specification.Window.Height, l_Specification.Window.CustomTitleBar);
+        TR_TRACE("Application argument count: {}", l_Specification.Arguments.Count);
 
         for (int i = 0; i < l_Specification.Arguments.Count; ++i)
         {
-            ("Argument [{}]: {}", i, l_Specification.Arguments[i]);
+            TR_TRACE("Argument [{}]: {}", i, l_Specification.Arguments[i]);
         }
 
-
+        TR_INFO("APPLICATION CREATED");
 
         return new ForgeApplication(l_Specification);
     }

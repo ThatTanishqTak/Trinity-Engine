@@ -39,7 +39,7 @@ namespace Trinity
 
     bool MiniAudioBackend::Initialize()
     {
-
+        TR_CORE_TRACE("INITIALIZING MINIAUDIO");
 
         if (m_Implementation->Initialized)
         {
@@ -49,21 +49,21 @@ namespace Trinity
         ma_result l_Result = ma_engine_init(nullptr, &m_Implementation->Engine);
         if (l_Result != MA_SUCCESS)
         {
-
+            TR_CORE_CRITICAL("Failed to initialize miniaudio");
 
             return false;
         }
 
         m_Implementation->Initialized = true;
 
-
+        TR_CORE_TRACE("MINIAUDIO INITIALIZED");
 
         return true;
     }
 
     void MiniAudioBackend::Shutdown()
     {
-
+        TR_CORE_TRACE("SHUTTING DOWN MINIAUDIO");
 
         if (!m_Implementation->Initialized)
         {
@@ -82,7 +82,7 @@ namespace Trinity
         ma_engine_uninit(&m_Implementation->Engine);
         m_Implementation->Initialized = false;
 
-
+        TR_CORE_TRACE("MINIAUDIO SHUTDOWN COMPLETE");
     }
 
     AudioClipHandle MiniAudioBackend::LoadClip(const std::filesystem::path& path)

@@ -85,6 +85,8 @@ namespace Trinity
 
     SDLWindow::SDLWindow(const WindowProperties& properties)
     {
+        TR_CORE_TRACE("INITIALIZING SDL WINDOW");
+
         m_Data.Title = properties.Title;
         m_Data.Width = properties.Width;
         m_Data.Height = properties.Height;
@@ -105,7 +107,7 @@ namespace Trinity
         m_Window = SDL_CreateWindow(m_Data.Title.c_str(), static_cast<int>(m_Data.Width), static_cast<int>(m_Data.Height), l_Flags);
         if (m_Window == nullptr)
         {
-
+            TR_CORE_CRITICAL("Failed to create SDL window");
             return;
         }
 
@@ -114,20 +116,25 @@ namespace Trinity
             SDL_SetWindowHitTest(m_Window, TrinityHitTest, this);
         }
 
-
+        TR_CORE_TRACE("SDL WINDOW INITIALIZE");
     }
 
     SDLWindow::~SDLWindow()
     {
+        TR_CORE_TRACE("SHUTTING DOWN SDL WINDOW");
+
         if (m_Window != nullptr)
         {
             SDL_DestroyWindow(m_Window);
             m_Window = nullptr;
         }
+
+        TR_CORE_TRACE("SDL WINDOW SHUTDOWN COMPLETE");
     }
 
     void SDLWindow::OnUpdate()
     {
+
     }
 
     void SDLWindow::SetTitle(const std::string& title)

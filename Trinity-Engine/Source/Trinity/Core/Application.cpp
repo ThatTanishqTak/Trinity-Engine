@@ -16,11 +16,11 @@ namespace Trinity
         TR_CORE_ASSERT(s_Instance == nullptr, "Application already exist");
         s_Instance = this;
 
-
+        TR_CORE_INFO("INITIALIZING APPLICATION");
 
         m_Engine = std::make_unique<Engine>();
 
-
+        TR_CORE_INFO("APPLICATION INITIALIZED");
     }
 
     Application::~Application()

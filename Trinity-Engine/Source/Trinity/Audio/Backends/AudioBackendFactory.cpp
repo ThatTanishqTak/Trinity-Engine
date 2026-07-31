@@ -11,11 +11,12 @@ namespace Trinity
         switch (backend)
         {
             case AudioBackend::MiniAudio:
+                TR_CORE_TRACE("Audio backend selected: MiniAudio");
 
                 return std::make_unique<MiniAudioBackend>();
 
             default:
-
+                TR_CORE_TRACE("No audio backend selected");
 
                 return nullptr;
         }

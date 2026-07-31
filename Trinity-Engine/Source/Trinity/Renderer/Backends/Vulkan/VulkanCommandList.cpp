@@ -41,6 +41,8 @@ namespace Trinity
 
     VulkanCommandList::VulkanCommandList(VulkanDevice& device) : m_Device(device)
     {
+        TR_CORE_TRACE("INITIALIZING VULKAN COMMAND LIST");
+
         VkCommandBufferAllocateInfo l_CommandBufferAllocateInfo{};
         l_CommandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         l_CommandBufferAllocateInfo.commandPool = m_Device.GetCommands().GetPool();
@@ -49,7 +51,7 @@ namespace Trinity
 
         if (vkAllocateCommandBuffers(m_Device.GetHandle(), &l_CommandBufferAllocateInfo, &m_CommandBuffer) != VK_SUCCESS)
         {
-
+            TR_CORE_CRITICAL("Failed vkAllocateCommandBuffers");
         }
 
         VkDescriptorPoolSize l_PoolSizes[2]{};
@@ -66,21 +68,29 @@ namespace Trinity
 
         if (vkCreateDescriptorPool(m_Device.GetHandle(), &l_PoolInfo, nullptr, &m_DescriptorPool) != VK_SUCCESS)
         {
-
+            TR_CORE_CRITICAL("Failed vkCreateDescriptorPool");
         }
+
+        TR_CORE_TRACE("VULKAN COMMAND LIST INITIALIZED");
     }
 
     VulkanCommandList::~VulkanCommandList()
     {
+        TR_CORE_TRACE("SHUTTING DOWN VULKAN COMMAND LIST");
+
         if (m_DescriptorPool != VK_NULL_HANDLE)
         {
             vkDestroyDescriptorPool(m_Device.GetHandle(), m_DescriptorPool, nullptr);
+            TR_CORE_INFO("Descriptor pool destoryed");
         }
 
         if (m_CommandBuffer != VK_NULL_HANDLE)
         {
             vkFreeCommandBuffers(m_Device.GetHandle(), m_Device.GetCommands().GetPool(), 1, &m_CommandBuffer);
+            TR_CORE_INFO("Command buffer freed");
         }
+
+        TR_CORE_TRACE("VULKAN COMMAND LIST SHUTDOWN COMPLETE");
     }
 
     void VulkanCommandList::Begin()
@@ -263,6 +273,7 @@ namespace Trinity
         VkDescriptorSet l_DescriptorSet = VK_NULL_HANDLE;
         if (vkAllocateDescriptorSets(m_Device.GetHandle(), &l_AllocateInfo, &l_DescriptorSet) != VK_SUCCESS)
         {
+            TR_CORE_CRITICAL("Failed vkAllocateDescriptorSets");
 
             return;
         }
@@ -308,6 +319,7 @@ namespace Trinity
         VkDescriptorSet l_DescriptorSet = VK_NULL_HANDLE;
         if (vkAllocateDescriptorSets(m_Device.GetHandle(), &l_AllocateInfo, &l_DescriptorSet) != VK_SUCCESS)
         {
+            TR_CORE_CRITICAL("Failed vkAllocateDescriptorSets");
 
             return;
         }
@@ -351,7 +363,7 @@ namespace Trinity
 
         if (from != ResourceState::Undefined && l_Texture->CurrentState != from)
         {
-
+            TR_CORE_WARN("Undefined texture state");
         }
 
         l_Texture->CurrentState = to;

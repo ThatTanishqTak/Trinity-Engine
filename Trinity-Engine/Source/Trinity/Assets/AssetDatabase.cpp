@@ -35,14 +35,13 @@ namespace Trinity
 
     void AssetDatabase::Initialize()
     {
-
+        TR_CORE_INFO("INITIALIZING ASSET DATABASE");
 
         m_AssetsRoot = m_FileSystem.Resolve(BaseDirectory::Executable, "Assets");
         Refresh();
 
-
-
-
+        TR_CORE_TRACE("Assets root directory: {}", m_AssetsRoot.string());
+        TR_CORE_INFO("ASSET DATABASE INITIALIZED");
     }
 
     void AssetDatabase::Refresh()
@@ -55,7 +54,7 @@ namespace Trinity
         std::error_code l_Error;
         if (!std::filesystem::exists(m_AssetsRoot, l_Error))
         {
-
+            TR_CORE_WARN("Asset root not found {}", m_AssetsRoot.string());
 
             return;
         }

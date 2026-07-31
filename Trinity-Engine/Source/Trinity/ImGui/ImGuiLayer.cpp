@@ -13,7 +13,7 @@ namespace Trinity
 
     bool ImGuiLayer::Initialize(IImGuiPlatformBackend& platform, IImGuiRenderBackend& renderer, uint32_t framesInFlight, Format colorFormat)
     {
-
+        TR_CORE_TRACE("INITIALIZING IMGUI LAYER");
 
         if (m_Initialized)
         {
@@ -23,8 +23,8 @@ namespace Trinity
         m_Platform = &platform;
         m_Render = &renderer;
 
-        IMGUI_CHECKVERSION();
-
+        TR_CORE_TRACE("ImGui version: {}", IMGUI_VERSION);
+        TR_CORE_TRACE("ImGui version and data layout match: {}", IMGUI_CHECKVERSION());
 
         ImGui::CreateContext();
 
@@ -36,7 +36,7 @@ namespace Trinity
 
         if (!m_Platform->Initialize())
         {
-
+            TR_CORE_CRITICAL("Failed to initialize platform");
             ImGui::DestroyContext();
             m_Platform = nullptr;
             m_Render = nullptr;
@@ -46,7 +46,7 @@ namespace Trinity
 
         if (!m_Render->Initialize(framesInFlight, colorFormat))
         {
-
+            TR_CORE_CRITICAL("Failed to initialize renderer");
             m_Platform->Shutdown();
             ImGui::DestroyContext();
             m_Platform = nullptr;
@@ -57,14 +57,14 @@ namespace Trinity
 
         m_Initialized = true;
 
-
+        TR_CORE_TRACE("IMGUI LAYER INITIALIZED");
 
         return true;
     }
 
     void ImGuiLayer::Shutdown()
     {
-
+        TR_CORE_TRACE("SHUTTING DOWN IMGUI LAYER");
 
         if (!m_Initialized)
         {
@@ -87,7 +87,7 @@ namespace Trinity
         m_Platform = nullptr;
         m_Initialized = false;
 
-
+        TR_CORE_TRACE("IMGUI LAYER SHUTDOWN COMPLETE");
     }
 
     void ImGuiLayer::BeginFrame()

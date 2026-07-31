@@ -38,6 +38,8 @@ namespace Trinity
 
         l_Command->Undo();
 
+        TR_TRACE("Undo executed: {}", l_Command->GetName());
+
         m_RedoStack.push_back(std::move(l_Command));
         m_Dirty = true;
     }
@@ -53,6 +55,8 @@ namespace Trinity
         m_RedoStack.pop_back();
 
         l_Command->Execute();
+
+        TR_TRACE("Redo executed: {}", l_Command->GetName());
 
         m_UndoStack.push_back(std::move(l_Command));
         m_Dirty = true;
@@ -70,12 +74,13 @@ namespace Trinity
 
     void CommandHistory::Clear()
     {
-
+        TR_TRACE("Clearing command history");
+        TR_TRACE("Undo Stack: {} Redo Stack: {}", m_UndoStack.size(), m_RedoStack.size());
 
         m_UndoStack.clear();
         m_RedoStack.clear();
         m_Dirty = false;
 
-
+        TR_TRACE("Command history cleared");
     }
 }

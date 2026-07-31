@@ -40,13 +40,11 @@ namespace Trinity
 
     bool SDLPlatform::Initialize()
     {
-
-
-
+        TR_CORE_TRACE("INITIALIZING SDL");
 
         if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
         {
-
+            TR_CORE_CRITICAL("Failed to initialize SDL");
             return false;
         }
 
@@ -56,14 +54,14 @@ namespace Trinity
 
         m_Initialized = true;
 
-
+        TR_CORE_TRACE("SDL INITIALIZED");
 
         return true;
     }
 
     void SDLPlatform::Shutdown()
     {
-
+        TR_CORE_TRACE("SHUTTING DOWN SDL");
 
         if (!m_Initialized)
         {
@@ -80,24 +78,25 @@ namespace Trinity
 
         m_Initialized = false;
 
-
+        TR_CORE_TRACE("SDL SHUTDOWN COMPLETE");
     }
 
     Window& SDLPlatform::CreateWindow(const WindowProperties& properties)
     {
-
+        TR_CORE_TRACE("Creating SDL window");
 
         m_Window = std::make_unique<SDLWindow>(properties);
 
         SDLWindow* l_SDLWindow = static_cast<SDLWindow*>(m_Window.get());
         m_ImGuiBackend = std::make_unique<SDLImGuiBackend>(l_SDLWindow->GetSDLWindow());
 
+        TR_CORE_TRACE("SDL window created");
+
         return *m_Window;
     }
 
     Window& SDLPlatform::GetWindow()
     {
-
         return *m_Window;
     }
 

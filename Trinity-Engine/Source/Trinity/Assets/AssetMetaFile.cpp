@@ -39,7 +39,7 @@ namespace Trinity
         std::ofstream l_Stream(metaPath);
         if (!l_Stream.is_open())
         {
-
+            TR_CORE_CRITICAL("Failed to open meta file: {}", metaPath.string());
 
             return false;
         }
@@ -57,7 +57,7 @@ namespace Trinity
 
             if (!l_Root["ID"] || !l_Root["Type"])
             {
-
+                TR_CORE_CRITICAL("Corrupted file: {}", metaPath.string());
 
                 return std::nullopt;
             }
@@ -86,7 +86,7 @@ namespace Trinity
         }
         catch (const std::exception& exception)
         {
-
+            TR_CORE_CRITICAL("{}", exception.what());
 
             return std::nullopt;
         }

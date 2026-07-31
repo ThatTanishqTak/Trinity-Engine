@@ -230,6 +230,8 @@ namespace Trinity
 
     bool VulkanDevice::Initialize()
     {
+        TR_CORE_TRACE("INITIALIZING VULKAN DEVICE");
+
         if (m_Initialized)
         {
             return true;
@@ -277,8 +279,99 @@ namespace Trinity
 
         m_Initialized = true;
 
+        TR_CORE_TRACE("VULKAN DEVICE INITIALIZED");
 
         return true;
+    }
+
+    void VulkanDevice::Shutdown()
+    {
+        if (m_Device != VK_NULL_HANDLE)
+        {
+            TR_CORE_TRACE("SHUTTING DOWN VULKAN DEVICE");
+
+            vkDeviceWaitIdle(m_Device);
+
+            for (const DeferredRelease& it_Release : m_DeferredReleases)
+            {
+                ReleaseNow(it_Release);
+            }
+            m_DeferredReleases.clear();
+
+            ReportLeaks();
+
+            VmaAllocator l_Allocator = m_Allocator.GetHandle();
+
+            m_Pipelines.ForEachAlive([&](VulkanPipelineResource& resource)
+                {
+                    if (resource.Pipeline != VK_NULL_HANDLE)
+                    {
+                        vkDestroyPipeline(m_Device, resource.Pipeline, nullptr);
+                        TR_CORE_INFO("Vulkan pipeline destroyed");
+                    }
+
+                    if (resource.Layout != VK_NULL_HANDLE)
+                    {
+                        vkDestroyPipelineLayout(m_Device, resource.Layout, nullptr);
+                        TR_CORE_INFO("Vulkan pipeline layout destroyed");
+                    }
+                });
+
+            m_Shaders.ForEachAlive([&](VulkanShaderResource& resource)
+                {
+                    if (resource.Module != VK_NULL_HANDLE)
+                    {
+                        vkDestroyShaderModule(m_Device, resource.Module, nullptr);
+                        TR_CORE_INFO("Vulkan shader module destroyed");
+                    }
+                });
+
+            m_Samplers.ForEachAlive([&](VulkanSamplerResource& resource)
+                {
+                    if (resource.Sampler != VK_NULL_HANDLE)
+                    {
+                        vkDestroySampler(m_Device, resource.Sampler, nullptr);
+                        TR_CORE_INFO("Vulkan sampler destroyed");
+                    }
+                });
+
+            m_Textures.ForEachAlive([&](VulkanTextureResource& resource)
+                {
+                    if (resource.OwnsView && resource.View != VK_NULL_HANDLE)
+                    {
+                        vkDestroyImageView(m_Device, resource.View, nullptr);
+                        TR_CORE_INFO("Vulkan image view destroyed");
+                    }
+
+                    if (resource.OwnsImage && resource.Image != VK_NULL_HANDLE)
+                    {
+                        vmaDestroyImage(l_Allocator, resource.Image, resource.Allocation);
+                        TR_CORE_INFO("Vulkan image destroyed");
+                    }
+                });
+
+            m_Buffers.ForEachAlive([&](VulkanBufferResource& resource)
+                {
+                    if (resource.Buffer != VK_NULL_HANDLE)
+                    {
+                        vmaDestroyBuffer(l_Allocator, resource.Buffer, resource.Allocation);
+                        TR_CORE_INFO("Vulkan buffer destroyed");
+                    }
+                });
+
+            m_Commands.Shutdown();
+            m_Allocator.Shutdown();
+
+            vkDestroyDevice(m_Device, nullptr);
+            m_Device = VK_NULL_HANDLE;
+        }
+
+        m_Surface.Shutdown();
+        m_Instance.Shutdown();
+
+        m_Initialized = false;
+     
+        TR_CORE_TRACE("VULKAN DEVICE SHUTDOWN COMPLETE");
     }
 
     IImGuiRenderBackend& VulkanDevice::GetImGuiBackend()
@@ -292,45 +385,45 @@ namespace Trinity
         m_Pipelines.ForEachAlive([&](VulkanPipelineResource& resource)
         {
             ++l_Pipelines;
-
+            TR_CORE_WARN("Leaked pipeline: {}", resource.DebugName.empty() ? "<unnamed>" : resource.DebugName);
         });
 
         uint32_t l_Shaders = 0;
         m_Shaders.ForEachAlive([&](VulkanShaderResource& resource)
         {
             ++l_Shaders;
-
+            TR_CORE_WARN("Leaked shader: {}", resource.DebugName.empty() ? "<unnamed>" : resource.DebugName);
         });
 
         uint32_t l_Samplers = 0;
         m_Samplers.ForEachAlive([&](VulkanSamplerResource& resource)
         {
             ++l_Samplers;
-
+            TR_CORE_WARN("Leaked sampler: {}", resource.DebugName.empty() ? "<unnamed>" : resource.DebugName);
         });
 
         uint32_t l_Textures = 0;
         m_Textures.ForEachAlive([&](VulkanTextureResource& resource)
         {
             ++l_Textures;
-
+            TR_CORE_WARN("Leaked texture: {}", resource.DebugName.empty() ? "<unnamed>" : resource.DebugName);
         });
 
         uint32_t l_Buffers = 0;
         m_Buffers.ForEachAlive([&](VulkanBufferResource& resource)
         {
             ++l_Buffers;
-
+            TR_CORE_WARN("Leaked buffer: {}", resource.DebugName.empty() ? "<unnamed>" : resource.DebugName);
         });
 
         const uint32_t l_Total = l_Pipelines + l_Shaders + l_Samplers + l_Textures + l_Buffers;
         if (l_Total == 0)
         {
-
+            TR_CORE_INFO("No leaked resources");
         }
         else
         {
-
+            TR_CORE_WARN("Total leaked resources: {}, Pipeline: {}, Shader: {}, Sampler: {}, Texture: {}, Buffer: {}", l_Total, l_Pipelines, l_Shaders, l_Samplers, l_Textures, l_Buffers);
         }
     }
 
@@ -348,85 +441,6 @@ namespace Trinity
         l_NameInfo.pObjectName = name.c_str();
 
         m_SetObjectName(m_Device, &l_NameInfo);
-    }
-
-    void VulkanDevice::Shutdown()
-    {
-        if (m_Device != VK_NULL_HANDLE)
-        {
-            vkDeviceWaitIdle(m_Device);
-
-            for (const DeferredRelease& it_Release : m_DeferredReleases)
-            {
-                ReleaseNow(it_Release);
-            }
-            m_DeferredReleases.clear();
-
-            ReportLeaks();
-
-            VmaAllocator l_Allocator = m_Allocator.GetHandle();
-
-            m_Pipelines.ForEachAlive([&](VulkanPipelineResource& resource)
-            {
-                if (resource.Pipeline != VK_NULL_HANDLE)
-                {
-                    vkDestroyPipeline(m_Device, resource.Pipeline, nullptr);
-                }
-
-                if (resource.Layout != VK_NULL_HANDLE)
-                {
-                    vkDestroyPipelineLayout(m_Device, resource.Layout, nullptr);
-                }
-            });
-
-            m_Shaders.ForEachAlive([&](VulkanShaderResource& resource)
-            {
-                if (resource.Module != VK_NULL_HANDLE)
-                {
-                    vkDestroyShaderModule(m_Device, resource.Module, nullptr);
-                }
-            });
-
-            m_Samplers.ForEachAlive([&](VulkanSamplerResource& resource)
-            {
-                if (resource.Sampler != VK_NULL_HANDLE)
-                {
-                    vkDestroySampler(m_Device, resource.Sampler, nullptr);
-                }
-            });
-
-            m_Textures.ForEachAlive([&](VulkanTextureResource& resource)
-            {
-                if (resource.OwnsView && resource.View != VK_NULL_HANDLE)
-                {
-                    vkDestroyImageView(m_Device, resource.View, nullptr);
-                }
-
-                if (resource.OwnsImage && resource.Image != VK_NULL_HANDLE)
-                {
-                    vmaDestroyImage(l_Allocator, resource.Image, resource.Allocation);
-                }
-            });
-
-            m_Buffers.ForEachAlive([&](VulkanBufferResource& resource)
-            {
-                if (resource.Buffer != VK_NULL_HANDLE)
-                {
-                    vmaDestroyBuffer(l_Allocator, resource.Buffer, resource.Allocation);
-                }
-            });
-
-            m_Commands.Shutdown();
-            m_Allocator.Shutdown();
-
-            vkDestroyDevice(m_Device, nullptr);
-            m_Device = VK_NULL_HANDLE;
-        }
-
-        m_Surface.Shutdown();
-        m_Instance.Shutdown();
-
-        m_Initialized = false;
     }
 
     BufferHandle VulkanDevice::CreateBuffer(const BufferDescription& description)

@@ -40,6 +40,8 @@ namespace Trinity
         catch (const YAML::Exception& exception)
         {
 
+            TR_CORE_CRITICAL("{}", exception.msg);
+
             return false;
         }
 

@@ -14,11 +14,13 @@ namespace Trinity
 {
     static constexpr const char* k_UIFontFile = "JetBrainsMonoNerdFontMono-Regular.ttf";
     static constexpr const char* k_IconFontFile = "materialdesignicons-webfont.ttf";
-    static constexpr float k_BaseFontSize = 16.5f;
-    static constexpr float k_UserScale = 0.65f;
+    static constexpr float k_BaseFontSize = 16.0f;
+    static constexpr float k_UserScale = 0.75f;
 
     static void ApplyStyle()
     {
+        TR_TRACE("Applying style");
+
         ImGuiStyle& l_Style = ImGui::GetStyle();
 
         l_Style.WindowRounding = 0.0f;
@@ -109,15 +111,19 @@ namespace Trinity
         l_Colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.000f, 1.000f, 1.000f, 0.70f);
         l_Colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.200f, 0.200f, 0.200f, 0.20f);
         l_Colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.000f, 0.000f, 0.000f, 0.55f);
+
+        TR_TRACE("Style applied: {}", k_UIFontFile);
     }
 
     static void ApplyFonts(FileSystem& fileSystem, float scale)
     {
+        TR_TRACE("Applying fonts");
+
         ImGuiIO& l_IO = ImGui::GetIO();
         float l_FontSize = k_BaseFontSize * scale;
-        std::filesystem::path l_FontsDir = fileSystem.Resolve(BaseDirectory::Executable, "Assets/Fonts");
+        std::filesystem::path l_FontsDirectory = fileSystem.Resolve(BaseDirectory::Executable, "Assets/Fonts");
 
-        std::filesystem::path l_UIPath = l_FontsDir / k_UIFontFile;
+        std::filesystem::path l_UIPath = l_FontsDirectory / k_UIFontFile;
         if (std::filesystem::exists(l_UIPath))
         {
             ImFontConfig l_UIConfig;
@@ -127,11 +133,12 @@ namespace Trinity
         }
         else
         {
+            TR_WARN("Failed to load font pack {} at {}, reverting to default", k_UIFontFile, l_FontsDirectory.string());
 
             l_IO.Fonts->AddFontDefault();
         }
 
-        std::filesystem::path l_IconPath = l_FontsDir / k_IconFontFile;
+        std::filesystem::path l_IconPath = l_FontsDirectory / k_IconFontFile;
         if (std::filesystem::exists(l_IconPath))
         {
             static const ImWchar l_IconRanges[] = { k_IconRangeMin, k_IconRangeMax, 0 };
@@ -143,12 +150,16 @@ namespace Trinity
         }
         else
         {
-
+            TR_WARN("Failed to load icon pack {} at {}", k_IconFontFile, l_IconPath.string());
         }
+
+        TR_TRACE("Fonts applied: {}", k_IconFontFile);
     }
 
     void EditorTheme::Apply(FileSystem& fileSystem)
     {
+        TR_INFO("APPLYING EDITOR THEME");
+
         float l_Scale = k_UserScale;
         if (Application::Get().HasWindow())
         {
@@ -164,6 +175,6 @@ namespace Trinity
         ImGui::GetStyle().ScaleAllSizes(l_Scale);
         ApplyFonts(fileSystem, l_Scale);
 
-
+        TR_INFO("EDITOR THEME APPLIED");
     }
 }

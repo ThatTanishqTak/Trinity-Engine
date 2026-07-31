@@ -11,12 +11,16 @@ namespace Trinity
     static PlatformType DetectPlatformType()
     {
 #if defined(TRINITY_PLATFORM_WINDOWS)
+        TR_CORE_TRACE("Platform: Windows");
         return PlatformType::Windows;
 #elif defined(TRINITY_PLATFORM_LINUX)
+        TR_CORE_TRACE("Platform: Linux");
         return PlatformType::Linux;
 #elif defined(TRINITY_PLATFORM_MACOS)
+        TR_CORE_TRACE("Platform: MacOS");
         return PlatformType::MacOS;
 #else
+        TR_CORE_WARN("Platform: Unknown");
         return PlatformType::Unknown;
 #endif
     }
@@ -35,15 +39,15 @@ namespace Trinity
             case PlatformType::MacOS:
             {
 #if defined(TRINITY_ENABLE_SDL)
+                TR_CORE_TRACE("Platform factory: SDL");
                 return std::make_unique<SDLPlatform>();
 #else
-                PlatformFactory: SDL backend disabled, no desktop platform available");
+                TR_CORE_WARN("No platform factory available");
                 return nullptr;
 #endif
             }
-
             default:
-
+                TR_CORE_CRITICAL("Failed to create platform factory");
                 return nullptr;
         }
     }

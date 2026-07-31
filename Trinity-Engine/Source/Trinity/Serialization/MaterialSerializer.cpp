@@ -134,9 +134,9 @@ namespace Trinity
 
             return l_Material;
         }
-        catch (const std::exception& a_Exception)
+        catch (const std::exception& exception)
         {
-
+            TR_CORE_CRITICAL("{}", exception.what());
 
             return std::nullopt;
         }
@@ -190,9 +190,9 @@ namespace Trinity
 
             return l_Instance;
         }
-        catch (const std::exception& a_Exception)
+        catch (const std::exception& exception)
         {
-
+            TR_CORE_CRITICAL("{}", exception.what());
 
             return std::nullopt;
         }
