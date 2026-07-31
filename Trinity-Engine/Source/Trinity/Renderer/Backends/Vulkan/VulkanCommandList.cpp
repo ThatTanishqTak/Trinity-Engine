@@ -41,7 +41,7 @@ namespace Trinity
 
     VulkanCommandList::VulkanCommandList(VulkanDevice& device) : m_Device(device)
     {
-        TR_CORE_TRACE("INITIALIZING VULKAN COMMAND LIST");
+        TR_CORE_INFO("INITIALIZING VULKAN COMMAND LIST");
 
         VkCommandBufferAllocateInfo l_CommandBufferAllocateInfo{};
         l_CommandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -71,26 +71,26 @@ namespace Trinity
             TR_CORE_CRITICAL("Failed vkCreateDescriptorPool");
         }
 
-        TR_CORE_TRACE("VULKAN COMMAND LIST INITIALIZED");
+        TR_CORE_INFO("VULKAN COMMAND LIST INITIALIZED");
     }
 
     VulkanCommandList::~VulkanCommandList()
     {
-        TR_CORE_TRACE("SHUTTING DOWN VULKAN COMMAND LIST");
+        TR_CORE_INFO("SHUTTING DOWN VULKAN COMMAND LIST");
 
         if (m_DescriptorPool != VK_NULL_HANDLE)
         {
             vkDestroyDescriptorPool(m_Device.GetHandle(), m_DescriptorPool, nullptr);
-            TR_CORE_INFO("Descriptor pool destoryed");
+           TR_CORE_TRACE("Descriptor pool destoryed");
         }
 
         if (m_CommandBuffer != VK_NULL_HANDLE)
         {
             vkFreeCommandBuffers(m_Device.GetHandle(), m_Device.GetCommands().GetPool(), 1, &m_CommandBuffer);
-            TR_CORE_INFO("Command buffer freed");
+           TR_CORE_TRACE("Command buffer freed");
         }
 
-        TR_CORE_TRACE("VULKAN COMMAND LIST SHUTDOWN COMPLETE");
+        TR_CORE_INFO("VULKAN COMMAND LIST SHUTDOWN COMPLETE");
     }
 
     void VulkanCommandList::Begin()

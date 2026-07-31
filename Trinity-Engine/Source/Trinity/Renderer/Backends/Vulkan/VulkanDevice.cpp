@@ -230,7 +230,7 @@ namespace Trinity
 
     bool VulkanDevice::Initialize()
     {
-        TR_CORE_TRACE("INITIALIZING VULKAN DEVICE");
+        TR_CORE_INFO("INITIALIZING VULKAN DEVICE");
 
         if (m_Initialized)
         {
@@ -279,7 +279,7 @@ namespace Trinity
 
         m_Initialized = true;
 
-        TR_CORE_TRACE("VULKAN DEVICE INITIALIZED");
+        TR_CORE_INFO("VULKAN DEVICE INITIALIZED");
 
         return true;
     }
@@ -288,7 +288,7 @@ namespace Trinity
     {
         if (m_Device != VK_NULL_HANDLE)
         {
-            TR_CORE_TRACE("SHUTTING DOWN VULKAN DEVICE");
+            TR_CORE_INFO("SHUTTING DOWN VULKAN DEVICE");
 
             vkDeviceWaitIdle(m_Device);
 
@@ -307,13 +307,13 @@ namespace Trinity
                     if (resource.Pipeline != VK_NULL_HANDLE)
                     {
                         vkDestroyPipeline(m_Device, resource.Pipeline, nullptr);
-                        TR_CORE_INFO("Vulkan pipeline destroyed");
+                       TR_CORE_TRACE("Vulkan pipeline destroyed");
                     }
 
                     if (resource.Layout != VK_NULL_HANDLE)
                     {
                         vkDestroyPipelineLayout(m_Device, resource.Layout, nullptr);
-                        TR_CORE_INFO("Vulkan pipeline layout destroyed");
+                       TR_CORE_TRACE("Vulkan pipeline layout destroyed");
                     }
                 });
 
@@ -322,7 +322,7 @@ namespace Trinity
                     if (resource.Module != VK_NULL_HANDLE)
                     {
                         vkDestroyShaderModule(m_Device, resource.Module, nullptr);
-                        TR_CORE_INFO("Vulkan shader module destroyed");
+                       TR_CORE_TRACE("Vulkan shader module destroyed");
                     }
                 });
 
@@ -331,7 +331,7 @@ namespace Trinity
                     if (resource.Sampler != VK_NULL_HANDLE)
                     {
                         vkDestroySampler(m_Device, resource.Sampler, nullptr);
-                        TR_CORE_INFO("Vulkan sampler destroyed");
+                       TR_CORE_TRACE("Vulkan sampler destroyed");
                     }
                 });
 
@@ -340,13 +340,13 @@ namespace Trinity
                     if (resource.OwnsView && resource.View != VK_NULL_HANDLE)
                     {
                         vkDestroyImageView(m_Device, resource.View, nullptr);
-                        TR_CORE_INFO("Vulkan image view destroyed");
+                       TR_CORE_TRACE("Vulkan image view destroyed");
                     }
 
                     if (resource.OwnsImage && resource.Image != VK_NULL_HANDLE)
                     {
                         vmaDestroyImage(l_Allocator, resource.Image, resource.Allocation);
-                        TR_CORE_INFO("Vulkan image destroyed");
+                       TR_CORE_TRACE("Vulkan image destroyed");
                     }
                 });
 
@@ -355,7 +355,7 @@ namespace Trinity
                     if (resource.Buffer != VK_NULL_HANDLE)
                     {
                         vmaDestroyBuffer(l_Allocator, resource.Buffer, resource.Allocation);
-                        TR_CORE_INFO("Vulkan buffer destroyed");
+                       TR_CORE_TRACE("Vulkan buffer destroyed");
                     }
                 });
 
@@ -371,7 +371,7 @@ namespace Trinity
 
         m_Initialized = false;
      
-        TR_CORE_TRACE("VULKAN DEVICE SHUTDOWN COMPLETE");
+        TR_CORE_INFO("VULKAN DEVICE SHUTDOWN COMPLETE");
     }
 
     IImGuiRenderBackend& VulkanDevice::GetImGuiBackend()
@@ -419,7 +419,7 @@ namespace Trinity
         const uint32_t l_Total = l_Pipelines + l_Shaders + l_Samplers + l_Textures + l_Buffers;
         if (l_Total == 0)
         {
-            TR_CORE_INFO("No leaked resources");
+           TR_CORE_TRACE("No leaked resources");
         }
         else
         {

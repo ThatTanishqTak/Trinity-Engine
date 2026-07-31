@@ -22,6 +22,8 @@ namespace Trinity
 
     bool VulkanImGuiBackend::Initialize(uint32_t framesInFlight, Format colorFormat)
     {
+        TR_CORE_INFO("INITIALIZING VULKAN IMGUI BACKEND");
+
         if (m_Initialized)
         {
             return true;
@@ -53,7 +55,7 @@ namespace Trinity
 
         if (vkCreateDescriptorPool(m_Device.GetHandle(), &l_PoolInfo, nullptr, &m_DescriptorPool) != VK_SUCCESS)
         {
-
+            TR_CORE_CRITICAL("Failed vkCreateDescriptorPool");
 
             return false;
         }
@@ -79,7 +81,7 @@ namespace Trinity
 
         if (!ImGui_ImplVulkan_Init(&l_InitInfo))
         {
-
+            TR_CORE_CRITICAL("Failed to initialize ImGui's vulkan implementation");
             vkDestroyDescriptorPool(m_Device.GetHandle(), m_DescriptorPool, nullptr);
             m_DescriptorPool = VK_NULL_HANDLE;
 
@@ -100,7 +102,7 @@ namespace Trinity
 
         if (vkCreateSampler(m_Device.GetHandle(), &l_SamplerInfo, nullptr, &m_Sampler) != VK_SUCCESS)
         {
-
+            TR_CORE_CRITICAL("Failed vkCreateSampler");
             ImGui_ImplVulkan_Shutdown();
             vkDestroyDescriptorPool(m_Device.GetHandle(), m_DescriptorPool, nullptr);
             m_DescriptorPool = VK_NULL_HANDLE;
@@ -110,12 +112,15 @@ namespace Trinity
 
         m_Initialized = true;
 
+        TR_CORE_INFO("VULKAN IMGUI BACKEND INITIALIZED");
 
         return true;
     }
 
     void VulkanImGuiBackend::Shutdown()
     {
+        TR_CORE_INFO("SHUTTING DOWN VULKAN IMGUI BACKEND");
+
         if (!m_Initialized)
         {
             return;
@@ -137,6 +142,8 @@ namespace Trinity
         }
 
         m_Initialized = false;
+
+        TR_CORE_INFO("VULKAN IMGUI BACKEND SHUTDOWN COMPLETE");
     }
 
     void VulkanImGuiBackend::NewFrame()

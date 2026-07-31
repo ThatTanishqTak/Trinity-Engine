@@ -40,7 +40,7 @@ namespace Trinity
 
     bool SDLPlatform::Initialize()
     {
-        TR_CORE_TRACE("INITIALIZING SDL");
+        TR_CORE_INFO("INITIALIZING SDL");
 
         if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
         {
@@ -54,14 +54,14 @@ namespace Trinity
 
         m_Initialized = true;
 
-        TR_CORE_TRACE("SDL INITIALIZED");
+        TR_CORE_INFO("SDL INITIALIZED");
 
         return true;
     }
 
     void SDLPlatform::Shutdown()
     {
-        TR_CORE_TRACE("SHUTTING DOWN SDL");
+        TR_CORE_INFO("SHUTTING DOWN SDL");
 
         if (!m_Initialized)
         {
@@ -78,7 +78,7 @@ namespace Trinity
 
         m_Initialized = false;
 
-        TR_CORE_TRACE("SDL SHUTDOWN COMPLETE");
+        TR_CORE_INFO("SDL SHUTDOWN COMPLETE");
     }
 
     Window& SDLPlatform::CreateWindow(const WindowProperties& properties)

@@ -85,7 +85,7 @@ namespace Trinity
 
     SDLWindow::SDLWindow(const WindowProperties& properties)
     {
-        TR_CORE_TRACE("INITIALIZING SDL WINDOW");
+        TR_CORE_INFO("INITIALIZING SDL WINDOW");
 
         m_Data.Title = properties.Title;
         m_Data.Width = properties.Width;
@@ -116,12 +116,12 @@ namespace Trinity
             SDL_SetWindowHitTest(m_Window, TrinityHitTest, this);
         }
 
-        TR_CORE_TRACE("SDL WINDOW INITIALIZE");
+        TR_CORE_INFO("SDL WINDOW INITIALIZE");
     }
 
     SDLWindow::~SDLWindow()
     {
-        TR_CORE_TRACE("SHUTTING DOWN SDL WINDOW");
+        TR_CORE_INFO("SHUTTING DOWN SDL WINDOW");
 
         if (m_Window != nullptr)
         {
@@ -129,7 +129,7 @@ namespace Trinity
             m_Window = nullptr;
         }
 
-        TR_CORE_TRACE("SDL WINDOW SHUTDOWN COMPLETE");
+        TR_CORE_INFO("SDL WINDOW SHUTDOWN COMPLETE");
     }
 
     void SDLWindow::OnUpdate()

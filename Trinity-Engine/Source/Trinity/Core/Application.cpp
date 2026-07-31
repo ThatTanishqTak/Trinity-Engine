@@ -101,7 +101,7 @@ namespace Trinity
 
     void Application::OnEvent(Event& event)
     {
-        //TR_CORE_TRACE("{}", event.ToString());
+        //TR_CORE_INFO("{}", event.ToString());
 
         EventDispatcher l_Dispatcher(event);
         l_Dispatcher.Dispatch<WindowCloseEvent>([this](WindowCloseEvent& closed) { return OnWindowClose(closed); });

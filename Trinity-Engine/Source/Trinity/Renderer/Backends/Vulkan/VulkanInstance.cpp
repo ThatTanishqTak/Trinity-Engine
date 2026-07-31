@@ -76,43 +76,43 @@ namespace Trinity
 
     bool VulkanInstance::Initialize(const std::string& applicationName, bool enableValidation)
     {
-
+        TR_CORE_INFO("INITIALIZING VULKAN INSTACE");
 
         m_ValidationEnabled = enableValidation;
 
         if (m_ValidationEnabled && !CheckLayerSupport(s_ValidationLayers))
         {
-
+            TR_CORE_WARN("Validation layer support dsiabled");
             m_ValidationEnabled = false;
         }
 
         if (!CreateInstance(applicationName))
         {
-
+            TR_CORE_CRITICAL("Failed to create instace");
 
             return false;
         }
 
         if (m_ValidationEnabled && !SetupDebugMessenger())
         {
-
+            TR_CORE_WARN("Debug messenger disabled");
         }
 
-
+        TR_CORE_INFO("VULKAN INSTANCE INITIALIZED");
 
         return true;
     }
 
     void VulkanInstance::Shutdown()
     {
-
+        TR_CORE_INFO("SHUTTING DOWN VULKAN INSTACE");
 
         if (m_DebugMessenger != VK_NULL_HANDLE)
         {
             DestroyDebugUtilsMessengerEXT(m_Instance, m_DebugMessenger);
             m_DebugMessenger = VK_NULL_HANDLE;
 
-
+           TR_CORE_TRACE("Debug messenger destroyed");
         }
 
         if (m_Instance != VK_NULL_HANDLE)
@@ -120,15 +120,15 @@ namespace Trinity
             vkDestroyInstance(m_Instance, nullptr);
             m_Instance = VK_NULL_HANDLE;
 
-
+           TR_CORE_TRACE("Vulkan instance destroyed");
         }
 
-
+        TR_CORE_INFO("VULKAN INSTACE SHUTDOWN COMPLETE");
     }
 
     bool VulkanInstance::CreateInstance(const std::string& applicationName)
     {
-
+       TR_CORE_TRACE("Creating vulkan instace");
 
         VkApplicationInfo l_ApplicationInfo{};
         l_ApplicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -158,24 +158,24 @@ namespace Trinity
         VkResult l_Result = vkCreateInstance(&l_InstanceCreateInfo, nullptr, &m_Instance);
         if (l_Result != VK_SUCCESS)
         {
-
+            TR_CORE_CRITICAL("Failed vkCreateInstance");
         
             return false;
         }
 
-
+       TR_CORE_TRACE("Vulkan instance created");
 
         return true;
     }
 
     bool VulkanInstance::SetupDebugMessenger()
     {
-
+       TR_CORE_TRACE("Setting up debug messenger");
 
         VkDebugUtilsMessengerCreateInfoEXT l_DebugCreateInfo = MakeMessengerCreateInfo();
         VkResult l_Result = CreateDebugUtilsMessengerEXT(m_Instance, &l_DebugCreateInfo, &m_DebugMessenger);
 
-
+       TR_CORE_TRACE("Debug messenger setup complete");
 
         return l_Result == VK_SUCCESS;
     }

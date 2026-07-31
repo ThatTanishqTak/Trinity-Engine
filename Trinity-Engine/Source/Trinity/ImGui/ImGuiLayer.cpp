@@ -13,7 +13,7 @@ namespace Trinity
 
     bool ImGuiLayer::Initialize(IImGuiPlatformBackend& platform, IImGuiRenderBackend& renderer, uint32_t framesInFlight, Format colorFormat)
     {
-        TR_CORE_TRACE("INITIALIZING IMGUI LAYER");
+        TR_CORE_INFO("INITIALIZING IMGUI LAYER");
 
         if (m_Initialized)
         {
@@ -57,14 +57,14 @@ namespace Trinity
 
         m_Initialized = true;
 
-        TR_CORE_TRACE("IMGUI LAYER INITIALIZED");
+        TR_CORE_INFO("IMGUI LAYER INITIALIZED");
 
         return true;
     }
 
     void ImGuiLayer::Shutdown()
     {
-        TR_CORE_TRACE("SHUTTING DOWN IMGUI LAYER");
+        TR_CORE_INFO("SHUTTING DOWN IMGUI LAYER");
 
         if (!m_Initialized)
         {
@@ -87,7 +87,7 @@ namespace Trinity
         m_Platform = nullptr;
         m_Initialized = false;
 
-        TR_CORE_TRACE("IMGUI LAYER SHUTDOWN COMPLETE");
+        TR_CORE_INFO("IMGUI LAYER SHUTDOWN COMPLETE");
     }
 
     void ImGuiLayer::BeginFrame()

@@ -15,7 +15,7 @@ namespace Trinity
 
     bool AudioDevice::Initialize(AudioBackend backend)
     {
-        TR_CORE_TRACE("INITIALIZING AUDIO DEVICE");
+        TR_CORE_INFO("INITIALIZING AUDIO DEVICE");
 
         if (m_Backend != nullptr)
         {
@@ -42,14 +42,14 @@ namespace Trinity
         m_Backend->SetMasterVolume(m_MasterVolume);
 
 
-        TR_CORE_TRACE("AUDIO DEVICE INITIALIZED");
+        TR_CORE_INFO("AUDIO DEVICE INITIALIZED");
 
         return true;
     }
 
     void AudioDevice::Shutdown()
     {
-        TR_CORE_TRACE("SHUTTING DOWN AUDIO DEVICE");
+        TR_CORE_INFO("SHUTTING DOWN AUDIO DEVICE");
 
         if (m_Backend == nullptr)
         {
@@ -59,7 +59,7 @@ namespace Trinity
         m_Backend->Shutdown();
         m_Backend.reset();
 
-        TR_CORE_TRACE("AUDIO DEVICE SHUTDOWN COMPLETE");
+        TR_CORE_INFO("AUDIO DEVICE SHUTDOWN COMPLETE");
     }
 
     void AudioDevice::SetMasterVolume(float volume)

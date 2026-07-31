@@ -21,7 +21,7 @@ namespace Trinity
 
     bool SDLImGuiBackend::Initialize()
     {
-        TR_CORE_TRACE("INITIALIZING SDL IMGUI BACKEND");
+        TR_CORE_INFO("INITIALIZING SDL IMGUI BACKEND");
 
         if (m_Initialized)
         {
@@ -44,14 +44,14 @@ namespace Trinity
 
         m_Initialized = true;
 
-        TR_CORE_TRACE("SDL IMGUI BACKEND INITIALIZED");
+        TR_CORE_INFO("SDL IMGUI BACKEND INITIALIZED");
 
         return true;
     }
 
     void SDLImGuiBackend::Shutdown()
     {
-        TR_CORE_TRACE("SHUTTING DOWN SDL IMGUI BACKEND");
+        TR_CORE_INFO("SHUTTING DOWN SDL IMGUI BACKEND");
 
         if (!m_Initialized)
         {
@@ -61,7 +61,7 @@ namespace Trinity
         ImGui_ImplSDL3_Shutdown();
         m_Initialized = false;
 
-        TR_CORE_TRACE("SDL IMGUI BACKEND SHUTDOWN COMPLETE");
+        TR_CORE_INFO("SDL IMGUI BACKEND SHUTDOWN COMPLETE");
     }
 
     void SDLImGuiBackend::NewFrame()
