@@ -28,6 +28,9 @@
 #include <Trinity/Scene/Entity.h>
 #include <Trinity/Scene/Components/NameComponent.h>
 #include <Trinity/Scene/Components/MeshRendererComponent.h>
+#include <Trinity/Scene/Components/Rigidbody2DComponent.h>
+#include <Trinity/Scene/Components/BoxCollider2DComponent.h>
+#include <Trinity/Scene/Components/CircleCollider2DComponent.h>
 #include <Trinity/Scene/Components/CameraComponent.h>
 #include <Trinity/Scene/Components/LightComponent.h>
 #include <Trinity/Scene/Components/AudioSourceComponent.h>
@@ -276,7 +279,27 @@ namespace Trinity
         return l_Result;
     }
 
-    // Requests raised by a component header's "..." menu for the current frame.
+    static void DrawPhysicsMaterial(PhysicsMaterial& material)
+    {
+        ImGui::DragFloat("Friction", &material.Friction, 0.01f, 0.0f, 2.0f);
+        ImGui::DragFloat("Restitution", &material.Restitution, 0.01f, 0.0f, 1.0f);
+        ImGui::DragFloat("Density", &material.Density, 0.01f, 0.001f, 100.0f);
+
+        const char* l_CombineNames[] = { "Average", "Minimum", "Multiply", "Maximum" };
+        int l_Friction = static_cast<int>(material.FrictionCombine);
+        if (ImGui::Combo("Friction Combine", &l_Friction, l_CombineNames, 4))
+        {
+            material.FrictionCombine = static_cast<PhysicsCombineMode>(l_Friction);
+        }
+
+        int l_Restitution = static_cast<int>(material.RestitutionCombine);
+        if (ImGui::Combo("Restitution Combine", &l_Restitution, l_CombineNames, 4))
+        {
+            material.RestitutionCombine = static_cast<PhysicsCombineMode>(l_Restitution);
+        }
+    }
+
+    // Requests raised by a component header's "..." menu for the current frame
     struct ComponentSection
     {
         bool Open = false;
@@ -783,6 +806,119 @@ namespace Trinity
                     }
                 }
 
+                if (l_Entity.HasComponent<Rigidbody2DComponent>() && l_Show("Rigidbody 2D"))
+                {
+                    ComponentSection l_Section = BeginComponentSection("Rigidbody2D", ICON_FA_ATOM "  Rigidbody 2D", true);
+                    uint64_t l_TargetUUID = static_cast<uint64_t>(l_Entity.GetUUID());
+
+                    if (l_Section.Open)
+                    {
+                        Rigidbody2DComponent& l_Rigidbody = l_Entity.GetComponent<Rigidbody2DComponent>();
+
+                        const char* l_TypeNames[] = { "Static", "Kinematic", "Dynamic" };
+                        int l_Type = static_cast<int>(l_Rigidbody.Type);
+                        if (ImGui::Combo("Type", &l_Type, l_TypeNames, 3))
+                        {
+                            l_Rigidbody.Type = static_cast<BodyType>(l_Type);
+                        }
+
+                        ImGui::Checkbox("Fixed Rotation", &l_Rigidbody.FixedRotation);
+                        ImGui::DragFloat("Gravity Scale", &l_Rigidbody.GravityScale, 0.01f, -10.0f, 10.0f);
+                        ImGui::DragFloat("Linear Damping", &l_Rigidbody.LinearDamping, 0.01f, 0.0f, 10.0f);
+                        ImGui::DragFloat("Angular Damping", &l_Rigidbody.AngularDamping, 0.01f, 0.0f, 10.0f);
+
+                        int l_Layer = static_cast<int>(l_Rigidbody.Layer);
+                        if (ImGui::SliderInt("Layer", &l_Layer, 0, 31))
+                        {
+                            l_Rigidbody.Layer = static_cast<uint32_t>(l_Layer);
+                        }
+                    }
+
+                    if (l_Section.Reset)
+                    {
+                        m_Context.ComponentOp = [this, l_TargetUUID]()
+                            {
+                                Scene& l_OpScene = m_Engine.GetScene();
+                                m_Context.History.Execute(std::make_unique<ResetComponentCommand<Rigidbody2DComponent>>(l_OpScene, l_TargetUUID, "Rigidbody 2D"));
+                            };
+                    }
+
+                    if (l_Section.Remove)
+                    {
+                        m_Context.ComponentOp = [this, l_TargetUUID]()
+                            {
+                                Scene& l_OpScene = m_Engine.GetScene();
+                                m_Context.History.Execute(std::make_unique<RemoveComponentCommand<Rigidbody2DComponent>>(l_OpScene, l_TargetUUID, "Rigidbody 2D"));
+                            };
+                    }
+                }
+
+                if (l_Entity.HasComponent<BoxCollider2DComponent>() && l_Show("Box Collider 2D"))
+                {
+                    ComponentSection l_Section = BeginComponentSection("BoxCollider2D", ICON_FA_VECTOR_SQUARE "  Box Collider 2D", true);
+                    uint64_t l_TargetUUID = static_cast<uint64_t>(l_Entity.GetUUID());
+
+                    if (l_Section.Open)
+                    {
+                        BoxCollider2DComponent& l_Collider = l_Entity.GetComponent<BoxCollider2DComponent>();
+                        ImGui::DragFloat2("Offset", &l_Collider.Offset.x, 0.05f);
+                        ImGui::DragFloat2("Half Extents", &l_Collider.HalfExtents.x, 0.05f, 0.01f, 1000.0f);
+                        ImGui::Checkbox("Is Trigger", &l_Collider.IsTrigger);
+                        DrawPhysicsMaterial(l_Collider.Material);
+                    }
+
+                    if (l_Section.Reset)
+                    {
+                        m_Context.ComponentOp = [this, l_TargetUUID]()
+                            {
+                                Scene& l_OpScene = m_Engine.GetScene();
+                                m_Context.History.Execute(std::make_unique<ResetComponentCommand<BoxCollider2DComponent>>(l_OpScene, l_TargetUUID, "Box Collider 2D"));
+                            };
+                    }
+
+                    if (l_Section.Remove)
+                    {
+                        m_Context.ComponentOp = [this, l_TargetUUID]()
+                            {
+                                Scene& l_OpScene = m_Engine.GetScene();
+                                m_Context.History.Execute(std::make_unique<RemoveComponentCommand<BoxCollider2DComponent>>(l_OpScene, l_TargetUUID, "Box Collider 2D"));
+                            };
+                    }
+                }
+
+                if (l_Entity.HasComponent<CircleCollider2DComponent>() && l_Show("Circle Collider 2D"))
+                {
+                    ComponentSection l_Section = BeginComponentSection("CircleCollider2D", ICON_FA_CIRCLE_OUTLINE "  Circle Collider 2D", true);
+                    uint64_t l_TargetUUID = static_cast<uint64_t>(l_Entity.GetUUID());
+
+                    if (l_Section.Open)
+                    {
+                        CircleCollider2DComponent& l_Collider = l_Entity.GetComponent<CircleCollider2DComponent>();
+                        ImGui::DragFloat2("Offset", &l_Collider.Offset.x, 0.05f);
+                        ImGui::DragFloat("Radius", &l_Collider.Radius, 0.05f, 0.01f, 1000.0f);
+                        ImGui::Checkbox("Is Trigger", &l_Collider.IsTrigger);
+                        DrawPhysicsMaterial(l_Collider.Material);
+                    }
+
+                    if (l_Section.Reset)
+                    {
+                        m_Context.ComponentOp = [this, l_TargetUUID]()
+                            {
+                                Scene& l_OpScene = m_Engine.GetScene();
+                                m_Context.History.Execute(std::make_unique<ResetComponentCommand<CircleCollider2DComponent>>(l_OpScene, l_TargetUUID, "Circle Collider 2D"));
+                            };
+                    }
+
+                    if (l_Section.Remove)
+                    {
+                        m_Context.ComponentOp = [this, l_TargetUUID]()
+                            {
+                                Scene& l_OpScene = m_Engine.GetScene();
+                                m_Context.History.Execute(std::make_unique<RemoveComponentCommand<CircleCollider2DComponent>>(l_OpScene, l_TargetUUID, "Circle Collider 2D"));
+                            };
+                    }
+                }
+
                 ImGui::Spacing();
                 ImGui::Separator();
                 ImGui::Spacing();
@@ -843,6 +979,33 @@ namespace Trinity
                             {
                                 Scene& l_OpScene = m_Engine.GetScene();
                                 m_Context.History.Execute(std::make_unique<AddComponentCommand<AudioListenerComponent>>(l_OpScene, l_TargetUUID, "Audio Listener"));
+                            };
+                    }
+
+                    if (!l_Entity.HasComponent<Rigidbody2DComponent>() && ImGui::MenuItem(ICON_FA_ATOM "  Rigidbody 2D"))
+                    {
+                        m_Context.ComponentOp = [this, l_TargetUUID]()
+                            {
+                                Scene& l_OpScene = m_Engine.GetScene();
+                                m_Context.History.Execute(std::make_unique<AddComponentCommand<Rigidbody2DComponent>>(l_OpScene, l_TargetUUID, "Rigidbody 2D"));
+                            };
+                    }
+
+                    if (!l_Entity.HasComponent<BoxCollider2DComponent>() && ImGui::MenuItem(ICON_FA_VECTOR_SQUARE "  Box Collider 2D"))
+                    {
+                        m_Context.ComponentOp = [this, l_TargetUUID]()
+                            {
+                                Scene& l_OpScene = m_Engine.GetScene();
+                                m_Context.History.Execute(std::make_unique<AddComponentCommand<BoxCollider2DComponent>>(l_OpScene, l_TargetUUID, "Box Collider 2D"));
+                            };
+                    }
+
+                    if (!l_Entity.HasComponent<CircleCollider2DComponent>() && ImGui::MenuItem(ICON_FA_CIRCLE_OUTLINE "  Circle Collider 2D"))
+                    {
+                        m_Context.ComponentOp = [this, l_TargetUUID]()
+                            {
+                                Scene& l_OpScene = m_Engine.GetScene();
+                                m_Context.History.Execute(std::make_unique<AddComponentCommand<CircleCollider2DComponent>>(l_OpScene, l_TargetUUID, "Circle Collider 2D"));
                             };
                     }
 

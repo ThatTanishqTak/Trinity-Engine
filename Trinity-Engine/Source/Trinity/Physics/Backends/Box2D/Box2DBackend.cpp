@@ -317,6 +317,13 @@ namespace Trinity
         return true;
     }
 
+    bool Box2DBackend::IsBodyAwake(BodyHandle body) const
+    {
+        auto l_Found = m_Implementation->Bodies.find(static_cast<uint64_t>(body));
+
+        return l_Found != m_Implementation->Bodies.end() && b2Body_IsValid(l_Found->second.Id) && b2Body_IsAwake(l_Found->second.Id);
+    }
+
     void Box2DBackend::SetLinearVelocity(BodyHandle body, const glm::vec2& velocity)
     {
         auto l_Found = m_Implementation->Bodies.find(static_cast<uint64_t>(body));

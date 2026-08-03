@@ -24,6 +24,7 @@ namespace Trinity
 
         virtual void SetBodyTransform(BodyHandle body, const glm::vec2& position, float rotation) = 0;
         virtual bool GetBodyTransform(BodyHandle body, glm::vec2& outPosition, float& outRotation) const = 0;
+        virtual bool IsBodyAwake(BodyHandle body) const = 0;
 
         virtual void SetLinearVelocity(BodyHandle body, const glm::vec2& velocity) = 0;
         virtual void ApplyForce(BodyHandle body, const glm::vec2& force) = 0;

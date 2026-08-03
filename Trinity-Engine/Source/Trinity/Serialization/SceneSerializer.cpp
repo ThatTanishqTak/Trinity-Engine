@@ -20,12 +20,79 @@
 #include <Trinity/Scene/Components/LightComponent.h>
 #include <Trinity/Scene/Components/AudioSourceComponent.h>
 #include <Trinity/Scene/Components/AudioListenerComponent.h>
+#include <Trinity/Scene/Components/Rigidbody2DComponent.h>
+#include <Trinity/Scene/Components/BoxCollider2DComponent.h>
+#include <Trinity/Scene/Components/CircleCollider2DComponent.h>
 #include <Trinity/Assets/AssetDatabase.h>
 #include <Trinity/Core/Log.h>
 
 namespace Trinity
 {
     static constexpr uint32_t k_SceneVersion = 1;
+
+    static const char* BodyTypeToString(BodyType type)
+    {
+        switch (type)
+        {
+        case BodyType::Static: return "Static";
+        case BodyType::Kinematic: return "Kinematic";
+        case BodyType::Dynamic: return "Dynamic";
+        }
+
+        return "Static";
+    }
+
+    static BodyType BodyTypeFromString(const std::string& value)
+    {
+        if (value == "Kinematic")
+        {
+            return BodyType::Kinematic;
+        }
+
+        if (value == "Dynamic")
+        {
+            return BodyType::Dynamic;
+        }
+
+        return BodyType::Static;
+    }
+
+    static void EmitPhysicsMaterial(YAML::Emitter& out, const PhysicsMaterial& material)
+    {
+        out << YAML::Key << "Friction" << YAML::Value << material.Friction;
+        out << YAML::Key << "Restitution" << YAML::Value << material.Restitution;
+        out << YAML::Key << "Density" << YAML::Value << material.Density;
+        out << YAML::Key << "FrictionCombine" << YAML::Value << static_cast<uint32_t>(material.FrictionCombine);
+        out << YAML::Key << "RestitutionCombine" << YAML::Value << static_cast<uint32_t>(material.RestitutionCombine);
+    }
+
+    static void ReadPhysicsMaterial(const YAML::Node& node, PhysicsMaterial& material)
+    {
+        if (node["Friction"])
+        {
+            material.Friction = node["Friction"].as<float>();
+        }
+
+        if (node["Restitution"])
+        {
+            material.Restitution = node["Restitution"].as<float>();
+        }
+
+        if (node["Density"])
+        {
+            material.Density = node["Density"].as<float>();
+        }
+
+        if (node["FrictionCombine"])
+        {
+            material.FrictionCombine = static_cast<PhysicsCombineMode>(node["FrictionCombine"].as<uint32_t>());
+        }
+
+        if (node["RestitutionCombine"])
+        {
+            material.RestitutionCombine = static_cast<PhysicsCombineMode>(node["RestitutionCombine"].as<uint32_t>());
+        }
+    }
 
     static void EmitEntityNode(YAML::Emitter& out, Scene& scene, entt::entity handle)
     {
@@ -103,6 +170,38 @@ namespace Trinity
         {
             out << YAML::Key << "AudioListener" << YAML::Value << YAML::BeginMap;
             out << YAML::Key << "Active" << YAML::Value << l_AudioListener->Active;
+            out << YAML::EndMap;
+        }
+
+        if (const Rigidbody2DComponent* l_Rigidbody = l_Registry.try_get<Rigidbody2DComponent>(handle))
+        {
+            out << YAML::Key << "Rigidbody2D" << YAML::Value << YAML::BeginMap;
+            out << YAML::Key << "Type" << YAML::Value << BodyTypeToString(l_Rigidbody->Type);
+            out << YAML::Key << "FixedRotation" << YAML::Value << l_Rigidbody->FixedRotation;
+            out << YAML::Key << "GravityScale" << YAML::Value << l_Rigidbody->GravityScale;
+            out << YAML::Key << "LinearDamping" << YAML::Value << l_Rigidbody->LinearDamping;
+            out << YAML::Key << "AngularDamping" << YAML::Value << l_Rigidbody->AngularDamping;
+            out << YAML::Key << "Layer" << YAML::Value << l_Rigidbody->Layer;
+            out << YAML::EndMap;
+        }
+
+        if (const BoxCollider2DComponent* l_BoxCollider = l_Registry.try_get<BoxCollider2DComponent>(handle))
+        {
+            out << YAML::Key << "BoxCollider2D" << YAML::Value << YAML::BeginMap;
+            out << YAML::Key << "Offset" << YAML::Value << l_BoxCollider->Offset;
+            out << YAML::Key << "HalfExtents" << YAML::Value << l_BoxCollider->HalfExtents;
+            out << YAML::Key << "IsTrigger" << YAML::Value << l_BoxCollider->IsTrigger;
+            EmitPhysicsMaterial(out, l_BoxCollider->Material);
+            out << YAML::EndMap;
+        }
+
+        if (const CircleCollider2DComponent* l_CircleCollider = l_Registry.try_get<CircleCollider2DComponent>(handle))
+        {
+            out << YAML::Key << "CircleCollider2D" << YAML::Value << YAML::BeginMap;
+            out << YAML::Key << "Offset" << YAML::Value << l_CircleCollider->Offset;
+            out << YAML::Key << "Radius" << YAML::Value << l_CircleCollider->Radius;
+            out << YAML::Key << "IsTrigger" << YAML::Value << l_CircleCollider->IsTrigger;
+            EmitPhysicsMaterial(out, l_CircleCollider->Material);
             out << YAML::EndMap;
         }
 
@@ -240,6 +339,86 @@ namespace Trinity
             }
 
             entity.AddComponent<AudioListenerComponent>(l_Component);
+        }
+
+        if (YAML::Node l_RigidbodyNode = node["Rigidbody2D"])
+        {
+            Rigidbody2DComponent l_Component;
+            if (l_RigidbodyNode["Type"])
+            {
+                l_Component.Type = BodyTypeFromString(l_RigidbodyNode["Type"].as<std::string>());
+            }
+
+            if (l_RigidbodyNode["FixedRotation"])
+            {
+                l_Component.FixedRotation = l_RigidbodyNode["FixedRotation"].as<bool>();
+            }
+
+            if (l_RigidbodyNode["GravityScale"])
+            {
+                l_Component.GravityScale = l_RigidbodyNode["GravityScale"].as<float>();
+            }
+
+            if (l_RigidbodyNode["LinearDamping"])
+            {
+                l_Component.LinearDamping = l_RigidbodyNode["LinearDamping"].as<float>();
+            }
+
+            if (l_RigidbodyNode["AngularDamping"])
+            {
+                l_Component.AngularDamping = l_RigidbodyNode["AngularDamping"].as<float>();
+            }
+
+            if (l_RigidbodyNode["Layer"])
+            {
+                l_Component.Layer = l_RigidbodyNode["Layer"].as<uint32_t>();
+            }
+
+            entity.AddComponent<Rigidbody2DComponent>(l_Component);
+        }
+
+        if (YAML::Node l_BoxColliderNode = node["BoxCollider2D"])
+        {
+            BoxCollider2DComponent l_Component;
+            if (l_BoxColliderNode["Offset"])
+            {
+                l_Component.Offset = l_BoxColliderNode["Offset"].as<glm::vec2>();
+            }
+
+            if (l_BoxColliderNode["HalfExtents"])
+            {
+                l_Component.HalfExtents = l_BoxColliderNode["HalfExtents"].as<glm::vec2>();
+            }
+
+            if (l_BoxColliderNode["IsTrigger"])
+            {
+                l_Component.IsTrigger = l_BoxColliderNode["IsTrigger"].as<bool>();
+            }
+
+            ReadPhysicsMaterial(l_BoxColliderNode, l_Component.Material);
+            entity.AddComponent<BoxCollider2DComponent>(l_Component);
+        }
+
+        if (YAML::Node l_CircleColliderNode = node["CircleCollider2D"])
+        {
+            CircleCollider2DComponent l_Component;
+            if (l_CircleColliderNode["Offset"])
+            {
+                l_Component.Offset = l_CircleColliderNode["Offset"].as<glm::vec2>();
+            }
+
+            if (l_CircleColliderNode["Radius"])
+            {
+                l_Component.Radius = l_CircleColliderNode["Radius"].as<float>();
+            }
+
+            if (l_CircleColliderNode["IsTrigger"])
+            {
+                l_Component.IsTrigger = l_CircleColliderNode["IsTrigger"].as<bool>();
+            }
+
+            ReadPhysicsMaterial(l_CircleColliderNode, l_Component.Material);
+            entity.AddComponent<CircleCollider2DComponent>(l_Component);
         }
     }
 

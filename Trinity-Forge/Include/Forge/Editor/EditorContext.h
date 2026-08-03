@@ -141,6 +141,8 @@ namespace Trinity
         bool PlayMode = false;
         bool ShowRenderGraph = false;
         bool ShowPhysicsColliders = false;
+        bool ShowPhysicsSettings = false;
+        bool LogPhysicsEvents = false;
 
         float ChromeTop = 0.0f;
         float ChromeBottom = 0.0f;

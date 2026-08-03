@@ -10,7 +10,17 @@
 #include <Trinity/Scene/Scene.h>
 #include <Trinity/Scene/Entity.h>
 #include <Trinity/Scene/Components/HierarchyComponent.h>
+#include <Trinity/Scene/Components/TransformComponent.h>
+#include <Trinity/Scene/Components/Rigidbody2DComponent.h>
+#include <Trinity/Scene/Components/BoxCollider2DComponent.h>
+#include <Trinity/Scene/Components/CircleCollider2DComponent.h>
+#include <Trinity/Physics/Frontend/PhysicsSystem.h>
+#include <Trinity/Physics/Frontend/PhysicsWorld2D.h>
+#include <Trinity/Physics/DebugPhysicsDraw.h>
+#include <Trinity/Renderer/Frontend/Renderer.h>
 #include <Trinity/Serialization/SceneSerializer.h>
+
+#include <cmath>
 
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -26,6 +36,7 @@
 #include <Forge/Editor/Panels/ConsolePanel.h>
 #include <Forge/Editor/Panels/ContentBrowserPanel.h>
 #include <Forge/Editor/Panels/RenderGraphPanel.h>
+#include <Forge/Editor/Panels/PhysicsSettingsPanel.h>
 #include <Forge/Editor/Commands/EntityCommands.h>
 #include <Forge/Editor/Commands/CompositeCommand.h>
 
@@ -58,12 +69,16 @@ namespace Trinity
         m_ConsolePanel = std::make_unique<ConsolePanel>(m_Context, GetEngine());
         m_ContentBrowserPanel = std::make_unique<ContentBrowserPanel>(m_Context, GetEngine());
         m_RenderGraphPanel = std::make_unique<RenderGraphPanel>(m_Context, GetEngine());
+        m_PhysicsSettingsPanel = std::make_unique<PhysicsSettingsPanel>(m_Context, GetEngine());
 
         TR_INFO("FORGE INITIALIZED");
     }
 
     void ForgeApplication::OnUpdate(Timestep timestep)
     {
+        RenderPhysicsColliders();
+        LogPhysicsEvents();
+
         //TR_TRACE("Updated: {}", timestep.GetMilliseconds());
     }
 
@@ -89,6 +104,7 @@ namespace Trinity
         ProcessPendingAction();
         m_InspectorPanel->OnImGuiRender();
         m_RenderGraphPanel->OnImGuiRender();
+        m_PhysicsSettingsPanel->OnImGuiRender();
 
         RenderDrawer("##ForgeContentDrawer", "Content Browser", m_Context.ShowContentDrawer, m_ContentDrawerOpenPrev, [this]() { m_ContentBrowserPanel->RenderContents(); });
         RenderDrawer("##ForgeConsoleDrawer", "Console", m_Context.ShowConsoleDrawer, m_ConsoleDrawerOpenPrev, [this]() { m_ConsolePanel->RenderContents(); });
@@ -264,6 +280,121 @@ namespace Trinity
         }
 
         return false;
+    }
+
+    void ForgeApplication::RenderPhysicsColliders()
+    {
+        if (!m_Context.ShowPhysicsColliders || !GetEngine().HasRenderer() || !GetEngine().HasScene())
+        {
+            return;
+        }
+
+        constexpr uint32_t k_ColorAwake = 0xFF00FF00;    // green
+        constexpr uint32_t k_ColorAsleep = 0xFF808080;   // grey
+        constexpr uint32_t k_ColorTrigger = 0xFF00FFFF;  // yellow
+
+        Scene& l_Scene = GetEngine().GetScene();
+        entt::registry& l_Registry = l_Scene.GetRegistry();
+        PhysicsWorld2D* l_World = GetEngine().HasPhysicsSystem() ? GetEngine().GetPhysicsSystem().GetWorld2D() : nullptr;
+
+        DebugDrawBuffer l_Buffer;
+
+        auto l_BodyColor = [&](entt::entity entity, bool trigger) -> uint32_t
+            {
+                if (trigger)
+                {
+                    return k_ColorTrigger;
+                }
+
+                if (m_Context.PlayMode && l_World != nullptr)
+                {
+                    const Rigidbody2DComponent* l_Rigidbody = l_Registry.try_get<Rigidbody2DComponent>(entity);
+                    if (l_Rigidbody != nullptr && l_Rigidbody->Runtime != BodyHandle::Invalid && !l_World->IsBodyAwake(l_Rigidbody->Runtime))
+                    {
+                        return k_ColorAsleep;
+                    }
+                }
+
+                return k_ColorAwake;
+            };
+
+        auto l_Boxes = l_Registry.view<TransformComponent, BoxCollider2DComponent>();
+        for (entt::entity it_Entity : l_Boxes)
+        {
+            const BoxCollider2DComponent& l_Collider = l_Boxes.get<BoxCollider2DComponent>(it_Entity);
+            glm::mat4 l_World4 = l_Scene.GetWorldMatrix(it_Entity);
+            uint32_t l_Color = l_BodyColor(it_Entity, l_Collider.IsTrigger);
+
+            glm::vec2 l_Min = l_Collider.Offset - l_Collider.HalfExtents;
+            glm::vec2 l_Max = l_Collider.Offset + l_Collider.HalfExtents;
+            glm::vec3 l_Corners[4] = {
+                glm::vec3(l_World4 * glm::vec4(l_Min.x, l_Min.y, 0.0f, 1.0f)),
+                glm::vec3(l_World4 * glm::vec4(l_Max.x, l_Min.y, 0.0f, 1.0f)),
+                glm::vec3(l_World4 * glm::vec4(l_Max.x, l_Max.y, 0.0f, 1.0f)),
+                glm::vec3(l_World4 * glm::vec4(l_Min.x, l_Max.y, 0.0f, 1.0f))
+            };
+
+            for (int l_Index = 0; l_Index < 4; ++l_Index)
+            {
+                l_Buffer.AddLine(l_Corners[l_Index], l_Corners[(l_Index + 1) % 4], l_Color);
+            }
+        }
+
+        auto l_Circles = l_Registry.view<TransformComponent, CircleCollider2DComponent>();
+        for (entt::entity it_Entity : l_Circles)
+        {
+            const CircleCollider2DComponent& l_Collider = l_Circles.get<CircleCollider2DComponent>(it_Entity);
+            glm::mat4 l_World4 = l_Scene.GetWorldMatrix(it_Entity);
+            uint32_t l_Color = l_BodyColor(it_Entity, l_Collider.IsTrigger);
+
+            // The physics circle takes the larger world axis scale, so the outline
+            // is a true circle even under non-uniform scale.
+            glm::vec3 l_Center(l_World4 * glm::vec4(l_Collider.Offset.x, l_Collider.Offset.y, 0.0f, 1.0f));
+            float l_ScaleX = glm::length(glm::vec3(l_World4[0]));
+            float l_ScaleY = glm::length(glm::vec3(l_World4[1]));
+            float l_Radius = l_Collider.Radius * glm::max(l_ScaleX, l_ScaleY);
+
+            constexpr int k_Segments = 24;
+            constexpr float k_Tau = 6.28318530718f;
+            glm::vec3 l_Previous = l_Center + glm::vec3(l_Radius, 0.0f, 0.0f);
+            for (int l_Index = 1; l_Index <= k_Segments; ++l_Index)
+            {
+                float l_Angle = k_Tau * static_cast<float>(l_Index) / static_cast<float>(k_Segments);
+                glm::vec3 l_Point = l_Center + glm::vec3(l_Radius * std::cos(l_Angle), l_Radius * std::sin(l_Angle), 0.0f);
+                l_Buffer.AddLine(l_Previous, l_Point, l_Color);
+                l_Previous = l_Point;
+            }
+        }
+
+        if (!l_Buffer.Lines.empty())
+        {
+            GetEngine().GetRenderer().SubmitDebugLines(l_Buffer);
+        }
+    }
+
+    void ForgeApplication::LogPhysicsEvents()
+    {
+        if (!m_Context.LogPhysicsEvents || !m_Context.PlayMode || !GetEngine().HasPhysicsSystem())
+        {
+            return;
+        }
+
+        const PhysicsEventQueue& l_Events = GetEngine().GetPhysicsSystem().GetEvents();
+
+        for (const ContactEvent& it_Contact : l_Events.Contacts)
+        {
+            TR_TRACE("Contact {}: {:x} <-> {:x} at ({:.2f}, {:.2f}), impulse {:.3f}",
+                it_Contact.Phase == ContactPhase::Begin ? "begin" : "end",
+                static_cast<uint64_t>(it_Contact.A), static_cast<uint64_t>(it_Contact.B),
+                it_Contact.Point.x, it_Contact.Point.y, it_Contact.Impulse);
+        }
+
+        for (const TriggerEvent& it_Trigger : l_Events.Triggers)
+        {
+            TR_TRACE("Trigger {}: {:x} by {:x}",
+                it_Trigger.Phase == ContactPhase::Begin ? "begin" : "end",
+                static_cast<uint64_t>(it_Trigger.Trigger), static_cast<uint64_t>(it_Trigger.Other));
+        }
     }
 
     void ForgeApplication::ProcessPendingAction()

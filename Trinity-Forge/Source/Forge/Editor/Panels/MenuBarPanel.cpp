@@ -210,6 +210,16 @@ namespace Trinity
                 m_Context.ShowPhysicsColliders = !m_Context.ShowPhysicsColliders;
             }
 
+            if (ImGui::MenuItem(ICON_FA_ATOM "  Physics Settings", nullptr, m_Context.ShowPhysicsSettings))
+            {
+                m_Context.ShowPhysicsSettings = !m_Context.ShowPhysicsSettings;
+            }
+
+            if (ImGui::MenuItem(ICON_FA_TERMINAL "  Log Physics Events", nullptr, m_Context.LogPhysicsEvents))
+            {
+                m_Context.LogPhysicsEvents = !m_Context.LogPhysicsEvents;
+            }
+
             ImGui::Separator();
             if (ImGui::MenuItem(ICON_FA_ARROWS_ROTATE "  Reset Layout"))
             {

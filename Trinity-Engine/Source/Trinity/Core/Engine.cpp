@@ -205,6 +205,11 @@ namespace Trinity
         {
             m_AudioEngine->Update(*m_Scene, *m_AssetDatabase);
         }
+
+        if (m_PhysicsSystem != nullptr && m_Scene != nullptr && m_ScenePlaying)
+        {
+            m_PhysicsSystem->ApplyInterpolation(*m_Scene, m_SimulationClock.GetAlpha());
+        }
     }
 
     void Engine::FixedUpdate(Timestep timestep)
@@ -245,6 +250,12 @@ namespace Trinity
         if (m_Renderer != nullptr && m_Scene != nullptr && m_EditorCamera != nullptr && m_AssetDatabase != nullptr)
         {
             m_Renderer->RenderFrame(*m_Scene, *m_AssetDatabase, m_EditorCamera->GetCamera(), &m_ImGuiLayer);
+        }
+
+        // Physics events stay queued for the whole frame so panels can read them; the frame ends here
+        if (m_PhysicsSystem != nullptr)
+        {
+            m_PhysicsSystem->ClearEvents();
         }
     }
 

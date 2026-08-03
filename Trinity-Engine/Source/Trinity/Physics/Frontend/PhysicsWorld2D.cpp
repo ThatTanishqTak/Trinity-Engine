@@ -72,6 +72,11 @@ namespace Trinity
         return m_Backend != nullptr && m_Backend->GetBodyTransform(body, outPosition, outRotation);
     }
 
+    bool PhysicsWorld2D::IsBodyAwake(BodyHandle body) const
+    {
+        return m_Backend != nullptr && m_Backend->IsBodyAwake(body);
+    }
+
     void PhysicsWorld2D::SetLinearVelocity(BodyHandle body, const glm::vec2& velocity)
     {
         if (m_Backend != nullptr)

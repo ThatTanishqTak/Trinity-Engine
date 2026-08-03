@@ -1,6 +1,11 @@
 #pragma once
 
 #include <memory>
+#include <unordered_map>
+#include <vector>
+
+#include <entt/entt.hpp>
+#include <glm/vec2.hpp>
 
 #include <Trinity/Physics/PhysicsTypes.h>
 #include <Trinity/Physics/PhysicsSettings.h>
@@ -29,6 +34,9 @@ namespace Trinity
 
         void Step(Scene& scene, float fixedDelta);
 
+        // Writes lerp(previous, current) into simulated transforms; call once per rendered frame with the simulation clock's alpha.
+        void ApplyInterpolation(Scene& scene, float alpha);
+
         PhysicsSettings& GetSettings() { return m_Settings; }
         const PhysicsSettings& GetSettings() const { return m_Settings; }
 
@@ -38,13 +46,43 @@ namespace Trinity
         bool HasWorld3D() const { return m_World3D != nullptr; }
 
         const PhysicsEventQueue& GetEvents() const { return m_Events; }
+        void ClearEvents() { m_Events.Clear(); }
         bool IsSceneActive() const { return m_SceneActive; }
 
     private:
+        struct Body2DRecord
+        {
+            BodyHandle Handle = BodyHandle::Invalid;
+            BodyType Type = BodyType::Static;
+            glm::vec2 PreviousPosition{ 0.0f };
+            glm::vec2 CurrentPosition{ 0.0f };
+            glm::vec2 LastWrittenPosition{ 0.0f };
+            float PreviousRotation = 0.0f;
+            float CurrentRotation = 0.0f;
+            float LastWrittenRotation = 0.0f;
+            glm::vec2 ScaleAtCreation{ 1.0f };
+            bool ScaleWarned = false;
+        };
+
+        void CreateBody2D(Scene& scene, entt::entity entity);
+        void DestroyBody2D(entt::registry& registry, entt::entity entity);
+        void ProcessPendingRebuilds2D(Scene& scene);
+        void SyncSceneToPhysics2D(Scene& scene);
+        void SyncPhysicsToScene2D(Scene& scene);
+        void WriteBody2DTransform(Scene& scene, entt::entity entity, const glm::vec2& position, float rotation);
+
+        void OnRigidbody2DConstructed(entt::registry& registry, entt::entity entity);
+        void OnRigidbody2DDestroyed(entt::registry& registry, entt::entity entity);
+        void OnCollider2DChanged(entt::registry& registry, entt::entity entity);
+
         PhysicsSettings m_Settings;
         std::unique_ptr<PhysicsWorld2D> m_World2D;
         std::unique_ptr<PhysicsWorld3D> m_World3D;
         PhysicsEventQueue m_Events;
+
+        Scene* m_ActiveScene = nullptr;
+        std::unordered_map<entt::entity, Body2DRecord> m_Bodies2D;
+        std::vector<entt::entity> m_PendingRebuilds2D;
         bool m_SceneActive = false;
     };
 }

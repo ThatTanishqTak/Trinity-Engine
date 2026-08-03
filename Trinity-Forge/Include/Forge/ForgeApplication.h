@@ -23,6 +23,7 @@ namespace Trinity
     class ConsolePanel;
     class ContentBrowserPanel;
     class RenderGraphPanel;
+    class PhysicsSettingsPanel;
 
     class ForgeApplication : public Application
     {
@@ -41,6 +42,8 @@ namespace Trinity
         void RenderDockspace();
         void BuildDefaultLayout(unsigned int dockspaceID);
         void RenderDrawer(const char* id, const char* title, bool& show, bool& openPrev, const std::function<void()>& body);
+        void RenderPhysicsColliders();
+        void LogPhysicsEvents();
         void ProcessPendingAction();
         void ProcessDeferredComponentOp();
         void ProcessPendingFileOp();
@@ -56,6 +59,7 @@ namespace Trinity
         std::unique_ptr<ConsolePanel> m_ConsolePanel;
         std::unique_ptr<ContentBrowserPanel> m_ContentBrowserPanel;
         std::unique_ptr<RenderGraphPanel> m_RenderGraphPanel;
+        std::unique_ptr<PhysicsSettingsPanel> m_PhysicsSettingsPanel;
 
         bool m_ContentDrawerOpenPrev = false;
         bool m_ConsoleDrawerOpenPrev = false;

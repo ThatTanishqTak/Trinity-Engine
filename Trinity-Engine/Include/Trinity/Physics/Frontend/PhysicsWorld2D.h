@@ -31,6 +31,7 @@ namespace Trinity
 
         void SetBodyTransform(BodyHandle body, const glm::vec2& position, float rotation);
         bool GetBodyTransform(BodyHandle body, glm::vec2& outPosition, float& outRotation) const;
+        bool IsBodyAwake(BodyHandle body) const;
 
         void SetLinearVelocity(BodyHandle body, const glm::vec2& velocity);
         void ApplyForce(BodyHandle body, const glm::vec2& force);
