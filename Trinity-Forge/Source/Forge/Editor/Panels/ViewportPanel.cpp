@@ -211,7 +211,7 @@ namespace Trinity
 
                     TransformComponent& l_Transform = l_Registry.get<TransformComponent>(entity);
                     l_Transform.Translation = glm::vec3(l_Translation[0], l_Translation[1], l_Translation[2]);
-                    l_Transform.Rotation = glm::radians(glm::vec3(l_Rotation[0], l_Rotation[1], l_Rotation[2]));
+                    l_Transform.SetEulerAngles(glm::radians(glm::vec3(l_Rotation[0], l_Rotation[1], l_Rotation[2])));
                     l_Transform.Scale = glm::vec3(l_Scale[0], l_Scale[1], l_Scale[2]);
                 };
 

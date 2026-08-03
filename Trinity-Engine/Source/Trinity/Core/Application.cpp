@@ -53,6 +53,10 @@ namespace Trinity
 
         OnInitialize();
 
+        SimulationClock& l_Clock = m_Engine->GetSimulationClock();
+        l_Clock.SetFixedDelta(m_Specification.FixedDelta);
+        l_Clock.SetMaxSubSteps(m_Specification.MaxSubSteps);
+
         Timer l_FrameTimer;
 
         while (m_Running)
@@ -66,6 +70,23 @@ namespace Trinity
 
             if (!m_Minimized)
             {
+                const uint32_t l_StepCount = l_Clock.BeginFrame(l_Delta);
+                const Timestep l_FixedTimestep(l_Clock.GetFixedDelta());
+
+                for (uint32_t l_Step = 0; l_Step < l_StepCount; ++l_Step)
+                {
+                    m_Engine->FixedUpdate(l_FixedTimestep);
+                    OnFixedUpdate(l_FixedTimestep);
+                }
+
+                m_StepClampWarnCooldown -= l_Delta;
+                float l_DroppedTime = l_Clock.ConsumeDroppedTime();
+                if (l_DroppedTime > 0.0f && m_StepClampWarnCooldown <= 0.0f)
+                {
+                    TR_CORE_WARN("Simulation fell behind: dropped {:.0f} ms of simulated time (MaxSubSteps = {})", l_DroppedTime * 1000.0f, l_Clock.GetMaxSubSteps());
+                    m_StepClampWarnCooldown = 1.0f;
+                }
+
                 m_Engine->Update(l_Timestep);
                 OnUpdate(l_Timestep);
 

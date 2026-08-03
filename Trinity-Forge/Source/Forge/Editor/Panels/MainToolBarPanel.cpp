@@ -6,7 +6,6 @@
 #include <Forge/Editor/EditorIcons.h>
 
 #include <Trinity/Core/Engine.h>
-#include <Trinity/Audio/Frontend/AudioEngine.h>
 #include <Trinity/Scene/Scene.h>
 
 namespace Trinity
@@ -59,10 +58,11 @@ namespace Trinity
         ImGui::BeginDisabled(l_Playing);
         if (ImGui::Button(ICON_FA_PLAY, ImVec2(l_ButtonSize, l_ButtonSize)))
         {
-            m_Context.PlayMode = true;
-            if (m_Engine.HasScene() && m_Engine.HasAssetDatabase() && m_Engine.HasAudioEngine())
+            if (m_Engine.StartScene())
             {
-                m_Engine.GetAudioEngine().StartScene(m_Engine.GetScene(), m_Engine.GetAssetDatabase());
+                // Undo does not cross the play boundary; entity handles recorded before play are stale after the snapshot restore.
+                m_Context.History.Clear();
+                m_Context.PlayMode = true;
             }
         }
         ImGui::EndDisabled();
@@ -80,11 +80,14 @@ namespace Trinity
         ImGui::BeginDisabled(!l_Playing);
         if (ImGui::Button(ICON_FA_STOP, ImVec2(l_ButtonSize, l_ButtonSize)))
         {
-            m_Context.PlayMode = false;
-            if (m_Engine.HasScene() && m_Engine.HasAudioEngine())
+            m_Engine.StopScene();
+            if (m_Engine.HasScene())
             {
-                m_Engine.GetAudioEngine().StopScene(m_Engine.GetScene());
+                m_Context.PruneSelection(m_Engine.GetScene().GetRegistry());
             }
+
+            m_Context.History.Clear();
+            m_Context.PlayMode = false;
         }
         ImGui::EndDisabled();
         if (l_Playing && ImGui::IsItemHovered())

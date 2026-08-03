@@ -1,6 +1,7 @@
 #include <Trinity/Serialization/SceneSerializer.h>
 
 #include <fstream>
+#include <sstream>
 #include <system_error>
 #include <unordered_map>
 #include <utility>
@@ -114,7 +115,20 @@ namespace Trinity
         {
             TransformComponent& l_Transform = entity.GetComponent<TransformComponent>();
             l_Transform.Translation = l_TransformNode["Translation"].as<glm::vec3>();
-            l_Transform.Rotation = l_TransformNode["Rotation"].as<glm::vec3>();
+
+            if (YAML::Node l_RotationNode = l_TransformNode["Rotation"])
+            {
+                if (l_RotationNode.IsSequence() && l_RotationNode.size() == 4)
+                {
+                    l_Transform.Rotation = l_RotationNode.as<glm::quat>();
+                }
+                else
+                {
+                    // Version 1 files stored Euler radians; glm::quat(euler) is the exact rotation the old GetLocalMatrix produced
+                    l_Transform.SetEulerAngles(l_RotationNode.as<glm::vec3>());
+                }
+            }
+
             l_Transform.Scale = l_TransformNode["Scale"].as<glm::vec3>();
         }
 
@@ -243,7 +257,7 @@ namespace Trinity
         }
     }
 
-    bool SceneSerializer::Serialize(Scene& scene, const std::filesystem::path& path, const std::string& sceneName)
+    std::string SceneSerializer::SerializeToString(Scene& scene, const std::string& sceneName)
     {
         YAML::Emitter l_Out;
         l_Out << YAML::BeginMap;
@@ -260,6 +274,13 @@ namespace Trinity
         l_Out << YAML::EndSeq;
         l_Out << YAML::EndMap;
 
+        return std::string(l_Out.c_str());
+    }
+
+    bool SceneSerializer::Serialize(Scene& scene, const std::filesystem::path& path, const std::string& sceneName)
+    {
+        std::string l_Data = SerializeToString(scene, sceneName);
+
         std::error_code l_DirectoryError;
         std::filesystem::create_directories(path.parent_path(), l_DirectoryError);
 
@@ -269,16 +290,32 @@ namespace Trinity
             return false;
         }
 
-        l_Stream << l_Out.c_str();
+        l_Stream << l_Data;
 
         return true;
     }
 
     bool SceneSerializer::Deserialize(Scene& scene, AssetDatabase& assetDatabase, const std::filesystem::path& path)
     {
+        std::ifstream l_Stream(path);
+        if (!l_Stream.is_open())
+        {
+            TR_CORE_ERROR("Failed to open scene file: {}", path.string());
+
+            return false;
+        }
+
+        std::stringstream l_Buffer;
+        l_Buffer << l_Stream.rdbuf();
+
+        return DeserializeFromString(scene, assetDatabase, l_Buffer.str());
+    }
+
+    bool SceneSerializer::DeserializeFromString(Scene& scene, AssetDatabase& assetDatabase, const std::string& data)
+    {
         try
         {
-            YAML::Node l_Root = YAML::LoadFile(path.string());
+            YAML::Node l_Root = YAML::Load(data);
 
             if (!l_Root["Version"])
             {

@@ -76,6 +76,7 @@ if(TRINITY_ENABLE_VULKAN)
         "${TRINITY_ENGINE_SHADER_DIR}/Prefilter.slang"
         "${TRINITY_ENGINE_SHADER_DIR}/BrdfLut.slang"
         "${TRINITY_ENGINE_SHADER_DIR}/Shadow.slang"
+        "${TRINITY_ENGINE_SHADER_DIR}/DebugLine.slang"
     )
 
     file(MAKE_DIRECTORY "${TRINITY_SHADER_OUTPUT_DIR}")

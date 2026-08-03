@@ -199,6 +199,16 @@ namespace Trinity
         }
     }
 
+    void Engine::FixedUpdate(Timestep)
+    {
+        if (!m_Initialized)
+        {
+            return;
+        }
+
+        // Fixed-rate simulation systems step here; input, cameras, and audio stay on the variable-rate Update path
+    }
+
     void Engine::InitializeImGui()
     {
         TR_CORE_INFO("INITIALIZING IMGUI");
@@ -280,6 +290,65 @@ namespace Trinity
     void Engine::SetViewportInteractive(bool interactive)
     {
         m_ViewportInteractive = interactive;
+    }
+
+    bool Engine::StartScene()
+    {
+        if (m_ScenePlaying)
+        {
+            return true;
+        }
+
+        if (m_Scene == nullptr || m_AssetDatabase == nullptr)
+        {
+            TR_CORE_WARN("Cannot enter play mode without a scene and an asset database");
+
+            return false;
+        }
+
+        m_SceneSnapshot = SceneSerializer::SerializeToString(*m_Scene, "PlayModeSnapshot");
+        if (m_SceneSnapshot.empty())
+        {
+            TR_CORE_ERROR("Failed to snapshot scene; refusing to enter play mode");
+
+            return false;
+        }
+
+        m_SimulationClock.Reset();
+
+        if (m_AudioEngine != nullptr)
+        {
+            m_AudioEngine->StartScene(*m_Scene, *m_AssetDatabase);
+        }
+
+        m_ScenePlaying = true;
+
+        return true;
+    }
+
+    void Engine::StopScene()
+    {
+        if (!m_ScenePlaying)
+        {
+            return;
+        }
+
+        if (m_AudioEngine != nullptr && m_Scene != nullptr)
+        {
+            m_AudioEngine->StopScene(*m_Scene);
+        }
+
+        if (m_Scene != nullptr && m_AssetDatabase != nullptr && !m_SceneSnapshot.empty())
+        {
+            m_Scene->Clear();
+            if (!SceneSerializer::DeserializeFromString(*m_Scene, *m_AssetDatabase, m_SceneSnapshot))
+            {
+                TR_CORE_ERROR("Failed to restore scene snapshot after play mode");
+            }
+        }
+
+        m_SceneSnapshot.clear();
+        m_ScenePlaying = false;
     }
 
     void Engine::Shutdown()

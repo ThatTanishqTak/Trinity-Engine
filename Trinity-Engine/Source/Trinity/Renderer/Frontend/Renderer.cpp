@@ -148,6 +148,11 @@ namespace Trinity
             return false;
         }
 
+        if (!m_DebugLineStage.Initialize(m_Device, m_ShaderCompiler, l_ShaderDirectory, Format::RGBA16_SFLOAT, Format::D32_SFLOAT, l_FramesInFlight))
+        {
+            return false;
+        }
+
         if (!m_IBLProcessor.Initialize(m_Device, m_ShaderCompiler, l_ShaderDirectory))
         {
             return false;
@@ -190,6 +195,7 @@ namespace Trinity
         m_PostProcess.Shutdown();
         m_DepthVisualizeStage.Shutdown();
         m_SkyboxStage.Shutdown();
+        m_DebugLineStage.Shutdown();
         m_IBLProcessor.Shutdown();
 
         if (m_EnvironmentMap.IsValid())
@@ -1122,6 +1128,11 @@ namespace Trinity
         }
     }
 
+    void Renderer::SubmitDebugLines(const DebugDrawBuffer& buffer)
+    {
+        m_PendingDebugLines.insert(m_PendingDebugLines.end(), buffer.Lines.begin(), buffer.Lines.end());
+    }
+
     void Renderer::RenderFrame(Scene& scene, AssetDatabase& assetDatabase, const Camera& camera, ImGuiLayer* imgui)
     {
         m_Device.CollectGarbage();
@@ -1154,6 +1165,9 @@ namespace Trinity
         }
 
         CommandList& l_CommandList = *m_CommandLists[m_FrameIndex];
+
+        m_DebugLineStage.Upload(m_FrameIndex, m_PendingDebugLines);
+        m_PendingDebugLines.clear();
 
         uint32_t l_SwapWidth = m_Swapchain.GetWidth();
         uint32_t l_SwapHeight = m_Swapchain.GetHeight();
@@ -1220,6 +1234,8 @@ namespace Trinity
                     }
 
                     DrawScene(commandList, scene, assetDatabase, camera);
+
+                    m_DebugLineStage.Record(commandList, m_FrameIndex, camera.GetViewProjection());
                 };
         }
 

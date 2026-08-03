@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 
+#include <Trinity/Core/SimulationClock.h>
 #include <Trinity/Core/Timestep.h>
 #include <Trinity/ImGui/ImGuiLayer.h>
 
@@ -34,7 +35,12 @@ namespace Trinity
         bool Initialize(const std::string& applicationName);
         bool InitializeRenderer(const NativeWindowHandle& window, const std::string& applicationName);
         void Update(Timestep timestep);
+        void FixedUpdate(Timestep timestep);
         void Shutdown();
+
+        bool StartScene();
+        void StopScene();
+        bool IsScenePlaying() const { return m_ScenePlaying; }
 
         void RenderFrame();
         void Resize(uint32_t width, uint32_t height);
@@ -73,10 +79,19 @@ namespace Trinity
         AudioEngine& GetAudioEngine() { return *m_AudioEngine; }
         bool HasAudioEngine() const { return m_AudioEngine != nullptr; }
 
+        SimulationClock& GetSimulationClock() { return m_SimulationClock; }
+        const SimulationClock& GetSimulationClock() const { return m_SimulationClock; }
+        float GetInterpolationAlpha() const { return m_SimulationClock.GetAlpha(); }
+
     private:
         bool m_Initialized = false;
         bool m_FlyMode = false;
         bool m_ViewportInteractive = false;
+
+        SimulationClock m_SimulationClock;
+
+        bool m_ScenePlaying = false;
+        std::string m_SceneSnapshot;
 
         std::unique_ptr<IPlatform> m_Platform;
         std::unique_ptr<GraphicsDevice> m_Device;

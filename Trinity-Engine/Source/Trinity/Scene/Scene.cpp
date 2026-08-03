@@ -57,6 +57,11 @@ namespace Trinity
         m_Registry.destroy(l_Handle);
     }
 
+    void Scene::Clear()
+    {
+        m_Registry.clear();
+    }
+
     void Scene::SetParent(Entity child, Entity parent)
     {
         if (!child.IsValid())

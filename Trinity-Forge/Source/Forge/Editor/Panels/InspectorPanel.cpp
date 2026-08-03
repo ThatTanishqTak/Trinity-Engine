@@ -216,6 +216,7 @@ namespace Trinity
     {
         bool Activated = false;
         bool Committed = false;
+        bool Deactivated = false;
         bool Reset = false;
     };
 
@@ -258,6 +259,7 @@ namespace Trinity
                 ImGui::DragFloat(l_DragId.c_str(), component, speed);
                 l_Result.Activated = l_Result.Activated || ImGui::IsItemActivated();
                 l_Result.Committed = l_Result.Committed || ImGui::IsItemDeactivatedAfterEdit();
+                l_Result.Deactivated = l_Result.Deactivated || ImGui::IsItemDeactivated();
                 ImGui::PopItemWidth();
             };
 
@@ -388,7 +390,7 @@ namespace Trinity
                     {
                         TransformComponent& l_Transform = l_Entity.GetComponent<TransformComponent>();
                         DragTransformField(l_Scene, l_TargetUUID, "Translation", l_Transform, l_Transform.Translation, 0.0f, 0.1f);
-                        DragTransformField(l_Scene, l_TargetUUID, "Rotation", l_Transform, l_Transform.Rotation, 0.0f, 0.01f);
+                        DragRotationField(l_Scene, l_TargetUUID, l_Transform);
                         DragTransformField(l_Scene, l_TargetUUID, "Scale", l_Transform, l_Transform.Scale, 1.0f, 0.1f);
                     }
 
@@ -873,6 +875,54 @@ namespace Trinity
         }
     }
 
+    void InspectorPanel::DragRotationField(Scene& scene, uint64_t uuid, TransformComponent& transform)
+    {
+        // Snapshot before the control runs so a double-click reset has a correct undo baseline
+        TransformComponent l_Before = transform;
+
+        if (m_RotationEditActive && m_RotationEditTarget != uuid)
+        {
+            m_RotationEditActive = false;
+        }
+
+        // While the control is being edited the displayed Euler triple (degrees) comes from a cache; re-deriving it from the quaternion every frame makes the two untouched axes jump mid-drag
+        glm::vec3 l_Shown = m_RotationEditActive ? m_RotationEditCache : glm::degrees(transform.GetEulerAngles());
+        glm::vec3 l_Edited = l_Shown;
+
+        Vec3ControlResult l_Result = DrawVec3Control("Rotation", l_Edited, 0.0f, 0.5f);
+
+        if (l_Result.Activated)
+        {
+            m_TransformEditOld = l_Before;
+            m_RotationEditActive = true;
+            m_RotationEditTarget = uuid;
+        }
+
+        if (l_Edited != l_Shown)
+        {
+            transform.SetEulerAngles(glm::radians(l_Edited));
+        }
+
+        if (m_RotationEditActive)
+        {
+            m_RotationEditCache = l_Edited;
+        }
+
+        if (l_Result.Reset)
+        {
+            m_Context.History.Execute(std::make_unique<SetTransformCommand>(scene, uuid, l_Before, transform));
+        }
+        else if (l_Result.Committed)
+        {
+            m_Context.History.Execute(std::make_unique<SetTransformCommand>(scene, uuid, m_TransformEditOld, transform));
+        }
+
+        if (l_Result.Deactivated || l_Result.Reset)
+        {
+            m_RotationEditActive = false;
+        }
+    }
+
     void InspectorPanel::DrawMultiSelectionInspector(Scene& scene)
     {
         entt::registry& l_Registry = scene.GetRegistry();
@@ -918,9 +968,29 @@ namespace Trinity
         TransformComponent l_Proxy = l_Registry.get<TransformComponent>(m_Context.SelectedEntity);
         TransformComponent l_Before = l_Proxy;
 
+        // Rotation edits go through a cached Euler triple (degrees, target id 0 = multi-edit); re-deriving it from the quaternion every frame makes the untouched axes jump mid-drag
+        glm::vec3 l_EulerShown = (m_RotationEditActive && m_RotationEditTarget == 0) ? m_RotationEditCache : glm::degrees(l_Proxy.GetEulerAngles());
+        glm::vec3 l_EulerEdited = l_EulerShown;
+
         Vec3ControlResult l_Translation = DrawVec3Control("Translation", l_Proxy.Translation, 0.0f, 0.1f);
-        Vec3ControlResult l_Rotation = DrawVec3Control("Rotation", l_Proxy.Rotation, 0.0f, 0.01f);
+        Vec3ControlResult l_Rotation = DrawVec3Control("Rotation", l_EulerEdited, 0.0f, 0.5f);
         Vec3ControlResult l_Scale = DrawVec3Control("Scale", l_Proxy.Scale, 1.0f, 0.1f);
+
+        if (l_Rotation.Activated)
+        {
+            m_RotationEditActive = true;
+            m_RotationEditTarget = 0;
+        }
+
+        if (m_RotationEditActive && m_RotationEditTarget == 0)
+        {
+            m_RotationEditCache = l_EulerEdited;
+        }
+
+        if (l_Rotation.Deactivated || l_Rotation.Reset)
+        {
+            m_RotationEditActive = false;
+        }
 
         bool l_Activated = l_Translation.Activated || l_Rotation.Activated || l_Scale.Activated;
         bool l_Committed = l_Translation.Committed || l_Rotation.Committed || l_Scale.Committed;
@@ -954,8 +1024,21 @@ namespace Trinity
             };
 
         l_ApplyChangedAxes(&TransformComponent::Translation);
-        l_ApplyChangedAxes(&TransformComponent::Rotation);
         l_ApplyChangedAxes(&TransformComponent::Scale);
+
+        for (int l_Axis = 0; l_Axis < 3; ++l_Axis)
+        {
+            if (l_EulerEdited[l_Axis] != l_EulerShown[l_Axis])
+            {
+                for (entt::entity it_Entity : m_Context.Selection)
+                {
+                    TransformComponent& l_Target = l_Registry.get<TransformComponent>(it_Entity);
+                    glm::vec3 l_TargetEuler = glm::degrees(l_Target.GetEulerAngles());
+                    l_TargetEuler[l_Axis] = l_EulerEdited[l_Axis];
+                    l_Target.SetEulerAngles(glm::radians(l_TargetEuler));
+                }
+            }
+        }
 
         if (l_Committed || l_Reset)
         {

@@ -23,6 +23,7 @@ namespace Trinity
         Entity CreateEntity(const std::string& name = "Entity");
         Entity CreateEntityWithUUID(UUID id, const std::string& name = "Entity");
         void DestroyEntity(Entity entity);
+        void Clear();
 
         void SetParent(Entity child, Entity parent);
         glm::mat4 GetWorldMatrix(entt::entity entity);

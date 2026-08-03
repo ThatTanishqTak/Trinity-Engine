@@ -3,6 +3,7 @@
 #include <string>
 #include <memory>
 
+#include <Trinity/Core/SimulationClock.h>
 #include <Trinity/Core/Timestep.h>
 #include <Trinity/Platform/Window.h>
 
@@ -27,9 +28,12 @@ namespace Trinity
     struct ApplicationSpecification
     {
         std::string InternalName = "Trinity Application";
-        
+
         bool CreateWindowOnStartup = true;
-        
+
+        float FixedDelta = SimulationClock::DefaultFixedDelta;
+        uint32_t MaxSubSteps = SimulationClock::DefaultMaxSubSteps;
+
         WindowProperties Window;
         CommandLineArgs Arguments;
     };
@@ -61,6 +65,11 @@ namespace Trinity
 
         }
 
+        virtual void OnFixedUpdate(Timestep)
+        {
+
+        }
+
         virtual void OnUpdate(Timestep)
         {
 
@@ -85,6 +94,7 @@ namespace Trinity
         bool OnWindowClose(WindowCloseEvent& event);
         bool OnWindowResize(WindowResizeEvent& event);
 
+    private:
         ApplicationSpecification m_Specification;
         std::unique_ptr<Engine> m_Engine;
         Window* m_Window = nullptr;
@@ -92,6 +102,8 @@ namespace Trinity
         bool m_Running = true;
         bool m_Minimized = false;
         bool m_SwapchainDirty = false;
+
+        float m_StepClampWarnCooldown = 0.0f;
 
         uint32_t m_PendingWidth = 0;
         uint32_t m_PendingHeight = 0;

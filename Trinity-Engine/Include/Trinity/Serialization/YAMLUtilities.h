@@ -2,6 +2,7 @@
 
 #include <yaml-cpp/yaml.h>
 #include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 namespace YAML
 {
@@ -91,6 +92,38 @@ namespace YAML
             return true;
         }
     };
+
+    // Stored as [x, y, z, w].
+    template<>
+    struct convert<glm::quat>
+    {
+        static Node encode(const glm::quat& rotation)
+        {
+            Node l_Node;
+            l_Node.push_back(rotation.x);
+            l_Node.push_back(rotation.y);
+            l_Node.push_back(rotation.z);
+            l_Node.push_back(rotation.w);
+            l_Node.SetStyle(EmitterStyle::Flow);
+
+            return l_Node;
+        }
+
+        static bool decode(const Node& node, glm::quat& rotation)
+        {
+            if (!node.IsSequence() || node.size() != 4)
+            {
+                return false;
+            }
+
+            rotation.x = node[0].as<float>();
+            rotation.y = node[1].as<float>();
+            rotation.z = node[2].as<float>();
+            rotation.w = node[3].as<float>();
+
+            return true;
+        }
+    };
 }
 
 namespace Trinity
@@ -112,6 +145,13 @@ namespace Trinity
     inline YAML::Emitter& operator<<(YAML::Emitter& out, const glm::vec4& vector)
     {
         out << YAML::Flow << YAML::BeginSeq << vector.x << vector.y << vector.z << vector.w << YAML::EndSeq;
+
+        return out;
+    }
+
+    inline YAML::Emitter& operator<<(YAML::Emitter& out, const glm::quat& rotation)
+    {
+        out << YAML::Flow << YAML::BeginSeq << rotation.x << rotation.y << rotation.z << rotation.w << YAML::EndSeq;
 
         return out;
     }

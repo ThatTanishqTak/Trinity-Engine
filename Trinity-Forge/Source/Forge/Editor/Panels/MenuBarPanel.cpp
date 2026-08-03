@@ -205,6 +205,11 @@ namespace Trinity
                 m_Context.ShowRenderGraph = !m_Context.ShowRenderGraph;
             }
 
+            if (ImGui::MenuItem(ICON_FA_VECTOR_SQUARE "  Physics Colliders", nullptr, m_Context.ShowPhysicsColliders))
+            {
+                m_Context.ShowPhysicsColliders = !m_Context.ShowPhysicsColliders;
+            }
+
             ImGui::Separator();
             if (ImGui::MenuItem(ICON_FA_ARROWS_ROTATE "  Reset Layout"))
             {
@@ -326,7 +331,7 @@ namespace Trinity
         ImGuiStyle& l_Style = ImGui::GetStyle();
 
         // Match the native Windows title bar height (~32px at 100% DPI), scaled for DPI.
-        float l_Height = 32.0f * window.GetContentScale();
+        float l_Height = 38.0f * window.GetContentScale();
         float l_MinHeight = ImGui::GetFontSize() + 8.0f;
         if (l_Height < l_MinHeight)
         {

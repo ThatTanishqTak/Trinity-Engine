@@ -15,6 +15,9 @@ namespace Trinity
         static bool Serialize(Scene& scene, const std::filesystem::path& path, const std::string& sceneName = "Untitled");
         static bool Deserialize(Scene& scene, AssetDatabase& assetDatabase, const std::filesystem::path& path);
 
+        static std::string SerializeToString(Scene& scene, const std::string& sceneName = "Untitled");
+        static bool DeserializeFromString(Scene& scene, AssetDatabase& assetDatabase, const std::string& data);
+
         static std::string SerializeEntity(Scene& scene, Entity entity);
         static Entity DeserializeEntity(Scene& scene, AssetDatabase& assetDatabase, const std::string& data, bool preserveUUIDs);
     };

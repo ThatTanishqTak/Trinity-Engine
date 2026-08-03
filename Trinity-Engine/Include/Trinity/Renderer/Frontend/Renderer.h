@@ -17,6 +17,7 @@
 #include <Trinity/Renderer/PostProcess/DepthVisualizeStage.h>
 #include <Trinity/Renderer/Environment/SkyboxStage.h>
 #include <Trinity/Renderer/Environment/IBLProcessor.h>
+#include <Trinity/Renderer/Debug/DebugLineStage.h>
 #include <Trinity/Renderer/Graph/RenderGraph.h>
 
 namespace Trinity
@@ -64,6 +65,9 @@ namespace Trinity
         void SetViewportSize(uint32_t width, uint32_t height);
         uint64_t GetViewportTextureID() const { return m_ViewportTextureID; }
         void SetDepthVisualizationEnabled(bool enabled) { m_DepthVisualize = enabled; }
+
+        // Lines accumulate across submissions, draw depth-tested inside the scene pass of the next rendered frame, and clear afterwards — resubmit every frame while visualization is wanted
+        void SubmitDebugLines(const DebugDrawBuffer& buffer);
         const RenderGraph& GetRenderGraph() const { return m_RenderGraph; }
         void ApplyViewportResize();
 
@@ -106,6 +110,8 @@ namespace Trinity
         PostProcessStage m_PostProcess;
         DepthVisualizeStage m_DepthVisualizeStage;
         SkyboxStage m_SkyboxStage;
+        DebugLineStage m_DebugLineStage;
+        std::vector<DebugLine> m_PendingDebugLines;
         TextureHandle m_EnvironmentMap;
 
         IBLProcessor m_IBLProcessor;

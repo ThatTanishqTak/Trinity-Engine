@@ -140,6 +140,7 @@ namespace Trinity
         bool DrawerToggled = false;
         bool PlayMode = false;
         bool ShowRenderGraph = false;
+        bool ShowPhysicsColliders = false;
 
         float ChromeTop = 0.0f;
         float ChromeBottom = 0.0f;
