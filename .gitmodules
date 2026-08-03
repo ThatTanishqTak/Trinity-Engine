@@ -31,3 +31,6 @@
 [submodule "Vendor/miniaudio"]
 	path = Vendor/miniaudio
 	url = https://github.com/ThatTanishqTak/miniaudio.git
+[submodule "Vendor/box2d"]
+	path = Vendor/box2d
+	url = https://github.com/ThatTanishqTak/box2d.git

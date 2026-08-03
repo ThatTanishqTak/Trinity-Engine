@@ -84,3 +84,17 @@ target_compile_definitions(Trinity-ProjectGenerator
 )
 
 trinity_set_ide_folder(Trinity-ProjectGenerator "Trinity/Tools")
+
+if(TRINITY_ENABLE_BOX2D)
+    trinity_add_application(
+        Trinity-PhysicsSmoke
+        "${TRINITY_TOOLS_ROOT}/Trinity-PhysicsSmoke/Source"
+    )
+
+    target_link_libraries(Trinity-PhysicsSmoke
+        PRIVATE
+            Trinity::Engine
+    )
+
+    trinity_set_ide_folder(Trinity-PhysicsSmoke "Trinity/Tools")
+endif()

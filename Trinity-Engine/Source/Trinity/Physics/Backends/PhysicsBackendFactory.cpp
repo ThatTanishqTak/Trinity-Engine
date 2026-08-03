@@ -18,21 +18,21 @@ namespace Trinity
     {
         switch (backend)
         {
-        case PhysicsBackend2D::Box2D:
+            case PhysicsBackend2D::Box2D:
 #if defined(TRINITY_ENABLE_BOX2D)
-            TR_CORE_TRACE("2D physics backend selected: Box2D");
+                TR_CORE_TRACE("2D physics backend selected: Box2D");
 
-            return std::make_unique<Box2DBackend>();
+                return std::make_unique<Box2DBackend>();
 #else
-            TR_CORE_TRACE("Box2D backend requested but TRINITY_ENABLE_BOX2D is off");
+                TR_CORE_TRACE("Box2D backend requested but TRINITY_ENABLE_BOX2D is off");
 
-            return nullptr;
+                return nullptr;
 #endif
 
-        default:
-            TR_CORE_TRACE("No 2D physics backend selected");
+            default:
+                TR_CORE_TRACE("No 2D physics backend selected");
 
-            return nullptr;
+                return nullptr;
         }
     }
 
@@ -40,21 +40,21 @@ namespace Trinity
     {
         switch (backend)
         {
-        case PhysicsBackend3D::PhysX:
+            case PhysicsBackend3D::PhysX:
 #if defined(TRINITY_ENABLE_PHYSX)
-            TR_CORE_TRACE("3D physics backend selected: PhysX");
+                TR_CORE_TRACE("3D physics backend selected: PhysX");
 
-            return std::make_unique<PhysXBackend>();
+                return std::make_unique<PhysXBackend>();
 #else
-            TR_CORE_TRACE("PhysX backend requested but TRINITY_ENABLE_PHYSX is off");
+                TR_CORE_TRACE("PhysX backend requested but TRINITY_ENABLE_PHYSX is off");
 
-            return nullptr;
+                return nullptr;
 #endif
 
-        default:
-            TR_CORE_TRACE("No 3D physics backend selected");
+            default:
+                TR_CORE_TRACE("No 3D physics backend selected");
 
-            return nullptr;
+                return nullptr;
         }
     }
 }

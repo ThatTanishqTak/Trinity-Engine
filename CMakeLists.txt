@@ -29,7 +29,7 @@ option(TRINITY_ENABLE_METAL "Enable Metal backend" OFF)
 option(TRINITY_ENABLE_DIRECTX12 "Enable DirectX 12 backend" OFF)
 option(TRINITY_ENABLE_SDL "Enable SDL3 platform backend" ON)
 
-option(TRINITY_ENABLE_BOX2D "Enable Box2D 2D physics backend" OFF)
+option(TRINITY_ENABLE_BOX2D "Enable Box2D 2D physics backend" ON)
 option(TRINITY_ENABLE_PHYSX "Enable PhysX 3D physics backend" OFF)
 
 if(WIN32)
@@ -193,6 +193,16 @@ target_link_libraries(imgui
 )
 trinity_set_ide_folder(imgui "Trinity/Vendor")
 target_compile_definitions(imgui PUBLIC IMGUI_USE_WCHAR32)
+
+if(TRINITY_ENABLE_BOX2D)
+    set(BOX2D_SAMPLES OFF CACHE BOOL "" FORCE)
+    set(BOX2D_UNIT_TESTS OFF CACHE BOOL "" FORCE)
+    set(BOX2D_BENCHMARKS OFF CACHE BOOL "" FORCE)
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+
+    add_subdirectory(Vendor/box2d)
+    trinity_set_ide_folder(box2d "Trinity/Vendor")
+endif()
 
 if(TRINITY_BUILD_ENGINE)
     add_subdirectory(Trinity-Engine)

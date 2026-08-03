@@ -37,6 +37,13 @@ target_link_libraries(Trinity-Engine
 
 target_include_directories(Trinity-Engine PRIVATE "${CMAKE_SOURCE_DIR}/Vendor/imgui/backends")
 
+if(TRINITY_ENABLE_BOX2D)
+    target_link_libraries(Trinity-Engine
+        PRIVATE
+            box2d
+    )
+endif()
+
 if(TRINITY_ENABLE_SDL)
     target_link_libraries(Trinity-Engine
         PRIVATE
