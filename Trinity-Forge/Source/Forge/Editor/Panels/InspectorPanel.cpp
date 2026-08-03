@@ -451,6 +451,10 @@ namespace Trinity
                         {
                             l_CurrentLabel = "(procedural plane)";
                         }
+                        else if (l_CurrentAsset == AssetDatabase::BuiltinQuad)
+                        {
+                            l_CurrentLabel = "(procedural quad)";
+                        }
                         else
                         {
                             const AssetMetadata* l_Meta = l_Assets.GetMetadata(l_MeshRenderer.MeshAsset);
@@ -472,6 +476,11 @@ namespace Trinity
                             if (ImGui::Selectable("(procedural plane)", l_CurrentAsset == AssetDatabase::BuiltinPlane) && l_CurrentAsset != AssetDatabase::BuiltinPlane)
                             {
                                 m_Context.History.Execute(std::make_unique<SetMeshCommand>(l_Scene, l_Assets, l_MeshUUID, UUID(AssetDatabase::BuiltinPlane)));
+                            }
+
+                            if (ImGui::Selectable("(procedural quad)", l_CurrentAsset == AssetDatabase::BuiltinQuad) && l_CurrentAsset != AssetDatabase::BuiltinQuad)
+                            {
+                                m_Context.History.Execute(std::make_unique<SetMeshCommand>(l_Scene, l_Assets, l_MeshUUID, UUID(AssetDatabase::BuiltinQuad)));
                             }
 
                             for (UUID it_Asset : l_Assets.GetAssetsOfType(AssetType::Mesh))

@@ -347,11 +347,10 @@ namespace Trinity
             glm::mat4 l_World4 = l_Scene.GetWorldMatrix(it_Entity);
             uint32_t l_Color = l_BodyColor(it_Entity, l_Collider.IsTrigger);
 
-            // The physics circle takes the larger world axis scale, so the outline
-            // is a true circle even under non-uniform scale.
+            // The physics circle takes the larger world axis scale, so the outline is a true circle even under non-uniform scale
             glm::vec3 l_Center(l_World4 * glm::vec4(l_Collider.Offset.x, l_Collider.Offset.y, 0.0f, 1.0f));
-            float l_ScaleX = glm::length(glm::vec3(l_World4[0]));
-            float l_ScaleY = glm::length(glm::vec3(l_World4[1]));
+            float l_ScaleX = glm::length(glm::vec2(l_World4[0]));
+            float l_ScaleY = glm::length(glm::vec2(l_World4[1]));
             float l_Radius = l_Collider.Radius * glm::max(l_ScaleX, l_ScaleY);
 
             constexpr int k_Segments = 24;

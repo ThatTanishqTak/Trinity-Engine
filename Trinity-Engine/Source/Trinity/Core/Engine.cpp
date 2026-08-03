@@ -18,7 +18,7 @@
 #include <Trinity/Scene/Components/MeshRendererComponent.h>
 #include <Trinity/Scene/Components/CameraComponent.h>
 #include <Trinity/Scene/Components/BoxCollider2DComponent.h>
-#include <Trinity/Scene/Components/RigidBody2DComponent.h>
+#include <Trinity/Scene/Components/Rigidbody2DComponent.h>
 #include <Trinity/Serialization/SceneSerializer.h>
 #include <Trinity/Assets/AssetDatabase.h>
 
@@ -137,12 +137,23 @@ namespace Trinity
 
         Scene l_AuthoredScene;
 
-        Entity l_Test = l_AuthoredScene.CreateEntity("Test");
-        l_Test.AddComponent<MeshRendererComponent>(MeshRendererComponent{ nullptr, UUID(AssetDatabase::BuiltinPlane) });
-        l_Test.GetComponent<TransformComponent>().Translation = glm::vec3(0.0f, 0.0f, 0.0f);
-        l_Test.GetComponent<TransformComponent>().Scale = glm::vec3(1.0f, 1.0f, 1.0f);
-        l_Test.AddComponent<BoxCollider2DComponent>();
-        l_Test.AddComponent<Rigidbody2DComponent>();
+        Entity l_Ground = l_AuthoredScene.CreateEntity("Ground");
+        l_Ground.AddComponent<MeshRendererComponent>(MeshRendererComponent{ nullptr, UUID(AssetDatabase::BuiltinQuad) });
+        l_Ground.GetComponent<TransformComponent>().Translation = glm::vec3(0.0f, -2.0f, 0.0f);
+        l_Ground.GetComponent<TransformComponent>().Scale = glm::vec3(20.0f, 1.0f, 1.0f);
+        Rigidbody2DComponent l_GroundBody;
+        l_GroundBody.Type = BodyType::Static;
+        l_Ground.AddComponent<Rigidbody2DComponent>(l_GroundBody);
+        l_Ground.AddComponent<BoxCollider2DComponent>();
+
+        Entity l_Box = l_AuthoredScene.CreateEntity("FallingBox");
+        l_Box.AddComponent<MeshRendererComponent>(MeshRendererComponent{ nullptr, UUID(AssetDatabase::BuiltinQuad) });
+        l_Box.GetComponent<TransformComponent>().Translation = glm::vec3(0.0f, 5.0f, 0.0f);
+        l_Box.AddComponent<Rigidbody2DComponent>();
+        l_Box.AddComponent<BoxCollider2DComponent>();
+
+        Entity l_CameraEntity = l_AuthoredScene.CreateEntity("PrimaryCamera");
+        l_CameraEntity.AddComponent<CameraComponent>();
 
         std::filesystem::path l_ScenePath = m_Platform->GetFileSystem().Resolve(BaseDirectory::UserData, "Scenes/Demo.tscene");
         SceneSerializer::Serialize(l_AuthoredScene, l_ScenePath, "Demo");

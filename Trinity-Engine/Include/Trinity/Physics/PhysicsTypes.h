@@ -41,7 +41,8 @@ namespace Trinity
     enum class ShapeType2D : uint32_t
     {
         Box = 0,
-        Circle
+        Circle,
+        Polygon
     };
 
     enum class ShapeType3D : uint32_t
@@ -70,6 +71,8 @@ namespace Trinity
         glm::vec2 Offset{ 0.0f };
         glm::vec2 HalfExtents{ 0.5f };    // Box
         float Radius = 0.5f;              // Circle
+        glm::vec2 Points[8] = {};         // Polygon: convex points in body space
+        uint32_t PointCount = 0;          // Polygon
         bool IsTrigger = false;
         PhysicsMaterial Material;
     };

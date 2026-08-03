@@ -6,6 +6,7 @@
 
 #include <entt/entt.hpp>
 #include <glm/vec2.hpp>
+#include <glm/vec3.hpp>
 
 #include <Trinity/Physics/PhysicsTypes.h>
 #include <Trinity/Physics/PhysicsSettings.h>
@@ -62,6 +63,8 @@ namespace Trinity
             float LastWrittenRotation = 0.0f;
             glm::vec2 ScaleAtCreation{ 1.0f };
             bool ScaleWarned = false;
+            glm::vec3 PlaneNormalAtCreation{ 0.0f, 0.0f, 1.0f };
+            bool TiltWarned = false;
         };
 
         void CreateBody2D(Scene& scene, entt::entity entity);
@@ -69,7 +72,7 @@ namespace Trinity
         void ProcessPendingRebuilds2D(Scene& scene);
         void SyncSceneToPhysics2D(Scene& scene);
         void SyncPhysicsToScene2D(Scene& scene);
-        void WriteBody2DTransform(Scene& scene, entt::entity entity, const glm::vec2& position, float rotation);
+        void WriteBody2DTransform(Scene& scene, entt::entity entity, Body2DRecord& record, const glm::vec2& position, float rotation);
 
         void OnRigidbody2DConstructed(entt::registry& registry, entt::entity entity);
         void OnRigidbody2DDestroyed(entt::registry& registry, entt::entity entity);

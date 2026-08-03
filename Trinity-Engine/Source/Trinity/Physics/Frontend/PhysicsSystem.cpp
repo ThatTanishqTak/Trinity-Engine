@@ -227,9 +227,7 @@ namespace Trinity
             float l_Delta = std::remainder(l_Record.CurrentRotation - l_Record.PreviousRotation, k_Tau);
             float l_Rotation = l_Record.PreviousRotation + l_Delta * l_Alpha;
 
-            WriteBody2DTransform(scene, it_Body.first, l_Position, l_Rotation);
-            l_Record.LastWrittenPosition = l_Position;
-            l_Record.LastWrittenRotation = l_Rotation;
+            WriteBody2DTransform(scene, it_Body.first, l_Record, l_Position, l_Rotation);
         }
     }
 
@@ -274,13 +272,51 @@ namespace Trinity
             return;
         }
 
-        // Collider extents absorb the entity's world scale at creation time only; later scale changes require a body rebuild
+        // Collider geometry is projected onto the XY physics plane at creation time, so scale, offset, and tilt are all baked; later transform changes require a body rebuild
+        auto l_ToBodySpace = [&](const glm::vec2& localPoint) -> glm::vec2
+            {
+                glm::vec2 l_Projected = glm::vec2(l_World * glm::vec4(localPoint, 0.0f, 1.0f)) - l_Position;
+                float l_Sin = std::sin(-l_Rotation);
+                float l_Cos = std::cos(-l_Rotation);
+
+                return glm::vec2(l_Projected.x * l_Cos - l_Projected.y * l_Sin, l_Projected.x * l_Sin + l_Projected.y * l_Cos);
+            };
+
         if (const BoxCollider2DComponent* l_Box = l_Registry.try_get<BoxCollider2DComponent>(entity))
         {
+            glm::vec2 l_Points[4] = {
+                l_ToBodySpace(l_Box->Offset + glm::vec2(-l_Box->HalfExtents.x, -l_Box->HalfExtents.y)),
+                l_ToBodySpace(l_Box->Offset + glm::vec2(l_Box->HalfExtents.x, -l_Box->HalfExtents.y)),
+                l_ToBodySpace(l_Box->Offset + glm::vec2(l_Box->HalfExtents.x, l_Box->HalfExtents.y)),
+                l_ToBodySpace(l_Box->Offset + glm::vec2(-l_Box->HalfExtents.x, l_Box->HalfExtents.y))
+            };
+
+            glm::vec2 l_Min = glm::min(glm::min(l_Points[0], l_Points[1]), glm::min(l_Points[2], l_Points[3]));
+            glm::vec2 l_Max = glm::max(glm::max(l_Points[0], l_Points[1]), glm::max(l_Points[2], l_Points[3]));
+            glm::vec2 l_Extent = (l_Max - l_Min) * 0.5f;
+            float l_Area = std::fabs((l_Points[1].x - l_Points[0].x) * (l_Points[3].y - l_Points[0].y) - (l_Points[3].x - l_Points[0].x) * (l_Points[1].y - l_Points[0].y));
+
+            constexpr float k_MinimumHalfExtent = 0.01f;
+            if (l_Extent.x < k_MinimumHalfExtent || l_Extent.y < k_MinimumHalfExtent || l_Area < 4.0f * k_MinimumHalfExtent * k_MinimumHalfExtent)
+            {
+                // Nearly edge-on to the XY plane; use the clamped bounding box instead of a degenerate hull
+                glm::vec2 l_Center = (l_Min + l_Max) * 0.5f;
+                glm::vec2 l_Clamped = glm::max(l_Extent, glm::vec2(k_MinimumHalfExtent));
+                l_Points[0] = l_Center + glm::vec2(-l_Clamped.x, -l_Clamped.y);
+                l_Points[1] = l_Center + glm::vec2(l_Clamped.x, -l_Clamped.y);
+                l_Points[2] = l_Center + glm::vec2(l_Clamped.x, l_Clamped.y);
+                l_Points[3] = l_Center + glm::vec2(-l_Clamped.x, l_Clamped.y);
+
+                TR_CORE_WARN("2D box collider is nearly edge-on to the XY plane; clamped to minimum thickness");
+            }
+
             ShapeDescription2D l_Shape;
-            l_Shape.Type = ShapeType2D::Box;
-            l_Shape.Offset = l_Box->Offset * l_Scale;
-            l_Shape.HalfExtents = glm::abs(l_Box->HalfExtents * l_Scale);
+            l_Shape.Type = ShapeType2D::Polygon;
+            for (int l_Index = 0; l_Index < 4; ++l_Index)
+            {
+                l_Shape.Points[l_Index] = l_Points[l_Index];
+            }
+            l_Shape.PointCount = 4;
             l_Shape.IsTrigger = l_Box->IsTrigger;
             l_Shape.Material = l_Box->Material;
             m_World2D->AddShape(l_Body, l_Shape);
@@ -290,8 +326,8 @@ namespace Trinity
         {
             ShapeDescription2D l_Shape;
             l_Shape.Type = ShapeType2D::Circle;
-            l_Shape.Offset = l_Circle->Offset * l_Scale;
-            l_Shape.Radius = l_Circle->Radius * glm::max(glm::abs(l_Scale.x), glm::abs(l_Scale.y));
+            l_Shape.Offset = l_ToBodySpace(l_Circle->Offset);
+            l_Shape.Radius = glm::max(l_Circle->Radius * glm::max(glm::length(glm::vec2(l_World[0])), glm::length(glm::vec2(l_World[1]))), 0.01f);
             l_Shape.IsTrigger = l_Circle->IsTrigger;
             l_Shape.Material = l_Circle->Material;
             m_World2D->AddShape(l_Body, l_Shape);
@@ -305,6 +341,14 @@ namespace Trinity
         l_Record.PreviousPosition = l_Record.CurrentPosition = l_Record.LastWrittenPosition = l_Position;
         l_Record.PreviousRotation = l_Record.CurrentRotation = l_Record.LastWrittenRotation = l_Rotation;
         l_Record.ScaleAtCreation = l_Scale;
+
+        glm::vec3 l_Normal(l_World[2]);
+        float l_NormalLength = glm::length(l_Normal);
+        if (l_NormalLength > 1.0e-6f)
+        {
+            l_Record.PlaneNormalAtCreation = l_Normal / l_NormalLength;
+        }
+
         m_Bodies2D[entity] = l_Record;
     }
 
@@ -389,6 +433,17 @@ namespace Trinity
                     l_Record.ScaleWarned = true;
                 }
             }
+
+            if (!l_Record.TiltWarned)
+            {
+                glm::vec3 l_Normal(l_World[2]);
+                float l_NormalLength = glm::length(l_Normal);
+                if (l_NormalLength > 1.0e-6f && glm::dot(l_Normal / l_NormalLength, l_Record.PlaneNormalAtCreation) < 0.999f)
+                {
+                    TR_CORE_WARN("Entity tilt changed during play; the 2D collider projection keeps its creation-time shape until the body is rebuilt");
+                    l_Record.TiltWarned = true;
+                }
+            }
         }
     }
 
@@ -416,13 +471,11 @@ namespace Trinity
             l_Record.CurrentPosition = l_Position;
             l_Record.CurrentRotation = l_Rotation;
 
-            WriteBody2DTransform(scene, it_Body.first, l_Position, l_Rotation);
-            l_Record.LastWrittenPosition = l_Position;
-            l_Record.LastWrittenRotation = l_Rotation;
+            WriteBody2DTransform(scene, it_Body.first, l_Record, l_Position, l_Rotation);
         }
     }
 
-    void PhysicsSystem::WriteBody2DTransform(Scene& scene, entt::entity entity, const glm::vec2& position, float rotation)
+    void PhysicsSystem::WriteBody2DTransform(Scene& scene, entt::entity entity, Body2DRecord& record, const glm::vec2& position, float rotation)
     {
         entt::registry& l_Registry = scene.GetRegistry();
         TransformComponent* l_Transform = l_Registry.try_get<TransformComponent>(entity);
@@ -432,15 +485,20 @@ namespace Trinity
         }
 
         glm::mat4 l_World = scene.GetWorldMatrix(entity);
-        glm::vec3 l_WorldScale(
-            glm::max(glm::length(glm::vec3(l_World[0])), 1.0e-6f),
-            glm::max(glm::length(glm::vec3(l_World[1])), 1.0e-6f),
-            glm::max(glm::length(glm::vec3(l_World[2])), 1.0e-6f));
+        glm::vec3 l_WorldScale(glm::max(glm::length(glm::vec3(l_World[0])), 1.0e-6f), glm::max(glm::length(glm::vec3(l_World[1])), 1.0e-6f), glm::max(glm::length(glm::vec3(l_World[2])), 1.0e-6f));
 
-        // Physics owns world XY position and Z rotation; world Z translation and scale are preserved
-        glm::mat4 l_NewWorld = glm::translate(glm::mat4(1.0f), glm::vec3(position, l_World[3].z))
-            * glm::mat4_cast(glm::angleAxis(rotation, glm::vec3(0.0f, 0.0f, 1.0f)))
-            * glm::scale(glm::mat4(1.0f), l_WorldScale);
+        // Physics owns world XY position and the twist about Z; authored tilt (the swing), world Z translation, and scale are preserved
+        glm::mat3 l_WorldAxes(glm::vec3(l_World[0]) / l_WorldScale.x, glm::vec3(l_World[1]) / l_WorldScale.y, glm::vec3(l_World[2]) / l_WorldScale.z);
+        glm::quat l_Current = glm::normalize(glm::quat_cast(l_WorldAxes));
+
+        glm::quat l_Twist{ 1.0f, 0.0f, 0.0f, 0.0f };
+        if (std::fabs(l_Current.w) > 1.0e-6f || std::fabs(l_Current.z) > 1.0e-6f)
+        {
+            l_Twist = glm::normalize(glm::quat(l_Current.w, 0.0f, 0.0f, l_Current.z));
+        }
+        glm::quat l_Swing = l_Current * glm::inverse(l_Twist);
+
+        glm::mat4 l_NewWorld = glm::translate(glm::mat4(1.0f), glm::vec3(position, l_World[3].z)) * glm::mat4_cast(l_Swing * glm::angleAxis(rotation, glm::vec3(0.0f, 0.0f, 1.0f))) * glm::scale(glm::mat4(1.0f), l_WorldScale);
 
         glm::mat4 l_Local = l_NewWorld;
         if (const HierarchyComponent* l_Hierarchy = l_Registry.try_get<HierarchyComponent>(entity))
@@ -451,19 +509,16 @@ namespace Trinity
             }
         }
 
-        glm::vec3 l_Scale(
-            glm::max(glm::length(glm::vec3(l_Local[0])), 1.0e-6f),
-            glm::max(glm::length(glm::vec3(l_Local[1])), 1.0e-6f),
-            glm::max(glm::length(glm::vec3(l_Local[2])), 1.0e-6f));
-
-        glm::mat3 l_RotationMatrix(
-            glm::vec3(l_Local[0]) / l_Scale.x,
-            glm::vec3(l_Local[1]) / l_Scale.y,
-            glm::vec3(l_Local[2]) / l_Scale.z);
+        glm::vec3 l_Scale(glm::max(glm::length(glm::vec3(l_Local[0])), 1.0e-6f), glm::max(glm::length(glm::vec3(l_Local[1])), 1.0e-6f), glm::max(glm::length(glm::vec3(l_Local[2])), 1.0e-6f));
+        glm::mat3 l_RotationMatrix(glm::vec3(l_Local[0]) / l_Scale.x, glm::vec3(l_Local[1]) / l_Scale.y, glm::vec3(l_Local[2]) / l_Scale.z);
 
         l_Transform->Translation = glm::vec3(l_Local[3]);
         l_Transform->Rotation = glm::normalize(glm::quat_cast(l_RotationMatrix));
         l_Transform->Scale = l_Scale;
+
+        // Under tilt the extracted Z angle is not exactly the body angle, so dirty detection must compare against what was actually written
+        record.LastWrittenPosition = ExtractWorldPosition2D(l_NewWorld);
+        record.LastWrittenRotation = ExtractWorldRotation2D(l_NewWorld);
     }
 
     void PhysicsSystem::OnRigidbody2DConstructed(entt::registry&, entt::entity entity)

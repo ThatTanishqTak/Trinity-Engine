@@ -1,5 +1,7 @@
 #include <Trinity/Physics/Backends/Box2D/Box2DBackend.h>
 
+#if defined(TRINITY_ENABLE_BOX2D)
+
 #include <cmath>
 #include <cstdint>
 #include <unordered_map>
@@ -275,6 +277,24 @@ namespace Trinity
             l_Circle.radius = description.Radius;
             l_Shape = b2CreateCircleShape(l_Found->second.Id, &l_ShapeDef, &l_Circle);
         }
+        else if (description.Type == ShapeType2D::Polygon)
+        {
+            b2Vec2 l_Points[8];
+            uint32_t l_Count = description.PointCount > 8u ? 8u : description.PointCount;
+            for (uint32_t l_Index = 0; l_Index < l_Count; ++l_Index)
+            {
+                l_Points[l_Index] = { description.Points[l_Index].x, description.Points[l_Index].y };
+            }
+
+            b2Hull l_Hull = b2ComputeHull(l_Points, static_cast<int>(l_Count));
+            if (l_Hull.count < 3)
+            {
+                return ShapeHandle::Invalid;
+            }
+
+            b2Polygon l_Polygon = b2MakePolygon(&l_Hull, 0.0f);
+            l_Shape = b2CreatePolygonShape(l_Found->second.Id, &l_ShapeDef, &l_Polygon);
+        }
         else
         {
             b2Polygon l_Box = b2MakeOffsetBox(description.HalfExtents.x, description.HalfExtents.y, { description.Offset.x, description.Offset.y }, b2Rot_identity);
@@ -497,3 +517,5 @@ namespace Trinity
         b2World_Draw(m_Implementation->World, &l_Draw);
     }
 }
+
+#endif
