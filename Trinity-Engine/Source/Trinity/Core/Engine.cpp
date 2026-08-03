@@ -17,6 +17,8 @@
 #include <Trinity/Scene/Components/TransformComponent.h>
 #include <Trinity/Scene/Components/MeshRendererComponent.h>
 #include <Trinity/Scene/Components/CameraComponent.h>
+#include <Trinity/Scene/Components/BoxCollider2DComponent.h>
+#include <Trinity/Scene/Components/RigidBody2DComponent.h>
 #include <Trinity/Serialization/SceneSerializer.h>
 #include <Trinity/Assets/AssetDatabase.h>
 
@@ -135,20 +137,12 @@ namespace Trinity
 
         Scene l_AuthoredScene;
 
-        UUID l_TestMeshAsset = m_AssetDatabase->GetAssetByPath("Assets/Test.obj");
-
-        Entity l_Parent = l_AuthoredScene.CreateEntity("ImportedMesh");
-        l_Parent.AddComponent<MeshRendererComponent>(MeshRendererComponent{ nullptr, l_TestMeshAsset });
-        l_Parent.GetComponent<TransformComponent>().Translation = glm::vec3(-1.5f, 0.0f, 0.0f);
-
-        Entity l_Child = l_AuthoredScene.CreateEntity("ChildCube");
-        l_Child.AddComponent<MeshRendererComponent>(MeshRendererComponent{ nullptr, UUID(AssetDatabase::BuiltinCube) });
-        l_Child.GetComponent<TransformComponent>().Translation = glm::vec3(3.0f, 0.0f, 0.0f);
-        l_Child.GetComponent<TransformComponent>().Scale = glm::vec3(0.5f, 0.5f, 0.5f);
-        l_AuthoredScene.SetParent(l_Child, l_Parent);
-
-        Entity l_CameraEntity = l_AuthoredScene.CreateEntity("PrimaryCamera");
-        l_CameraEntity.AddComponent<CameraComponent>();
+        Entity l_Test = l_AuthoredScene.CreateEntity("Test");
+        l_Test.AddComponent<MeshRendererComponent>(MeshRendererComponent{ nullptr, UUID(AssetDatabase::BuiltinPlane) });
+        l_Test.GetComponent<TransformComponent>().Translation = glm::vec3(0.0f, 0.0f, 0.0f);
+        l_Test.GetComponent<TransformComponent>().Scale = glm::vec3(1.0f, 1.0f, 1.0f);
+        l_Test.AddComponent<BoxCollider2DComponent>();
+        l_Test.AddComponent<Rigidbody2DComponent>();
 
         std::filesystem::path l_ScenePath = m_Platform->GetFileSystem().Resolve(BaseDirectory::UserData, "Scenes/Demo.tscene");
         SceneSerializer::Serialize(l_AuthoredScene, l_ScenePath, "Demo");
