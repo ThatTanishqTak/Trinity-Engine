@@ -29,6 +29,9 @@ option(TRINITY_ENABLE_METAL "Enable Metal backend" OFF)
 option(TRINITY_ENABLE_DIRECTX12 "Enable DirectX 12 backend" OFF)
 option(TRINITY_ENABLE_SDL "Enable SDL3 platform backend" ON)
 
+option(TRINITY_ENABLE_BOX2D "Enable Box2D 2D physics backend" OFF)
+option(TRINITY_ENABLE_PHYSX "Enable PhysX 3D physics backend" OFF)
+
 if(WIN32)
     set(TRINITY_PLATFORM_DEFINE TRINITY_PLATFORM_WINDOWS)
 elseif(APPLE)

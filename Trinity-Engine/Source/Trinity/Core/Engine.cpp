@@ -11,6 +11,7 @@
 #include <Trinity/Renderer/Frontend/Renderer.h>
 #include <Trinity/Renderer/Frontend/EditorCamera.h>
 #include <Trinity/Audio/Frontend/AudioEngine.h>
+#include <Trinity/Physics/Frontend/PhysicsSystem.h>
 #include <Trinity/Scene/Scene.h>
 #include <Trinity/Scene/Entity.h>
 #include <Trinity/Scene/Components/TransformComponent.h>
@@ -60,6 +61,13 @@ namespace Trinity
         if (!m_AudioEngine->Initialize())
         {
             TR_CORE_CRITICAL("Failed to initialize audio engine");
+        }
+
+        m_PhysicsSystem = std::make_unique<PhysicsSystem>();
+        if (!m_PhysicsSystem->Initialize())
+        {
+            TR_CORE_CRITICAL("Failed to initialize physics system");
+            m_PhysicsSystem.reset();
         }
 
         m_Initialized = true;
@@ -199,14 +207,18 @@ namespace Trinity
         }
     }
 
-    void Engine::FixedUpdate(Timestep)
+    void Engine::FixedUpdate(Timestep timestep)
     {
         if (!m_Initialized)
         {
             return;
         }
 
-        // Fixed-rate simulation systems step here; input, cameras, and audio stay on the variable-rate Update path
+        // Fixed-rate simulation only; input, cameras, and audio stay on the variable-rate Update path
+        if (m_PhysicsSystem != nullptr && m_Scene != nullptr && m_ScenePlaying)
+        {
+            m_PhysicsSystem->Step(*m_Scene, timestep.GetSeconds());
+        }
     }
 
     void Engine::InitializeImGui()
@@ -321,6 +333,11 @@ namespace Trinity
             m_AudioEngine->StartScene(*m_Scene, *m_AssetDatabase);
         }
 
+        if (m_PhysicsSystem != nullptr)
+        {
+            m_PhysicsSystem->StartScene(*m_Scene);
+        }
+
         m_ScenePlaying = true;
 
         return true;
@@ -336,6 +353,11 @@ namespace Trinity
         if (m_AudioEngine != nullptr && m_Scene != nullptr)
         {
             m_AudioEngine->StopScene(*m_Scene);
+        }
+
+        if (m_PhysicsSystem != nullptr && m_Scene != nullptr)
+        {
+            m_PhysicsSystem->StopScene(*m_Scene);
         }
 
         if (m_Scene != nullptr && m_AssetDatabase != nullptr && !m_SceneSnapshot.empty())
@@ -366,6 +388,12 @@ namespace Trinity
         }
 
         m_ImGuiLayer.Shutdown();
+
+        if (m_PhysicsSystem != nullptr)
+        {
+            m_PhysicsSystem->Shutdown();
+            m_PhysicsSystem.reset();
+        }
 
         m_Scene.reset();
         m_EditorCamera.reset();

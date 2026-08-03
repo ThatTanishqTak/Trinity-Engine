@@ -17,6 +17,7 @@ namespace Trinity
     class MeshLibrary;
     class AssetDatabase;
     class AudioEngine;
+    class PhysicsSystem;
     class Scene;
     class EditorCamera;
     class Camera;
@@ -79,6 +80,9 @@ namespace Trinity
         AudioEngine& GetAudioEngine() { return *m_AudioEngine; }
         bool HasAudioEngine() const { return m_AudioEngine != nullptr; }
 
+        PhysicsSystem& GetPhysicsSystem() { return *m_PhysicsSystem; }
+        bool HasPhysicsSystem() const { return m_PhysicsSystem != nullptr; }
+
         SimulationClock& GetSimulationClock() { return m_SimulationClock; }
         const SimulationClock& GetSimulationClock() const { return m_SimulationClock; }
         float GetInterpolationAlpha() const { return m_SimulationClock.GetAlpha(); }
@@ -98,6 +102,7 @@ namespace Trinity
         std::unique_ptr<Swapchain> m_Swapchain;
         std::unique_ptr<Renderer> m_Renderer;
         std::unique_ptr<AudioEngine> m_AudioEngine;
+        std::unique_ptr<PhysicsSystem> m_PhysicsSystem;
         std::unique_ptr<AssetDatabase> m_AssetDatabase;
         std::unique_ptr<Scene> m_Scene;
         std::unique_ptr<EditorCamera> m_EditorCamera;

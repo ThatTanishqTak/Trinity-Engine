@@ -32,6 +32,7 @@ namespace Trinity
 
         void OnInitialize() override;
         void OnUpdate(Timestep timestep) override;
+        void OnFixedUpdate(Timestep timestep) override;
         void OnImGuiRender() override;
         void OnEvent(Event& event, bool handled) override;
         void OnShutdown() override;

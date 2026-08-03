@@ -62,9 +62,14 @@ namespace Trinity
         TR_INFO("FORGE INITIALIZED");
     }
 
-    void ForgeApplication::OnUpdate(Timestep)
+    void ForgeApplication::OnUpdate(Timestep timestep)
     {
+        //TR_TRACE("Updated: {}", timestep.GetMilliseconds());
+    }
 
+    void ForgeApplication::OnFixedUpdate(Timestep timestep)
+    {
+        //TR_TRACE("Fixed Updated: {}", timestep.GetMilliseconds());
     }
 
     void ForgeApplication::OnImGuiRender()
