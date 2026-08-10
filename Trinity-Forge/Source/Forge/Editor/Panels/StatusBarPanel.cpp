@@ -15,7 +15,7 @@ namespace Trinity
 {
     void StatusBarPanel::OnImGuiRender()
     {
-        float l_Height = ImGui::GetFrameHeight() + 6.0f;
+        float l_Height = ImGui::GetFrameHeight() + ImGui::GetStyle().ItemSpacing.y;
 
         ImGuiViewport* l_Viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(ImVec2(l_Viewport->Pos.x, l_Viewport->Pos.y + l_Viewport->Size.y - l_Height));

@@ -15,7 +15,7 @@ namespace Trinity
     static constexpr const char* k_UIFontFile = "JetBrainsMonoNerdFontMono-Regular.ttf";
     static constexpr const char* k_IconFontFile = "materialdesignicons-webfont.ttf";
     static constexpr float k_BaseFontSize = 16.0f;
-    static constexpr float k_UserScale = 0.75f;
+    static constexpr float k_UserScale = 1.0f;
 
     static void ApplyStyle()
     {
@@ -166,9 +166,9 @@ namespace Trinity
             l_Scale *= Application::Get().GetWindow().GetContentScale();
         }
 
-        if (l_Scale < 1.0f)
+        if (l_Scale < 0.5f)
         {
-            l_Scale = 1.0f;
+            l_Scale = 0.5f;
         }
 
         ApplyStyle();

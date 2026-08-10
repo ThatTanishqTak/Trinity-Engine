@@ -96,8 +96,9 @@ namespace Trinity
         }
 
         ImVec2 l_Available = ImGui::GetContentRegionAvail();
-        uint32_t l_Width = l_Available.x > 0.0f ? static_cast<uint32_t>(l_Available.x) : 0;
-        uint32_t l_Height = l_Available.y > 0.0f ? static_cast<uint32_t>(l_Available.y) : 0;
+        ImVec2 l_FramebufferScale = ImGui::GetIO().DisplayFramebufferScale;
+        uint32_t l_Width = l_Available.x > 0.0f ? static_cast<uint32_t>(l_Available.x * l_FramebufferScale.x) : 0;
+        uint32_t l_Height = l_Available.y > 0.0f ? static_cast<uint32_t>(l_Available.y * l_FramebufferScale.y) : 0;
 
         if (l_Width > 0 && l_Height > 0)
         {

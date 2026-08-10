@@ -15,7 +15,7 @@ namespace Trinity
         ImGuiStyle& l_Style = ImGui::GetStyle();
 
         float l_ButtonSize = ImGui::GetFrameHeight() * 1.3f;
-        float l_PadY = 6.0f;
+        float l_PadY = l_Style.ItemSpacing.y;
         float l_Height = l_ButtonSize + l_PadY * 2.0f;
 
         ImGuiViewport* l_Viewport = ImGui::GetMainViewport();

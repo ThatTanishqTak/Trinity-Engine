@@ -340,13 +340,7 @@ namespace Trinity
     {
         ImGuiStyle& l_Style = ImGui::GetStyle();
 
-        // Match the native Windows title bar height (~32px at 100% DPI), scaled for DPI.
-        float l_Height = 38.0f * window.GetContentScale();
-        float l_MinHeight = ImGui::GetFontSize() + 8.0f;
-        if (l_Height < l_MinHeight)
-        {
-            l_Height = l_MinHeight;
-        }
+        float l_Height = ImGui::GetFrameHeight() + l_Style.FramePadding.y;
 
         // Center the menu text vertically and let the window buttons fill the bar height.
         float l_BarPadding = (l_Height - ImGui::GetFontSize()) * 0.5f;
