@@ -41,7 +41,7 @@ namespace Trinity
     private:
         void RenderDockspace();
         void BuildDefaultLayout(unsigned int dockspaceID);
-        void RenderDrawer(const char* id, const char* title, bool& show, bool& openPrev, const std::function<void()>& body);
+        void UpdateWindowTitle();
         void RenderPhysicsColliders();
         void LogPhysicsEvents();
         void ProcessPendingAction();
@@ -61,8 +61,6 @@ namespace Trinity
         std::unique_ptr<RenderGraphPanel> m_RenderGraphPanel;
         std::unique_ptr<PhysicsSettingsPanel> m_PhysicsSettingsPanel;
 
-        bool m_ContentDrawerOpenPrev = false;
-        bool m_ConsoleDrawerOpenPrev = false;
-        float m_DrawerHeight = 0.0f;
+        std::string m_WindowTitle;
     };
 }

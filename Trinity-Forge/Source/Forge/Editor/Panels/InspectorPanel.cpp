@@ -14,6 +14,7 @@
 
 #include <Forge/Editor/EditorContext.h>
 #include <Forge/Editor/EditorIcons.h>
+#include <Forge/Editor/EditorTheme.h>
 #include <Forge/Editor/Commands/EntityCommands.h>
 #include <Forge/Editor/Commands/ComponentCommands.h>
 #include <Forge/Editor/Commands/CompositeCommand.h>
@@ -223,56 +224,63 @@ namespace Trinity
         bool Reset = false;
     };
 
-    // Reusable Unreal-style colored XYZ control. Double-click an axis button to reset just that axis to resetValue.
+    // Unity's Vector3 row: a plain grey label column, then X / Y / Z as unstyled prefixes on
+    // three equal fields. Double-clicking an axis letter resets just that axis.
     static Vec3ControlResult DrawVec3Control(const char* label, glm::vec3& value, float resetValue, float speed)
     {
         Vec3ControlResult l_Result;
 
         ImGuiStyle& l_Style = ImGui::GetStyle();
-        float l_LineHeight = ImGui::GetFontSize() + l_Style.FramePadding.y * 2.0f;
-        ImVec2 l_ButtonSize = ImVec2(l_LineHeight + 3.0f, l_LineHeight);
 
         ImGui::PushID(label);
 
-        // Unreal aligns every property name in a fixed left-hand label column.
+        // Unity's label column is proportional (roughly a third of the Inspector) rather than fixed.
+        float l_LabelWidth = ImGui::GetContentRegionAvail().x * 0.34f;
+        if (l_LabelWidth < 70.0f)
+        {
+            l_LabelWidth = 70.0f;
+        }
+
         ImGui::Columns(2, nullptr, false);
-        ImGui::SetColumnWidth(0, 100.0f);
+        ImGui::SetColumnWidth(0, l_LabelWidth);
+        ImGui::AlignTextToFramePadding();
+        ImGui::PushStyleColor(ImGuiCol_Text, EditorColors::ToVec4(EditorColors::LabelText));
         ImGui::TextUnformatted(label);
+        ImGui::PopStyleColor();
         ImGui::NextColumn();
 
-        ImGui::PushMultiItemsWidths(3, ImGui::CalcItemWidth());
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, l_Style.ItemSpacing.y));
+        float l_AxisLabelWidth = ImGui::CalcTextSize("X").x + l_Style.ItemInnerSpacing.x;
+        float l_FieldWidth = (ImGui::GetContentRegionAvail().x - l_AxisLabelWidth * 3.0f - l_Style.ItemInnerSpacing.x * 2.0f) / 3.0f;
 
-        auto l_Axis = [&](const char* axisLabel, const ImVec4& color, const ImVec4& colorHovered, float* component)
+        auto l_Axis = [&](const char* axisLabel, float* component)
+        {
+            ImGui::AlignTextToFramePadding();
+            ImGui::PushStyleColor(ImGuiCol_Text, EditorColors::ToVec4(EditorColors::LabelText));
+            ImGui::TextUnformatted(axisLabel);
+            ImGui::PopStyleColor();
+
+            if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
             {
-                ImGui::PushStyleColor(ImGuiCol_Button, color);
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colorHovered);
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, color);
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
-                ImGui::Button(axisLabel, l_ButtonSize);
-                if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-                {
-                    *component = resetValue;
-                    l_Result.Reset = true;
-                }
-                ImGui::PopStyleColor(4);
+                *component = resetValue;
+                l_Result.Reset = true;
+            }
 
-                ImGui::SameLine();
-                std::string l_DragId = std::string("##") + axisLabel;
-                ImGui::DragFloat(l_DragId.c_str(), component, speed);
-                l_Result.Activated = l_Result.Activated || ImGui::IsItemActivated();
-                l_Result.Committed = l_Result.Committed || ImGui::IsItemDeactivatedAfterEdit();
-                l_Result.Deactivated = l_Result.Deactivated || ImGui::IsItemDeactivated();
-                ImGui::PopItemWidth();
-            };
+            ImGui::SameLine(0.0f, l_Style.ItemInnerSpacing.x);
+            ImGui::SetNextItemWidth(l_FieldWidth);
 
-        l_Axis("X", ImVec4(0.60f, 0.16f, 0.18f, 1.0f), ImVec4(0.74f, 0.21f, 0.23f, 1.0f), &value.x);
-        ImGui::SameLine();
-        l_Axis("Y", ImVec4(0.18f, 0.49f, 0.21f, 1.0f), ImVec4(0.24f, 0.60f, 0.27f, 1.0f), &value.y);
-        ImGui::SameLine();
-        l_Axis("Z", ImVec4(0.14f, 0.33f, 0.60f, 1.0f), ImVec4(0.20f, 0.43f, 0.76f, 1.0f), &value.z);
+            std::string l_DragId = std::string("##") + axisLabel;
+            ImGui::DragFloat(l_DragId.c_str(), component, speed);
+            l_Result.Activated = l_Result.Activated || ImGui::IsItemActivated();
+            l_Result.Committed = l_Result.Committed || ImGui::IsItemDeactivatedAfterEdit();
+            l_Result.Deactivated = l_Result.Deactivated || ImGui::IsItemDeactivated();
+        };
 
-        ImGui::PopStyleVar();
+        l_Axis("X", &value.x);
+        ImGui::SameLine(0.0f, l_Style.ItemInnerSpacing.x);
+        l_Axis("Y", &value.y);
+        ImGui::SameLine(0.0f, l_Style.ItemInnerSpacing.x);
+        l_Axis("Z", &value.z);
+
         ImGui::Columns(1);
         ImGui::PopID();
 
@@ -307,20 +315,32 @@ namespace Trinity
         bool Remove = false;
     };
 
-    // Draws a UE-style collapsible component header with a right-aligned "..." menu (Reset / Remove).
+    // Unity's component header: a full-width #3C3C3C bar with a hairline underneath and a
+    // right-aligned kebab menu (Reset / Remove).
     static ComponentSection BeginComponentSection(const char* id, const char* header, bool removable)
     {
         ComponentSection l_Result;
 
         ImGui::PushID(id);
 
-        // Fold like an Unreal component category; open by default so nothing hides on selectionAllowOverlap lets the right-aligned "..." button on the same row receive clicks
-        l_Result.Open = ImGui::CollapsingHeader(header, ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_AllowOverlap);
+        ImVec2 l_HeaderMin = ImGui::GetCursorScreenPos();
+        float l_HeaderWidth = ImGui::GetContentRegionAvail().x;
+        float l_LineHeight = ImGui::GetFrameHeight();
+
+        ImDrawList* l_DrawList = ImGui::GetWindowDrawList();
+        l_DrawList->AddRectFilled(l_HeaderMin, ImVec2(l_HeaderMin.x + l_HeaderWidth, l_HeaderMin.y + l_LineHeight), EditorColors::Toolbar);
+        l_DrawList->AddLine(ImVec2(l_HeaderMin.x, l_HeaderMin.y + l_LineHeight - 1.0f), ImVec2(l_HeaderMin.x + l_HeaderWidth, l_HeaderMin.y + l_LineHeight - 1.0f), EditorColors::DefaultBorder);
+
+        // The bar is already painted, so the header itself only contributes the arrow and the label.
+        ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, EditorColors::ToVec4(EditorColors::ToolbarHover));
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive, EditorColors::ToVec4(EditorColors::ToolbarChecked));
+        l_Result.Open = ImGui::CollapsingHeader(header, ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_SpanFullWidth);
+        ImGui::PopStyleColor(3);
 
         // Right-aligned options button on the header row; available whether the section is open or collapsed.
-        float l_LineHeight = ImGui::GetFrameHeight();
         ImGui::SameLine(ImGui::GetContentRegionMax().x - l_LineHeight);
-        if (ImGui::SmallButton(ICON_FA_ELLIPSIS_VERTICAL))
+        if (ImGui::SmallButton(ICON_TR_MORE))
         {
             ImGui::OpenPopup("ComponentSectionMenu");
         }
@@ -347,7 +367,12 @@ namespace Trinity
 
     void InspectorPanel::OnImGuiRender()
     {
-        ImGui::Begin("Details");
+        if (!m_Context.ShowInspector)
+        {
+            return;
+        }
+
+        ImGui::Begin(ICON_TR_INSPECTOR "  Inspector", &m_Context.ShowInspector);
 
         if (m_Engine.HasScene() && m_Context.Selection.size() > 1)
         {
@@ -389,8 +414,9 @@ namespace Trinity
                 }
 
                 ImGui::Spacing();
-                ImGui::SetNextItemWidth(-1.0f);
-                ImGui::InputTextWithHint("##DetailsSearch", ICON_FA_SLIDERS "  Search...", m_DetailsSearch, sizeof(m_DetailsSearch));
+                EditorTheme::SearchField("##InspectorSearch", m_DetailsSearch, sizeof(m_DetailsSearch), -1.0f);
+                ImGui::Spacing();
+                ImGui::Separator();
                 ImGui::Spacing();
 
                 std::string l_DetailsFilter = ToLower(m_DetailsSearch);
@@ -932,15 +958,14 @@ namespace Trinity
                 ImGui::Separator();
                 ImGui::Spacing();
 
-                float l_AddWidth = ImGui::GetContentRegionAvail().x;
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.60f, 0.28f, 1.0f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.28f, 0.72f, 0.34f, 1.0f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.18f, 0.52f, 0.24f, 1.0f));
-                if (ImGui::Button(ICON_FA_PLUS "  Add Component", ImVec2(l_AddWidth, 0.0f)))
+                // Unity centres a plain grey "Add Component" button at roughly 60% of the Inspector width.
+                float l_AddWidth = ImGui::GetContentRegionAvail().x * 0.60f;
+                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (ImGui::GetContentRegionAvail().x - l_AddWidth) * 0.5f);
+                if (ImGui::Button("Add Component", ImVec2(l_AddWidth, ImGui::GetFrameHeight() + 4.0f)) || m_Context.OpenAddComponent)
                 {
+                    m_Context.OpenAddComponent = false;
                     ImGui::OpenPopup("AddComponentPopup");
                 }
-                ImGui::PopStyleColor(3);
 
                 if (ImGui::BeginPopup("AddComponentPopup"))
                 {

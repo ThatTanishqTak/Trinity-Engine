@@ -93,24 +93,25 @@ namespace Trinity
 
         m_Context.ChromeTop = 0.0f;
         m_Context.ChromeBottom = 0.0f;
-        m_Context.DrawerToggled = false;
 
         m_MenuBarPanel->OnImGuiRender();
         m_MainToolBarPanel->OnImGuiRender();
         m_StatusBarPanel->OnImGuiRender();
         RenderDockspace();
+
         m_ViewportPanel->OnImGuiRender();
         m_HierarchyPanel->OnImGuiRender();
         ProcessPendingAction();
         m_InspectorPanel->OnImGuiRender();
+        // Unity docks Project and Console as ordinary panels; the slide-up drawers are gone.
+        m_ContentBrowserPanel->OnImGuiRender();
+        m_ConsolePanel->OnImGuiRender();
         m_RenderGraphPanel->OnImGuiRender();
         m_PhysicsSettingsPanel->OnImGuiRender();
 
-        RenderDrawer("##ForgeContentDrawer", "Content Browser", m_Context.ShowContentDrawer, m_ContentDrawerOpenPrev, [this]() { m_ContentBrowserPanel->RenderContents(); });
-        RenderDrawer("##ForgeConsoleDrawer", "Console", m_Context.ShowConsoleDrawer, m_ConsoleDrawerOpenPrev, [this]() { m_ConsolePanel->RenderContents(); });
-
         ProcessDeferredComponentOp();
         ProcessPendingFileOp();
+        UpdateWindowTitle();
     }
 
     void ForgeApplication::OnEvent(Event& event, bool handled)
@@ -175,93 +176,34 @@ namespace Trinity
 
         ImGuiID l_Main = dockspaceID;
         ImGuiID l_Right = ImGui::DockBuilderSplitNode(l_Main, ImGuiDir_Right, 0.22f, nullptr, &l_Main);
-        ImGuiID l_RightBottom = ImGui::DockBuilderSplitNode(l_Right, ImGuiDir_Down, 0.55f, nullptr, &l_Right);
+        ImGuiID l_Left = ImGui::DockBuilderSplitNode(l_Main, ImGuiDir_Left, 0.20f, nullptr, &l_Main);
+        ImGuiID l_Bottom = ImGui::DockBuilderSplitNode(l_Main, ImGuiDir_Down, 0.32f, nullptr, &l_Main);
 
-        ImGui::DockBuilderDockWindow("Viewport", l_Main);
-        ImGui::DockBuilderDockWindow("Outliner", l_Right);
-        ImGui::DockBuilderDockWindow("Details", l_RightBottom);
+        ImGui::DockBuilderDockWindow("Scene", l_Main);
+        ImGui::DockBuilderDockWindow("Hierarchy", l_Left);
+        ImGui::DockBuilderDockWindow("Inspector", l_Right);
+        ImGui::DockBuilderDockWindow("Project", l_Bottom);
+        ImGui::DockBuilderDockWindow("Console", l_Bottom);
 
         ImGui::DockBuilderFinish(dockspaceID);
     }
 
-    void ForgeApplication::RenderDrawer(const char* id, const char* title, bool& show, bool& openPrevious, const std::function<void()>& body)
+    void ForgeApplication::UpdateWindowTitle()
     {
-        if (!show)
+        if (!HasWindow())
         {
-            openPrevious = false;
-
             return;
         }
 
-        ImGuiViewport* l_Viewport = ImGui::GetMainViewport();
-        float l_Bottom = l_Viewport->Pos.y + l_Viewport->Size.y - m_Context.ChromeBottom;
-        float l_MinHeight = l_Viewport->Size.y * 0.12f;
-        float l_MaxHeight = l_Viewport->Size.y * 0.85f;
-
-        if (m_DrawerHeight <= 0.0f)
+        // Unity's caption: "Project - Scene - Target - Editor <API>". The asterisk marks unsaved work.
+        std::string l_Title = m_Context.ProjectName + " - " + m_Context.SceneName + (m_Context.History.IsDirty() ? "*" : "") + " - PC, Mac & Linux Standalone - Trinity Forge <Vulkan>";
+        if (l_Title == m_WindowTitle)
         {
-            m_DrawerHeight = l_Viewport->Size.y * 0.40f;
+            return;
         }
 
-        if (m_DrawerHeight < l_MinHeight)
-        {
-            m_DrawerHeight = l_MinHeight;
-        }
-
-        if (m_DrawerHeight > l_MaxHeight)
-        {
-            m_DrawerHeight = l_MaxHeight;
-        }
-
-        ImGui::SetNextWindowPos(ImVec2(l_Viewport->Pos.x, l_Bottom - m_DrawerHeight), ImGuiCond_Always);
-        ImGui::SetNextWindowSizeConstraints(ImVec2(l_Viewport->Size.x, l_MinHeight), ImVec2(l_Viewport->Size.x, l_MaxHeight));
-        ImGui::SetNextWindowSize(ImVec2(l_Viewport->Size.x, m_DrawerHeight), ImGuiCond_Once);
-        ImGui::SetNextWindowViewport(l_Viewport->ID);
-
-        if (!openPrevious)
-        {
-            ImGui::SetNextWindowFocus();
-        }
-
-        ImGuiWindowFlags l_Flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoSavedSettings;
-
-        ImGui::Begin(id, nullptr, l_Flags);
-
-        ImVec2 l_DrawerMin = ImGui::GetWindowPos();
-        ImVec2 l_DrawerSize = ImGui::GetWindowSize();
-        m_DrawerHeight = l_DrawerSize.y;
-
-        ImGui::TextUnformatted(title);
-        ImGui::Separator();
-
-        bool l_PopupActive = ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel);
-
-        body();
-
-        ImGui::End();
-
-        bool l_Close = false;
-        if (ImGui::IsKeyPressed(ImGuiKey_Escape, false) && !l_PopupActive && !ImGui::GetIO().WantTextInput)
-        {
-            l_Close = true;
-        }
-        else if (openPrevious && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsDragDropActive() && !l_PopupActive)
-        {
-            ImVec2 l_Mouse = ImGui::GetIO().MousePos;
-            bool l_InDrawer = l_Mouse.x >= l_DrawerMin.x && l_Mouse.x <= l_DrawerMin.x + l_DrawerSize.x && l_Mouse.y >= l_DrawerMin.y && l_Mouse.y <= l_DrawerMin.y + l_DrawerSize.y;
-            bool l_InStatusBar = l_Mouse.y >= l_Bottom;
-            if (!l_InDrawer && !l_InStatusBar)
-            {
-                l_Close = true;
-            }
-        }
-
-        if (l_Close)
-        {
-            show = false;
-        }
-
-        openPrevious = show;
+        m_WindowTitle = l_Title;
+        GetWindow().SetTitle(m_WindowTitle);
     }
 
     bool ForgeApplication::IsAncestorOf(Scene& scene, entt::entity ancestor, entt::entity node)
@@ -577,11 +519,12 @@ namespace Trinity
         l_Specification.Window.Title = "Forge";
         l_Specification.Window.Width = 1920;
         l_Specification.Window.Height = 1080;
-        l_Specification.Window.CustomTitleBar = true;
+        // Unity keeps the OS title bar and puts nothing of its own up there.
+        l_Specification.Window.CustomTitleBar = false;
         l_Specification.Arguments = args;
 
         TR_TRACE("Application internal name: {}, Application window title: {}", l_Specification.InternalName, l_Specification.Window.Title);
-        TR_TRACE("Application resolution: {}x{}, Custom title bar: {}", l_Specification.Window.Width, l_Specification.Window.Height, l_Specification.Window.CustomTitleBar);
+        TR_TRACE("Application resolution: {}x{}", l_Specification.Window.Width, l_Specification.Window.Height);
         TR_TRACE("Application argument count: {}", l_Specification.Arguments.Count);
 
         for (int i = 0; i < l_Specification.Arguments.Count; ++i)

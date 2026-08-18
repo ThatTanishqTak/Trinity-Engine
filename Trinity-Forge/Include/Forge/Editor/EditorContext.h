@@ -134,15 +134,31 @@ namespace Trinity
         std::filesystem::path ScenePath;
         std::string SceneName = "Demo";
 
+        std::string ProjectName = "Trinity";
+
         bool ResetLayout = false;
-        bool ShowContentDrawer = false;
-        bool ShowConsoleDrawer = false;
-        bool DrawerToggled = false;
+
         bool PlayMode = false;
+        bool Paused = false;
+        bool PlayToggleRequested = false;
+        bool PauseToggleRequested = false;
+        bool StepRequested = false;
+
+        bool RefreshAssetsRequested = false;
+        bool OpenAddComponent = false;
+
+        // Unity docks every panel; Window > Panels toggles them instead of sliding drawers open.
+        bool ShowScene = true;
+        bool ShowHierarchy = true;
+        bool ShowInspector = true;
+        bool ShowProject = true;
+        bool ShowConsole = true;
         bool ShowRenderGraph = false;
-        bool ShowPhysicsColliders = false;
         bool ShowPhysicsSettings = false;
+
+        bool ShowPhysicsColliders = false;
         bool LogPhysicsEvents = false;
+        bool MuteAudio = false;
 
         float ChromeTop = 0.0f;
         float ChromeBottom = 0.0f;

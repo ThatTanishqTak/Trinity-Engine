@@ -43,6 +43,11 @@ namespace Trinity
         void StopScene();
         bool IsScenePlaying() const { return m_ScenePlaying; }
 
+        // Unity's Pause freezes the fixed-rate simulation; Step releases exactly one tick.
+        void SetScenePaused(bool paused) { m_ScenePaused = paused; }
+        bool IsScenePaused() const { return m_ScenePaused; }
+        void StepScene() { m_SceneStepRequested = true; }
+
         void RenderFrame();
         void Resize(uint32_t width, uint32_t height);
 
@@ -95,6 +100,8 @@ namespace Trinity
         SimulationClock m_SimulationClock;
 
         bool m_ScenePlaying = false;
+        bool m_ScenePaused = false;
+        bool m_SceneStepRequested = false;
         std::string m_SceneSnapshot;
 
         std::unique_ptr<IPlatform> m_Platform;

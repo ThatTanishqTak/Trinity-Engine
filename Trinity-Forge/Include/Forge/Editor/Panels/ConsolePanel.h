@@ -17,5 +17,9 @@ namespace Trinity
 
     private:
         bool m_Autoscroll = true;
+        bool m_ShowInfo = true;
+        bool m_ShowWarnings = true;
+        bool m_ShowErrors = true;
+        int m_SelectedMessage = -1;
     };
 }

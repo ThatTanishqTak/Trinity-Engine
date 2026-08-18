@@ -4,6 +4,7 @@
 
 #include <Forge/Editor/EditorContext.h>
 #include <Forge/Editor/EditorIcons.h>
+#include <Forge/Editor/EditorTheme.h>
 
 #include <Trinity/Core/Engine.h>
 #include <Trinity/Scene/Scene.h>
@@ -12,73 +13,32 @@ namespace Trinity
 {
     void MainToolBarPanel::OnImGuiRender()
     {
-        ImGuiStyle& l_Style = ImGui::GetStyle();
+        ProcessRequests();
 
-        float l_ButtonSize = ImGui::GetFrameHeight() * 1.3f;
-        float l_PadY = l_Style.ItemSpacing.y;
-        float l_Height = l_ButtonSize + l_PadY * 2.0f;
-
-        ImGuiViewport* l_Viewport = ImGui::GetMainViewport();
-        ImGui::SetNextWindowPos(ImVec2(l_Viewport->Pos.x, l_Viewport->Pos.y + m_Context.ChromeTop));
-        ImGui::SetNextWindowSize(ImVec2(l_Viewport->Size.x, l_Height));
-        ImGui::SetNextWindowViewport(l_Viewport->ID);
-
-        ImGuiWindowFlags l_Flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoSavedSettings;
-
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, l_PadY));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(6.0f, 0.0f));
-        ImGui::Begin("##ForgeMainToolbar", nullptr, l_Flags);
-        ImGui::PopStyleVar(4);
-
-        ImGui::SetWindowFontScale(1.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-
-        if (ImGui::Button(ICON_FA_FLOPPY_DISK, ImVec2(l_ButtonSize, l_ButtonSize)))
+        float l_Height = EditorTheme::ToolBarHeight();
+        float l_PadY = (l_Height - ImGui::GetFrameHeight()) * 0.5f - 1.0f;
+        if (l_PadY < 0.0f)
         {
-            m_Context.FileOp = PendingFileOp::Save;
-        }
-        if (ImGui::IsItemHovered())
-        {
-            ImGui::SetTooltip("Save  (Ctrl+S)");
+            l_PadY = 0.0f;
         }
 
-        ImGui::SameLine();
-        ImVec2 l_SepPos = ImGui::GetCursorScreenPos();
-        ImGui::GetWindowDrawList()->AddLine(ImVec2(l_SepPos.x, l_SepPos.y + 3.0f), ImVec2(l_SepPos.x, l_SepPos.y + l_ButtonSize - 3.0f), ImGui::GetColorU32(ImGuiCol_Separator));
-        ImGui::SameLine(0.0f, l_Style.ItemSpacing.x + 8.0f);
-
-        bool l_Playing = m_Context.PlayMode;
-
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.60f, 0.28f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.28f, 0.72f, 0.34f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.18f, 0.52f, 0.24f, 1.0f));
-        ImGui::BeginDisabled(l_Playing);
-        if (ImGui::Button(ICON_FA_PLAY, ImVec2(l_ButtonSize, l_ButtonSize)))
+        if (EditorTheme::BeginChromeBar("##ForgeMainToolBar", m_Context.ChromeTop, l_Height, EditorColors::AppToolbar, ImVec2(8.0f, l_PadY)))
         {
-            if (m_Engine.StartScene())
-            {
-                // Undo does not cross the play boundary; entity handles recorded before play are stale after the snapshot restore.
-                m_Context.History.Clear();
-                m_Context.PlayMode = true;
-            }
-        }
-        ImGui::EndDisabled();
-        if (!l_Playing && ImGui::IsItemHovered())
-        {
-            ImGui::SetTooltip("Play");
-        }
-        ImGui::PopStyleColor(3);
+            float l_BarWidth = ImGui::GetWindowWidth();
 
-        ImGui::SameLine();
+            RenderLeftCluster();
+            RenderPlayControls(l_BarWidth);
+            RenderRightCluster(l_BarWidth);
+        }
 
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.70f, 0.24f, 0.24f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.82f, 0.30f, 0.30f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.60f, 0.20f, 0.20f, 1.0f));
-        ImGui::BeginDisabled(!l_Playing);
-        if (ImGui::Button(ICON_FA_STOP, ImVec2(l_ButtonSize, l_ButtonSize)))
+        EditorTheme::EndChromeBar();
+
+        m_Context.ChromeTop += l_Height;
+    }
+
+    void MainToolBarPanel::TogglePlay()
+    {
+        if (m_Context.PlayMode)
         {
             m_Engine.StopScene();
             if (m_Engine.HasScene())
@@ -88,20 +48,187 @@ namespace Trinity
 
             m_Context.History.Clear();
             m_Context.PlayMode = false;
+            m_Context.Paused = false;
+
+            return;
         }
-        ImGui::EndDisabled();
-        if (l_Playing && ImGui::IsItemHovered())
+
+        if (m_Engine.StartScene())
         {
-            ImGui::SetTooltip("Stop");
+            // Undo does not cross the play boundary; entity handles recorded before play are stale after the snapshot restore.
+            m_Context.History.Clear();
+            m_Context.PlayMode = true;
+            m_Context.Paused = false;
         }
-        ImGui::PopStyleColor(3);
+    }
 
-        ImGui::PopStyleColor();
+    void MainToolBarPanel::TogglePause()
+    {
+        if (!m_Context.PlayMode)
+        {
+            return;
+        }
+
+        m_Context.Paused = !m_Context.Paused;
+        m_Engine.SetScenePaused(m_Context.Paused);
+    }
+
+    void MainToolBarPanel::ProcessRequests()
+    {
+        if (m_Context.PlayToggleRequested)
+        {
+            m_Context.PlayToggleRequested = false;
+            TogglePlay();
+        }
+
+        if (m_Context.PauseToggleRequested)
+        {
+            m_Context.PauseToggleRequested = false;
+            TogglePause();
+        }
+
+        if (m_Context.StepRequested)
+        {
+            m_Context.StepRequested = false;
+            if (m_Context.PlayMode)
+            {
+                // Unity's Step implies Pause; the frame advances one fixed tick and stops again.
+                if (!m_Context.Paused)
+                {
+                    m_Context.Paused = true;
+                    m_Engine.SetScenePaused(true);
+                }
+
+                m_Engine.StepScene();
+            }
+        }
+    }
+
+    void MainToolBarPanel::RenderLeftCluster()
+    {
+        // Unity's left cluster is the services strip; Forge fills the same slot with its project actions.
+        if (EditorTheme::ToolBarButton(ICON_TR_SAVE, false, "Save  (Ctrl+S)"))
+        {
+            m_Context.FileOp = PendingFileOp::Save;
+        }
+
+        ImGui::SameLine();
+        if (EditorTheme::ToolBarButton(ICON_TR_REFRESH, false, "Refresh assets  (Ctrl+R)"))
+        {
+            m_Context.RefreshAssetsRequested = true;
+        }
+
+        EditorTheme::ToolBarSeparator();
+
+        if (EditorTheme::ToolBarButton(ICON_TR_CLOUD "  Trinity Cloud  " ICON_TR_CHEVRON_DOWN, false, nullptr, false, ImGui::GetFontSize() * 9.5f))
+        {
+        }
+    }
+
+    void MainToolBarPanel::RenderPlayControls(float barWidth)
+    {
+        bool l_HasScene = m_Engine.HasScene();
+        float l_ButtonWidth = ImGui::GetFrameHeight() + 10.0f;
+        float l_GroupWidth = l_ButtonWidth * 3.0f;
+        float l_GroupX = (barWidth - l_GroupWidth) * 0.5f;
+
+        // Unity welds Play / Pause / Step into one segmented control at the exact centre of the toolbar.
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
+        ImGui::SameLine(l_GroupX);
+
+        if (EditorTheme::ToolBarButton(ICON_TR_PLAY, m_Context.PlayMode, m_Context.PlayMode ? "Stop  (Ctrl+P)" : "Play  (Ctrl+P)", l_HasScene, l_ButtonWidth, EditorColors::Highlight))
+        {
+            TogglePlay();
+        }
+
+        ImGui::SameLine();
+        if (EditorTheme::ToolBarButton(ICON_TR_PAUSE, m_Context.Paused, "Pause  (Ctrl+Shift+P)", m_Context.PlayMode, l_ButtonWidth, EditorColors::Highlight))
+        {
+            TogglePause();
+        }
+
+        ImGui::SameLine();
+        if (EditorTheme::ToolBarButton(ICON_TR_STEP, false, "Step  (Ctrl+Alt+P)", m_Context.PlayMode, l_ButtonWidth, EditorColors::Highlight))
+        {
+            m_Context.StepRequested = true;
+        }
+
         ImGui::PopStyleVar();
-        ImGui::SetWindowFontScale(1.0f);
+    }
 
-        ImGui::End();
+    void MainToolBarPanel::RenderRightCluster(float barWidth)
+    {
+        float l_IconWidth = ImGui::GetFrameHeight() + 6.0f;
+        float l_SearchWidth = ImGui::GetFontSize() * 10.0f;
+        float l_LayoutWidth = ImGui::GetFontSize() * 6.0f;
+        float l_Total = l_IconWidth * 3.0f + l_SearchWidth + l_LayoutWidth + 16.0f;
 
-        m_Context.ChromeTop += l_Height;
+        ImGui::SameLine(barWidth - l_Total);
+
+        if (EditorTheme::ToolBarButton(ICON_TR_HISTORY, false, "Undo history"))
+        {
+            ImGui::OpenPopup("##ForgeUndoHistory");
+        }
+
+        if (ImGui::BeginPopup("##ForgeUndoHistory"))
+        {
+            std::string l_Undo = m_Context.History.CanUndo() ? ("Undo " + m_Context.History.UndoName()) : "Nothing to undo";
+            if (ImGui::MenuItem(l_Undo.c_str(), "Ctrl+Z", false, m_Context.History.CanUndo()))
+            {
+                m_Context.History.Undo();
+            }
+
+            std::string l_Redo = m_Context.History.CanRedo() ? ("Redo " + m_Context.History.RedoName()) : "Nothing to redo";
+            if (ImGui::MenuItem(l_Redo.c_str(), "Ctrl+Y", false, m_Context.History.CanRedo()))
+            {
+                m_Context.History.Redo();
+            }
+
+            ImGui::EndPopup();
+        }
+
+        ImGui::SameLine();
+        EditorTheme::SearchField("##ForgeGlobalSearch", m_SearchBuffer, sizeof(m_SearchBuffer), l_SearchWidth);
+
+        ImGui::SameLine();
+        if (EditorTheme::ToolBarButton(ICON_TR_LAYOUT "  Layout  " ICON_TR_CHEVRON_DOWN, false, "Editor layout", true, l_LayoutWidth))
+        {
+            ImGui::OpenPopup("##ForgeLayoutMenu");
+        }
+
+        if (ImGui::BeginPopup("##ForgeLayoutMenu"))
+        {
+            if (ImGui::MenuItem("Default"))
+            {
+                m_Context.ResetLayout = true;
+            }
+
+            ImGui::Separator();
+            if (ImGui::MenuItem("Reset All Layouts"))
+            {
+                m_Context.ResetLayout = true;
+            }
+
+            ImGui::EndPopup();
+        }
+
+        ImGui::SameLine();
+        EditorTheme::ToolBarButton(ICON_TR_HELP, false, "Trinity Manual", false);
+
+        ImGui::SameLine();
+        if (EditorTheme::ToolBarButton(ICON_TR_MORE, false, "Editor settings"))
+        {
+            ImGui::OpenPopup("##ForgeToolBarSettings");
+        }
+
+        if (ImGui::BeginPopup("##ForgeToolBarSettings"))
+        {
+            ImGui::MenuItem("Physics Debugger", nullptr, &m_Context.ShowPhysicsColliders);
+            ImGui::MenuItem("Physics Settings", nullptr, &m_Context.ShowPhysicsSettings);
+            ImGui::MenuItem("Render Graph", nullptr, &m_Context.ShowRenderGraph);
+            ImGui::Separator();
+            ImGui::MenuItem("Preferences...", nullptr, false, false);
+            ImGui::EndPopup();
+        }
     }
 }

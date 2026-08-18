@@ -91,7 +91,46 @@ namespace Trinity
 
     void HierarchyPanel::OnImGuiRender()
     {
-        ImGui::Begin("Outliner");
+        if (!m_Context.ShowHierarchy)
+        {
+            return;
+        }
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+        ImGui::Begin(ICON_TR_HIERARCHY "  Hierarchy", &m_Context.ShowHierarchy);
+        ImGui::PopStyleVar();
+
+        // Unity's Hierarchy opens with a toolbar: a "+" create dropdown on the left, search filling the rest.
+        EditorTheme::BeginPanelToolBar("##HierarchyToolBar");
+
+        if (EditorTheme::ToolBarButton(ICON_TR_PLUS "  " ICON_TR_CHEVRON_DOWN, false, "Create", true, ImGui::GetFontSize() * 3.2f))
+        {
+            ImGui::OpenPopup("##HierarchyCreate");
+        }
+
+        if (ImGui::BeginPopup("##HierarchyCreate"))
+        {
+            if (ImGui::MenuItem("Create Empty"))
+            {
+                m_Context.Action = PendingAction::Create;
+            }
+
+            ImGui::Separator();
+            ImGui::MenuItem("3D Object", nullptr, false, false);
+            ImGui::MenuItem("Light", nullptr, false, false);
+            ImGui::MenuItem("Camera", nullptr, false, false);
+            ImGui::EndPopup();
+        }
+
+        ImGui::SameLine();
+        EditorTheme::SearchField("##HierarchySearch", m_SearchBuffer, sizeof(m_SearchBuffer), -1.0f);
+
+        EditorTheme::EndPanelToolBar();
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 2.0f));
+        ImGui::BeginChild("##HierarchyRows", ImVec2(0.0f, 0.0f), ImGuiChildFlags_AlwaysUseWindowPadding);
+
+        m_RowIndex = 0;
 
         if (m_Engine.HasScene())
         {
@@ -107,11 +146,19 @@ namespace Trinity
             m_RowsLastFrame = std::move(m_RowsThisFrame);
             m_RowsThisFrame.clear();
 
-            ImGui::SetNextItemWidth(-1.0f);
-            ImGui::InputTextWithHint("##HierarchySearch", ICON_FA_SLIDERS "  Search...", m_SearchBuffer, sizeof(m_SearchBuffer));
-            ImGui::Separator();
-
             std::string l_Filter = ToLower(m_SearchBuffer);
+
+            // Unity roots the tree at the open scene, with everything parented beneath it.
+            DrawRowStripe();
+            bool l_SceneOpen = ImGui::TreeNodeEx("##HierarchyScene", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanFullWidth, ICON_TR_SCENE "  %s%s", m_Context.SceneName.c_str(), m_Context.History.IsDirty() ? "*" : "");
+            if (!l_SceneOpen)
+            {
+                ImGui::EndChild();
+                ImGui::PopStyleVar();
+                ImGui::End();
+
+                return;
+            }
 
             if (!l_Filter.empty())
             {
@@ -153,9 +200,28 @@ namespace Trinity
 
                 ImGui::EndPopup();
             }
+
+            ImGui::TreePop();
         }
 
+        ImGui::EndChild();
+        ImGui::PopStyleVar();
         ImGui::End();
+    }
+
+    // Unity zebra-stripes the Hierarchy so deep trees stay readable.
+    void HierarchyPanel::DrawRowStripe()
+    {
+        if ((m_RowIndex++ & 1) == 0)
+        {
+            return;
+        }
+
+        ImVec2 l_Cursor = ImGui::GetCursorScreenPos();
+        ImVec2 l_WindowMin = ImGui::GetWindowPos();
+        float l_Width = ImGui::GetWindowSize().x;
+
+        ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(l_WindowMin.x, l_Cursor.y), ImVec2(l_WindowMin.x + l_Width, l_Cursor.y + ImGui::GetFrameHeight()), EditorColors::AlternatedRow);
     }
 
     void HierarchyPanel::RenderEntityNode(Scene& scene, entt::entity entity)
@@ -171,7 +237,9 @@ namespace Trinity
 
         m_RowsThisFrame.push_back(entity);
 
-        ImGuiTreeNodeFlags l_Flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
+        DrawRowStripe();
+
+        ImGuiTreeNodeFlags l_Flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanFullWidth;
         if (!l_HasChildren)
         {
             l_Flags |= ImGuiTreeNodeFlags_Leaf;
@@ -241,12 +309,6 @@ namespace Trinity
             ImGui::EndPopup();
         }
 
-        const char* l_Type = EntityTypeLabel(l_Registry, entity);
-        float l_TypeWidth = ImGui::CalcTextSize(l_Type).x;
-        ImGui::SameLine();
-        ImGui::SetCursorPosX(ImGui::GetContentRegionMax().x - l_TypeWidth);
-        ImGui::TextDisabled("%s", l_Type);
-
         if (l_Open)
         {
             if (l_Hierarchy != nullptr)
@@ -271,8 +333,10 @@ namespace Trinity
 
         m_RowsThisFrame.push_back(entity);
 
+        DrawRowStripe();
+
         bool l_Selected = m_Context.IsSelected(entity);
-        if (ImGui::Selectable(l_Label.c_str(), l_Selected, ImGuiSelectableFlags_SpanAvailWidth))
+        if (ImGui::Selectable(l_Label.c_str(), l_Selected, ImGuiSelectableFlags_SpanAllColumns))
         {
             HandleRowClick(entity);
         }
@@ -299,12 +363,6 @@ namespace Trinity
 
             ImGui::EndPopup();
         }
-
-        const char* l_Type = EntityTypeLabel(l_Registry, entity);
-        float l_TypeWidth = ImGui::CalcTextSize(l_Type).x;
-        ImGui::SameLine();
-        ImGui::SetCursorPosX(ImGui::GetContentRegionMax().x - l_TypeWidth);
-        ImGui::TextDisabled("%s", l_Type);
     }
 
     void HierarchyPanel::HandleRowClick(entt::entity entity)

@@ -13,6 +13,8 @@
 #include <imgui.h>
 
 #include <Forge/Editor/EditorIcons.h>
+#include <Forge/Editor/EditorTheme.h>
+#include <Forge/Editor/EditorContext.h>
 
 #include <Trinity/Core/Engine.h>
 #include <Trinity/Platform/IPlatform.h>
@@ -197,8 +199,17 @@ namespace Trinity
 
     void ContentBrowserPanel::OnImGuiRender()
     {
-        ImGui::Begin("Content Browser");
+        if (!m_Context.ShowProject)
+        {
+            return;
+        }
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+        ImGui::Begin(ICON_TR_PROJECT "  Project", &m_Context.ShowProject);
+        ImGui::PopStyleVar();
+
         RenderContents();
+
         ImGui::End();
     }
 
@@ -226,8 +237,13 @@ namespace Trinity
 
         AssetDatabase& l_Assets = m_Engine.GetAssetDatabase();
 
+        if (m_Context.RefreshAssetsRequested)
+        {
+            m_Context.RefreshAssetsRequested = false;
+            RefreshAssets(l_Assets);
+        }
+
         RenderToolbar(l_Assets);
-        ImGui::Separator();
 
         float l_FooterHeight = ImGui::GetFrameHeightWithSpacing();
         float l_TreeWidth = ImGui::GetFontSize() * 12.0f;
@@ -249,14 +265,33 @@ namespace Trinity
 
     void ContentBrowserPanel::RenderToolbar(AssetDatabase& assetDatabase)
     {
-        if (ImGui::Button(ICON_FA_ARROWS_ROTATE " Refresh"))
+        // Unity's Project window opens with a "+" create dropdown, then search and a type filter.
+        EditorTheme::BeginPanelToolBar("##ProjectToolBar");
+
+        if (EditorTheme::ToolBarButton(ICON_TR_PLUS "  " ICON_TR_CHEVRON_DOWN, false, "Create", true, ImGui::GetFontSize() * 3.2f))
+        {
+            ImGui::OpenPopup("##ProjectCreate");
+        }
+
+        ImGui::SameLine();
+        if (EditorTheme::ToolBarButton(ICON_TR_REFRESH, false, "Refresh  (Ctrl+R)"))
         {
             RefreshAssets(assetDatabase);
         }
 
-        ImGui::SameLine();
+        bool l_CreateMaterial = false;
+        if (ImGui::BeginPopup("##ProjectCreate"))
+        {
+            if (ImGui::MenuItem("Folder"))
+            {
+                CreateNewFolder();
+            }
 
-        if (ImGui::Button(ICON_FA_PLUS " Material"))
+            l_CreateMaterial = ImGui::MenuItem("Material");
+            ImGui::EndPopup();
+        }
+
+        if (l_CreateMaterial)
         {
             std::error_code l_DirectoryError;
             std::filesystem::create_directories(m_CurrentDirectory, l_DirectoryError);
@@ -276,17 +311,18 @@ namespace Trinity
         }
 
         ImGui::SameLine();
-        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 14.0f);
-        ImGui::InputTextWithHint("##ContentBrowserSearch", ICON_FA_SLIDERS "  Search...", m_SearchBuffer, sizeof(m_SearchBuffer));
-
-        ImGui::SameLine();
         ImGui::SetNextItemWidth(ImGui::GetFontSize() * 7.0f);
         const char* l_FilterNames[] = { "All", "Meshes", "Textures", "Materials", "Audio" };
-        ImGui::Combo("##ContentBrowserTypeFilter", &m_TypeFilter, l_FilterNames, IM_ARRAYSIZE(l_FilterNames));
+        ImGui::Combo("##ProjectTypeFilter", &m_TypeFilter, l_FilterNames, IM_ARRAYSIZE(l_FilterNames));
         if (ImGui::IsItemHovered())
         {
             ImGui::SetTooltip("Filter by asset type");
         }
+
+        ImGui::SameLine();
+        EditorTheme::SearchField("##ProjectSearch", m_SearchBuffer, sizeof(m_SearchBuffer), -1.0f);
+
+        EditorTheme::EndPanelToolBar();
 
         RenderBreadcrumbs();
     }

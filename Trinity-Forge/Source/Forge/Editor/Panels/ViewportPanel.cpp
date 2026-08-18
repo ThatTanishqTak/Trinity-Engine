@@ -11,8 +11,11 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include <glm/gtc/matrix_transform.hpp>
+
 #include <Forge/Editor/EditorContext.h>
 #include <Forge/Editor/EditorIcons.h>
+#include <Forge/Editor/EditorTheme.h>
 #include <Forge/Editor/Commands/PropertyCommands.h>
 #include <Forge/Editor/Commands/CompositeCommand.h>
 
@@ -48,10 +51,87 @@ namespace Trinity
         return false;
     }
 
+    // Unity paints Scene-view overlays as floating rounded panels over the render target.
+    struct SceneOverlay
+    {
+        ImDrawList* DrawList = nullptr;
+        ImVec2 Padding = ImVec2(5.0f, 4.0f);
+    };
+
+    static SceneOverlay BeginSceneOverlay(const ImVec2& position, const ImVec2& padding)
+    {
+        SceneOverlay l_Overlay;
+        l_Overlay.DrawList = ImGui::GetWindowDrawList();
+        l_Overlay.Padding = padding;
+
+        // Split so the panel can be drawn behind the controls once they have been measured.
+        l_Overlay.DrawList->ChannelsSplit(2);
+        l_Overlay.DrawList->ChannelsSetCurrent(1);
+
+        ImGui::SetCursorScreenPos(ImVec2(position.x + padding.x, position.y + padding.y));
+        ImGui::BeginGroup();
+
+        return l_Overlay;
+    }
+
+    static void EndSceneOverlay(const SceneOverlay& overlay)
+    {
+        ImGui::EndGroup();
+
+        ImVec2 l_Min = ImGui::GetItemRectMin();
+        ImVec2 l_Max = ImGui::GetItemRectMax();
+        ImVec2 l_PanelMin = ImVec2(l_Min.x - overlay.Padding.x, l_Min.y - overlay.Padding.y);
+        ImVec2 l_PanelMax = ImVec2(l_Max.x + overlay.Padding.x, l_Max.y + overlay.Padding.y);
+
+        overlay.DrawList->ChannelsSetCurrent(0);
+        overlay.DrawList->AddRectFilled(l_PanelMin, l_PanelMax, EditorColors::OverlayBackground, 4.0f);
+        overlay.DrawList->AddRect(l_PanelMin, l_PanelMax, EditorColors::DefaultBorder, 4.0f);
+        overlay.DrawList->ChannelsMerge();
+    }
+
+    ImGuizmo::OPERATION ViewportPanel::CurrentOperation() const
+    {
+        switch (m_Tool)
+        {
+            case SceneTool::Rotate:
+                return ImGuizmo::ROTATE;
+            case SceneTool::Scale:
+                return ImGuizmo::SCALE;
+            case SceneTool::Transform:
+                return static_cast<ImGuizmo::OPERATION>(ImGuizmo::TRANSLATE | ImGuizmo::ROTATE | ImGuizmo::SCALE);
+            default:
+                return ImGuizmo::TRANSLATE;
+        }
+    }
+
+    glm::vec3 ViewportPanel::SelectionCenter(Scene& scene) const
+    {
+        glm::vec3 l_Sum(0.0f);
+        int l_Count = 0;
+
+        for (entt::entity it_Entity : m_Context.Selection)
+        {
+            if (!scene.GetRegistry().valid(it_Entity))
+            {
+                continue;
+            }
+
+            l_Sum += glm::vec3(scene.GetWorldMatrix(it_Entity)[3]);
+            ++l_Count;
+        }
+
+        return l_Count > 0 ? l_Sum / static_cast<float>(l_Count) : glm::vec3(0.0f);
+    }
+
     void ViewportPanel::OnImGuiRender()
     {
+        if (!m_Context.ShowScene)
+        {
+            return;
+        }
+
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-        ImGui::Begin("Viewport");
+        ImGui::Begin(ICON_TR_SCENE "  Scene", &m_Context.ShowScene);
 
         m_Focused = ImGui::IsWindowFocused();
         m_Hovered = ImGui::IsWindowHovered();
@@ -63,19 +143,30 @@ namespace Trinity
             Input& l_Input = m_Engine.GetPlatform().GetInput();
             if (!l_Input.IsMouseButtonPressed(Mouse::ButtonRight))
             {
+                // Unity binds Q / W / E / R / Y to View / Move / Rotate / Scale / Transform.
+                if (l_Input.IsKeyPressed(Key::Q))
+                {
+                    m_Tool = SceneTool::View;
+                }
+
                 if (l_Input.IsKeyPressed(Key::W))
                 {
-                    m_GizmoOperation = ImGuizmo::TRANSLATE;
+                    m_Tool = SceneTool::Move;
                 }
 
                 if (l_Input.IsKeyPressed(Key::E))
                 {
-                    m_GizmoOperation = ImGuizmo::ROTATE;
+                    m_Tool = SceneTool::Rotate;
                 }
 
                 if (l_Input.IsKeyPressed(Key::R))
                 {
-                    m_GizmoOperation = ImGuizmo::SCALE;
+                    m_Tool = SceneTool::Scale;
+                }
+
+                if (l_Input.IsKeyPressed(Key::Y))
+                {
+                    m_Tool = SceneTool::Transform;
                 }
 
                 if (l_Input.IsKeyPressed(Key::F))
@@ -85,7 +176,7 @@ namespace Trinity
             }
             else
             {
-                // Flying (RMB held): the mouse wheel scales the camera speed, Unreal-style.
+                // Flying (RMB held): the mouse wheel scales the camera speed, as in Unity's fly mode.
                 float l_Wheel = ImGui::GetIO().MouseWheel;
                 if (l_Wheel != 0.0f && m_Engine.HasEditorCamera())
                 {
@@ -111,7 +202,8 @@ namespace Trinity
                 ImVec2 l_ImageMin = ImGui::GetItemRectMin();
                 ImVec2 l_ImageSize = ImGui::GetItemRectSize();
                 RenderGizmo(l_ImageMin, l_ImageSize);
-                RenderOverlayToolbar(l_ImageMin);
+                RenderToolsOverlay(l_ImageMin);
+                RenderOrientationOverlay(l_ImageMin);
                 RenderStatsOverlay(l_ImageMin, l_ImageSize);
             }
             else
@@ -126,7 +218,8 @@ namespace Trinity
 
     void ViewportPanel::RenderGizmo(const ImVec2& imageMin, const ImVec2& imageSize)
     {
-        if (!m_Engine.HasScene() || m_Context.SelectedEntity == entt::null)
+        // Unity's View tool shows no handle at all; the scene is camera-only until another tool is picked.
+        if (m_Tool == SceneTool::View || !m_Engine.HasScene() || m_Context.SelectedEntity == entt::null)
         {
             return;
         }
@@ -144,7 +237,22 @@ namespace Trinity
 
         glm::mat4 l_View = m_Engine.GetEditorCamera().GetView();
         glm::mat4 l_Projection = m_Engine.GetEditorCamera().GetProjection();
-        glm::mat4 l_World = l_Scene.GetWorldMatrix(m_Context.SelectedEntity);
+        glm::mat4 l_PrimaryWorld = l_Scene.GetWorldMatrix(m_Context.SelectedEntity);
+
+        bool l_PrimaryIsHandle = !m_PivotCenter && m_GizmoMode == ImGuizmo::LOCAL;
+        glm::mat4 l_World = l_PrimaryWorld;
+        if (!l_PrimaryIsHandle)
+        {
+            glm::vec3 l_Origin = m_PivotCenter ? SelectionCenter(l_Scene) : glm::vec3(l_PrimaryWorld[3]);
+            glm::mat4 l_Rotation(1.0f);
+            if (m_GizmoMode == ImGuizmo::LOCAL)
+            {
+                l_Rotation = glm::mat4(glm::mat3(glm::normalize(glm::vec3(l_PrimaryWorld[0])), glm::normalize(glm::vec3(l_PrimaryWorld[1])), glm::normalize(glm::vec3(l_PrimaryWorld[2]))));
+            }
+
+            l_World = glm::translate(glm::mat4(1.0f), l_Origin) * l_Rotation;
+        }
+
         glm::mat4 l_WorldBefore = l_World;
 
         float l_SnapValues[3] = { 0.0f, 0.0f, 0.0f };
@@ -152,11 +260,11 @@ namespace Trinity
         if (m_SnapEnabled)
         {
             float l_Amount = m_SnapTranslation;
-            if (m_GizmoOperation == ImGuizmo::ROTATE)
+            if (m_Tool == SceneTool::Rotate)
             {
                 l_Amount = m_SnapRotation;
             }
-            else if (m_GizmoOperation == ImGuizmo::SCALE)
+            else if (m_Tool == SceneTool::Scale)
             {
                 l_Amount = m_SnapScale;
             }
@@ -165,7 +273,7 @@ namespace Trinity
             l_Snap = l_SnapValues;
         }
 
-        ImGuizmo::Manipulate(glm::value_ptr(l_View), glm::value_ptr(l_Projection), m_GizmoOperation, m_GizmoMode, glm::value_ptr(l_World), nullptr, l_Snap);
+        ImGuizmo::Manipulate(glm::value_ptr(l_View), glm::value_ptr(l_Projection), CurrentOperation(), m_GizmoMode, glm::value_ptr(l_World), nullptr, l_Snap);
 
         bool l_IsUsing = ImGuizmo::IsUsing();
 
@@ -225,7 +333,7 @@ namespace Trinity
                 }
 
                 entt::entity l_Handle = l_Target.GetHandle();
-                if (l_Handle == m_Context.SelectedEntity)
+                if (l_Handle == m_Context.SelectedEntity && l_PrimaryIsHandle)
                 {
                     // The primary takes the gizmo's exact matrix so it never drifts.
                     l_ApplyWorld(l_Handle, l_World);
@@ -267,133 +375,110 @@ namespace Trinity
         m_GizmoWasUsing = l_IsUsing;
     }
 
-    void ViewportPanel::RenderOverlayToolbar(const ImVec2& viewportMin)
+    void ViewportPanel::RenderToolsOverlay(const ImVec2& viewportMin)
     {
-        const float l_Margin = 12.0f;
-        const float l_Pad = 6.0f;
-        float l_ButtonSize = ImGui::GetFontSize() + ImGui::GetStyle().FramePadding.y * 2.0f;
-        const ImVec4 l_Accent = ImVec4(0.16f, 0.30f, 0.49f, 1.0f);
-        ImU32 l_SeparatorColor = ImGui::GetColorU32(ImGuiCol_Separator);
+        const float l_Margin = 8.0f;
+        float l_ButtonWidth = ImGui::GetFrameHeight() + 4.0f;
 
-        // Split so the rounded panel can be drawn behind the controls after they are measured.
-        ImDrawList* l_DrawList = ImGui::GetWindowDrawList();
-        l_DrawList->ChannelsSplit(2);
-        l_DrawList->ChannelsSetCurrent(1);
+        // Unity stacks the tool handles vertically down the left edge of the Scene view.
+        SceneOverlay l_Overlay = BeginSceneOverlay(ImVec2(viewportMin.x + l_Margin, viewportMin.y + l_Margin), ImVec2(4.0f, 4.0f));
 
-        ImGui::SetCursorScreenPos(ImVec2(viewportMin.x + l_Margin + l_Pad, viewportMin.y + l_Margin + l_Pad));
-        ImGui::BeginGroup();
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 2.0f));
 
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+        float l_GripInset = (l_ButtonWidth - ImGui::CalcTextSize(ICON_TR_GRIP).x) * 0.5f;
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (l_GripInset > 0.0f ? l_GripInset : 0.0f));
+        ImGui::TextDisabled(ICON_TR_GRIP);
+
+        auto l_ToolButton = [&](const char* icon, SceneTool tool, const char* tooltip)
+        {
+            if (EditorTheme::ToolBarButton(icon, m_Tool == tool, tooltip, true, l_ButtonWidth, EditorColors::Highlight))
+            {
+                m_Tool = tool;
+            }
+        };
+
+        l_ToolButton(ICON_TR_TOOL_VIEW, SceneTool::View, "View Tool  (Q)");
+        l_ToolButton(ICON_TR_TOOL_MOVE, SceneTool::Move, "Move Tool  (W)");
+        l_ToolButton(ICON_TR_TOOL_ROTATE, SceneTool::Rotate, "Rotate Tool  (E)");
+        l_ToolButton(ICON_TR_TOOL_SCALE, SceneTool::Scale, "Scale Tool  (R)");
+        l_ToolButton(ICON_TR_TOOL_TRANSFORM, SceneTool::Transform, "Transform Tool  (Y)");
+
+        ImGui::PopStyleVar();
+
+        EndSceneOverlay(l_Overlay);
+    }
+
+    void ViewportPanel::RenderOrientationOverlay(const ImVec2& viewportMin)
+    {
+        const float l_Margin = 8.0f;
+        float l_ToolStripWidth = ImGui::GetFrameHeight() + 20.0f;
+        float l_ButtonHeight = ImGui::GetFrameHeight();
+
+        // Pivot / Center and Local / Global sit in their own strip beside the tool handles.
+        SceneOverlay l_Overlay = BeginSceneOverlay(ImVec2(viewportMin.x + l_Margin + l_ToolStripWidth, viewportMin.y + l_Margin), ImVec2(5.0f, 4.0f));
+
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4.0f, 0.0f));
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
 
-        auto l_ModeButton = [&](const char* icon, ImGuizmo::OPERATION op, const char* tooltip)
-            {
-                bool l_Active = m_GizmoOperation == op;
-                if (l_Active)
-                {
-                    ImGui::PushStyleColor(ImGuiCol_Button, l_Accent);
-                }
+        if (ImGui::Button(m_PivotCenter ? ICON_TR_CENTER "  Center" : ICON_TR_PIVOT "  Pivot", ImVec2(ImGui::GetFontSize() * 5.5f, l_ButtonHeight)))
+        {
+            m_PivotCenter = !m_PivotCenter;
+        }
 
-                if (ImGui::Button(icon, ImVec2(l_ButtonSize, l_ButtonSize)))
-                {
-                    m_GizmoOperation = op;
-                }
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip("Handle position: Pivot / Center");
+        }
 
-                if (l_Active)
-                {
-                    ImGui::PopStyleColor();
-                }
-
-                if (ImGui::IsItemHovered())
-                {
-                    ImGui::SetTooltip("%s", tooltip);
-                }
-            };
-
-        auto l_VerticalSeparator = [&]()
-            {
-                ImGui::SameLine(0.0f, 7.0f);
-                ImVec2 l_Pos = ImGui::GetCursorScreenPos();
-                l_DrawList->AddLine(ImVec2(l_Pos.x, l_Pos.y + 3.0f), ImVec2(l_Pos.x, l_Pos.y + l_ButtonSize - 3.0f), l_SeparatorColor);
-                ImGui::SameLine(0.0f, 7.0f);
-            };
-
-        l_ModeButton(ICON_FA_ARROWS_UP_DOWN_LEFT_RIGHT, ImGuizmo::TRANSLATE, "Move (W)");
         ImGui::SameLine();
-        l_ModeButton(ICON_FA_ROTATE, ImGuizmo::ROTATE, "Rotate (E)");
-        ImGui::SameLine();
-        l_ModeButton(ICON_FA_MAXIMIZE, ImGuizmo::SCALE, "Scale (R)");
-
-        l_VerticalSeparator();
-
-        const char* l_SpaceLabel = m_GizmoMode == ImGuizmo::LOCAL ? "Local" : "World";
-        if (ImGui::Button(l_SpaceLabel, ImVec2(0.0f, l_ButtonSize)))
+        if (ImGui::Button(m_GizmoMode == ImGuizmo::LOCAL ? ICON_TR_LOCAL "  Local" : ICON_TR_GLOBAL "  Global", ImVec2(ImGui::GetFontSize() * 5.5f, l_ButtonHeight)))
         {
             m_GizmoMode = m_GizmoMode == ImGuizmo::LOCAL ? ImGuizmo::WORLD : ImGuizmo::LOCAL;
         }
 
         if (ImGui::IsItemHovered())
         {
-            ImGui::SetTooltip("Transform space (World / Local)");
+            ImGui::SetTooltip("Handle rotation: Local / Global");
         }
 
-        l_VerticalSeparator();
-
-        bool l_SnapActive = m_SnapEnabled;
-        if (l_SnapActive)
-        {
-            ImGui::PushStyleColor(ImGuiCol_Button, l_Accent);
-        }
-
-        if (ImGui::Button(ICON_FA_MAGNET, ImVec2(l_ButtonSize, l_ButtonSize)))
+        ImGui::SameLine();
+        if (EditorTheme::ToolBarButton(m_SnapEnabled ? ICON_TR_SNAP : ICON_MDI_GRID_OFF, m_SnapEnabled, m_SnapEnabled ? "Grid Snapping: On" : "Grid Snapping: Off", true, 0.0f, EditorColors::Highlight))
         {
             m_SnapEnabled = !m_SnapEnabled;
         }
 
-        if (l_SnapActive)
-        {
-            ImGui::PopStyleColor();
-        }
-
-        if (ImGui::IsItemHovered())
-        {
-            ImGui::SetTooltip(m_SnapEnabled ? "Grid Snapping: On" : "Grid Snapping: Off");
-        }
-
-        // The snap increment field tracks whichever transform mode is active.
+        // The snap increment tracks whichever tool is active, exactly as Unity's Increment Snapping does.
         float* l_SnapField = &m_SnapTranslation;
         const char* l_SnapFormat = "%.2f";
-        if (m_GizmoOperation == ImGuizmo::ROTATE)
+        if (m_Tool == SceneTool::Rotate)
         {
             l_SnapField = &m_SnapRotation;
             l_SnapFormat = "%.0f";
         }
-        else if (m_GizmoOperation == ImGuizmo::SCALE)
+        else if (m_Tool == SceneTool::Scale)
         {
             l_SnapField = &m_SnapScale;
         }
 
-        ImGui::SameLine(0.0f, 4.0f);
-        ImGui::SetNextItemWidth(60.0f);
-        ImGui::DragFloat("##ViewportSnapValue", l_SnapField, 0.05f, 0.0f, 1000.0f, l_SnapFormat);
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 3.5f);
+        ImGui::DragFloat("##SceneSnapValue", l_SnapField, 0.05f, 0.0f, 1000.0f, l_SnapFormat);
         if (ImGui::IsItemHovered())
         {
             ImGui::SetTooltip("Snap increment");
         }
 
-        l_VerticalSeparator();
-
         if (m_Engine.HasEditorCamera())
         {
+            ImGui::SameLine();
             ImGui::AlignTextToFramePadding();
-            ImGui::TextUnformatted(ICON_FA_CAMERA);
-            ImGui::SameLine(0.0f, 4.0f);
-            ImGui::SetNextItemWidth(60.0f);
+            ImGui::TextDisabled(ICON_TR_CAMERA);
+
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(ImGui::GetFontSize() * 3.5f);
 
             EditorCamera& l_Camera = m_Engine.GetEditorCameraController();
             float l_Speed = l_Camera.GetMoveSpeed();
-            if (ImGui::DragFloat("##ViewportCameraSpeed", &l_Speed, 0.1f, 0.1f, 100.0f, "%.1f"))
+            if (ImGui::DragFloat("##SceneCameraSpeed", &l_Speed, 0.1f, 0.1f, 100.0f, "%.1f"))
             {
                 l_Camera.SetMoveSpeed(l_Speed);
             }
@@ -402,42 +487,17 @@ namespace Trinity
             {
                 ImGui::SetTooltip("Camera fly speed (scroll wheel while flying)");
             }
-
-            l_VerticalSeparator();
         }
 
-        bool l_StatsActive = m_ShowStats;
-        if (l_StatsActive)
-        {
-            ImGui::PushStyleColor(ImGuiCol_Button, l_Accent);
-        }
-
-        if (ImGui::Button(ICON_FA_CIRCLE_INFO, ImVec2(l_ButtonSize, l_ButtonSize)))
+        ImGui::SameLine();
+        if (EditorTheme::ToolBarButton(ICON_TR_STATS, m_ShowStats, "Statistics", true, 0.0f, EditorColors::Highlight))
         {
             m_ShowStats = !m_ShowStats;
         }
 
-        if (l_StatsActive)
-        {
-            ImGui::PopStyleColor();
-        }
+        ImGui::PopStyleVar();
 
-        if (ImGui::IsItemHovered())
-        {
-            ImGui::SetTooltip(m_ShowStats ? "Viewport Statistics: On" : "Viewport Statistics: Off");
-        }
-
-        ImGui::PopStyleColor();
-        ImGui::PopStyleVar(2);
-        ImGui::EndGroup();
-
-        ImVec2 l_Min = ImGui::GetItemRectMin();
-        ImVec2 l_Max = ImGui::GetItemRectMax();
-
-        l_DrawList->ChannelsSetCurrent(0);
-        l_DrawList->AddRectFilled(ImVec2(l_Min.x - l_Pad, l_Min.y - l_Pad), ImVec2(l_Max.x + l_Pad, l_Max.y + l_Pad), IM_COL32(18, 18, 18, 220), 5.0f);
-        l_DrawList->AddRect(ImVec2(l_Min.x - l_Pad, l_Min.y - l_Pad), ImVec2(l_Max.x + l_Pad, l_Max.y + l_Pad), IM_COL32(70, 70, 70, 160), 5.0f);
-        l_DrawList->ChannelsMerge();
+        EndSceneOverlay(l_Overlay);
     }
 
     void ViewportPanel::RenderStatsOverlay(const ImVec2& viewportMin, const ImVec2& viewportSize)
@@ -487,20 +547,22 @@ namespace Trinity
 
         float l_LineHeight = ImGui::GetTextLineHeightWithSpacing();
         float l_PanelWidth = ImGui::GetFontSize() * 11.0f;
-        float l_PanelHeight = static_cast<float>(l_Rows.size()) * l_LineHeight + l_Pad * 2.0f - ImGui::GetStyle().ItemSpacing.y;
+        float l_PanelHeight = static_cast<float>(l_Rows.size() + 1) * l_LineHeight + l_Pad * 2.0f - ImGui::GetStyle().ItemSpacing.y;
 
         ImVec2 l_PanelMax = ImVec2(viewportMin.x + viewportSize.x - l_Margin, viewportMin.y + l_Margin + l_PanelHeight);
         ImVec2 l_PanelMin = ImVec2(l_PanelMax.x - l_PanelWidth, viewportMin.y + l_Margin);
 
-        // Pure draw-list overlay (no widgets), styled to match the transform toolbar's panel.
+        // Pure draw-list overlay (no widgets), matching Unity's Statistics window.
         ImDrawList* l_DrawList = ImGui::GetWindowDrawList();
-        l_DrawList->AddRectFilled(l_PanelMin, l_PanelMax, IM_COL32(18, 18, 18, 220), 5.0f);
-        l_DrawList->AddRect(l_PanelMin, l_PanelMax, IM_COL32(70, 70, 70, 160), 5.0f);
+        l_DrawList->AddRectFilled(l_PanelMin, l_PanelMax, EditorColors::OverlayBackground, 4.0f);
+        l_DrawList->AddRect(l_PanelMin, l_PanelMax, EditorColors::DefaultBorder, 4.0f);
+        l_DrawList->AddRectFilled(l_PanelMin, ImVec2(l_PanelMax.x, l_PanelMin.y + l_LineHeight), EditorColors::Toolbar, 4.0f, ImDrawFlags_RoundCornersTop);
+        l_DrawList->AddText(ImVec2(l_PanelMin.x + l_Pad, l_PanelMin.y), EditorColors::DefaultText, "Statistics");
 
         ImU32 l_LabelColor = ImGui::GetColorU32(ImGuiCol_TextDisabled);
         ImU32 l_ValueColor = ImGui::GetColorU32(ImGuiCol_Text);
 
-        float l_Y = l_PanelMin.y + l_Pad;
+        float l_Y = l_PanelMin.y + l_LineHeight + l_Pad;
         for (const auto& it_Row : l_Rows)
         {
             l_DrawList->AddText(ImVec2(l_PanelMin.x + l_Pad, l_Y), l_LabelColor, it_Row.first.c_str());

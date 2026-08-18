@@ -6,57 +6,55 @@
 
 #include <Forge/Editor/EditorContext.h>
 #include <Forge/Editor/EditorIcons.h>
+#include <Forge/Editor/EditorTheme.h>
 
 #include <Trinity/Core/Application.h>
 #include <Trinity/Core/Engine.h>
 #include <Trinity/Scene/Scene.h>
 #include <Trinity/Scene/Components/NameComponent.h>
 #include <Trinity/Platform/Window.h>
-#include <Trinity/Renderer/RHI/GraphicsDevice.h>
-#include <Trinity/ImGui/IImGuiRenderBackend.h>
-#include <Trinity/Assets/AssetDatabase.h>
 
 namespace Trinity
 {
-    static constexpr float k_LogoAspect = 1.5f;
-
     void MenuBarPanel::OnImGuiRender()
     {
         HandleShortcuts();
 
-        Window& l_Window = Application::Get().GetWindow();
-        if (l_Window.HasCustomTitleBar())
+        float l_Height = EditorTheme::MenuBarHeight();
+
+        if (EditorTheme::BeginChromeBar("##ForgeMenuBar", m_Context.ChromeTop, l_Height, EditorColors::AppToolbar, ImVec2(0.0f, 0.0f), ImGuiWindowFlags_MenuBar))
         {
-            RenderTitleBar(l_Window);
+            if (ImGui::BeginMenuBar())
+            {
+                RenderMenus();
+
+                ImGui::EndMenuBar();
+            }
         }
-        else
-        {
-            RenderMenuBar();
-        }
+
+        EditorTheme::EndChromeBar();
+
+        RenderAboutModal();
+
+        m_Context.ChromeTop += l_Height;
     }
 
-    void MenuBarPanel::EnsureLogo()
+    void MenuBarPanel::SelectAll()
     {
-        if (m_LogoTried)
+        if (!m_Engine.HasScene())
         {
             return;
         }
 
-        m_LogoTried = true;
+        m_Context.ClearSelection();
 
-        if (!m_Engine.HasAssetDatabase() || !m_Engine.HasDevice())
+        auto l_View = m_Engine.GetScene().GetRegistry().view<NameComponent>();
+        for (entt::entity it_Entity : l_View)
         {
-            return;
+            m_Context.Selection.push_back(it_Entity);
         }
 
-        UUID l_LogoAsset = m_Engine.GetAssetDatabase().GetAssetByPath("Assets/Logo.png");
-        if (static_cast<uint64_t>(l_LogoAsset) == 0)
-        {
-            return;
-        }
-
-        TextureHandle l_Logo = m_Engine.GetAssetDatabase().ResolveTexture(l_LogoAsset);
-        m_LogoTexture = m_Engine.GetDevice().GetImGuiBackend().RegisterTexture(l_Logo);
+        m_Context.SelectedEntity = m_Context.Selection.empty() ? entt::null : m_Context.Selection.back();
     }
 
     void MenuBarPanel::HandleShortcuts()
@@ -93,6 +91,38 @@ namespace Trinity
             {
                 m_Context.FileOp = PendingFileOp::Save;
             }
+            else if (ImGui::IsKeyPressed(ImGuiKey_O, false))
+            {
+                m_Context.FileOp = PendingFileOp::Load;
+            }
+            else if (ImGui::IsKeyPressed(ImGuiKey_R, false))
+            {
+                m_Context.RefreshAssetsRequested = true;
+            }
+            else if (ImGui::IsKeyPressed(ImGuiKey_A, false))
+            {
+                SelectAll();
+            }
+            else if (ImGui::IsKeyPressed(ImGuiKey_N, false) && l_IO.KeyShift)
+            {
+                m_Context.Action = PendingAction::Create;
+            }
+            // Unity: Ctrl+P plays, Ctrl+Shift+P pauses, Ctrl+Alt+P steps one frame.
+            else if (ImGui::IsKeyPressed(ImGuiKey_P, false))
+            {
+                if (l_IO.KeyShift)
+                {
+                    m_Context.PauseToggleRequested = true;
+                }
+                else if (l_IO.KeyAlt)
+                {
+                    m_Context.StepRequested = true;
+                }
+                else
+                {
+                    m_Context.PlayToggleRequested = true;
+                }
+            }
         }
 
         if (ImGui::IsKeyPressed(ImGuiKey_Delete, false) && m_Context.SelectedEntity != entt::null)
@@ -100,43 +130,64 @@ namespace Trinity
             m_Context.Action = PendingAction::Delete;
             m_Context.ActionTarget = m_Context.SelectedEntity;
         }
+
+        if (ImGui::IsKeyPressed(ImGuiKey_F11, false) && Application::Get().HasWindow())
+        {
+            Window& l_Window = Application::Get().GetWindow();
+            if (l_Window.IsMaximized())
+            {
+                l_Window.Restore();
+            }
+            else
+            {
+                l_Window.Maximize();
+            }
+        }
     }
 
     void MenuBarPanel::RenderMenus()
     {
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(14.0f, ImGui::GetStyle().WindowPadding.y));
+        // Unity's menus are compact with a generous gap between the label and its shortcut.
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(2.0f, 4.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 4.0f));
 
         bool l_HasSelection = m_Context.SelectedEntity != entt::null;
+        bool l_HasScene = m_Engine.HasScene();
 
         if (ImGui::BeginMenu("File"))
         {
-            ImGui::MenuItem(ICON_FA_FILE "  New Scene", "Ctrl+N", false, false);
-            if (ImGui::MenuItem(ICON_FA_FOLDER_OPEN "  Open Scene", "Ctrl+O"))
+            ImGui::MenuItem("New Scene", "Ctrl+N", false, false);
+            if (ImGui::MenuItem("Open Scene", "Ctrl+O"))
             {
                 m_Context.FileOp = PendingFileOp::Load;
             }
-            
-            if (ImGui::MenuItem(ICON_FA_FLOPPY_DISK "  Save Scene", "Ctrl+S"))
-            {
-                m_Context.FileOp = PendingFileOp::Save;
-            }
-            
-            ImGui::MenuItem("Save Scene As...", "Ctrl+Shift+S", false, false);
-            ImGui::MenuItem("Save All", nullptr, false, false);
-            ImGui::Separator();
-            ImGui::MenuItem("New Project...", nullptr, false, false);
-            ImGui::MenuItem("Open Project...", nullptr, false, false);
-            if (ImGui::BeginMenu("Recent Projects"))
+
+            if (ImGui::BeginMenu("Open Recent Scene"))
             {
                 ImGui::MenuItem("(none)", nullptr, false, false);
                 ImGui::EndMenu();
             }
-            
+
             ImGui::Separator();
-            if (ImGui::MenuItem(ICON_FA_XMARK "  Exit", "Alt+F4"))
+            if (ImGui::MenuItem("Save", "Ctrl+S"))
+            {
+                m_Context.FileOp = PendingFileOp::Save;
+            }
+
+            ImGui::MenuItem("Save As...", "Ctrl+Shift+S", false, false);
+            ImGui::Separator();
+            ImGui::MenuItem("New Project...", nullptr, false, false);
+            ImGui::MenuItem("Open Project...", nullptr, false, false);
+            ImGui::MenuItem("Save Project", nullptr, false, false);
+            ImGui::Separator();
+            ImGui::MenuItem("Build Profiles...", nullptr, false, false);
+            ImGui::MenuItem("Build And Run", "Ctrl+B", false, false);
+            ImGui::Separator();
+            if (ImGui::MenuItem("Exit"))
             {
                 Application::Get().GetWindow().RequestClose();
             }
+
             ImGui::EndMenu();
         }
 
@@ -147,7 +198,7 @@ namespace Trinity
             {
                 m_Context.History.Undo();
             }
-            
+
             std::string l_RedoLabel = m_Context.History.CanRedo() ? ("Redo " + m_Context.History.RedoName()) : "Redo";
             if (ImGui::MenuItem(l_RedoLabel.c_str(), "Ctrl+Y", false, m_Context.History.CanRedo()))
             {
@@ -155,79 +206,188 @@ namespace Trinity
             }
 
             ImGui::Separator();
+            if (ImGui::MenuItem("Select All", "Ctrl+A", false, l_HasScene))
+            {
+                SelectAll();
+            }
+
+            if (ImGui::MenuItem("Deselect All", "Shift+D", false, l_HasSelection))
+            {
+                m_Context.ClearSelection();
+            }
+
+            ImGui::MenuItem("Invert Selection", "Ctrl+I", false, false);
+            ImGui::Separator();
             ImGui::MenuItem("Cut", "Ctrl+X", false, false);
             ImGui::MenuItem("Copy", "Ctrl+C", false, false);
             ImGui::MenuItem("Paste", "Ctrl+V", false, false);
-            if (ImGui::MenuItem(ICON_FA_COPY "  Duplicate", "Ctrl+D", false, l_HasSelection))
+            if (ImGui::MenuItem("Duplicate", "Ctrl+D", false, l_HasSelection))
             {
                 m_Context.Action = PendingAction::Duplicate;
                 m_Context.ActionTarget = m_Context.SelectedEntity;
             }
-            
-            if (ImGui::MenuItem(ICON_FA_TRASH "  Delete", "Del", false, l_HasSelection))
+
+            if (ImGui::MenuItem("Delete", "Del", false, l_HasSelection))
             {
                 m_Context.Action = PendingAction::Delete;
                 m_Context.ActionTarget = m_Context.SelectedEntity;
             }
+
             ImGui::Separator();
-            ImGui::MenuItem(ICON_FA_GEAR "  Editor Preferences...", nullptr, false, false);
+            if (ImGui::MenuItem("Play", "Ctrl+P", m_Context.PlayMode, l_HasScene))
+            {
+                m_Context.PlayToggleRequested = true;
+            }
+
+            if (ImGui::MenuItem("Pause", "Ctrl+Shift+P", m_Context.Paused, m_Context.PlayMode))
+            {
+                m_Context.PauseToggleRequested = true;
+            }
+
+            if (ImGui::MenuItem("Step", "Ctrl+Alt+P", false, m_Context.PlayMode))
+            {
+                m_Context.StepRequested = true;
+            }
+
+            ImGui::Separator();
             ImGui::MenuItem("Project Settings...", nullptr, false, false);
-            ImGui::MenuItem("Plugins", nullptr, false, false);
+            ImGui::MenuItem("Preferences...", nullptr, false, false);
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Assets"))
+        {
+            if (ImGui::BeginMenu("Create"))
+            {
+                ImGui::MenuItem("Folder", nullptr, false, false);
+                ImGui::MenuItem("Material", nullptr, false, false);
+                ImGui::MenuItem("Scene", nullptr, false, false);
+                ImGui::EndMenu();
+            }
+
+            ImGui::Separator();
+            ImGui::MenuItem("Show in Explorer", nullptr, false, false);
+            ImGui::MenuItem("Import New Asset...", nullptr, false, false);
+            ImGui::Separator();
+            if (ImGui::MenuItem("Refresh", "Ctrl+R"))
+            {
+                m_Context.RefreshAssetsRequested = true;
+            }
+
+            ImGui::MenuItem("Reimport All", nullptr, false, false);
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("GameObject"))
+        {
+            if (ImGui::MenuItem("Create Empty", "Ctrl+Shift+N"))
+            {
+                m_Context.Action = PendingAction::Create;
+            }
+
+            ImGui::MenuItem("Create Empty Child", "Alt+Shift+N", false, false);
+            ImGui::Separator();
+            if (ImGui::BeginMenu("3D Object"))
+            {
+                ImGui::MenuItem("Cube", nullptr, false, false);
+                ImGui::MenuItem("Plane", nullptr, false, false);
+                ImGui::MenuItem("Quad", nullptr, false, false);
+                ImGui::EndMenu();
+            }
+
+            if (ImGui::BeginMenu("Light"))
+            {
+                ImGui::MenuItem("Directional Light", nullptr, false, false);
+                ImGui::MenuItem("Point Light", nullptr, false, false);
+                ImGui::EndMenu();
+            }
+
+            ImGui::MenuItem("Camera", nullptr, false, false);
+            ImGui::Separator();
+            if (ImGui::MenuItem("Duplicate", "Ctrl+D", false, l_HasSelection))
+            {
+                m_Context.Action = PendingAction::Duplicate;
+                m_Context.ActionTarget = m_Context.SelectedEntity;
+            }
+
+            if (ImGui::MenuItem("Delete", "Del", false, l_HasSelection))
+            {
+                m_Context.Action = PendingAction::Delete;
+                m_Context.ActionTarget = m_Context.SelectedEntity;
+            }
+
+            if (ImGui::MenuItem("Unparent", nullptr, false, l_HasSelection))
+            {
+                m_Context.Action = PendingAction::Reparent;
+                m_Context.ActionTarget = m_Context.SelectedEntity;
+                m_Context.ActionParent = entt::null;
+            }
+
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Component"))
+        {
+            if (ImGui::MenuItem("Add...", "Ctrl+Shift+A", false, l_HasSelection))
+            {
+                m_Context.OpenAddComponent = true;
+            }
+
+            ImGui::Separator();
+            ImGui::MenuItem("Mesh", nullptr, false, false);
+            ImGui::MenuItem("Physics 2D", nullptr, false, false);
+            ImGui::MenuItem("Rendering", nullptr, false, false);
+            ImGui::MenuItem("Audio", nullptr, false, false);
             ImGui::EndMenu();
         }
 
         if (ImGui::BeginMenu("Window"))
         {
-            ImGui::MenuItem("Viewport", nullptr, false, false);
-            ImGui::MenuItem(ICON_FA_SITEMAP "  Outliner", nullptr, false, false);
-            ImGui::MenuItem(ICON_FA_SLIDERS "  Details", nullptr, false, false);
-
-            if (ImGui::MenuItem(ICON_FA_FOLDER "  Content Browser", nullptr, m_Context.ShowContentDrawer))
+            if (ImGui::BeginMenu("Layouts"))
             {
-                m_Context.ShowContentDrawer = !m_Context.ShowContentDrawer;
-                if (m_Context.ShowContentDrawer)
+                if (ImGui::MenuItem("Default"))
                 {
-                    m_Context.ShowConsoleDrawer = false;
+                    m_Context.ResetLayout = true;
                 }
-            }
-            
-            if (ImGui::MenuItem(ICON_FA_TERMINAL "  Console", nullptr, m_Context.ShowConsoleDrawer))
-            {
-                m_Context.ShowConsoleDrawer = !m_Context.ShowConsoleDrawer;
-                if (m_Context.ShowConsoleDrawer)
+
+                ImGui::Separator();
+                if (ImGui::MenuItem("Reset All Layouts"))
                 {
-                    m_Context.ShowContentDrawer = false;
+                    m_Context.ResetLayout = true;
                 }
-            }
 
-            if (ImGui::MenuItem(ICON_FA_SITEMAP "  Render Graph", nullptr, m_Context.ShowRenderGraph))
-            {
-                m_Context.ShowRenderGraph = !m_Context.ShowRenderGraph;
-            }
-
-            if (ImGui::MenuItem(ICON_FA_VECTOR_SQUARE "  Physics Colliders", nullptr, m_Context.ShowPhysicsColliders))
-            {
-                m_Context.ShowPhysicsColliders = !m_Context.ShowPhysicsColliders;
-            }
-
-            if (ImGui::MenuItem(ICON_FA_ATOM "  Physics Settings", nullptr, m_Context.ShowPhysicsSettings))
-            {
-                m_Context.ShowPhysicsSettings = !m_Context.ShowPhysicsSettings;
-            }
-
-            if (ImGui::MenuItem(ICON_FA_TERMINAL "  Log Physics Events", nullptr, m_Context.LogPhysicsEvents))
-            {
-                m_Context.LogPhysicsEvents = !m_Context.LogPhysicsEvents;
+                ImGui::EndMenu();
             }
 
             ImGui::Separator();
-            if (ImGui::MenuItem(ICON_FA_ARROWS_ROTATE "  Reset Layout"))
+            if (ImGui::BeginMenu("General"))
             {
-                m_Context.ResetLayout = true;
+                ImGui::MenuItem(ICON_TR_SCENE "  Scene", nullptr, &m_Context.ShowScene);
+                ImGui::MenuItem(ICON_TR_GAME "  Game", nullptr, false, false);
+                ImGui::MenuItem(ICON_TR_INSPECTOR "  Inspector", nullptr, &m_Context.ShowInspector);
+                ImGui::MenuItem(ICON_TR_HIERARCHY "  Hierarchy", nullptr, &m_Context.ShowHierarchy);
+                ImGui::MenuItem(ICON_TR_PROJECT "  Project", nullptr, &m_Context.ShowProject);
+                ImGui::MenuItem(ICON_TR_CONSOLE "  Console", nullptr, &m_Context.ShowConsole);
+                ImGui::EndMenu();
             }
 
+            if (ImGui::BeginMenu("Rendering"))
+            {
+                ImGui::MenuItem("Render Graph", nullptr, &m_Context.ShowRenderGraph);
+                ImGui::EndMenu();
+            }
+
+            if (ImGui::BeginMenu("Analysis"))
+            {
+                ImGui::MenuItem("Physics Debugger", nullptr, &m_Context.ShowPhysicsColliders);
+                ImGui::MenuItem("Physics Settings", nullptr, &m_Context.ShowPhysicsSettings);
+                ImGui::MenuItem("Log Physics Events", nullptr, &m_Context.LogPhysicsEvents);
+                ImGui::EndMenu();
+            }
+
+            ImGui::Separator();
             Window& l_Window = Application::Get().GetWindow();
-            if (ImGui::MenuItem(ICON_FA_EXPAND "  Enable Fullscreen", "F11", l_Window.IsMaximized()))
+            if (ImGui::MenuItem("Maximize Window", "F11", l_Window.IsMaximized()))
             {
                 if (l_Window.IsMaximized())
                 {
@@ -238,214 +398,53 @@ namespace Trinity
                     l_Window.Maximize();
                 }
             }
-            ImGui::EndMenu();
-        }
 
-        if (ImGui::BeginMenu("Tools"))
-        {
-            ImGui::MenuItem("Build Tool", nullptr, false, false);
-            ImGui::MenuItem("Asset Cooker", nullptr, false, false);
-            ImGui::MenuItem("Shader Compiler", nullptr, false, false);
-            ImGui::Separator();
-            ImGui::MenuItem("Material Editor", nullptr, false, false);
-            ImGui::EndMenu();
-        }
-
-        if (ImGui::BeginMenu("Build"))
-        {
-            ImGui::MenuItem("Build All", nullptr, false, false);
-            ImGui::MenuItem("Build Lighting", nullptr, false, false);
-            ImGui::Separator();
-            ImGui::MenuItem("Build Profiles...", nullptr, false, false);
-            ImGui::MenuItem("Package Project", nullptr, false, false);
-            ImGui::EndMenu();
-        }
-
-        if (ImGui::BeginMenu("Select"))
-        {
-            if (ImGui::MenuItem("Select All", "Ctrl+A", false, m_Engine.HasScene()))
-            {
-                m_Context.ClearSelection();
-                auto l_View = m_Engine.GetScene().GetRegistry().view<NameComponent>();
-                for (entt::entity it_Entity : l_View)
-                {
-                    m_Context.Selection.push_back(it_Entity);
-                }
-
-                m_Context.SelectedEntity = m_Context.Selection.empty() ? entt::null : m_Context.Selection.back();
-            }
-
-            if (ImGui::MenuItem("Select None", "Esc", false, l_HasSelection))
-            {
-                m_Context.ClearSelection();
-            }
-
-            ImGui::MenuItem("Invert Selection", "Ctrl+I", false, false);
-            ImGui::EndMenu();
-        }
-
-        if (ImGui::BeginMenu("Actor"))
-        {
-            if (ImGui::MenuItem(ICON_FA_PLUS "  Create Empty"))
-            {
-                m_Context.Action = PendingAction::Create;
-            }
-            
-            if (ImGui::MenuItem(ICON_FA_COPY "  Duplicate", "Ctrl+D", false, l_HasSelection))
-            {
-                m_Context.Action = PendingAction::Duplicate;
-                m_Context.ActionTarget = m_Context.SelectedEntity;
-            }
-
-            if (ImGui::MenuItem(ICON_FA_TRASH "  Delete", "Del", false, l_HasSelection))
-            {
-                m_Context.Action = PendingAction::Delete;
-                m_Context.ActionTarget = m_Context.SelectedEntity;
-            }
-            
-            ImGui::Separator();
-            ImGui::MenuItem("Attach To...", nullptr, false, false);
-            ImGui::MenuItem("Detach", nullptr, false, false);
             ImGui::EndMenu();
         }
 
         if (ImGui::BeginMenu("Help"))
         {
-            ImGui::MenuItem("Documentation", nullptr, false, false);
-            ImGui::MenuItem("About Forge", nullptr, false, false);
+            if (ImGui::MenuItem("About Trinity Forge"))
+            {
+                m_OpenAbout = true;
+            }
+
+            ImGui::Separator();
+            ImGui::MenuItem("Trinity Manual", nullptr, false, false);
+            ImGui::MenuItem("Scripting Reference", nullptr, false, false);
+            ImGui::MenuItem("Check for Updates", nullptr, false, false);
             ImGui::EndMenu();
         }
 
-        ImGui::PopStyleVar();
+        ImGui::PopStyleVar(2);
     }
 
-    void MenuBarPanel::RenderMenuBar()
+    void MenuBarPanel::RenderAboutModal()
     {
-        if (!ImGui::BeginMainMenuBar())
+        if (m_OpenAbout)
         {
-            return;
-        }
-
-        RenderMenus();
-
-        std::string l_Title = m_Context.SceneName + (m_Context.History.IsDirty() ? " *" : "");
-        float l_TitleWidth = ImGui::CalcTextSize(l_Title.c_str()).x;
-        ImGui::SetCursorPosX(ImGui::GetWindowWidth() - l_TitleWidth - 12.0f);
-        ImGui::TextUnformatted(l_Title.c_str());
-
-        ImGui::EndMainMenuBar();
-    }
-
-    void MenuBarPanel::RenderTitleBar(Window& window)
-    {
-        ImGuiStyle& l_Style = ImGui::GetStyle();
-
-        float l_Height = ImGui::GetFrameHeight() + l_Style.FramePadding.y;
-
-        // Center the menu text vertically and let the window buttons fill the bar height.
-        float l_BarPadding = (l_Height - ImGui::GetFontSize()) * 0.5f;
-        if (l_BarPadding < 0.0f)
-        {
-            l_BarPadding = 0.0f;
+            ImGui::OpenPopup("About Trinity Forge");
+            m_OpenAbout = false;
         }
 
         ImGuiViewport* l_Viewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(ImVec2(l_Viewport->Pos.x + l_Viewport->Size.x * 0.5f, l_Viewport->Pos.y + l_Viewport->Size.y * 0.5f), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
 
-        ImGui::SetNextWindowPos(l_Viewport->Pos);
-        ImGui::SetNextWindowSize(ImVec2(l_Viewport->Size.x, l_Height));
-        ImGui::SetNextWindowViewport(l_Viewport->ID);
-
-        ImGuiWindowFlags l_Flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_MenuBar;
-
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(l_Style.FramePadding.x, l_BarPadding));
-        ImGui::Begin("##ForgeTitleBar", nullptr, l_Flags);
-
-        if (ImGui::BeginMenuBar())
+        if (ImGui::BeginPopupModal("About Trinity Forge", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
         {
-            EnsureLogo();
+            ImGui::TextUnformatted("Trinity Forge");
+            ImGui::TextDisabled("Trinity Engine editor");
+            ImGui::Separator();
+            ImGui::TextDisabled("Renderer: Vulkan");
+            ImGui::TextDisabled("Platform: SDL3");
+            ImGui::Spacing();
 
-            if (m_LogoTexture != 0)
+            if (ImGui::Button("Close", ImVec2(120.0f, 0.0f)))
             {
-                float l_LogoH = ImGui::GetFrameHeight() - 6.0f;
-                ImGui::Image((ImTextureID)m_LogoTexture, ImVec2(l_LogoH * k_LogoAspect, l_LogoH));
-                ImGui::SameLine();
+                ImGui::CloseCurrentPopup();
             }
 
-            RenderMenus();
-
-            float l_MenusEndX = ImGui::GetCursorPosX();
-            float l_BarWidth = ImGui::GetWindowWidth();
-            float l_ButtonWidth = ImGui::GetFrameHeight();
-            float l_ButtonsWidth = l_ButtonWidth * 3.0f + l_Style.ItemSpacing.x * 2.0f;
-            float l_ButtonsX = l_BarWidth - l_ButtonsWidth - l_Style.ItemSpacing.x;
-
-            std::string l_Title = m_Context.SceneName + (m_Context.History.IsDirty() ? " *" : "") + "   -   Forge";
-            float l_TitleWidth = ImGui::CalcTextSize(l_Title.c_str()).x;
-            float l_TitleX = (l_BarWidth - l_TitleWidth) * 0.5f;
-            if (l_TitleX + l_TitleWidth > l_ButtonsX - l_Style.ItemSpacing.x)
-            {
-                l_TitleX = l_ButtonsX - l_Style.ItemSpacing.x - l_TitleWidth;
-            }
-
-            if (l_TitleX < l_MenusEndX + l_Style.ItemSpacing.x)
-            {
-                l_TitleX = l_MenusEndX + l_Style.ItemSpacing.x;
-            }
-
-            ImGui::SameLine(l_TitleX);
-            ImGui::TextDisabled("%s", l_Title.c_str());
-
-            // Scale the control glyphs to a fraction of the button size (DPI-robust).
-            float l_IconScale = (l_ButtonWidth * 0.50f) / ImGui::GetFontSize();
-            ImGui::SetWindowFontScale(l_IconScale);
-
-            ImGui::SameLine(l_ButtonsX);
-            if (ImGui::Button(ICON_FA_WINDOW_MINIMIZE, ImVec2(l_ButtonWidth, l_ButtonWidth)))
-            {
-                window.Minimize();
-            }
-
-            ImGui::SameLine();
-            if (ImGui::Button(window.IsMaximized() ? ICON_FA_WINDOW_RESTORE : ICON_FA_WINDOW_MAXIMIZE, ImVec2(l_ButtonWidth, l_ButtonWidth)))
-            {
-                if (window.IsMaximized())
-                {
-                    window.Restore();
-                }
-                else
-                {
-                    window.Maximize();
-                }
-            }
-
-            ImGui::SameLine();
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.90f, 0.10f, 0.15f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.78f, 0.08f, 0.15f, 1.0f));
-            if (ImGui::Button(ICON_FA_WINDOW_CLOSE, ImVec2(l_ButtonWidth, l_ButtonWidth)))
-            {
-                window.RequestClose();
-            }
-            ImGui::PopStyleColor(2);
-
-            ImGui::SetWindowFontScale(1.0f);
-
-            float l_WinX = ImGui::GetWindowPos().x;
-            float l_WinY = ImGui::GetWindowPos().y;
-            int l_HitX = static_cast<int>((l_WinX + l_MenusEndX) - l_Viewport->Pos.x);
-            int l_HitY = static_cast<int>(l_WinY - l_Viewport->Pos.y);
-            int l_HitWidth = static_cast<int>(l_ButtonsX - l_MenusEndX);
-            int l_HitHeight = static_cast<int>(l_Height);
-            window.SetTitleBarHitRegion(l_HitX, l_HitY, l_HitWidth > 0 ? l_HitWidth : 0, l_HitHeight);
-
-            ImGui::EndMenuBar();
+            ImGui::EndPopup();
         }
-
-        ImGui::End();
-        ImGui::PopStyleVar(4);
-
-        m_Context.ChromeTop += l_Height;
     }
 }

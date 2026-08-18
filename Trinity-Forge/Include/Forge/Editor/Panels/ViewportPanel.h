@@ -7,12 +7,16 @@
 #include <imgui.h>
 #include <ImGuizmo.h>
 
+#include <glm/glm.hpp>
+
 #include <Forge/Editor/EditorPanel.h>
 
 #include <Trinity/Scene/Components/TransformComponent.h>
 
 namespace Trinity
 {
+    class Scene;
+
     class ViewportPanel : public EditorPanel
     {
     public:
@@ -24,16 +28,31 @@ namespace Trinity
         void OnImGuiRender() override;
 
     private:
+        // Unity's Scene view tool handles, in Q / W / E / R / Y order.
+        enum class SceneTool
+        {
+            View,
+            Move,
+            Rotate,
+            Scale,
+            Transform
+        };
+
         void RenderGizmo(const ImVec2& imageMin, const ImVec2& imageSize);
-        void RenderOverlayToolbar(const ImVec2& viewportMin);
+        void RenderToolsOverlay(const ImVec2& viewportMin);
+        void RenderOrientationOverlay(const ImVec2& viewportMin);
         void RenderStatsOverlay(const ImVec2& viewportMin, const ImVec2& viewportSize);
         void FocusOnSelection();
+        ImGuizmo::OPERATION CurrentOperation() const;
+        glm::vec3 SelectionCenter(Scene& scene) const;
 
     private:
         bool m_Focused = false;
         bool m_Hovered = false;
-        bool m_ShowStats = true;
-        ImGuizmo::OPERATION m_GizmoOperation = ImGuizmo::TRANSLATE;
+        bool m_ShowStats = false;
+        SceneTool m_Tool = SceneTool::Move;
+        // Unity calls these Pivot / Center and Local / Global.
+        bool m_PivotCenter = false;
         ImGuizmo::MODE m_GizmoMode = ImGuizmo::LOCAL;
         bool m_GizmoWasUsing = false;
 

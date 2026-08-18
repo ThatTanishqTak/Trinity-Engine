@@ -3,6 +3,7 @@
 #include <imgui.h>
 
 #include <Forge/Editor/EditorContext.h>
+#include <Forge/Editor/EditorIcons.h>
 
 #include <Trinity/Core/Engine.h>
 #include <Trinity/Core/SimulationClock.h>
@@ -25,7 +26,7 @@ namespace Trinity
         }
 
         ImGui::SetNextWindowSize(ImVec2(420.0f, 480.0f), ImGuiCond_FirstUseEver);
-        if (!ImGui::Begin("Physics Settings", &m_Context.ShowPhysicsSettings))
+        if (!ImGui::Begin(ICON_TR_SETTINGS "  Physics", &m_Context.ShowPhysicsSettings))
         {
             ImGui::End();
 

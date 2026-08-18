@@ -213,7 +213,8 @@ namespace Trinity
 
         if (m_PhysicsSystem != nullptr && m_Scene != nullptr && m_ScenePlaying)
         {
-            m_PhysicsSystem->ApplyInterpolation(*m_Scene, m_SimulationClock.GetAlpha());
+            // While paused the scene sits on the last completed tick instead of blending toward one that never arrives.
+            m_PhysicsSystem->ApplyInterpolation(*m_Scene, m_ScenePaused ? 1.0f : m_SimulationClock.GetAlpha());
         }
     }
 
@@ -227,7 +228,15 @@ namespace Trinity
         // Fixed-rate simulation only; input, cameras, and audio stay on the variable-rate Update path
         if (m_PhysicsSystem != nullptr && m_Scene != nullptr && m_ScenePlaying)
         {
-            m_PhysicsSystem->Step(*m_Scene, timestep.GetSeconds());
+            if (!m_ScenePaused)
+            {
+                m_PhysicsSystem->Step(*m_Scene, timestep.GetSeconds());
+            }
+            else if (m_SceneStepRequested)
+            {
+                m_PhysicsSystem->Step(*m_Scene, timestep.GetSeconds());
+                m_SceneStepRequested = false;
+            }
         }
     }
 
@@ -355,6 +364,8 @@ namespace Trinity
         }
 
         m_ScenePlaying = true;
+        m_ScenePaused = false;
+        m_SceneStepRequested = false;
 
         return true;
     }
@@ -387,6 +398,8 @@ namespace Trinity
 
         m_SceneSnapshot.clear();
         m_ScenePlaying = false;
+        m_ScenePaused = false;
+        m_SceneStepRequested = false;
     }
 
     void Engine::Shutdown()

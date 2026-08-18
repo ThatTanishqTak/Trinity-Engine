@@ -6,6 +6,9 @@
 
 #include <Forge/Editor/EditorPanel.h>
 
+#include <Forge/Editor/EditorTheme.h>
+#include <Forge/Editor/EditorIcons.h>
+
 namespace Trinity
 {
     class Scene;
@@ -24,7 +27,9 @@ namespace Trinity
         void RenderEntityNode(Scene& scene, entt::entity entity);
         void RenderFlatRow(Scene& scene, entt::entity entity);
         void HandleRowClick(entt::entity entity);
+        void DrawRowStripe();
 
+        int m_RowIndex = 0;
         char m_SearchBuffer[128] = "";
         entt::entity m_SelectionAnchor = entt::null;
         // Rows in draw order; shift-range-select uses last frame's complete list.

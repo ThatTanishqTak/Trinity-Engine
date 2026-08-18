@@ -13,5 +13,15 @@ namespace Trinity
         }
 
         void OnImGuiRender() override;
+
+    private:
+        void ProcessRequests();
+        void RenderLeftCluster();
+        void RenderPlayControls(float barWidth);
+        void RenderRightCluster(float barWidth);
+        void TogglePlay();
+        void TogglePause();
+
+        char m_SearchBuffer[128] = "";
     };
 }

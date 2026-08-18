@@ -6,8 +6,10 @@
 
 #include <Forge/Editor/EditorContext.h>
 #include <Forge/Editor/EditorIcons.h>
+#include <Forge/Editor/EditorTheme.h>
 
 #include <Trinity/Core/Engine.h>
+#include <Trinity/Core/Log.h>
 #include <Trinity/Scene/Scene.h>
 #include <Trinity/Scene/Components/IDComponent.h>
 
@@ -15,59 +17,112 @@ namespace Trinity
 {
     void StatusBarPanel::OnImGuiRender()
     {
-        float l_Height = ImGui::GetFrameHeight() + ImGui::GetStyle().ItemSpacing.y;
+        float l_Height = EditorTheme::StatusBarHeight();
 
         ImGuiViewport* l_Viewport = ImGui::GetMainViewport();
-        ImGui::SetNextWindowPos(ImVec2(l_Viewport->Pos.x, l_Viewport->Pos.y + l_Viewport->Size.y - l_Height));
-        ImGui::SetNextWindowSize(ImVec2(l_Viewport->Size.x, l_Height));
-        ImGui::SetNextWindowViewport(l_Viewport->ID);
+        float l_Y = l_Viewport->Size.y - m_Context.ChromeBottom - l_Height;
 
-        ImGuiWindowFlags l_Flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoSavedSettings;
+        // Unity's status bar mirrors the newest console entry on the left and keeps the
+        // editor-wide toggles on the right.
+        std::string l_LastMessage;
+        LogLevel l_LastLevel = LogLevel::Info;
+        int l_Warnings = 0;
+        int l_Errors = 0;
 
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 3.0f));
-        ImGui::Begin("##ForgeStatusBar", nullptr, l_Flags);
-        ImGui::PopStyleVar(3);
-
-        if (ImGui::SmallButton(ICON_FA_FOLDER_OPEN " Content Drawer"))
+        Log::VisitMessages([&l_LastMessage, &l_LastLevel, &l_Warnings, &l_Errors](const LogMessage& message)
         {
-            bool l_Show = !m_Context.ShowContentDrawer;
-            m_Context.ShowContentDrawer = l_Show;
-            if (l_Show)
+            if (message.Level == LogLevel::Warn)
             {
-                m_Context.ShowConsoleDrawer = false;
+                ++l_Warnings;
             }
-            m_Context.DrawerToggled = true;
-        }
-
-        ImGui::SameLine();
-
-        if (ImGui::SmallButton(ICON_FA_TERMINAL " Console"))
-        {
-            bool l_Show = !m_Context.ShowConsoleDrawer;
-            m_Context.ShowConsoleDrawer = l_Show;
-            if (l_Show)
+            else if (message.Level == LogLevel::Error || message.Level == LogLevel::Critical)
             {
-                m_Context.ShowContentDrawer = false;
+                ++l_Errors;
             }
-            m_Context.DrawerToggled = true;
-        }
 
-        int l_EntityCount = 0;
-        if (m_Engine.HasScene())
+            if (message.Level != LogLevel::Trace)
+            {
+                l_LastMessage = message.Text;
+                l_LastLevel = message.Level;
+            }
+        });
+
+        if (EditorTheme::BeginChromeBar("##ForgeStatusBar", l_Y, l_Height, EditorColors::AppToolbar, ImVec2(8.0f, 1.0f)))
         {
-            l_EntityCount = static_cast<int>(m_Engine.GetScene().GetRegistry().view<IDComponent>().size());
+            const char* l_Icon = ICON_TR_INFO;
+            ImU32 l_Color = EditorColors::DisabledText;
+            if (l_LastLevel == LogLevel::Warn)
+            {
+                l_Icon = ICON_TR_WARNING;
+                l_Color = EditorColors::WarningText;
+            }
+            else if (l_LastLevel == LogLevel::Error || l_LastLevel == LogLevel::Critical)
+            {
+                l_Icon = ICON_TR_ERROR;
+                l_Color = EditorColors::ErrorText;
+            }
+
+            ImGui::AlignTextToFramePadding();
+            if (!l_LastMessage.empty())
+            {
+                ImGui::PushStyleColor(ImGuiCol_Text, EditorColors::ToVec4(l_Color));
+                ImGui::TextUnformatted(l_Icon);
+                ImGui::PopStyleColor();
+
+                ImGui::SameLine(0.0f, 6.0f);
+                ImGui::TextUnformatted(l_LastMessage.c_str());
+
+                if (ImGui::IsItemClicked())
+                {
+                    m_Context.ShowConsole = true;
+                }
+            }
+
+            int l_EntityCount = 0;
+            if (m_Engine.HasScene())
+            {
+                l_EntityCount = static_cast<int>(m_Engine.GetScene().GetRegistry().view<IDComponent>().size());
+            }
+
+            std::string l_Summary = std::to_string(l_EntityCount) + " GameObjects";
+            if (m_Context.History.IsDirty())
+            {
+                l_Summary += "    Unsaved changes";
+            }
+
+            float l_IconWidth = ImGui::GetFrameHeight() + 6.0f;
+            float l_SummaryWidth = ImGui::CalcTextSize(l_Summary.c_str()).x;
+            float l_CountersWidth = ImGui::CalcTextSize(ICON_TR_WARNING " 000  " ICON_TR_ERROR " 000").x;
+            float l_Total = l_SummaryWidth + l_CountersWidth + l_IconWidth * 2.0f + 40.0f;
+
+            ImGui::SameLine(ImGui::GetWindowWidth() - l_Total);
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextDisabled("%s", l_Summary.c_str());
+
+            ImGui::SameLine(0.0f, 16.0f);
+            ImGui::PushStyleColor(ImGuiCol_Text, EditorColors::ToVec4(l_Warnings > 0 ? EditorColors::WarningText : EditorColors::DisabledText));
+            ImGui::TextUnformatted((std::string(ICON_TR_WARNING " ") + std::to_string(l_Warnings)).c_str());
+            ImGui::PopStyleColor();
+
+            ImGui::SameLine(0.0f, 10.0f);
+            ImGui::PushStyleColor(ImGuiCol_Text, EditorColors::ToVec4(l_Errors > 0 ? EditorColors::ErrorText : EditorColors::DisabledText));
+            ImGui::TextUnformatted((std::string(ICON_TR_ERROR " ") + std::to_string(l_Errors)).c_str());
+            ImGui::PopStyleColor();
+
+            ImGui::SameLine(0.0f, 12.0f);
+            if (EditorTheme::ToolBarButton(ICON_TR_MUTE, m_Context.MuteAudio, "Mute Audio"))
+            {
+                m_Context.MuteAudio = !m_Context.MuteAudio;
+            }
+
+            ImGui::SameLine();
+            if (EditorTheme::ToolBarButton(ICON_TR_GIZMOS, m_Context.ShowPhysicsColliders, "Gizmos"))
+            {
+                m_Context.ShowPhysicsColliders = !m_Context.ShowPhysicsColliders;
+            }
         }
 
-        std::string l_State = m_Context.History.IsDirty() ? "Unsaved *" : "All Saved";
-        std::string l_Right = std::to_string(l_EntityCount) + " entities    |    " + l_State;
-
-        float l_RightWidth = ImGui::CalcTextSize(l_Right.c_str()).x;
-        ImGui::SameLine(ImGui::GetWindowWidth() - l_RightWidth - 12.0f);
-        ImGui::TextUnformatted(l_Right.c_str());
-
-        ImGui::End();
+        EditorTheme::EndChromeBar();
 
         m_Context.ChromeBottom += l_Height;
     }

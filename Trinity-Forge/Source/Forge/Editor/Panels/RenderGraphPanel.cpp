@@ -6,6 +6,7 @@
 #include <imgui.h>
 
 #include <Forge/Editor/EditorContext.h>
+#include <Forge/Editor/EditorIcons.h>
 
 #include <Trinity/Core/Engine.h>
 #include <Trinity/Renderer/Frontend/Renderer.h>
@@ -28,7 +29,7 @@ namespace Trinity
             return;
         }
 
-        if (!ImGui::Begin("Render Graph", &m_Context.ShowRenderGraph))
+        if (!ImGui::Begin(ICON_TR_LAYOUT "  Render Graph", &m_Context.ShowRenderGraph))
         {
             ImGui::End();
 
