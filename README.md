@@ -1,69 +1,119 @@
-# Trinity
+# Trinity Engine
 
-Trinity is a custom C++23 game engine ecosystem: a modular runtime engine, a
-professional editor (**Forge**), a standalone runtime player, a dedicated
-headless server, and a project/version launcher (**Trinity-Hub**).
+A **C++23 game engine and scene editor** built around Vulkan rendering, modular engine systems and an entity/component scene model.
 
-The project is built through working vertical slices rather than upfront
-abstraction. The first objective is a complete Engine → Forge → Runtime loop:
-create a project, edit a scene, render it through Vulkan, save and reload it,
-cook the project, and launch it in Trinity-Runtime.
+The main application is **Trinity-Forge**, an editor for assembling scenes, inspecting entities, adjusting materials and running simulations.
 
-## Products
+**Status:** Active development. The engine and Forge contain the main implementation. Several additional product targets are still application skeletons or generated placeholders.
 
-| Target          | Description                                      |
-|-----------------|--------------------------------------------------|
-| Trinity-Engine  | Core C++ engine library used by all products     |
-| Trinity-Forge   | Editor                                           |
-| Trinity-Runtime | Standalone player for cooked builds              |
-| Trinity-Server  | Dedicated headless multiplayer runtime           |
-| Trinity-Hub     | Launcher, project and engine-version manager     |
-| Trinity-Tools   | BuildTool, Cooker, ShaderCompiler, PackageTool, ProjectGenerator |
+## Current Features
 
-## Prerequisites
+### Rendering
 
-- CMake 3.30 or newer
-- A C++23 compiler (Visual Studio 2022 / MSVC on Windows)
+* Vulkan rendering backend with a graphics abstraction layer.
+* Slang shader compilation.
+* Physically based material shading.
+* Environment lighting with irradiance, prefiltered reflections and a BRDF lookup texture.
+* Directional shadow rendering.
+* A render graph for organising passes and resource transitions.
+* Skybox rendering, tone mapping and depth visualisation.
+* Debug geometry and rendering statistics.
 
-Additional dependencies (Vulkan SDK, SDL3, and others) are introduced in later
-milestones as they are needed.
+### Scenes and Runtime Systems
 
-## Building
+* EnTT-based entity/component organisation.
+* Entity hierarchy and transform management.
+* Mesh importing through Assimp.
+* Asset metadata and an asset database.
+* YAML scene and material serialisation.
+* Audio integration through miniaudio.
+* Box2D-backed 2D physics.
+* Fixed-step simulation controls and physics debugging.
 
+### Forge Editor
+
+* Scene viewport with transform gizmos.
+* Hierarchy, inspector and content-browser panels.
+* Console, render-graph and statistics panels.
+* Command-based undo and redo.
+* Entity creation, duplication and deletion.
+* Scene opening and saving.
+* Play, pause and single-step controls.
+
+## Product Status
+
+| Target                             | Current state                              |
+| ---------------------------------- | ------------------------------------------ |
+| `Trinity-Engine`                   | Core static engine library                 |
+| `Trinity-Forge`                    | Implemented scene editor                   |
+| `Trinity-Runtime`                  | Basic application skeleton                 |
+| `Trinity-Server`                   | Generated placeholder                      |
+| `Trinity-Hub`                      | Generated placeholder                      |
+| Build, cooking and packaging tools | Primarily generated placeholders           |
+| `Trinity-PhysicsSmoke`             | Implemented physics smoke-check executable |
+
+A complete project creation, cooking, packaging and standalone-player workflow is still being developed.
+
+## Requirements
+
+* CMake 3.30 or newer.
+* A C++23 compiler.
+* Vulkan SDK with Slang headers, libraries and runtime components.
+* A compatible Vulkan GPU and driver.
+* Git with submodule support.
+
+Windows builds can use Visual Studio 2022.
+
+## Build and Run Forge
+
+```powershell
+git clone --recurse-submodules https://github.com/ThatTanishqTak/Trinity-Engine.git
+cd Trinity-Engine
+
+cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+cmake --build build --config Release --target Trinity-Forge
+
+cd bin/Release-Windows-x86_64/Trinity/Trinity-Forge
+.\Trinity-Forge.exe
 ```
-git clone --recursive https://github.com/ThatTanishqTak/Trinity-Engine.git
 
-cmake -S . -B out/build
-cmake --build out/build --config Debug
+Keep the staged assets, shaders and runtime libraries beside the executable.
+
+Build outputs follow:
+
+```text
+bin/<Configuration>-<System>-<Architecture>/Trinity/<Target>/
 ```
 
-Build output is written to:
+## Editor Workflow
 
-```
-bin/<Config>-<System>-<Arch>/<Project>/<Target>/
-```
+1. Select an entity in the hierarchy.
+2. Edit its components in the inspector.
+3. Position it using the viewport gizmos.
+4. Use the content browser to inspect available assets.
+5. Save the scene.
+6. Use Play, Pause and Step to inspect runtime behaviour.
+
+Common shortcuts include `Ctrl+S` for saving, `Ctrl+O` for opening a scene, and `Ctrl+Z` / `Ctrl+Y` for undo and redo.
 
 ## Repository Layout
 
-```
-Trinity-Engine/    Core engine library (Source/, Include/)
-Trinity-Forge/     Editor
-Trinity-Runtime/   Standalone player
-Trinity-Server/    Headless server
-Trinity-Hub/       Launcher
-Trinity-Tools/     Command-line and build pipeline tools
-Templates/         Project templates
-Examples/          Example projects
-Docs/              Documentation (see Docs/Architecture)
-Vendor/            Third-party dependencies (git submodules)
-Build/             Build support scripts
-cmake/             Shared CMake modules
-```
+* `Trinity-Engine/`: Engine systems, shaders and shared assets.
+* `Trinity-Forge/`: Editor application and panels.
+* `Trinity-Runtime/`: Runtime application foundation.
+* `Trinity-Server/` and `Trinity-Hub/`: Future product targets.
+* `Trinity-Tools/`: Tool targets and physics checks.
+* `cmake/`: Shared target configuration.
+* `Vendor/`: Third-party submodules.
 
-## Documentation
+## Current Boundaries
 
-Architecture rules and module boundaries live in `Docs/Architecture/`.
+* Vulkan is the implemented graphics backend.
+* Metal and DirectX 12 options do not represent completed backends.
+* Box2D is the implemented physics backend; the planned PhysX integration is incomplete.
+* Some editor menu entries are disabled placeholders.
+* Project management, cooking and distribution workflows remain unfinished.
 
 ## License
 
-Apache License 2.0. See `LICENSE`.
+Licensed under the [Apache License 2.0](LICENSE). Third-party dependencies retain their respective licences.
